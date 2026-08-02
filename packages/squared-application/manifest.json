@@ -1,0 +1,14 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.application",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Application",
+  "description": "Header-only platform-neutral application lifecycle and event contracts.",
+  "module": {
+    "directory": "modules/squared-application",
+    "cmake_target": "squared_application",
+    "requires": []
+  }
+}

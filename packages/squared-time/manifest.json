@@ -1,0 +1,13 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.time",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Time",
+  "description": "Low-allocation time domains and deadline scheduling for Squared applications.",
+  "module": {
+    "directory": "modules/squared-time",
+    "cmake_target": "squared_time"
+  }
+}

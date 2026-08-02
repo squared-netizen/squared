@@ -1,0 +1,25 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.graphics2d",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Graphics2D",
+  "description": "OpenGL ES 2 sprites, textures, texture atlases, batching, and orthographic cameras over Squared Graphics and Math.",
+  "module": {
+    "directory": "modules/squared-graphics2d",
+    "cmake_target": "squared_graphics2d",
+    "requires": [
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.graphics",
+        "version": "0.6.0-dev.1"
+      },
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.math",
+        "version": "0.6.0-dev.1"
+      }
+    ]
+  }
+}

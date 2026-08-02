@@ -1,0 +1,14 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.math",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Math",
+  "description": "Platform-neutral vector and matrix primitives used by Squared framework modules.",
+  "module": {
+    "directory": "modules/squared-math",
+    "cmake_target": "squared_math",
+    "requires": []
+  }
+}

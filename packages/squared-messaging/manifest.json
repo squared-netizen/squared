@@ -1,0 +1,25 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.messaging",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Messaging",
+  "description": "Deterministic Telegram and Telegraph messaging with provider state, receipts, scheduling, and snapshot restoration.",
+  "module": {
+    "directory": "modules/squared-messaging",
+    "cmake_target": "squared_messaging",
+    "requires": [
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.data",
+        "version": "0.6.0-dev.1"
+      },
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.time",
+        "version": "0.6.0-dev.1"
+      }
+    ]
+  }
+}

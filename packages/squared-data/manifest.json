@@ -1,0 +1,14 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.data",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Data",
+  "description": "Owned strict JSON values, parsing, and deterministic writing with a private yyjson implementation.",
+  "module": {
+    "directory": "modules/squared-data",
+    "cmake_target": "squared_data",
+    "requires": []
+  }
+}

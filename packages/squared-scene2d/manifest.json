@@ -1,0 +1,20 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.scene2d",
+  "version": "0.6.0-dev.1",
+  "name": "Squared Scene2D",
+  "description": "Owned two-dimensional actor hierarchy, ordered traversal, bounds hit testing, and root stage.",
+  "module": {
+    "directory": "modules/squared-scene2d",
+    "cmake_target": "squared_scene2d",
+    "requires": [
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.graphics2d",
+        "version": "0.6.0-dev.1"
+      }
+    ]
+  }
+}
