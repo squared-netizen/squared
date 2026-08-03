@@ -45,6 +45,12 @@ set(SQUARED_SCENE2D_ROOT
 set(SQUARED_TIME_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-time/content/modules/squared-time"
 )
+set(SQUARED_HOLODISK_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-holoDisk/content/modules/squared-holoDisk"
+)
+set(SQUARED_HOLODISK_MINIZ_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-holoDisk/content/third_party/miniz-3.1.2"
+)
 
 add_library(squared_test_yyjson STATIC
     "${SQUARED_DATA_YYJSON_ROOT}/src/yyjson.c"
@@ -153,6 +159,21 @@ target_link_libraries(squared_messaging_test
         squared_test_yyjson
 )
 
+add_executable(squared_holodisk_test
+    tests/holodisk-test.cpp
+    "${SQUARED_HOLODISK_ROOT}/src/holodrive.cpp"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tdef.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tinfl.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_zip.c"
+)
+squared_test_target(squared_holodisk_test)
+target_include_directories(squared_holodisk_test
+    PRIVATE
+        "${SQUARED_HOLODISK_ROOT}/include"
+        "${SQUARED_HOLODISK_MINIZ_ROOT}"
+)
+
 if(BUILD_TESTING)
     add_test(
         NAME squared_application_boundary
@@ -185,5 +206,9 @@ if(BUILD_TESTING)
     add_test(
         NAME squared_telegram_messaging
         COMMAND "$<TARGET_FILE:squared_messaging_test>"
+    )
+    add_test(
+        NAME squared_holodisk_drive
+        COMMAND "$<TARGET_FILE:squared_holodisk_test>"
     )
 endif()

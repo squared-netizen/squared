@@ -11,6 +11,7 @@ This repository is the authoritative development home for:
 - Squared Data
 - Squared Graphics
 - Squared Graphics2D
+- Squared HoloDisk (optional)
 - Squared Math
 - Squared Messaging
 - Squared Scene2D
@@ -31,6 +32,9 @@ cmake --workflow --preset test
 The host suite tests the portable framework slices and verifies that Graphics
 and Graphics2D headers compile without SDL or OpenGL headers. SDL2/OpenGL
 integration remains covered by generated Android project smoke tests.
+
+Squared HoloDisk is independently tested as a ZIP cartridge drive and links
+only its own sources and vendored miniz implementation.
 
 ## Build packages
 
@@ -58,6 +62,14 @@ implementation is `dev.squarednetizen.squared.backend.sdl2-opengl`, which owns
 SDL2 window/context operations, OpenGL ES resources, and platform asset image
 loading. This selection adds no runtime backend registry or per-draw virtual
 dispatch.
+
+## Optional HoloDisk extension
+
+`dev.squarednetizen.squared.holodisk` provides emulated and ZIP-backed
+cartridges without becoming a required I/O layer. It has no dependency on any
+other Squared package. A factory creates a `HoloDrive`; that drive then owns
+disk loading, mounting, mounted file operations, ZIP materialization, and
+cleanup behind one compact API boundary.
 
 ## Repository boundary
 
