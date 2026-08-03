@@ -24,9 +24,9 @@ enum class TextureWrap {
 };
 
 /**
- * @brief Move-only OpenGL ES texture.
+ * @brief Move-only texture owned by the selected graphics backend.
  *
- * A valid OpenGL ES context must be current whenever a texture is created or
+ * A valid graphics context must be current whenever a texture is created or
  * destroyed. Automatic context-loss restoration is intentionally deferred
  * until the asset manager is introduced.
  */
@@ -40,7 +40,7 @@ public:
     ~Texture();
 
     /**
-     * @brief Load an Android asset with SDL_image and upload it as RGBA.
+     * @brief Load an image asset through the selected backend.
      */
     [[nodiscard]] bool load(const char* asset_path) noexcept;
 
@@ -58,7 +58,7 @@ public:
         squared::graphics::Color color
     ) noexcept;
 
-    /** @brief Destroy the OpenGL ES texture. */
+    /** @brief Destroy the backend texture. */
     void destroy() noexcept;
 
     /** @brief Set minification and magnification filters. */
@@ -76,7 +76,7 @@ public:
     /** @brief Bind the texture to a zero-based texture unit. */
     void bind(unsigned int unit = 0) const noexcept;
 
-    /** @brief Return whether the texture owns a GPU object. */
+    /** @brief Return whether the texture owns a backend object. */
     [[nodiscard]] bool valid() const noexcept;
 
     /** @brief Return the texture width in pixels. */
@@ -85,10 +85,9 @@ public:
     /** @brief Return the texture height in pixels. */
     [[nodiscard]] int height() const noexcept;
 
-    /** @brief Return the implementation-specific OpenGL texture name. */
-    [[nodiscard]] unsigned int native_handle() const noexcept;
-
 private:
+    friend class SpriteBatch;
+
     unsigned int handle_{0};
     int width_{0};
     int height_{0};

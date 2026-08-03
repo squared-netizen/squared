@@ -210,9 +210,4 @@ int Texture::height() const noexcept
     return height_;
 }
 
-unsigned int Texture::native_handle() const noexcept
-{
-    return handle_;
-}
-
 }  // namespace squared::graphics2d

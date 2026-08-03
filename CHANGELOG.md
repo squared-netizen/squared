@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Split SDL2/OpenGL implementation code from portable Graphics and Graphics2D
+  contracts into the new `squared-backend-sdl2-opengl` link-time backend.
+- Advance Graphics, Graphics2D, and Scene2D to `0.6.0-dev.2` while preserving
+  exact immutable dependency coordinates.
+- Add a host test proving that the portable graphics headers and camera build
+  without SDL or OpenGL development headers.
+
 - Establish the independent Squared framework repository from the frozen
   Squared Project Generator 0.6.0-dev.6 package snapshot.
 - Preserve the existing module package IDs, versions, dependency coordinates,

@@ -367,7 +367,7 @@ void SpriteBatch::append_quad(
 ) noexcept
 {
     if (!drawing_ || !region.valid()) return;
-    const unsigned int texture = region.texture().native_handle();
+    const unsigned int texture = region.texture().handle_;
     if (sprite_count_ > 0 &&
         (active_texture_ != texture ||
          sprite_count_ >= maximum_sprites_)) {

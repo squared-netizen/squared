@@ -6,6 +6,14 @@
 #include <SDL_opengles2_gl2.h>
 
 namespace squared::graphics {
+namespace {
+
+SDL_Window* as_window(void* window) noexcept
+{
+    return static_cast<SDL_Window*>(window);
+}
+
+}  // namespace
 
 Context::~Context()
 {
@@ -46,13 +54,13 @@ bool Context::create(
         return false;
     }
 
-    native_context_ = SDL_GL_CreateContext(window_);
+    native_context_ = SDL_GL_CreateContext(as_window(window_));
     if (!native_context_) {
         SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
         destroy();
         return false;
     }
-    if (SDL_GL_MakeCurrent(window_, native_context_) != 0) {
+    if (SDL_GL_MakeCurrent(as_window(window_), native_context_) != 0) {
         SDL_Log("SDL_GL_MakeCurrent failed: %s", SDL_GetError());
         destroy();
         return false;
@@ -86,7 +94,7 @@ void Context::destroy() noexcept
         native_context_ = nullptr;
     }
     if (window_) {
-        SDL_DestroyWindow(window_);
+        SDL_DestroyWindow(as_window(window_));
         window_ = nullptr;
     }
     pixel_width_ = 0;
@@ -96,7 +104,7 @@ void Context::destroy() noexcept
 void Context::refresh_viewport() noexcept
 {
     if (!window_ || !native_context_) return;
-    SDL_GL_GetDrawableSize(window_, &pixel_width_, &pixel_height_);
+    SDL_GL_GetDrawableSize(as_window(window_), &pixel_width_, &pixel_height_);
     glViewport(0, 0, pixel_width_, pixel_height_);
 }
 
@@ -109,7 +117,7 @@ void Context::clear(Color color) noexcept
 
 void Context::present() noexcept
 {
-    if (window_) SDL_GL_SwapWindow(window_);
+    if (window_) SDL_GL_SwapWindow(as_window(window_));
 }
 
 bool Context::valid() const noexcept

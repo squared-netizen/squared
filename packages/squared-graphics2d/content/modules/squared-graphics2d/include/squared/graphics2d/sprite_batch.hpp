@@ -11,7 +11,7 @@
 namespace squared::graphics2d {
 
 /**
- * @brief Efficiently draw ordered textured quads with OpenGL ES 2.
+ * @brief Efficiently draw ordered textured quads with the selected backend.
  */
 class SpriteBatch final {
 public:
@@ -32,7 +32,7 @@ public:
         std::size_t maximum_sprites = 2048
     ) noexcept;
 
-    /** @brief Release all owned OpenGL ES objects. */
+    /** @brief Release all owned backend objects. */
     void destroy() noexcept;
 
     /** @brief Begin an ordered batch using the camera projection. */

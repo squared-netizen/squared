@@ -8,19 +8,16 @@ tags:
 
 # Graphics2D
 
-Applications render through the `squared::` C++ framework over
-an OpenGL ES 2 context. SDL2 owns the portable window and lifecycle boundary;
-ordinary application drawing does not call Android APIs or raw OpenGL ES.
-The Termux build compiles against the Khronos declarations bundled in the SDL2
-kit and links Android's system GLES2 library. That system library is not copied
-into the APK.
+Applications render through portable `squared::graphics2d` contracts.
+Platform templates select one implementation backend at link time; ordinary
+application drawing does not include SDL, Android, or raw OpenGL headers.
 
 ## Minimum API
 
 - The independent Squared Graphics module provides
   `squared::graphics::Context`, which owns the window, context, viewport,
   clear, and presentation operations.
-- `squared::graphics2d::Texture` owns a GPU texture.
+- `squared::graphics2d::Texture` owns a backend texture.
 - `squared::graphics2d::TextureRegion` references a rectangle within a texture.
 - `squared::graphics2d::TextureAtlas` owns one or more page textures and
   exposes named regions.
@@ -68,9 +65,8 @@ or application code without editing the documentation configuration.
 ## Current lifecycle limit
 
 GPU objects, including atlas page textures, must be created and destroyed
-while the OpenGL ES context is current. Automatic restoration after Android
-context loss is deferred until the asset manager is introduced. The generated
-host refreshes the viewport on resize and foreground events.
+while the selected backend context is current. Automatic restoration after
+context loss is deferred until the asset manager is introduced.
 
 ## Scene and UI boundary
 

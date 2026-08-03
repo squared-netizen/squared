@@ -1,7 +1,7 @@
 # Squared Scene2D
 
 Squared Scene2D begins the Phase 6 scene hierarchy as an independent compiled
-`.sq` module. Version `0.6.0-dev.1` deliberately provides only the stable base:
+`.sq` module. Version `0.6.0-dev.2` deliberately provides only the stable base:
 
 - `Actor` owns parent-relative bounds, visibility, touchability, and frame
   traversal;

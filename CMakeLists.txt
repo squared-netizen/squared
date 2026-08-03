@@ -30,6 +30,9 @@ set(SQUARED_DATA_YYJSON_ROOT
 set(SQUARED_GRAPHICS_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-graphics/content/modules/squared-graphics"
 )
+set(SQUARED_GRAPHICS2D_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-graphics2d/content/modules/squared-graphics2d"
+)
 set(SQUARED_MATH_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-math/content/modules/squared-math"
 )
@@ -97,6 +100,19 @@ target_include_directories(squared_math_test
         "${SQUARED_MATH_ROOT}/include"
 )
 
+add_executable(squared_graphics2d_portable_test
+    tests/graphics2d-portable-test.cpp
+    "${SQUARED_GRAPHICS2D_ROOT}/src/orthographic_camera.cpp"
+    "${SQUARED_MATH_ROOT}/src/matrix4.cpp"
+)
+squared_test_target(squared_graphics2d_portable_test)
+target_include_directories(squared_graphics2d_portable_test
+    PRIVATE
+        "${SQUARED_GRAPHICS_ROOT}/include"
+        "${SQUARED_GRAPHICS2D_ROOT}/include"
+        "${SQUARED_MATH_ROOT}/include"
+)
+
 add_executable(squared_scene2d_test
     tests/scene2d-test.cpp
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
@@ -153,6 +169,10 @@ if(BUILD_TESTING)
     add_test(
         NAME squared_math_primitives
         COMMAND "$<TARGET_FILE:squared_math_test>"
+    )
+    add_test(
+        NAME squared_graphics2d_portable_boundary
+        COMMAND "$<TARGET_FILE:squared_graphics2d_portable_test>"
     )
     add_test(
         NAME squared_scene2d_hierarchy

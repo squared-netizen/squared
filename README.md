@@ -7,6 +7,7 @@ and frontend selection outside portable framework APIs.
 This repository is the authoritative development home for:
 
 - Squared Application
+- Squared SDL2/OpenGL Backend
 - Squared Data
 - Squared Graphics
 - Squared Graphics2D
@@ -15,9 +16,9 @@ This repository is the authoritative development home for:
 - Squared Scene2D
 - Squared Time
 
-The initial source snapshot is extracted unchanged from Squared Project
-Generator 0.6.0-dev.6. The corresponding packages remain frozen in
-`squared-pg` as bootstrap and integration fixtures.
+The initial source snapshot was extracted from Squared Project Generator
+0.6.0-dev.6. Framework development now advances here while the corresponding
+packages in `squared-pg` remain frozen bootstrap and integration fixtures.
 
 ## Build and test
 
@@ -27,8 +28,9 @@ Run the complete host test workflow from the repository root:
 cmake --workflow --preset test
 ```
 
-The host suite intentionally tests the portable framework slices. SDL2 and
-OpenGL integration remains covered by generated Android project smoke tests.
+The host suite tests the portable framework slices and verifies that Graphics
+and Graphics2D headers compile without SDL or OpenGL headers. SDL2/OpenGL
+integration remains covered by generated Android project smoke tests.
 
 ## Build packages
 
@@ -47,6 +49,15 @@ squared-pg package add \
 `package build` validates the resulting archive. `package add` validates it
 again and transactionally registers it. Published package contents are
 immutable; changes require a new version.
+
+## Graphics backend boundary
+
+Squared Graphics and Graphics2D expose portable C++ contracts. Platform
+templates select exactly one implementation package at link time. The first
+implementation is `dev.squarednetizen.squared.backend.sdl2-opengl`, which owns
+SDL2 window/context operations, OpenGL ES resources, and platform asset image
+loading. This selection adds no runtime backend registry or per-draw virtual
+dispatch.
 
 ## Repository boundary
 

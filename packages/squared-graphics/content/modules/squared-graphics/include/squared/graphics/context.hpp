@@ -2,12 +2,10 @@
 
 #include <squared/graphics/color.hpp>
 
-struct SDL_Window;
-
 namespace squared::graphics {
 
 /**
- * @brief Own the SDL window and OpenGL ES context used by an application.
+ * @brief Own the native window and rendering context selected at link time.
  *
  * The generated platform layer owns this object. Application rendering code
  * receives higher-level graphics objects and does not present the window
@@ -23,7 +21,7 @@ public:
     ~Context();
 
     /**
-     * @brief Create an OpenGL ES 2.0 window and make its context current.
+     * @brief Create a platform window and make its rendering context current.
      *
      * @param title Window title.
      * @param logical_width Initial logical width.
@@ -39,7 +37,7 @@ public:
     /** @brief Destroy the context and window. */
     void destroy() noexcept;
 
-    /** @brief Refresh drawable dimensions and apply the OpenGL viewport. */
+    /** @brief Refresh drawable dimensions and the backend viewport. */
     void refresh_viewport() noexcept;
 
     /** @brief Clear the active color buffer. */
@@ -58,7 +56,7 @@ public:
     [[nodiscard]] int pixel_height() const noexcept;
 
 private:
-    SDL_Window* window_{nullptr};
+    void* window_{nullptr};
     void* native_context_{nullptr};
     int pixel_width_{0};
     int pixel_height_{0};

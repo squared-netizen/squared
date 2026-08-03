@@ -3,9 +3,9 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.graphics",
-  "version": "0.6.0-dev.1",
+  "version": "0.6.0-dev.2",
   "name": "Squared Graphics",
-  "description": "SDL and OpenGL ES graphics context ownership with platform-neutral color values.",
+  "description": "Portable graphics context contract and platform-neutral color values implemented by a selected link-time backend.",
   "module": {
     "directory": "modules/squared-graphics",
     "cmake_target": "squared_graphics",
