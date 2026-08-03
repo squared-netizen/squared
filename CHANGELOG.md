@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add the optional portable `squared-gui` module with retained widgets,
+  composable containers, reusable skins, handheld-sized basic controls, focus,
+  pointer capture, UTF-8 text editing, direct Application event routing, and a
+  Graphics2D painter boundary with no SDL dependency.
+- Add a CC0 Kenney UI Pack skin fixture that exercises image-backed button,
+  checkbox, and slider drawables through portable texture regions.
+- Defer GUI's CMake dependency binding until all composed module targets exist,
+  keeping optional-module builds independent of directory discovery order.
 - Add the independent optional `squared-holoDisk` module with a single
   `HoloDrive` operational boundary, streamed ZIP reads, scratch-backed writes,
   resource limits, safe cartridge paths, and explicit ZIP materialization.

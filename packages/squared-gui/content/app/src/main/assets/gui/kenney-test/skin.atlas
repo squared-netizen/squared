@@ -1,0 +1,77 @@
+button-normal.png
+size: 192, 64
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+button.normal
+  rotate: false
+  xy: 0, 0
+  size: 192, 64
+  orig: 192, 64
+  offset: 0, 0
+  index: -1
+
+button-pressed.png
+size: 192, 64
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+button.pressed
+  rotate: false
+  xy: 0, 0
+  size: 192, 64
+  orig: 192, 64
+  offset: 0, 0
+  index: -1
+
+checkbox-unchecked.png
+size: 32, 32
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+checkbox.unchecked
+  rotate: false
+  xy: 0, 0
+  size: 32, 32
+  orig: 32, 32
+  offset: 0, 0
+  index: -1
+
+checkbox-checked.png
+size: 32, 32
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+checkbox.checked
+  rotate: false
+  xy: 0, 0
+  size: 32, 32
+  orig: 32, 32
+  offset: 0, 0
+  index: -1
+
+slider-track.png
+size: 96, 16
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+slider.track
+  rotate: false
+  xy: 0, 0
+  size: 96, 16
+  orig: 96, 16
+  offset: 0, 0
+  index: -1
+
+slider-knob.png
+size: 24, 32
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+slider.knob
+  rotate: false
+  xy: 0, 0
+  size: 24, 32
+  orig: 24, 32
+  offset: 0, 0
+  index: -1

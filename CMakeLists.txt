@@ -51,6 +51,9 @@ set(SQUARED_HOLODISK_ROOT
 set(SQUARED_HOLODISK_MINIZ_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-holoDisk/content/third_party/miniz-3.1.2"
 )
+set(SQUARED_GUI_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui/content/modules/squared-gui"
+)
 
 add_library(squared_test_yyjson STATIC
     "${SQUARED_DATA_YYJSON_ROOT}/src/yyjson.c"
@@ -167,6 +170,27 @@ add_executable(squared_holodisk_test
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tinfl.c"
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_zip.c"
 )
+
+add_executable(squared_gui_test
+    tests/gui-test.cpp
+    "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
+)
+squared_test_target(squared_gui_test)
+target_include_directories(squared_gui_test
+    PRIVATE
+        "${SQUARED_APPLICATION_ROOT}/include"
+        "${SQUARED_GUI_ROOT}/include"
+        "${SQUARED_SCENE2D_ROOT}/include"
+        "${SQUARED_GRAPHICS_ROOT}/include"
+        "${SQUARED_GRAPHICS2D_ROOT}/include"
+)
+target_compile_definitions(squared_gui_test
+    PRIVATE
+        SQUARED_GUI_TEST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui/content/app/src/main/assets/gui/kenney-test"
+)
 squared_test_target(squared_holodisk_test)
 target_include_directories(squared_holodisk_test
     PRIVATE
@@ -210,5 +234,9 @@ if(BUILD_TESTING)
     add_test(
         NAME squared_holodisk_drive
         COMMAND "$<TARGET_FILE:squared_holodisk_test>"
+    )
+    add_test(
+        NAME squared_gui_portable_widgets
+        COMMAND "$<TARGET_FILE:squared_gui_test>"
     )
 endif()

@@ -1,0 +1,25 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.gui",
+  "version": "0.6.0-dev.2",
+  "name": "Squared GUI",
+  "description": "Portable retained-mode controls, layout, skins, Application event routing, and Graphics2D drawing.",
+  "module": {
+    "directory": "modules/squared-gui",
+    "cmake_target": "squared_gui",
+    "requires": [
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.application",
+        "version": "0.6.0-dev.1"
+      },
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.scene2d",
+        "version": "0.6.0-dev.2"
+      }
+    ]
+  }
+}

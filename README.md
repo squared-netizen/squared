@@ -11,6 +11,7 @@ This repository is the authoritative development home for:
 - Squared Data
 - Squared Graphics
 - Squared Graphics2D
+- Squared GUI (optional)
 - Squared HoloDisk (optional)
 - Squared Math
 - Squared Messaging
@@ -35,6 +36,11 @@ integration remains covered by generated Android project smoke tests.
 
 Squared HoloDisk is independently tested as a ZIP cartridge drive and links
 only its own sources and vendored miniz implementation.
+
+Squared GUI is independently tested with a recording painter, so skins,
+layout, focus, pointer capture, controls, text editing, framework event
+routing, and Graphics2D region drawing remain portable and require no window
+or GPU. Its packaged skin fixture uses CC0 Kenney UI Pack images.
 
 ## Build packages
 
@@ -70,6 +76,16 @@ cartridges without becoming a required I/O layer. It has no dependency on any
 other Squared package. A factory creates a `HoloDrive`; that drive then owns
 disk loading, mounting, mounted file operations, ZIP materialization, and
 cleanup behind one compact API boundary.
+
+## Optional GUI extension
+
+`dev.squarednetizen.squared.gui` provides a compact retained-mode widget tree
+over Scene2D. `Ui` consumes the framework's existing `application::Event`
+directly, including stable pointer IDs and resize events; it does not create a
+second event bus. A frontend implements its small painter contract with
+portable Graphics and Graphics2D types. GUI itself has no SDL, OpenGL,
+Android, HoloDisk, or template dependency. Projects add it explicitly through
+the generator's optional project-module workflow.
 
 ## Repository boundary
 
