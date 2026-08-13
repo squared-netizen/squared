@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Advance Squared GUI to `0.6.0-dev.3` with a libGDX-inspired table grid,
+  chainable cell constraints, draggable table-backed windows, modal dialogs,
+  result actions, escape dismissal, dimming overlays, and focus restoration.
 - Add the optional portable `squared-gui` module with retained widgets,
   composable containers, reusable skins, handheld-sized basic controls, focus,
   pointer capture, UTF-8 text editing, direct Application event routing, and a

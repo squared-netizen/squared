@@ -85,7 +85,9 @@ directly, including stable pointer IDs and resize events; it does not create a
 second event bus. A frontend implements its small painter contract with
 portable Graphics and Graphics2D types. GUI itself has no SDL, OpenGL,
 Android, HoloDisk, or template dependency. Projects add it explicitly through
-the generator's optional project-module workflow.
+the generator's optional project-module workflow. Its libGDX-inspired `Table`,
+`Window`, and `Dialog` layer provides grid constraints, floating panels, and
+modal workflows without crossing that portable boundary.
 
 ## Repository boundary
 

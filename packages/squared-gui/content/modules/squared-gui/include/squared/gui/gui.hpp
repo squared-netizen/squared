@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -175,6 +176,15 @@ struct SliderStyle {
     float minimum_touch_size{44.0F};
 };
 
+struct WindowStyle {
+    DrawablePtr background;
+    DrawablePtr title_background;
+    graphics::Color title_text{graphics::Color::from_rgba8(238, 241, 247)};
+    graphics::Color modal_overlay{graphics::Color::from_rgba8(0, 0, 0, 140)};
+    Insets content_insets{8.0F, 8.0F, 8.0F, 8.0F};
+    float title_height{36.0F};
+};
+
 /** Named, reusable skin resources and widget styles. */
 class Skin {
 public:
@@ -205,12 +215,14 @@ public:
     void add_text_field_style(std::string name, TextFieldStyle style);
     void add_check_box_style(std::string name, CheckBoxStyle style);
     void add_slider_style(std::string name, SliderStyle style);
+    void add_window_style(std::string name, WindowStyle style);
 
     [[nodiscard]] const PanelStyle& panel_style(std::string_view name) const;
     [[nodiscard]] const ButtonStyle& button_style(std::string_view name) const;
     [[nodiscard]] const TextFieldStyle& text_field_style(std::string_view name) const;
     [[nodiscard]] const CheckBoxStyle& check_box_style(std::string_view name) const;
     [[nodiscard]] const SliderStyle& slider_style(std::string_view name) const;
+    [[nodiscard]] const WindowStyle& window_style(std::string_view name) const;
 
 private:
     std::unordered_map<std::string, DrawablePtr> drawables_;
@@ -219,6 +231,7 @@ private:
     std::unordered_map<std::string, TextFieldStyle> text_field_styles_;
     std::unordered_map<std::string, CheckBoxStyle> check_box_styles_;
     std::unordered_map<std::string, SliderStyle> slider_styles_;
+    std::unordered_map<std::string, WindowStyle> window_styles_;
 };
 
 enum class PointerAction { move, down, up, cancel };
@@ -239,7 +252,8 @@ enum class Key {
     backspace,
     delete_key,
     enter,
-    tab
+    tab,
+    escape
 };
 
 /** Base class for every GUI node. Widgets may own other widgets. */
@@ -314,6 +328,63 @@ private:
 };
 
 enum class Direction { horizontal, vertical };
+
+enum class Alignment { start, center, end };
+
+class Table;
+
+/** Per-child constraints returned by Table::add for fluent configuration. */
+class Cell {
+public:
+    Cell& column_span(std::size_t columns) noexcept;
+    Cell& grow() noexcept;
+    Cell& grow_x() noexcept;
+    Cell& grow_y() noexcept;
+    Cell& fill() noexcept;
+    Cell& fill_x() noexcept;
+    Cell& fill_y() noexcept;
+    Cell& pad(float value) noexcept;
+    Cell& pad(Insets value) noexcept;
+    Cell& align(Alignment horizontal, Alignment vertical = Alignment::center) noexcept;
+    [[nodiscard]] Widget& widget() noexcept { return *widget_; }
+
+private:
+    friend class Table;
+    void changed() noexcept;
+    Table* owner_{nullptr};
+    Widget* widget_{nullptr};
+    std::size_t row_{0};
+    std::size_t column_{0};
+    std::size_t column_span_{1};
+    float grow_x_{0.0F};
+    float grow_y_{0.0F};
+    bool fill_x_{false};
+    bool fill_y_{false};
+    Insets padding_{};
+    Alignment horizontal_{Alignment::center};
+    Alignment vertical_{Alignment::center};
+};
+
+/** Grid layout with libGDX-style rows and chainable cell constraints. */
+class Table final : public Widget {
+public:
+    Cell& add(std::unique_ptr<Widget> child);
+    Table& row() noexcept;
+    void set_padding(float padding) noexcept;
+    void set_spacing(float spacing) noexcept;
+    [[nodiscard]] Size minimum_size(Painter&, const Skin&) const override;
+    [[nodiscard]] Size preferred_size(Painter&) const override;
+    void layout(Painter&, const Skin&) override;
+
+private:
+    struct GridMetrics;
+    [[nodiscard]] GridMetrics measure(Painter&, const Skin*, bool minimum) const;
+    float padding_{-1.0F};
+    float spacing_{-1.0F};
+    std::size_t current_row_{0};
+    std::size_t current_column_{0};
+    std::deque<Cell> cells_;
+};
 
 class LinearLayout final : public Widget {
 public:
@@ -487,11 +558,74 @@ private:
     Direction direction_;
 };
 
+/** Floating table-backed panel with a draggable title bar. */
+class Window : public Widget {
+public:
+    explicit Window(std::string title = {}, std::string style = "default");
+    [[nodiscard]] Table& content_table() noexcept { return *content_; }
+    [[nodiscard]] const Table& content_table() const noexcept { return *content_; }
+    void set_title(std::string title);
+    [[nodiscard]] const std::string& title() const noexcept { return title_; }
+    void set_style(std::string style);
+    void set_modal(bool modal) noexcept { modal_ = modal; }
+    [[nodiscard]] bool modal() const noexcept { return modal_; }
+    void set_movable(bool movable) noexcept { movable_ = movable; }
+    void request_close() noexcept { close_requested_ = true; }
+    [[nodiscard]] bool close_requested() const noexcept { return close_requested_; }
+    [[nodiscard]] Size minimum_size(Painter&, const Skin&) const override;
+    [[nodiscard]] Size preferred_size(Painter&) const override;
+    void layout(Painter&, const Skin&) override;
+    void paint(Painter&, const Skin&, float, float) const override;
+    bool pointer_event(const PointerEvent&) override;
+
+protected:
+    [[nodiscard]] virtual bool escape_closes() const noexcept { return false; }
+
+private:
+    friend class Ui;
+    std::string title_;
+    std::string style_;
+    Table* content_{nullptr};
+    bool modal_{false};
+    bool movable_{true};
+    bool close_requested_{false};
+    float title_height_{36.0F};
+    std::optional<std::int64_t> drag_pointer_;
+    float drag_offset_x_{0.0F};
+    float drag_offset_y_{0.0F};
+};
+
+/** Modal Window with separate content and action-button tables. */
+class Dialog final : public Window {
+public:
+    using ResultCallback = std::function<void(std::string_view)>;
+    explicit Dialog(std::string title = {}, ResultCallback result = {});
+    [[nodiscard]] Table& dialog_content() noexcept { return *dialog_content_; }
+    [[nodiscard]] Table& button_table() noexcept { return *buttons_; }
+    Dialog& text(std::string text);
+    Dialog& button(std::string text, std::string result);
+    void set_on_result(ResultCallback result);
+    void set_cancel_on_escape(bool enabled) noexcept { cancel_on_escape_ = enabled; }
+
+protected:
+    [[nodiscard]] bool escape_closes() const noexcept override;
+
+private:
+    void choose(std::string result);
+    Table* dialog_content_{nullptr};
+    Table* buttons_{nullptr};
+    ResultCallback result_;
+    bool cancel_on_escape_{true};
+};
+
 /** Owns one widget tree and consumes the framework application event type. */
 class Ui {
 public:
     Ui(float width, float height, Skin skin = {});
     Widget& set_content(std::unique_ptr<Widget> content);
+    Window& show_window(std::unique_ptr<Window> window, bool center = true);
+    Dialog& show_dialog(std::unique_ptr<Dialog> dialog, bool center = true);
+    void close_window(Window& window);
     [[nodiscard]] Widget* content() noexcept { return content_; }
     [[nodiscard]] const Widget* content() const noexcept { return content_; }
     void resize(float width, float height);
@@ -523,12 +657,20 @@ private:
         const scene2d::Actor&, Painter&, const Skin&, float, float
     );
     void set_focus(Widget* widget);
+    void prune_closed_windows();
+    [[nodiscard]] Window* top_modal() noexcept;
+    [[nodiscard]] const Window* top_modal() const noexcept;
+    [[nodiscard]] static bool is_descendant_of(
+        const scene2d::Actor* actor, const scene2d::Actor* ancestor
+    ) noexcept;
 
     scene2d::Stage stage_;
     Skin skin_;
     Widget* content_{nullptr};
     Widget* focused_{nullptr};
     std::unordered_map<std::int64_t, Widget*> captures_;
+    struct Overlay { Window* window; Widget* previous_focus; bool center_pending; };
+    std::vector<Overlay> overlays_;
 };
 
 } // namespace squared::gui

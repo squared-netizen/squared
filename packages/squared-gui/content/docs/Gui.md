@@ -21,9 +21,17 @@ The basic controls are:
 - `TextField` for UTF-8 text insertion and cursor editing;
 - `Slider` for continuous values.
 
-The compositional containers are `LinearLayout`, `Stack`, `MarginContainer`,
-and `ScrollPane`. Specialized editor controls can be built later from these
-pieces without enlarging the core event model.
+The compositional containers are `Table`, `LinearLayout`, `Stack`,
+`MarginContainer`, and `ScrollPane`. `Table` provides rows, column spans,
+padding, alignment, fill, and weighted growth through chainable `Cell`
+constraints. This makes adaptive forms and game menus possible without
+absolute positioning.
+
+`Window` is a floating, draggable, table-backed panel with a styled title bar.
+`Dialog` specializes it with a content table, an action-button table, modal
+input blocking, result callbacks, escape dismissal, and previous-focus
+restoration. `Ui` owns floating window lifetimes and paints the modal dimming
+layer, so no platform window API is involved.
 
 All controls derive from `Widget`, which derives from `scene2d::Group`.
 Minimum, preferred, and maximum size hints support adaptive handheld layouts;
@@ -71,6 +79,46 @@ ui.event(application_event);
 ui.layout(painter);
 ui.paint(painter);
 ```
+
+## Tables, windows, and dialogs
+
+The table API follows the useful shape of libGDX Scene2D UI while retaining
+C++ ownership and Squared naming:
+
+```cpp
+auto form = std::make_unique<squared::gui::Table>();
+form->add(std::make_unique<squared::gui::Label>("Name"))
+    .align(squared::gui::Alignment::end);
+form->add(std::make_unique<squared::gui::TextField>())
+    .grow_x().fill_x();
+form->row();
+form->add(std::make_unique<squared::gui::Separator>())
+    .column_span(2).grow_x().fill_x();
+
+auto window = std::make_unique<squared::gui::Window>("Character");
+window->content_table().add(std::move(form)).grow().fill();
+ui.show_window(std::move(window));
+```
+
+Dialogs are packed and centered during the next `Ui::layout` call when their
+size is left at zero:
+
+```cpp
+auto dialog = std::make_unique<squared::gui::Dialog>(
+    "Quit game",
+    [](std::string_view result) {
+        if (result == "quit") request_quit();
+    }
+);
+dialog->text("Return to the title screen?")
+    .button("Cancel", "cancel")
+    .button("Quit", "quit");
+ui.show_dialog(std::move(dialog));
+```
+
+Modal dialogs consume pointer input outside their bounds. On dismissal, `Ui`
+removes the dialog safely after event dispatch and restores the widget that
+previously held focus.
 
 The module is absent from both default Android template dependency graphs.
 Projects opt in through Squared Project Generator's project-module workflow.

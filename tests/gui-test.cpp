@@ -1,6 +1,7 @@
 #include <squared/gui/gui.hpp>
 
 #include <cstdlib>
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -229,6 +230,103 @@ int main()
     stack->validate_layout(painter, ui.skin());
     require(stacked.width() == 100.0F && stacked.height() == 80.0F,
             "stack fills every child");
+
+    Table grid;
+    grid.set_padding(0.0F);
+    grid.set_spacing(0.0F);
+    grid.set_size(300.0F, 120.0F);
+    auto first = std::make_unique<Button>("A");
+    auto spanning = std::make_unique<Button>("B");
+    auto wide = std::make_unique<TextField>("three columns");
+    Widget* first_pointer = first.get();
+    Widget* spanning_pointer = spanning.get();
+    Widget* wide_pointer = wide.get();
+    grid.add(std::move(first)).grow_x().fill_x();
+    grid.add(std::move(spanning)).column_span(2).grow_x().fill_x();
+    grid.row();
+    grid.add(std::move(wide)).column_span(3).grow().fill();
+    grid.validate_layout(painter, ui.skin());
+    require(first_pointer->width() > 100.0F,
+            "table distributes grow weight across columns");
+    require(spanning_pointer->x() == first_pointer->width() &&
+                spanning_pointer->x() + spanning_pointer->width() == 300.0F,
+            "table column spans occupy adjacent columns");
+    require(wide_pointer->width() == 300.0F,
+            "table fill honors a full-row column span");
+
+    auto floating = std::make_unique<Window>("Inventory");
+    floating->set_bounds(10.0F, 10.0F, 160.0F, 100.0F);
+    floating->content_table().add(std::make_unique<Label>("Backpack"));
+    Window* floating_pointer = floating.get();
+    ui.show_window(std::move(floating), false);
+    ui.layout(painter);
+    require(ui.pointer(PointerAction::down, 20.0F, 20.0F, 0, 11),
+            "window title captures a drag pointer");
+    require(ui.pointer(PointerAction::move, 60.0F, 50.0F, 0, 11),
+            "captured title receives drag motion");
+    ui.pointer(PointerAction::up, 60.0F, 50.0F, 0, 11);
+    require(floating_pointer->x() == 50.0F && floating_pointer->y() == 40.0F,
+            "window dragging updates its stage position");
+    ui.close_window(*floating_pointer);
+
+    std::string dialog_result;
+    auto dialog = std::make_unique<Dialog>(
+        "Mount cartridge",
+        [&dialog_result](std::string_view result) { dialog_result = result; }
+    );
+    dialog->text("Mount read-only?").button("Cancel", "cancel").button("Mount", "mount");
+    Dialog* dialog_pointer = dialog.get();
+    ui.show_dialog(std::move(dialog));
+    ui.layout(painter);
+    const std::size_t fills_before_modal_paint = painter.fills.size();
+    ui.paint(painter);
+    require(std::any_of(
+                painter.fills.begin() +
+                    static_cast<std::ptrdiff_t>(fills_before_modal_paint),
+                painter.fills.end(),
+                [](const Rectangle& rectangle) {
+                    return rectangle.x == 0.0F && rectangle.y == 0.0F &&
+                        rectangle.width == 320.0F && rectangle.height == 240.0F;
+                }),
+            "modal dialog paints a stage-sized dimming layer");
+    const int clicks_before_modal_test = clicks;
+    event.type = squared::application::Event::Type::PointerDown;
+    event.pointer_id = 12;
+    event.x = 20.0F;
+    event.y = button_pointer->y() + 10.0F;
+    require(ui.event(event), "modal dialog consumes input outside its bounds");
+    event.type = squared::application::Event::Type::PointerUp;
+    ui.event(event);
+    require(clicks == clicks_before_modal_test,
+            "modal dialog blocks controls beneath it");
+
+    auto* mount_button = dynamic_cast<Button*>(dialog_pointer->button_table().child_at(1));
+    require(mount_button != nullptr, "dialog convenience method creates action buttons");
+    float action_x = mount_button->width() * 0.5F;
+    float action_y = mount_button->height() * 0.5F;
+    for (const squared::scene2d::Actor* actor = mount_button;
+         actor && actor->parent(); actor = actor->parent()) {
+        action_x += actor->x();
+        action_y += actor->y();
+    }
+    event.type = squared::application::Event::Type::PointerDown;
+    event.pointer_id = 13;
+    event.x = action_x;
+    event.y = action_y;
+    require(ui.event(event), "dialog action accepts pointer down");
+    event.type = squared::application::Event::Type::PointerUp;
+    require(ui.event(event), "dialog action accepts pointer up");
+    require(dialog_result == "mount", "dialog reports the selected result");
+    require(ui.focused() == button_pointer,
+            "closing a modal dialog restores the previous focus");
+
+    auto escape_dialog = std::make_unique<Dialog>("Discard changes?");
+    escape_dialog->text("Unsaved changes will be lost.");
+    ui.show_dialog(std::move(escape_dialog));
+    ui.layout(painter);
+    require(ui.key_down(Key::escape), "escape closes a dialog by default");
+    require(ui.focused() == button_pointer,
+            "escape dismissal restores the previous focus");
 
     ui.paint(painter);
     require(painter.clip_depth == 0, "paint clips are balanced");

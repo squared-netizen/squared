@@ -155,6 +155,11 @@ Skin::Skin()
     add_slider_style("default", {
         normal, active, active, 120.0F, minimum_touch_size
     });
+    add_window_style("default", {
+        panel, normal, text,
+        graphics::Color::from_rgba8(0, 0, 0, 140),
+        Insets{8.0F, 8.0F, 8.0F, 8.0F}, 36.0F
+    });
 }
 
 void Skin::add_drawable(std::string name, DrawablePtr drawable)
@@ -208,6 +213,11 @@ void Skin::add_slider_style(std::string name, SliderStyle style)
     slider_styles_[std::move(name)] = std::move(style);
 }
 
+void Skin::add_window_style(std::string name, WindowStyle style)
+{
+    window_styles_[std::move(name)] = std::move(style);
+}
+
 const PanelStyle& Skin::panel_style(std::string_view name) const
 {
     return style_or_default(panel_styles_, name);
@@ -231,6 +241,11 @@ const CheckBoxStyle& Skin::check_box_style(std::string_view name) const
 const SliderStyle& Skin::slider_style(std::string_view name) const
 {
     return style_or_default(slider_styles_, name);
+}
+
+const WindowStyle& Skin::window_style(std::string_view name) const
+{
+    return style_or_default(window_styles_, name);
 }
 
 Size Widget::minimum_size(Painter&, const Skin&) const { return {}; }
@@ -349,6 +364,282 @@ void Panel::paint(Painter& painter, const Skin& skin, float x, float y) const
     const auto& style = skin.panel_style(style_);
     if (style.background) {
         style.background->draw(painter, bounds_of(*this, x, y));
+    }
+}
+
+void Cell::changed() noexcept
+{
+    if (owner_) owner_->invalidate_layout();
+}
+
+Cell& Cell::column_span(std::size_t columns) noexcept
+{
+    column_span_ = std::max<std::size_t>(1, columns);
+    changed();
+    return *this;
+}
+
+Cell& Cell::grow() noexcept { return grow_x().grow_y(); }
+Cell& Cell::grow_x() noexcept { grow_x_ = 1.0F; changed(); return *this; }
+Cell& Cell::grow_y() noexcept { grow_y_ = 1.0F; changed(); return *this; }
+Cell& Cell::fill() noexcept { return fill_x().fill_y(); }
+Cell& Cell::fill_x() noexcept { fill_x_ = true; changed(); return *this; }
+Cell& Cell::fill_y() noexcept { fill_y_ = true; changed(); return *this; }
+
+Cell& Cell::pad(float value) noexcept
+{
+    return pad(Insets{value, value, value, value});
+}
+
+Cell& Cell::pad(Insets value) noexcept
+{
+    padding_ = {
+        std::max(0.0F, value.left), std::max(0.0F, value.top),
+        std::max(0.0F, value.right), std::max(0.0F, value.bottom)
+    };
+    changed();
+    return *this;
+}
+
+Cell& Cell::align(Alignment horizontal, Alignment vertical) noexcept
+{
+    horizontal_ = horizontal;
+    vertical_ = vertical;
+    changed();
+    return *this;
+}
+
+struct Table::GridMetrics {
+    std::vector<float> columns;
+    std::vector<float> rows;
+    float width{0.0F};
+    float height{0.0F};
+};
+
+Cell& Table::add(std::unique_ptr<Widget> child)
+{
+    if (!child) throw std::invalid_argument("GUI widget must not be null");
+    for (const Cell& existing : cells_) {
+        if (existing.row_ == current_row_) {
+            current_column_ = std::max(
+                current_column_, existing.column_ + existing.column_span_
+            );
+        }
+    }
+    Widget* reference = child.get();
+    static_cast<void>(add_actor(std::move(child)));
+    try {
+        cells_.push_back({});
+    } catch (...) {
+        [[maybe_unused]] auto removed = remove_actor(*reference);
+        throw;
+    }
+    Cell& cell = cells_.back();
+    cell.owner_ = this;
+    cell.widget_ = reference;
+    cell.row_ = current_row_;
+    cell.column_ = current_column_++;
+    invalidate_layout();
+    return cell;
+}
+
+Table& Table::row() noexcept
+{
+    if (current_column_ != 0 || !cells_.empty()) ++current_row_;
+    current_column_ = 0;
+    invalidate_layout();
+    return *this;
+}
+
+void Table::set_padding(float padding) noexcept
+{
+    padding_ = std::max(0.0F, padding);
+    invalidate_layout();
+}
+
+void Table::set_spacing(float spacing) noexcept
+{
+    spacing_ = std::max(0.0F, spacing);
+    invalidate_layout();
+}
+
+Table::GridMetrics Table::measure(
+    Painter& painter,
+    const Skin* skin,
+    bool minimum
+) const
+{
+    const float outer = padding_ < 0.0F
+        ? (skin ? skin->padding : default_padding) : padding_;
+    const float gap = spacing_ < 0.0F
+        ? (skin ? skin->spacing : default_spacing) : spacing_;
+    std::size_t column_count = 0;
+    std::size_t row_count = 0;
+    for (const Cell& cell : cells_) {
+        column_count = std::max(column_count, cell.column_ + cell.column_span_);
+        row_count = std::max(row_count, cell.row_ + 1);
+    }
+    GridMetrics result;
+    result.columns.assign(column_count, 0.0F);
+    result.rows.assign(row_count, 0.0F);
+
+    for (const Cell& cell : cells_) {
+        const Size size = minimum
+            ? cell.widget_->minimum_size(painter, *skin)
+            : cell.widget_->preferred_size(painter);
+        const float padded_width = size.width + cell.padding_.left + cell.padding_.right;
+        const float padded_height = size.height + cell.padding_.top + cell.padding_.bottom;
+        result.rows[cell.row_] = std::max(result.rows[cell.row_], padded_height);
+        if (cell.column_span_ == 1) {
+            result.columns[cell.column_] = std::max(
+                result.columns[cell.column_], padded_width
+            );
+        }
+    }
+    for (const Cell& cell : cells_) {
+        if (cell.column_span_ == 1) continue;
+        const Size size = minimum
+            ? cell.widget_->minimum_size(painter, *skin)
+            : cell.widget_->preferred_size(painter);
+        const float needed = size.width + cell.padding_.left + cell.padding_.right;
+        float present = gap * static_cast<float>(cell.column_span_ - 1);
+        for (std::size_t column = cell.column_;
+             column < cell.column_ + cell.column_span_; ++column) {
+            present += result.columns[column];
+        }
+        const float extra = std::max(0.0F, needed - present) /
+            static_cast<float>(cell.column_span_);
+        if (extra > 0.0F) {
+            for (std::size_t column = cell.column_;
+                 column < cell.column_ + cell.column_span_; ++column) {
+                result.columns[column] += extra;
+            }
+        }
+    }
+    result.width = 2.0F * outer;
+    result.height = 2.0F * outer;
+    for (float value : result.columns) result.width += value;
+    for (float value : result.rows) result.height += value;
+    if (!result.columns.empty()) {
+        result.width += gap * static_cast<float>(result.columns.size() - 1);
+    }
+    if (!result.rows.empty()) {
+        result.height += gap * static_cast<float>(result.rows.size() - 1);
+    }
+    return result;
+}
+
+Size Table::minimum_size(Painter& painter, const Skin& skin) const
+{
+    const GridMetrics result = measure(painter, &skin, true);
+    return {result.width, result.height};
+}
+
+Size Table::preferred_size(Painter& painter) const
+{
+    const GridMetrics result = measure(painter, nullptr, false);
+    return {result.width, result.height};
+}
+
+void Table::layout(Painter& painter, const Skin& skin)
+{
+    GridMetrics metrics = measure(painter, &skin, false);
+    const GridMetrics minimum = measure(painter, &skin, true);
+    const float outer = padding_ < 0.0F ? skin.padding : padding_;
+    const float gap = spacing_ < 0.0F ? skin.spacing : spacing_;
+    std::vector<float> column_grow(metrics.columns.size(), 0.0F);
+    std::vector<float> row_grow(metrics.rows.size(), 0.0F);
+    for (const Cell& cell : cells_) {
+        const float share = cell.grow_x_ / static_cast<float>(cell.column_span_);
+        for (std::size_t column = cell.column_;
+             column < cell.column_ + cell.column_span_; ++column) {
+            column_grow[column] = std::max(column_grow[column], share);
+        }
+        row_grow[cell.row_] = std::max(row_grow[cell.row_], cell.grow_y_);
+    }
+    const auto fit = [](std::vector<float>& sizes,
+                        const std::vector<float>& minimums,
+                        const std::vector<float>& weights,
+                        float target) {
+        float used = 0.0F;
+        for (float size : sizes) used += size;
+        if (target < used) {
+            const float shortage = used - target;
+            float room = 0.0F;
+            for (std::size_t index = 0; index < sizes.size(); ++index) {
+                room += std::max(0.0F, sizes[index] - minimums[index]);
+            }
+            if (room <= 0.0F) return;
+            for (std::size_t index = 0; index < sizes.size(); ++index) {
+                const float available = std::max(
+                    0.0F, sizes[index] - minimums[index]
+                );
+                sizes[index] -= std::min(
+                    available, shortage * available / room
+                );
+            }
+            return;
+        }
+        float total = 0.0F;
+        for (float weight : weights) total += weight;
+        const float extra = target - used;
+        if (extra <= 0.0F || total <= 0.0F) return;
+        for (std::size_t index = 0; index < sizes.size(); ++index) {
+            sizes[index] += extra * weights[index] / total;
+        }
+    };
+    const float column_gaps = metrics.columns.empty() ? 0.0F
+        : gap * static_cast<float>(metrics.columns.size() - 1);
+    const float row_gaps = metrics.rows.empty() ? 0.0F
+        : gap * static_cast<float>(metrics.rows.size() - 1);
+    fit(metrics.columns, minimum.columns, column_grow,
+        std::max(0.0F, width() - 2.0F * outer - column_gaps));
+    fit(metrics.rows, minimum.rows, row_grow,
+        std::max(0.0F, height() - 2.0F * outer - row_gaps));
+
+    std::vector<float> column_x(metrics.columns.size(), outer);
+    std::vector<float> row_y(metrics.rows.size(), outer);
+    for (std::size_t index = 1; index < column_x.size(); ++index) {
+        column_x[index] = column_x[index - 1] + metrics.columns[index - 1] + gap;
+    }
+    for (std::size_t index = 1; index < row_y.size(); ++index) {
+        row_y[index] = row_y[index - 1] + metrics.rows[index - 1] + gap;
+    }
+    for (Cell& cell : cells_) {
+        float cell_width = 0.0F;
+        for (std::size_t column = cell.column_;
+             column < cell.column_ + cell.column_span_; ++column) {
+            cell_width += metrics.columns[column];
+        }
+        cell_width += gap * static_cast<float>(cell.column_span_ - 1);
+        const float available_width = std::max(
+            0.0F, cell_width - cell.padding_.left - cell.padding_.right
+        );
+        const float available_height = std::max(
+            0.0F, metrics.rows[cell.row_] - cell.padding_.top - cell.padding_.bottom
+        );
+        const SizeHints hints = cell.widget_->size_hints(painter, skin);
+        const float child_width = cell.fill_x_ || cell.grow_x_ > 0.0F
+            ? clamp_dimension(available_width, hints.minimum.width, hints.maximum.width)
+            : std::min(available_width, hints.preferred.width);
+        const float child_height = cell.fill_y_ || cell.grow_y_ > 0.0F
+            ? clamp_dimension(available_height, hints.minimum.height, hints.maximum.height)
+            : std::min(available_height, hints.preferred.height);
+        const auto offset = [](float room, float size, Alignment alignment) {
+            if (alignment == Alignment::end) return room - size;
+            if (alignment == Alignment::center) return (room - size) * 0.5F;
+            return 0.0F;
+        };
+        cell.widget_->set_bounds(
+            column_x[cell.column_] + cell.padding_.left +
+                offset(available_width, child_width, cell.horizontal_),
+            row_y[cell.row_] + cell.padding_.top +
+                offset(available_height, child_height, cell.vertical_),
+            child_width,
+            child_height
+        );
+        cell.widget_->invalidate_layout();
+        cell.widget_->validate_layout(painter, skin);
     }
 }
 
@@ -994,6 +1285,150 @@ void Separator::paint(Painter& painter, const Skin& skin, float x, float y) cons
     painter.fill_rectangle(bounds_of(*this, x, y), skin.border);
 }
 
+Window::Window(std::string title, std::string style)
+    : title_(std::move(title)), style_(std::move(style))
+{
+    auto content = std::make_unique<Table>();
+    content_ = content.get();
+    static_cast<void>(add_actor(std::move(content)));
+}
+
+void Window::set_title(std::string title)
+{
+    title_ = std::move(title);
+    invalidate_layout();
+}
+
+void Window::set_style(std::string style)
+{
+    style_ = std::move(style);
+    invalidate_layout();
+}
+
+Size Window::minimum_size(Painter& painter, const Skin& skin) const
+{
+    const WindowStyle& style = skin.window_style(style_);
+    const Size table = content_->minimum_size(painter, skin);
+    const Size title = painter.measure_text(title_);
+    const Size background = style.background
+        ? style.background->minimum_size() : Size{};
+    return {
+        std::max({table.width + style.content_insets.left + style.content_insets.right,
+                  title.width + style.content_insets.left + style.content_insets.right,
+                  background.width}),
+        std::max(table.height + style.title_height + style.content_insets.top +
+                     style.content_insets.bottom,
+                 background.height)
+    };
+}
+
+Size Window::preferred_size(Painter& painter) const
+{
+    const Size table = content_->preferred_size(painter);
+    const Size title = painter.measure_text(title_);
+    return {
+        std::max(table.width + 16.0F, title.width + 24.0F),
+        table.height + title_height_ + 16.0F
+    };
+}
+
+void Window::layout(Painter& painter, const Skin& skin)
+{
+    const WindowStyle& style = skin.window_style(style_);
+    title_height_ = std::max(style.title_height, painter.measure_text(title_).height);
+    content_->set_bounds(
+        style.content_insets.left,
+        title_height_ + style.content_insets.top,
+        std::max(0.0F, width() - style.content_insets.left - style.content_insets.right),
+        std::max(0.0F, height() - title_height_ - style.content_insets.top -
+            style.content_insets.bottom)
+    );
+    content_->invalidate_layout();
+    content_->validate_layout(painter, skin);
+}
+
+void Window::paint(Painter& painter, const Skin& skin, float x, float y) const
+{
+    const WindowStyle& style = skin.window_style(style_);
+    if (style.background) style.background->draw(painter, bounds_of(*this, x, y));
+    if (style.title_background) {
+        style.title_background->draw(painter, {x, y, width(), title_height_});
+    }
+    const Size title_size = painter.measure_text(title_);
+    painter.draw_text(
+        title_, x + style.content_insets.left,
+        y + std::max(0.0F, (title_height_ - title_size.height) * 0.5F),
+        style.title_text
+    );
+}
+
+bool Window::pointer_event(const PointerEvent& event)
+{
+    if (!enabled()) return false;
+    const bool inside = contains(event.x, event.y);
+    if (event.action == PointerAction::down) {
+        if (movable_ && inside && event.y <= title_height_) {
+            drag_pointer_ = event.pointer_id;
+            drag_offset_x_ = event.x;
+            drag_offset_y_ = event.y;
+            return true;
+        }
+        return inside || modal_;
+    }
+    if (drag_pointer_ && *drag_pointer_ == event.pointer_id) {
+        if (event.action == PointerAction::move) {
+            set_position(
+                x() + event.x - drag_offset_x_,
+                y() + event.y - drag_offset_y_
+            );
+        } else {
+            drag_pointer_.reset();
+        }
+        return true;
+    }
+    return inside || modal_;
+}
+
+Dialog::Dialog(std::string title, ResultCallback result)
+    : Window(std::move(title)), result_(std::move(result))
+{
+    set_modal(true);
+    auto content = std::make_unique<Table>();
+    dialog_content_ = content.get();
+    content_table().add(std::move(content)).grow().fill();
+    content_table().row();
+    auto buttons = std::make_unique<Table>();
+    buttons_ = buttons.get();
+    content_table().add(std::move(buttons)).grow_x().fill_x();
+}
+
+Dialog& Dialog::text(std::string text_value)
+{
+    dialog_content_->add(std::make_unique<Label>(std::move(text_value)))
+        .align(Alignment::start);
+    dialog_content_->row();
+    return *this;
+}
+
+Dialog& Dialog::button(std::string text_value, std::string result_value)
+{
+    auto action = std::make_unique<Button>(std::move(text_value));
+    action->set_on_click([this, result = std::move(result_value)]() mutable {
+        choose(std::move(result));
+    });
+    buttons_->add(std::move(action)).grow_x().fill_x();
+    return *this;
+}
+
+void Dialog::set_on_result(ResultCallback result) { result_ = std::move(result); }
+bool Dialog::escape_closes() const noexcept { return cancel_on_escape_; }
+
+void Dialog::choose(std::string result)
+{
+    request_close();
+    if (result_) result_(result);
+}
+
 Ui::Ui(float width, float height, Skin skin)
     : stage_(width, height), skin_(std::move(skin))
 {
@@ -1004,11 +1439,59 @@ Widget& Ui::set_content(std::unique_ptr<Widget> content)
     if (!content) throw std::invalid_argument("GUI content must not be null");
     clear_focus();
     captures_.clear();
+    overlays_.clear();
     stage_.root().clear();
     content_ = content.get();
     content_->set_bounds(0.0F, 0.0F, stage_.root().width(), stage_.root().height());
     static_cast<void>(stage_.add_actor(std::move(content)));
     return *content_;
+}
+
+Window& Ui::show_window(std::unique_ptr<Window> window, bool center)
+{
+    if (!window) throw std::invalid_argument("GUI window must not be null");
+    Window* reference = window.get();
+    overlays_.push_back({reference, focused_, center});
+    try {
+        static_cast<void>(stage_.add_actor(std::move(window)));
+    } catch (...) {
+        overlays_.pop_back();
+        throw;
+    }
+    captures_.clear();
+    if (reference->modal()) clear_focus();
+    return *reference;
+}
+
+Dialog& Ui::show_dialog(std::unique_ptr<Dialog> dialog, bool center)
+{
+    if (!dialog) throw std::invalid_argument("GUI dialog must not be null");
+    Dialog* reference = dialog.get();
+    static_cast<void>(show_window(std::move(dialog), center));
+    return *reference;
+}
+
+void Ui::close_window(Window& window)
+{
+    const auto found = std::find_if(
+        overlays_.begin(), overlays_.end(),
+        [&window](const Overlay& overlay) { return overlay.window == &window; }
+    );
+    if (found == overlays_.end()) return;
+    Widget* restore = found->previous_focus;
+    for (Overlay& overlay : overlays_) {
+        if (is_descendant_of(overlay.previous_focus, &window)) {
+            overlay.previous_focus = restore;
+        }
+    }
+    if (is_descendant_of(focused_, &window)) clear_focus();
+    for (auto capture = captures_.begin(); capture != captures_.end();) {
+        if (is_descendant_of(capture->second, &window)) capture = captures_.erase(capture);
+        else ++capture;
+    }
+    [[maybe_unused]] auto removed = stage_.root().remove_actor(window);
+    overlays_.erase(found);
+    if (!focused_ && restore && restore->focusable()) set_focus(restore);
 }
 
 void Ui::resize(float width, float height)
@@ -1020,16 +1503,47 @@ void Ui::resize(float width, float height)
     }
 }
 
-void Ui::update(double delta_seconds) { stage_.act(delta_seconds); }
+void Ui::update(double delta_seconds)
+{
+    stage_.act(delta_seconds);
+    prune_closed_windows();
+}
 
 void Ui::layout(Painter& painter)
 {
     if (content_) content_->validate_layout(painter, skin_);
+    for (Overlay& overlay : overlays_) {
+        Window& window = *overlay.window;
+        if (window.width() <= 0.0F || window.height() <= 0.0F) {
+            const Size size = window.size_hints(painter, skin_).preferred;
+            window.set_size(size.width, size.height);
+            window.invalidate_layout();
+        }
+        if (overlay.center_pending) {
+            window.set_position(
+                std::max(0.0F, (stage_.root().width() - window.width()) * 0.5F),
+                std::max(0.0F, (stage_.root().height() - window.height()) * 0.5F)
+            );
+            overlay.center_pending = false;
+        }
+        window.validate_layout(painter, skin_);
+    }
 }
 
 void Ui::paint(Painter& painter) const
 {
-    paint_tree(stage_.root(), painter, skin_, 0.0F, 0.0F);
+    const Window* modal = top_modal();
+    for (std::size_t index = 0; index < stage_.root().child_count(); ++index) {
+        const scene2d::Actor* child = stage_.root().child_at(index);
+        if (child == modal) {
+            const WindowStyle& style = skin_.window_style(modal->style_);
+            painter.fill_rectangle(
+                {0.0F, 0.0F, stage_.root().width(), stage_.root().height()},
+                style.modal_overlay
+            );
+        }
+        paint_tree(*child, painter, skin_, 0.0F, 0.0F);
+    }
 }
 
 bool Ui::event(const application::Event& event)
@@ -1090,12 +1604,22 @@ bool Ui::pointer(
     if (action == PointerAction::up || action == PointerAction::cancel) {
         captures_.erase(pointer_id);
     }
+    prune_closed_windows();
     return handled;
 }
 
 bool Ui::key_down(Key key)
 {
-    return focused_ && focused_->key_down(key);
+    bool handled = focused_ && focused_->key_down(key);
+    if (!handled && key == Key::escape && !overlays_.empty()) {
+        Window* window = overlays_.back().window;
+        if (window->escape_closes()) {
+            window->request_close();
+            handled = true;
+        }
+    }
+    prune_closed_windows();
+    return handled;
 }
 
 bool Ui::text_input(std::string_view text)
@@ -1108,6 +1632,9 @@ void Ui::clear_focus() { set_focus(nullptr); }
 Widget* Ui::widget_at(float x, float y) noexcept
 {
     scene2d::Actor* actor = stage_.hit(x, y, true);
+    if (Window* modal = top_modal(); modal && !is_descendant_of(actor, modal)) {
+        return modal;
+    }
     while (actor) {
         if (auto* widget = dynamic_cast<Widget*>(actor)) return widget;
         actor = actor->parent();
@@ -1161,10 +1688,49 @@ void Ui::paint_tree(
 
 void Ui::set_focus(Widget* widget)
 {
+    if (Window* modal = top_modal();
+        modal && widget && !is_descendant_of(widget, modal)) {
+        widget = nullptr;
+    }
     if (focused_ == widget) return;
     if (focused_) focused_->focus_changed(false);
     focused_ = widget;
     if (focused_) focused_->focus_changed(true);
+}
+
+void Ui::prune_closed_windows()
+{
+    for (std::size_t index = overlays_.size(); index > 0; --index) {
+        Window* window = overlays_[index - 1].window;
+        if (window->close_requested()) close_window(*window);
+    }
+}
+
+Window* Ui::top_modal() noexcept
+{
+    for (auto found = overlays_.rbegin(); found != overlays_.rend(); ++found) {
+        if (found->window->modal()) return found->window;
+    }
+    return nullptr;
+}
+
+const Window* Ui::top_modal() const noexcept
+{
+    for (auto found = overlays_.rbegin(); found != overlays_.rend(); ++found) {
+        if (found->window->modal()) return found->window;
+    }
+    return nullptr;
+}
+
+bool Ui::is_descendant_of(
+    const scene2d::Actor* actor,
+    const scene2d::Actor* ancestor
+) noexcept
+{
+    for (const scene2d::Actor* current = actor; current; current = current->parent()) {
+        if (current == ancestor) return true;
+    }
+    return false;
 }
 
 } // namespace squared::gui
