@@ -1,0 +1,19 @@
+// Matrix4 transform composition and Graphics2D consumers.
+// Column-major storage, M*v convention, direct GL upload, single orthographic
+// composition by OrthographicCamera.
+digraph matrix4_composition {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  v2 [label="Vector2\n(value semantics)", fillcolor="#dae8fc"];
+  m4 [label="Matrix4\ncolumn-major std::array<float,16>,\nM*v convention, O(1) ops", fillcolor="#d5e8d4"];
+  ortho [label="Matrix4::orthographic(l, r, b, t)\nidentity on degenerate bounds", fillcolor="#dae8fc"];
+  camera [label="OrthographicCamera::update()\ncomposes viewport/position/zoom\ninto a single projection matrix", fillcolor="#f8cecc"];
+  batch [label="SpriteBatch\nuploads combined() to u_projection", fillcolor="#f8cecc"];
+
+  v2 -> m4 [style=dashed, label="vector/point transforms"];
+  m4 -> ortho [style=dashed, label="factory"];
+  ortho -> camera;
+  camera -> batch;
+}

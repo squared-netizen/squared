@@ -174,6 +174,8 @@ add_executable(squared_holodisk_test
 add_executable(squared_gui_test
     tests/gui-test.cpp
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_GUI_ROOT}/src/skin_loader.cpp"
+    "${SQUARED_DATA_ROOT}/src/json.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
@@ -182,14 +184,70 @@ squared_test_target(squared_gui_test)
 target_include_directories(squared_gui_test
     PRIVATE
         "${SQUARED_APPLICATION_ROOT}/include"
+        "${SQUARED_DATA_ROOT}/include"
         "${SQUARED_GUI_ROOT}/include"
         "${SQUARED_SCENE2D_ROOT}/include"
         "${SQUARED_GRAPHICS_ROOT}/include"
         "${SQUARED_GRAPHICS2D_ROOT}/include"
 )
+target_link_libraries(squared_gui_test PRIVATE squared_test_yyjson)
+set(SQUARED_GDX_SKINS_ASSET_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui/content/app/src/main/assets/gui/gdx-skins"
+)
+if(NOT EXISTS "${SQUARED_GDX_SKINS_ASSET_DIR}/PIN.sha256")
+    message(FATAL_ERROR
+        "Pinned gdx-skins asset is missing; run tools/vendor-gdx-skins.fish"
+    )
+endif()
+if(NOT EXISTS "${SQUARED_GDX_SKINS_ASSET_DIR}/gdx-skins.zip")
+    message(FATAL_ERROR "Pinned gdx-skins archive is missing")
+endif()
+file(STRINGS
+    "${SQUARED_GDX_SKINS_ASSET_DIR}/PIN.sha256"
+    SQUARED_GDX_SKINS_PIN_LINE
+    LIMIT_COUNT 1
+)
+string(REGEX MATCH "^[0-9a-fA-F]+"
+    SQUARED_GDX_SKINS_EXPECTED_SHA
+    "${SQUARED_GDX_SKINS_PIN_LINE}"
+)
+string(LENGTH "${SQUARED_GDX_SKINS_EXPECTED_SHA}"
+    SQUARED_GDX_SKINS_SHA_LENGTH
+)
+if(NOT SQUARED_GDX_SKINS_SHA_LENGTH EQUAL 64)
+    message(FATAL_ERROR "Pinned gdx-skins SHA-256 record is malformed")
+endif()
+file(SHA256
+    "${SQUARED_GDX_SKINS_ASSET_DIR}/gdx-skins.zip"
+    SQUARED_GDX_SKINS_ACTUAL_SHA
+)
+if(NOT SQUARED_GDX_SKINS_ACTUAL_SHA STREQUAL SQUARED_GDX_SKINS_EXPECTED_SHA)
+    message(FATAL_ERROR "Pinned gdx-skins archive SHA-256 does not match PIN.sha256")
+endif()
 target_compile_definitions(squared_gui_test
     PRIVATE
         SQUARED_GUI_TEST_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui/content/app/src/main/assets/gui/kenney-test"
+        SQUARED_GDX_SKINS_ASSET_DIR="${SQUARED_GDX_SKINS_ASSET_DIR}"
+        SQUARED_GDX_SKINS_EXPECTED_SHA="${SQUARED_GDX_SKINS_EXPECTED_SHA}"
+)
+
+add_executable(squared_gui_showcase_test
+    tests/gui-showcase-test.cpp
+    examples/gui-showcase/src/showcase.cpp
+    "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
+)
+squared_test_target(squared_gui_showcase_test)
+target_include_directories(squared_gui_showcase_test
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/examples/gui-showcase/include"
+        "${SQUARED_APPLICATION_ROOT}/include"
+        "${SQUARED_GUI_ROOT}/include"
+        "${SQUARED_SCENE2D_ROOT}/include"
+        "${SQUARED_GRAPHICS_ROOT}/include"
+        "${SQUARED_GRAPHICS2D_ROOT}/include"
 )
 squared_test_target(squared_holodisk_test)
 target_include_directories(squared_holodisk_test
@@ -199,6 +257,12 @@ target_include_directories(squared_holodisk_test
 )
 
 if(BUILD_TESTING)
+    add_test(
+        NAME squared_package_documentation
+        COMMAND "${CMAKE_COMMAND}"
+            -DSQUARED_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/package-docs-test.cmake
+    )
     add_test(
         NAME squared_application_boundary
         COMMAND "$<TARGET_FILE:squared_application_boundary_test>"
@@ -238,5 +302,9 @@ if(BUILD_TESTING)
     add_test(
         NAME squared_gui_portable_widgets
         COMMAND "$<TARGET_FILE:squared_gui_test>"
+    )
+    add_test(
+        NAME squared_gui_complete_showcase
+        COMMAND "$<TARGET_FILE:squared_gui_showcase_test>"
     )
 endif()

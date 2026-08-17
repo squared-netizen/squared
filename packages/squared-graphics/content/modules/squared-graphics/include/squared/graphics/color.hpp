@@ -18,13 +18,19 @@ struct Color {
     /** @brief Alpha component from zero to one. */
     float alpha{1.0F};
 
-    /** @brief Opaque white. */
+    /**
+     * @brief Construct opaque white.
+     * @return A color with every component at one.
+     */
     static constexpr Color white() noexcept
     {
         return {};
     }
 
-    /** @brief Fully transparent black. */
+    /**
+     * @brief Construct fully transparent black.
+     * @return A color with every component at zero.
+     */
     static constexpr Color transparent() noexcept
     {
         return {0.0F, 0.0F, 0.0F, 0.0F};
@@ -32,6 +38,11 @@ struct Color {
 
     /**
      * @brief Convert byte components to normalized floating-point values.
+     * @param red_value Red byte value in the inclusive range [0, 255].
+     * @param green_value Green byte value in the inclusive range [0, 255].
+     * @param blue_value Blue byte value in the inclusive range [0, 255].
+     * @param alpha_value Alpha byte value in the inclusive range [0, 255].
+     * @return A color with each component divided by 255.
      */
     static constexpr Color from_rgba8(
         std::uint8_t red_value,
@@ -49,7 +60,10 @@ struct Color {
         };
     }
 
-    /** @brief Return a copy with every component clamped to `[0, 1]`. */
+    /**
+     * @brief Return a copy with every component clamped to `[0, 1]`.
+     * @return A color whose components never exceed the normalized range.
+     */
     [[nodiscard]] constexpr Color clamped() const noexcept
     {
         return {

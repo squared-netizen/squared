@@ -1,0 +1,23 @@
+// Transactional skin loading and rollback.
+// Staged load validates into a candidate Skin; commit swaps atomically.
+// Limits: 1 MiB input, depth 64, 4096 resources, 128-byte names.
+digraph gui_skin_loading {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  json [label="skin JSON document", shape=oval, fillcolor="#fff2cc"];
+  limits [label="validate limits:\n<=1 MiB input, depth <= 64,\nresources <= 4096, names <= 128 bytes", fillcolor="#dae8fc"];
+  candidate [label="build candidate Skin\n(resolve drawables + atlas refs)", fillcolor="#dae8fc"];
+  commit [label="commit: destination swap", fillcolor="#d5e8d4"];
+  rollback [label="rollback:\ndestination untouched, issue list\n(path-tagged diagnostics) returned", fillcolor="#ff9999"];
+  loaded [label="destination Skin updated\n(strong exception safety)", fillcolor="#d5e8d4"];
+
+  json -> limits;
+  limits -> candidate [label="limits pass"];
+  limits -> rollback [label="limit exceeded"];
+  candidate -> commit [label="valid"];
+  candidate -> rollback [label="invalid resource / unresolved ref"];
+  commit -> loaded;
+  rollback -> loaded [style=dashed, label="previous skin stays in effect"];
+}

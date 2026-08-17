@@ -1,0 +1,22 @@
+// Path validation and rejection flow.
+// Normalization + traversal defense: absolute paths and ".." escapes rejected.
+digraph holodisk_path_validation {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  path [label="requested path", shape=oval, fillcolor="#fff2cc"];
+  empty [label="empty path?", shape=diamond, fillcolor="#fff2cc"];
+  absolute [label="starts with '/' or '\\\\'?", shape=diamond, fillcolor="#fff2cc"];
+  segments [label="split into segments;\nany \"..\" (or unsafe segment)?", shape=diamond, fillcolor="#fff2cc"];
+  ok [label="normalize + accept", fillcolor="#d5e8d4"];
+  reject [label="reject with tagged error", fillcolor="#ff9999"];
+
+  path -> empty;
+  empty -> reject [label="yes"];
+  empty -> absolute [label="no"];
+  absolute -> reject [label="yes"];
+  absolute -> segments [label="no"];
+  segments -> reject [label="yes"];
+  segments -> ok [label="no"];
+}

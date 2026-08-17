@@ -1,0 +1,17 @@
+// Timepiece pause/scale/update states.
+// Signed ns time; scale in [0,1024]; deterministic sub-nanosecond carry.
+digraph time_timepiece_states {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  running [label="running\ntime advances on update(delta)", fillcolor="#d5e8d4"];
+  paused [label="paused\ntime frozen; update is a no-op", fillcolor="#fff2cc"];
+  scaled [label="scaled\ntime_scale in [0,1024]\n(sub-ns carry, saturated overflow)", fillcolor="#dae8fc"];
+
+  running -> paused [label="pause()"];
+  paused -> running [label="resume()"];
+  running -> scaled [style=dashed, label="set_time_scale(scale)"];
+  scaled -> running [style=dashed, label="set_time_scale(1)"];
+  scaled -> paused [style=dashed, label="pause()"];
+}

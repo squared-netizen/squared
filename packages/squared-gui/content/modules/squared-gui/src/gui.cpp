@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -118,6 +119,114 @@ void RegionDrawable::draw(
     painter.draw_region(*region_, rectangle, tint);
 }
 
+NinePatchDrawable::NinePatchDrawable(
+    const graphics2d::TextureRegion& region,
+    NinePatchSplits splits,
+    std::optional<Insets> content_insets
+)
+    : splits_(splits)
+{
+    if (splits.left < 0 || splits.top < 0 || splits.right < 0 ||
+        splits.bottom < 0 || splits.left + splits.right > region.width() ||
+        splits.top + splits.bottom > region.height()) {
+        throw std::invalid_argument("Nine-patch splits exceed the source region");
+    }
+    const Insets requested_insets = content_insets.value_or(Insets{
+        static_cast<float>(splits.left),
+        static_cast<float>(splits.top),
+        static_cast<float>(splits.right),
+        static_cast<float>(splits.bottom)
+    });
+    insets_ = {
+        std::max(0.0F, requested_insets.left),
+        std::max(0.0F, requested_insets.top),
+        std::max(0.0F, requested_insets.right),
+        std::max(0.0F, requested_insets.bottom)
+    };
+
+    const int widths[]{
+        splits.left,
+        region.width() - splits.left - splits.right,
+        splits.right
+    };
+    const int heights[]{
+        splits.top,
+        region.height() - splits.top - splits.bottom,
+        splits.bottom
+    };
+    int source_y = 0;
+    for (std::size_t row = 0; row < 3; ++row) {
+        int source_x = 0;
+        for (std::size_t column = 0; column < 3; ++column) {
+            if (widths[column] > 0 && heights[row] > 0) {
+                regions_[row * 3 + column] = region.subregion(
+                    source_x, source_y, widths[column], heights[row]
+                );
+            }
+            source_x += widths[column];
+        }
+        source_y += heights[row];
+    }
+}
+
+Size NinePatchDrawable::minimum_size() const noexcept
+{
+    return {
+        static_cast<float>(splits_.left + splits_.right),
+        static_cast<float>(splits_.top + splits_.bottom)
+    };
+}
+
+Insets NinePatchDrawable::content_insets() const noexcept { return insets_; }
+
+void NinePatchDrawable::draw(
+    Painter& painter,
+    const Rectangle& rectangle,
+    graphics::Color tint
+) const
+{
+    const auto segments = [](float total, float leading, float trailing) {
+        const float fixed = leading + trailing;
+        if (fixed > 0.0F && total < fixed) {
+            const float scale = std::max(0.0F, total) / fixed;
+            leading *= scale;
+            trailing *= scale;
+        }
+        return std::array<float, 3>{
+            leading, std::max(0.0F, total - leading - trailing), trailing
+        };
+    };
+    const auto widths = segments(
+        rectangle.width,
+        static_cast<float>(splits_.left),
+        static_cast<float>(splits_.right)
+    );
+    const auto heights = segments(
+        rectangle.height,
+        static_cast<float>(splits_.top),
+        static_cast<float>(splits_.bottom)
+    );
+
+    float destination_y = rectangle.y;
+    for (std::size_t row = 0; row < 3; ++row) {
+        float destination_x = rectangle.x;
+        for (std::size_t column = 0; column < 3; ++column) {
+            const auto& region = regions_[row * 3 + column];
+            if (region.width() > 0 && region.height() > 0 &&
+                widths[column] > 0.0F && heights[row] > 0.0F) {
+                painter.draw_region(
+                    region,
+                    {destination_x, destination_y,
+                     widths[column], heights[row]},
+                    tint
+                );
+            }
+            destination_x += widths[column];
+        }
+        destination_y += heights[row];
+    }
+}
+
 Skin::Skin()
 {
     const auto panel = std::make_shared<ColorDrawable>(surface);
@@ -156,9 +265,9 @@ Skin::Skin()
         normal, active, active, 120.0F, minimum_touch_size
     });
     add_window_style("default", {
-        panel, normal, text,
+        panel, normal, normal, hover, active, text, text,
         graphics::Color::from_rgba8(0, 0, 0, 140),
-        Insets{8.0F, 8.0F, 8.0F, 8.0F}, 36.0F
+        Insets{8.0F, 8.0F, 8.0F, 8.0F}, 36.0F, 28.0F, 8.0F
     });
 }
 
@@ -179,6 +288,45 @@ void Skin::add_region_drawable(
     add_drawable(
         std::move(name),
         std::make_shared<RegionDrawable>(region, insets)
+    );
+}
+
+void Skin::add_nine_patch_drawable(
+    std::string name,
+    const graphics2d::TextureRegion& region,
+    NinePatchSplits splits,
+    std::optional<Insets> content_insets
+)
+{
+    add_drawable(
+        std::move(name),
+        std::make_shared<NinePatchDrawable>(
+            region, splits, content_insets
+        )
+    );
+}
+
+void Skin::add_nine_patch_drawable(
+    std::string name,
+    const graphics2d::AtlasRegion& region
+)
+{
+    if (!region.splits()) {
+        throw std::invalid_argument("Atlas region has no nine-patch splits");
+    }
+    const auto& split = *region.splits();
+    std::optional<Insets> insets;
+    if (region.pads()) {
+        const auto& pad = *region.pads();
+        insets = Insets{
+            static_cast<float>(pad[0]), static_cast<float>(pad[2]),
+            static_cast<float>(pad[1]), static_cast<float>(pad[3])
+        };
+    }
+    add_nine_patch_drawable(
+        std::move(name), region.region(),
+        NinePatchSplits{split[0], split[2], split[1], split[3]},
+        insets
     );
 }
 
@@ -299,10 +447,65 @@ void Widget::layout(Painter& painter, const Skin& skin)
 
 void Widget::paint(Painter&, const Skin&, float, float) const {}
 bool Widget::pointer_event(const PointerEvent&) { return false; }
-bool Widget::key_down(Key) { return false; }
+bool Widget::key_down(Key, KeyModifiers) { return false; }
 bool Widget::text_input(std::string_view) { return false; }
+bool Widget::text_editing(std::string_view, int, int) { return false; }
 void Widget::focus_changed(bool) {}
 bool Widget::focusable() const noexcept { return false; }
+
+void Widget::input_event(scene2d::InputEvent& event)
+{
+    bool handled = false;
+    switch (event.type) {
+    case scene2d::InputType::pointer_move:
+    case scene2d::InputType::pointer_down:
+    case scene2d::InputType::pointer_up:
+    case scene2d::InputType::pointer_cancel: {
+        PointerAction action = PointerAction::move;
+        if (event.type == scene2d::InputType::pointer_down) {
+            action = PointerAction::down;
+        } else if (event.type == scene2d::InputType::pointer_up) {
+            action = PointerAction::up;
+        } else if (event.type == scene2d::InputType::pointer_cancel) {
+            action = PointerAction::cancel;
+        }
+        handled = pointer_event({
+            action,
+            event.pointer_id,
+            event.local_x(),
+            event.local_y(),
+            event.button
+        });
+        break;
+    }
+    case scene2d::InputType::key_down: {
+        Key key = Key::escape;
+        switch (event.key) {
+        case scene2d::InputKey::left: key = Key::left; break;
+        case scene2d::InputKey::right: key = Key::right; break;
+        case scene2d::InputKey::up: key = Key::up; break;
+        case scene2d::InputKey::down: key = Key::down; break;
+        case scene2d::InputKey::home: key = Key::home; break;
+        case scene2d::InputKey::end: key = Key::end; break;
+        case scene2d::InputKey::backspace: key = Key::backspace; break;
+        case scene2d::InputKey::delete_key: key = Key::delete_key; break;
+        case scene2d::InputKey::enter: key = Key::enter; break;
+        case scene2d::InputKey::space: key = Key::space; break;
+        case scene2d::InputKey::tab: key = Key::tab; break;
+        case scene2d::InputKey::escape: key = Key::escape; break;
+        case scene2d::InputKey::unknown: return;
+        }
+        handled = key_down(key, event.modifiers);
+        break;
+    }
+    default:
+        break;
+    }
+    if (handled) {
+        event.handle();
+        event.stop();
+    }
+}
 
 Label::Label(std::string text) : text_(std::move(text))
 {
@@ -971,6 +1174,9 @@ void Button::paint(Painter& painter, const Skin& skin, float x, float y) const
     else if (hovered_) background = style.hovered;
     else background = style.normal;
     if (background) background->draw(painter, bounds_of(*this, x, y));
+    if (focused_) {
+        painter.stroke_rectangle(bounds_of(*this, x, y), skin.accent, 2.0F);
+    }
     const Size text_size = painter.measure_text(text_);
     painter.draw_text(
         text_,
@@ -1005,14 +1211,15 @@ bool Button::pointer_event(const PointerEvent& event)
     return true;
 }
 
-bool Button::key_down(Key key)
+bool Button::key_down(Key key, KeyModifiers)
 {
-    if (!enabled() || key != Key::enter) return false;
+    if (!enabled() || (key != Key::enter && key != Key::space)) return false;
     activate();
     return true;
 }
 
 bool Button::focusable() const noexcept { return enabled(); }
+void Button::focus_changed(bool focused) { focused_ = focused; }
 void Button::activate() { if (callback_) callback_(); }
 bool Button::selected() const noexcept { return false; }
 
@@ -1084,6 +1291,9 @@ void CheckBox::paint(Painter& painter, const Skin& skin, float x, float y) const
         y + std::max(0.0F, (height() - text_size.height) * 0.5F),
         style.text
     );
+    if (focused()) {
+        painter.stroke_rectangle(bounds_of(*this, x, y), skin.accent, 2.0F);
+    }
 }
 
 TextField::TextField(std::string text) : text_(std::move(text))
@@ -1129,6 +1339,16 @@ void TextField::paint(Painter& painter, const Skin& skin, float x, float y) cons
         const Size prefix = painter.measure_text(
             std::string_view(text_).substr(0, cursor_)
         );
+        if (!composition_.empty()) {
+            const float composition_x = x + style.horizontal_padding + prefix.width;
+            painter.draw_text(composition_, composition_x, text_y, style.cursor);
+            const Size composition_size = painter.measure_text(composition_);
+            painter.fill_rectangle(
+                {composition_x, text_y + composition_size.height - 1.0F,
+                 composition_size.width, 1.0F},
+                style.cursor
+            );
+        }
         painter.fill_rectangle(
             {x + style.horizontal_padding + prefix.width,
              text_y, 1.0F, prefix.height},
@@ -1144,7 +1364,7 @@ bool TextField::pointer_event(const PointerEvent& event)
     return contains(event.x, event.y);
 }
 
-bool TextField::key_down(Key key)
+bool TextField::key_down(Key key, KeyModifiers)
 {
     if (!enabled()) return false;
     switch (key) {
@@ -1173,13 +1393,25 @@ bool TextField::key_down(Key key)
 bool TextField::text_input(std::string_view text)
 {
     if (!enabled() || text.empty()) return false;
+    composition_.clear();
     text_.insert(cursor_, text);
     cursor_ += text.size();
     invalidate_layout();
     return true;
 }
 
-void TextField::focus_changed(bool focused) { focused_ = focused; }
+bool TextField::text_editing(std::string_view text, int, int)
+{
+    if (!enabled()) return false;
+    composition_.assign(text);
+    return true;
+}
+
+void TextField::focus_changed(bool focused)
+{
+    focused_ = focused;
+    if (!focused) composition_.clear();
+}
 bool TextField::focusable() const noexcept { return enabled(); }
 
 Slider::Slider(float minimum, float maximum, float value)
@@ -1243,6 +1475,9 @@ void Slider::paint(Painter& painter, const Skin& skin, float x, float y) const
              knob_size}
         );
     }
+    if (focused_) {
+        painter.stroke_rectangle(bounds_of(*this, x, y), skin.accent, 2.0F);
+    }
 }
 
 bool Slider::pointer_event(const PointerEvent& event)
@@ -1262,6 +1497,19 @@ bool Slider::pointer_event(const PointerEvent& event)
     if (event.action == PointerAction::up) update_from_pointer(event.x);
     return true;
 }
+
+bool Slider::key_down(Key key, KeyModifiers)
+{
+    if (!enabled() || (key != Key::left && key != Key::right)) return false;
+    const float amount = step_ > 0.0F
+        ? step_
+        : std::max(0.01F, (maximum_ - minimum_) * 0.05F);
+    set_value(value_ + (key == Key::left ? -amount : amount));
+    return true;
+}
+
+bool Slider::focusable() const noexcept { return enabled(); }
+void Slider::focus_changed(bool focused) { focused_ = focused; }
 
 void Slider::update_from_pointer(float x)
 {
@@ -1305,6 +1553,21 @@ void Window::set_style(std::string style)
     invalidate_layout();
 }
 
+void Window::set_closable(bool closable) noexcept
+{
+    if (closable_ == closable) return;
+    closable_ = closable;
+    invalidate_layout();
+}
+
+void Window::set_minimum_window_size(Size size) noexcept
+{
+    requested_minimum_ = {
+        std::max(0.0F, size.width), std::max(0.0F, size.height)
+    };
+    invalidate_layout();
+}
+
 Size Window::minimum_size(Painter& painter, const Skin& skin) const
 {
     const WindowStyle& style = skin.window_style(style_);
@@ -1312,13 +1575,23 @@ Size Window::minimum_size(Painter& painter, const Skin& skin) const
     const Size title = painter.measure_text(title_);
     const Size background = style.background
         ? style.background->minimum_size() : Size{};
+    const float title_controls = closable_
+        ? std::max(0.0F, style.close_size) + style.content_insets.right
+        : 0.0F;
     return {
-        std::max({table.width + style.content_insets.left + style.content_insets.right,
-                  title.width + style.content_insets.left + style.content_insets.right,
-                  background.width}),
-        std::max(table.height + style.title_height + style.content_insets.top +
-                     style.content_insets.bottom,
-                 background.height)
+        std::max({
+            table.width + style.content_insets.left + style.content_insets.right,
+            title.width + style.content_insets.left + title_controls +
+                style.content_insets.right,
+            background.width,
+            requested_minimum_.width
+        }),
+        std::max({
+            table.height + style.title_height + style.content_insets.top +
+                style.content_insets.bottom,
+            background.height,
+            requested_minimum_.height
+        })
     };
 }
 
@@ -1326,9 +1599,12 @@ Size Window::preferred_size(Painter& painter) const
 {
     const Size table = content_->preferred_size(painter);
     const Size title = painter.measure_text(title_);
+    const float title_controls = closable_ ? close_size_ + 8.0F : 0.0F;
     return {
-        std::max(table.width + 16.0F, title.width + 24.0F),
-        table.height + title_height_ + 16.0F
+        std::max({table.width + 16.0F, title.width + 24.0F + title_controls,
+                  requested_minimum_.width}),
+        std::max(table.height + title_height_ + 16.0F,
+                 requested_minimum_.height)
     };
 }
 
@@ -1336,6 +1612,16 @@ void Window::layout(Painter& painter, const Skin& skin)
 {
     const WindowStyle& style = skin.window_style(style_);
     title_height_ = std::max(style.title_height, painter.measure_text(title_).height);
+    close_size_ = std::min(title_height_, std::max(0.0F, style.close_size));
+    resize_border_ = std::max(1.0F, style.resize_border);
+    measured_minimum_ = minimum_size(painter, skin);
+    if (width() < measured_minimum_.width || height() < measured_minimum_.height) {
+        set_size(
+            std::max(width(), measured_minimum_.width),
+            std::max(height(), measured_minimum_.height)
+        );
+        constrain_to_parent();
+    }
     content_->set_bounds(
         style.content_insets.left,
         title_height_ + style.content_insets.top,
@@ -1360,6 +1646,24 @@ void Window::paint(Painter& painter, const Skin& skin, float x, float y) const
         y + std::max(0.0F, (title_height_ - title_size.height) * 0.5F),
         style.title_text
     );
+    if (closable_) {
+        const Rectangle bounds = close_bounds();
+        DrawablePtr background = close_pressed_ ? style.close_pressed
+            : (close_hovered_ ? style.close_hovered : style.close_normal);
+        if (background) {
+            background->draw(
+                painter,
+                {x + bounds.x, y + bounds.y, bounds.width, bounds.height}
+            );
+        }
+        const Size close_text = painter.measure_text("x");
+        painter.draw_text(
+            "x",
+            x + bounds.x + std::max(0.0F, (bounds.width - close_text.width) * 0.5F),
+            y + bounds.y + std::max(0.0F, (bounds.height - close_text.height) * 0.5F),
+            style.close_text
+        );
+    }
 }
 
 bool Window::pointer_event(const PointerEvent& event)
@@ -1367,26 +1671,164 @@ bool Window::pointer_event(const PointerEvent& event)
     if (!enabled()) return false;
     const bool inside = contains(event.x, event.y);
     if (event.action == PointerAction::down) {
+        const Rectangle close = close_bounds();
+        const bool over_close = closable_ &&
+            event.x >= close.x && event.x <= close.x + close.width &&
+            event.y >= close.y && event.y <= close.y + close.height;
+        if (over_close) {
+            interaction_pointer_ = event.pointer_id;
+            close_pressed_ = true;
+            close_hovered_ = true;
+            return true;
+        }
+        const unsigned int edges = resizable_
+            ? resize_edges(event.x, event.y) : resize_none;
+        if (inside && edges != resize_none) {
+            interaction_pointer_ = event.pointer_id;
+            resize_edges_ = edges;
+            resize_start_ = {x(), y(), width(), height()};
+            pointer_start_x_ = x() + event.x;
+            pointer_start_y_ = y() + event.y;
+            return true;
+        }
         if (movable_ && inside && event.y <= title_height_) {
-            drag_pointer_ = event.pointer_id;
+            interaction_pointer_ = event.pointer_id;
             drag_offset_x_ = event.x;
             drag_offset_y_ = event.y;
             return true;
         }
         return inside || modal_;
     }
-    if (drag_pointer_ && *drag_pointer_ == event.pointer_id) {
+    if (interaction_pointer_ && *interaction_pointer_ == event.pointer_id) {
+        const Rectangle close = close_bounds();
+        const bool over_close = event.x >= close.x && event.x <= close.x + close.width &&
+            event.y >= close.y && event.y <= close.y + close.height;
+        if (close_pressed_) {
+            close_hovered_ = over_close;
+            if (event.action == PointerAction::up ||
+                event.action == PointerAction::cancel) {
+                const bool close_window = event.action == PointerAction::up && over_close;
+                close_pressed_ = false;
+                interaction_pointer_.reset();
+                if (close_window) request_close();
+            }
+            return true;
+        }
+        if (resize_edges_ != resize_none) {
+            if (event.action == PointerAction::move) {
+                resize_from_pointer(x() + event.x, y() + event.y);
+            } else {
+                resize_edges_ = resize_none;
+                interaction_pointer_.reset();
+            }
+            return true;
+        }
         if (event.action == PointerAction::move) {
             set_position(
                 x() + event.x - drag_offset_x_,
                 y() + event.y - drag_offset_y_
             );
+            constrain_to_parent();
         } else {
-            drag_pointer_.reset();
+            interaction_pointer_.reset();
         }
         return true;
     }
+    if (event.action == PointerAction::move && closable_) {
+        const Rectangle close = close_bounds();
+        close_hovered_ = event.x >= close.x && event.x <= close.x + close.width &&
+            event.y >= close.y && event.y <= close.y + close.height;
+    }
     return inside || modal_;
+}
+
+Rectangle Window::close_bounds() const noexcept
+{
+    const float size = std::min(title_height_, close_size_);
+    return {
+        std::max(0.0F, width() - size - 4.0F),
+        std::max(0.0F, (title_height_ - size) * 0.5F),
+        size,
+        size
+    };
+}
+
+unsigned int Window::resize_edges(float local_x, float local_y) const noexcept
+{
+    if (!contains(local_x, local_y)) return resize_none;
+    unsigned int result = resize_none;
+    if (local_x <= resize_border_) result |= resize_left;
+    if (local_x >= width() - resize_border_) result |= resize_right;
+    if (local_y <= resize_border_) result |= resize_top;
+    if (local_y >= height() - resize_border_) result |= resize_bottom;
+    return result;
+}
+
+void Window::constrain_to_parent() noexcept
+{
+    const scene2d::Group* owner = parent();
+    if (!owner) return;
+    const float minimum_width = std::max(
+        requested_minimum_.width, measured_minimum_.width
+    );
+    const float minimum_height = std::max(
+        requested_minimum_.height, measured_minimum_.height
+    );
+    const float constrained_width = owner->width() >= minimum_width
+        ? std::min(width(), owner->width()) : width();
+    const float constrained_height = owner->height() >= minimum_height
+        ? std::min(height(), owner->height()) : height();
+    if (constrained_width != width() || constrained_height != height()) {
+        set_size(constrained_width, constrained_height);
+        invalidate_layout();
+    }
+    set_position(
+        std::clamp(x(), 0.0F, std::max(0.0F, owner->width() - width())),
+        std::clamp(y(), 0.0F, std::max(0.0F, owner->height() - height()))
+    );
+}
+
+void Window::resize_from_pointer(float stage_x, float stage_y) noexcept
+{
+    const float delta_x = stage_x - pointer_start_x_;
+    const float delta_y = stage_y - pointer_start_y_;
+    float left = resize_start_.x;
+    float top = resize_start_.y;
+    float right = resize_start_.x + resize_start_.width;
+    float bottom = resize_start_.y + resize_start_.height;
+    if ((resize_edges_ & resize_left) != 0U) left += delta_x;
+    if ((resize_edges_ & resize_right) != 0U) right += delta_x;
+    if ((resize_edges_ & resize_top) != 0U) top += delta_y;
+    if ((resize_edges_ & resize_bottom) != 0U) bottom += delta_y;
+
+    const float minimum_width = std::max(
+        requested_minimum_.width, measured_minimum_.width
+    );
+    const float minimum_height = std::max(
+        requested_minimum_.height, measured_minimum_.height
+    );
+    if (right - left < minimum_width) {
+        if ((resize_edges_ & resize_left) != 0U) left = right - minimum_width;
+        else right = left + minimum_width;
+    }
+    if (bottom - top < minimum_height) {
+        if ((resize_edges_ & resize_top) != 0U) top = bottom - minimum_height;
+        else bottom = top + minimum_height;
+    }
+
+    if (const scene2d::Group* owner = parent()) {
+        if ((resize_edges_ & resize_left) != 0U && left < 0.0F) left = 0.0F;
+        if ((resize_edges_ & resize_top) != 0U && top < 0.0F) top = 0.0F;
+        if ((resize_edges_ & resize_right) != 0U && right > owner->width()) {
+            right = owner->width();
+        }
+        if ((resize_edges_ & resize_bottom) != 0U && bottom > owner->height()) {
+            bottom = owner->height();
+        }
+    }
+    set_bounds(left, top, std::max(0.0F, right - left),
+               std::max(0.0F, bottom - top));
+    invalidate_layout();
 }
 
 Dialog::Dialog(std::string title, ResultCallback result)
@@ -1459,7 +1901,10 @@ Window& Ui::show_window(std::unique_ptr<Window> window, bool center)
         throw;
     }
     captures_.clear();
-    if (reference->modal()) clear_focus();
+    if (reference->modal()) {
+        clear_focus();
+        static_cast<void>(focus_next(false));
+    }
     return *reference;
 }
 
@@ -1492,6 +1937,7 @@ void Ui::close_window(Window& window)
     [[maybe_unused]] auto removed = stage_.root().remove_actor(window);
     overlays_.erase(found);
     if (!focused_ && restore && restore->focusable()) set_focus(restore);
+    if (!focused_ && top_modal()) static_cast<void>(focus_next(false));
 }
 
 void Ui::resize(float width, float height)
@@ -1500,6 +1946,9 @@ void Ui::resize(float width, float height)
     if (content_) {
         content_->set_bounds(0.0F, 0.0F, width, height);
         content_->invalidate_layout();
+    }
+    for (Overlay& overlay : overlays_) {
+        overlay.window->constrain_to_parent();
     }
 }
 
@@ -1526,7 +1975,21 @@ void Ui::layout(Painter& painter)
             );
             overlay.center_pending = false;
         }
+        window.constrain_to_parent();
         window.validate_layout(painter, skin_);
+    }
+    if (text_input_service_ && text_input_service_->active() &&
+        dynamic_cast<TextField*>(focused_)) {
+        float stage_x = 0.0F;
+        float stage_y = 0.0F;
+        for (const scene2d::Actor* current = focused_; current;
+             current = current->parent()) {
+            stage_x += current->x();
+            stage_y += current->y();
+        }
+        text_input_service_->update_area(
+            {stage_x, stage_y, focused_->width(), focused_->height()}
+        );
     }
 }
 
@@ -1558,9 +2021,77 @@ bool Ui::event(const application::Event& event)
     case application::Event::Type::Resize:
         resize(static_cast<float>(event.width), static_cast<float>(event.height));
         return true;
+    case application::Event::Type::TextInput:
+        return text_input(event.text);
+    case application::Event::Type::TextEditing:
+        return text_editing(
+            event.text, event.editing_start, event.editing_length
+        );
+    case application::Event::Type::TextInputHidden:
+        return text_editing({}, 0, 0);
+    case application::Event::Type::KeyDown: {
+        using AppKey = application::Event::Key;
+        KeyModifiers modifiers{
+            event.modifiers.contains(application::KeyModifier::shift),
+            event.modifiers.contains(application::KeyModifier::control),
+            event.modifiers.contains(application::KeyModifier::alt),
+            event.modifiers.contains(application::KeyModifier::meta)
+        };
+        switch (event.key) {
+        case AppKey::left: return key_down(Key::left, modifiers);
+        case AppKey::right: return key_down(Key::right, modifiers);
+        case AppKey::up: return key_down(Key::up, modifiers);
+        case AppKey::down: return key_down(Key::down, modifiers);
+        case AppKey::home: return key_down(Key::home, modifiers);
+        case AppKey::end: return key_down(Key::end, modifiers);
+        case AppKey::backspace: return key_down(Key::backspace, modifiers);
+        case AppKey::delete_key: return key_down(Key::delete_key, modifiers);
+        case AppKey::enter: return key_down(Key::enter, modifiers);
+        case AppKey::space: return key_down(Key::space, modifiers);
+        case AppKey::tab: return key_down(Key::tab, modifiers);
+        case AppKey::escape: return key_down(Key::escape, modifiers);
+        default: return false;
+        }
+    }
+    case application::Event::Type::KeyUp: {
+        using AppKey = application::Event::Key;
+        KeyModifiers modifiers{
+            event.modifiers.contains(application::KeyModifier::shift),
+            event.modifiers.contains(application::KeyModifier::control),
+            event.modifiers.contains(application::KeyModifier::alt),
+            event.modifiers.contains(application::KeyModifier::meta)
+        };
+        switch (event.key) {
+        case AppKey::left: return key_up(Key::left, modifiers);
+        case AppKey::right: return key_up(Key::right, modifiers);
+        case AppKey::up: return key_up(Key::up, modifiers);
+        case AppKey::down: return key_up(Key::down, modifiers);
+        case AppKey::home: return key_up(Key::home, modifiers);
+        case AppKey::end: return key_up(Key::end, modifiers);
+        case AppKey::backspace: return key_up(Key::backspace, modifiers);
+        case AppKey::delete_key: return key_up(Key::delete_key, modifiers);
+        case AppKey::enter: return key_up(Key::enter, modifiers);
+        case AppKey::space: return key_up(Key::space, modifiers);
+        case AppKey::tab: return key_up(Key::tab, modifiers);
+        case AppKey::escape: return key_up(Key::escape, modifiers);
+        default: return false;
+        }
+    }
+    case application::Event::Type::NavigationInput:
+        return navigation(event.navigation, event.input_device_id);
     default:
         return false;
     }
+}
+
+void Ui::set_text_input_service(
+    application::TextInputService* service
+) noexcept
+{
+    if (text_input_service_ && text_input_service_->active()) {
+        text_input_service_->stop();
+    }
+    text_input_service_ = service;
 }
 
 bool Ui::pointer(
@@ -1585,21 +2116,23 @@ bool Ui::pointer(
         while (focus && !focus->focusable()) {
             focus = dynamic_cast<Widget*>(focus->parent());
         }
-        set_focus(focus);
+        if (focus || !top_modal()) set_focus(focus);
     }
 
-    bool handled = false;
-    Widget* handler = nullptr;
-    for (Widget* current = target; current && !handled;
-         current = dynamic_cast<Widget*>(current->parent())) {
-        float local_x = 0.0F;
-        float local_y = 0.0F;
-        local_position(*current, x, y, local_x, local_y);
-        handled = current->pointer_event(
-            {action, pointer_id, local_x, local_y, button}
-        );
-        if (handled) handler = current;
-    }
+    scene2d::InputEvent routed;
+    routed.type = action == PointerAction::down
+        ? scene2d::InputType::pointer_down
+        : action == PointerAction::up
+            ? scene2d::InputType::pointer_up
+            : action == PointerAction::cancel
+                ? scene2d::InputType::pointer_cancel
+                : scene2d::InputType::pointer_move;
+    routed.pointer_id = pointer_id;
+    routed.stage_x = x;
+    routed.stage_y = y;
+    routed.button = button;
+    const bool handled = stage_.dispatch_input(routed, target);
+    auto* handler = dynamic_cast<Widget*>(routed.handled_by());
     if (action == PointerAction::down && handler) captures_[pointer_id] = handler;
     if (action == PointerAction::up || action == PointerAction::cancel) {
         captures_.erase(pointer_id);
@@ -1608,9 +2141,31 @@ bool Ui::pointer(
     return handled;
 }
 
-bool Ui::key_down(Key key)
+bool Ui::key_down(Key key, KeyModifiers modifiers)
 {
-    bool handled = focused_ && focused_->key_down(key);
+    scene2d::InputEvent routed;
+    routed.type = scene2d::InputType::key_down;
+    routed.modifiers = modifiers;
+    switch (key) {
+    case Key::left: routed.key = scene2d::InputKey::left; break;
+    case Key::right: routed.key = scene2d::InputKey::right; break;
+    case Key::up: routed.key = scene2d::InputKey::up; break;
+    case Key::down: routed.key = scene2d::InputKey::down; break;
+    case Key::home: routed.key = scene2d::InputKey::home; break;
+    case Key::end: routed.key = scene2d::InputKey::end; break;
+    case Key::backspace: routed.key = scene2d::InputKey::backspace; break;
+    case Key::delete_key: routed.key = scene2d::InputKey::delete_key; break;
+    case Key::enter: routed.key = scene2d::InputKey::enter; break;
+    case Key::space: routed.key = scene2d::InputKey::space; break;
+    case Key::tab: routed.key = scene2d::InputKey::tab; break;
+    case Key::escape: routed.key = scene2d::InputKey::escape; break;
+    }
+    bool handled = focused_ && stage_.dispatch_input(routed, focused_);
+    if (!handled && key == Key::tab) handled = focus_next(modifiers.shift);
+    if (!handled && (key == Key::left || key == Key::right ||
+                     key == Key::up || key == Key::down)) {
+        handled = focus_direction(key);
+    }
     if (!handled && key == Key::escape && !overlays_.empty()) {
         Window* window = overlays_.back().window;
         if (window->escape_closes()) {
@@ -1622,9 +2177,90 @@ bool Ui::key_down(Key key)
     return handled;
 }
 
+bool Ui::key_up(Key key, KeyModifiers modifiers)
+{
+    if (!focused_) return false;
+    scene2d::InputEvent routed;
+    routed.type = scene2d::InputType::key_up;
+    routed.modifiers = modifiers;
+    switch (key) {
+    case Key::left: routed.key = scene2d::InputKey::left; break;
+    case Key::right: routed.key = scene2d::InputKey::right; break;
+    case Key::up: routed.key = scene2d::InputKey::up; break;
+    case Key::down: routed.key = scene2d::InputKey::down; break;
+    case Key::home: routed.key = scene2d::InputKey::home; break;
+    case Key::end: routed.key = scene2d::InputKey::end; break;
+    case Key::backspace: routed.key = scene2d::InputKey::backspace; break;
+    case Key::delete_key: routed.key = scene2d::InputKey::delete_key; break;
+    case Key::enter: routed.key = scene2d::InputKey::enter; break;
+    case Key::space: routed.key = scene2d::InputKey::space; break;
+    case Key::tab: routed.key = scene2d::InputKey::tab; break;
+    case Key::escape: routed.key = scene2d::InputKey::escape; break;
+    }
+    return stage_.dispatch_input(routed, focused_);
+}
+
+bool Ui::navigation(
+    application::Event::Navigation navigation_value,
+    std::int32_t input_device_id
+)
+{
+    using Navigation = application::Event::Navigation;
+    scene2d::InputEvent routed;
+    routed.type = scene2d::InputType::navigation;
+    routed.input_device_id = input_device_id;
+    switch (navigation_value) {
+    case Navigation::left:
+        routed.navigation = scene2d::NavigationAction::left;
+        break;
+    case Navigation::right:
+        routed.navigation = scene2d::NavigationAction::right;
+        break;
+    case Navigation::up:
+        routed.navigation = scene2d::NavigationAction::up;
+        break;
+    case Navigation::down:
+        routed.navigation = scene2d::NavigationAction::down;
+        break;
+    case Navigation::next:
+        routed.navigation = scene2d::NavigationAction::next;
+        break;
+    case Navigation::previous:
+        routed.navigation = scene2d::NavigationAction::previous;
+        break;
+    case Navigation::activate:
+        routed.navigation = scene2d::NavigationAction::activate;
+        break;
+    case Navigation::cancel:
+        routed.navigation = scene2d::NavigationAction::cancel;
+        break;
+    case Navigation::unknown:
+        return false;
+    }
+    if (focused_ && stage_.dispatch_input(routed, focused_)) return true;
+
+    switch (navigation_value) {
+    case Navigation::left: return focus_direction(Key::left);
+    case Navigation::right: return focus_direction(Key::right);
+    case Navigation::up: return focus_direction(Key::up);
+    case Navigation::down: return focus_direction(Key::down);
+    case Navigation::next: return focus_next(false);
+    case Navigation::previous: return focus_next(true);
+    case Navigation::activate: return key_down(Key::enter);
+    case Navigation::cancel: return key_down(Key::escape);
+    case Navigation::unknown:
+    default: return false;
+    }
+}
+
 bool Ui::text_input(std::string_view text)
 {
     return focused_ && focused_->text_input(text);
+}
+
+bool Ui::text_editing(std::string_view text, int start, int length)
+{
+    return focused_ && focused_->text_editing(text, start, length);
 }
 
 void Ui::clear_focus() { set_focus(nullptr); }
@@ -1640,26 +2276,6 @@ Widget* Ui::widget_at(float x, float y) noexcept
         actor = actor->parent();
     }
     return nullptr;
-}
-
-void Ui::local_position(
-    const Widget& widget,
-    float stage_x,
-    float stage_y,
-    float& local_x,
-    float& local_y
-) noexcept
-{
-    float origin_x = widget.x();
-    float origin_y = widget.y();
-    for (const scene2d::Group* parent = widget.parent();
-         parent && parent->parent();
-         parent = parent->parent()) {
-        origin_x += parent->x();
-        origin_y += parent->y();
-    }
-    local_x = stage_x - origin_x;
-    local_y = stage_y - origin_y;
 }
 
 void Ui::paint_tree(
@@ -1692,10 +2308,157 @@ void Ui::set_focus(Widget* widget)
         modal && widget && !is_descendant_of(widget, modal)) {
         widget = nullptr;
     }
-    if (focused_ == widget) return;
+    if (focused_ == widget) {
+        if (text_input_service_ && !text_input_service_->active() &&
+            dynamic_cast<TextField*>(focused_)) {
+            float stage_x = 0.0F;
+            float stage_y = 0.0F;
+            for (const scene2d::Actor* current = focused_; current;
+                 current = current->parent()) {
+                stage_x += current->x();
+                stage_y += current->y();
+            }
+            text_input_service_->start({
+                .area = {stage_x, stage_y, focused_->width(), focused_->height()}
+            });
+        }
+        return;
+    }
     if (focused_) focused_->focus_changed(false);
     focused_ = widget;
     if (focused_) focused_->focus_changed(true);
+    if (!text_input_service_) return;
+    if (dynamic_cast<TextField*>(focused_)) {
+        float stage_x = 0.0F;
+        float stage_y = 0.0F;
+        for (const scene2d::Actor* current = focused_; current;
+             current = current->parent()) {
+            stage_x += current->x();
+            stage_y += current->y();
+        }
+        text_input_service_->start({
+            .area = {stage_x, stage_y, focused_->width(), focused_->height()}
+        });
+    } else if (text_input_service_->active()) {
+        text_input_service_->stop();
+    }
+}
+
+bool Ui::focus_next(bool reverse)
+{
+    const std::vector<Widget*> candidates = focusable_widgets();
+    if (candidates.empty()) {
+        clear_focus();
+        return false;
+    }
+    const auto current = std::find(candidates.begin(), candidates.end(), focused_);
+    std::size_t index = 0;
+    if (current != candidates.end()) {
+        const auto position = static_cast<std::size_t>(
+            std::distance(candidates.begin(), current)
+        );
+        index = reverse
+            ? (position + candidates.size() - 1) % candidates.size()
+            : (position + 1) % candidates.size();
+    } else if (reverse) {
+        index = candidates.size() - 1;
+    }
+    set_focus(candidates[index]);
+    return true;
+}
+
+bool Ui::focus_direction(Key direction)
+{
+    if (!focused_) return focus_next(false);
+    const std::vector<Widget*> candidates = focusable_widgets();
+    float current_x = 0.0F;
+    float current_y = 0.0F;
+    stage_position(*focused_, current_x, current_y);
+    current_x += focused_->width() * 0.5F;
+    current_y += focused_->height() * 0.5F;
+
+    Widget* best = nullptr;
+    float best_score = std::numeric_limits<float>::max();
+    for (Widget* candidate : candidates) {
+        if (candidate == focused_) continue;
+        float candidate_x = 0.0F;
+        float candidate_y = 0.0F;
+        stage_position(*candidate, candidate_x, candidate_y);
+        candidate_x += candidate->width() * 0.5F;
+        candidate_y += candidate->height() * 0.5F;
+        const float dx = candidate_x - current_x;
+        const float dy = candidate_y - current_y;
+        float primary = 0.0F;
+        float perpendicular = 0.0F;
+        bool eligible = false;
+        if (direction == Key::left && dx < 0.0F) {
+            primary = -dx;
+            perpendicular = std::abs(dy);
+            eligible = true;
+        } else if (direction == Key::right && dx > 0.0F) {
+            primary = dx;
+            perpendicular = std::abs(dy);
+            eligible = true;
+        } else if (direction == Key::up && dy < 0.0F) {
+            primary = -dy;
+            perpendicular = std::abs(dx);
+            eligible = true;
+        } else if (direction == Key::down && dy > 0.0F) {
+            primary = dy;
+            perpendicular = std::abs(dx);
+            eligible = true;
+        }
+        if (!eligible) continue;
+        const float score = primary + perpendicular * 2.0F;
+        if (score < best_score) {
+            best = candidate;
+            best_score = score;
+        }
+    }
+    if (!best) return false;
+    set_focus(best);
+    return true;
+}
+
+std::vector<Widget*> Ui::focusable_widgets()
+{
+    std::vector<Widget*> result;
+    scene2d::Actor* scope = top_modal();
+    if (!scope) scope = &stage_.root();
+    collect_focusable(*scope, result);
+    return result;
+}
+
+void Ui::collect_focusable(
+    scene2d::Actor& actor,
+    std::vector<Widget*>& result
+)
+{
+    if (!actor.visible()) return;
+    if (auto* widget = dynamic_cast<Widget*>(&actor);
+        widget && widget->focusable()) {
+        result.push_back(widget);
+    }
+    if (auto* group = dynamic_cast<scene2d::Group*>(&actor)) {
+        for (std::size_t index = 0; index < group->child_count(); ++index) {
+            collect_focusable(*group->child_at(index), result);
+        }
+    }
+}
+
+void Ui::stage_position(
+    const scene2d::Actor& actor,
+    float& x,
+    float& y
+) noexcept
+{
+    x = 0.0F;
+    y = 0.0F;
+    for (const scene2d::Actor* current = &actor; current;
+         current = current->parent()) {
+        x += current->x();
+        y += current->y();
+    }
 }
 
 void Ui::prune_closed_windows()

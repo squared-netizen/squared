@@ -1,0 +1,23 @@
+// Telegram dispatch decision flow.
+// Immediate vs queued; directed vs broadcast; bounds enforced.
+digraph messaging_dispatch_decision {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  send [label="send telegram", shape=oval, fillcolor="#fff2cc"];
+  immediate [label="immediate?", shape=diamond, fillcolor="#fff2cc"];
+  target [label="directed (provider id)\nor broadcast?", shape=diamond, fillcolor="#fff2cc"];
+  sync [label="synchronous dispatch to\nrecipient(s) during send", fillcolor="#f8cecc"];
+  queue [label="queue with deadline\n(Time DeadlineQueue)", fillcolor="#dae8fc"];
+  cap [label="delivery cap per update / cycle\n(dispatch limits)", fillcolor="#dae8fc"];
+  receipt [label="receipt returned on delivery", fillcolor="#d5e8d4"];
+
+  send -> immediate;
+  immediate -> sync [label="yes"];
+  immediate -> queue [label="no (delayed)"];
+  sync -> target;
+  queue -> cap;
+  cap -> sync [label="due, within caps"];
+  sync -> receipt;
+}

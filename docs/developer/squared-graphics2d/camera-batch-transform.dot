@@ -1,0 +1,18 @@
+// Camera-to-batch transform flow.
+// OrthographicCamera state -> column-major Matrix4 -> batch u_projection.
+digraph camera_batch_transform {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  state [label="OrthographicCamera state:\nviewport (>=1.0), position (default center),\nzoom (>=0.0001), origin (BottomLeft/TopLeft)", fillcolor="#dae8fc"];
+  update [label="update()\ncompute half-extents + bounds", fillcolor="#dae8fc"];
+  matrix [label="squared::math::Matrix4::orthographic\ncolumn-major std::array<float,16>", fillcolor="#d5e8d4"];
+  batch [label="SpriteBatch::begin(camera)\nglUniformMatrix4fv(u_projection)", fillcolor="#f8cecc"];
+  vert [label="vertex shader:\nu_projection * vec4(a_position)", fillcolor="#e1d5e7"];
+
+  state -> update;
+  update -> matrix;
+  matrix -> batch [label="combined()"];
+  batch -> vert;
+}

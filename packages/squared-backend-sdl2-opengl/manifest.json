@@ -3,9 +3,9 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.backend.sdl2-opengl",
-  "version": "0.6.0-dev.1",
+  "version": "0.6.0-dev.5",
   "name": "Squared SDL2/OpenGL Backend",
-  "description": "Link-time SDL2 and OpenGL ES 2 implementation for portable Squared Graphics and Graphics2D contracts.",
+  "description": "Link-time SDL2 and OpenGL ES 2 implementation with Android context recovery for portable Squared Graphics and Graphics2D contracts.",
   "module": {
     "directory": "modules/squared-backend-sdl2-opengl",
     "cmake_target": "squared_backend_sdl2_opengl",
@@ -13,7 +13,7 @@
       {
         "kind": "module",
         "id": "dev.squarednetizen.squared.graphics2d",
-        "version": "0.6.0-dev.2"
+        "version": "0.6.0-dev.7"
       }
     ]
   }

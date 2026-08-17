@@ -54,15 +54,45 @@ bool Context::create(
         return false;
     }
 
-    native_context_ = SDL_GL_CreateContext(as_window(window_));
-    if (!native_context_) {
-        SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
+    if (!resume()) {
         destroy();
         return false;
     }
+    return true;
+}
+
+bool Context::resume() noexcept
+{
+    if (!window_) return false;
+    if (native_context_) {
+        if (SDL_GL_MakeCurrent(as_window(window_), native_context_) != 0) {
+            SDL_Log(
+                "Existing SDL GL context could not be restored: %s",
+                SDL_GetError()
+            );
+            SDL_GL_DeleteContext(native_context_);
+            native_context_ = nullptr;
+        } else {
+            refresh_viewport();
+            if (pixel_width_ <= 0 || pixel_height_ <= 0) return false;
+            resources_preserved_ = true;
+            ++generation_;
+            if (generation_ == 0) ++generation_;
+            return true;
+        }
+    }
+
+    native_context_ = SDL_GL_CreateContext(as_window(window_));
+    if (!native_context_) {
+        SDL_Log("SDL_GL_CreateContext failed: %s", SDL_GetError());
+        native_context_ = nullptr;
+        return false;
+    }
+    resources_preserved_ = false;
     if (SDL_GL_MakeCurrent(as_window(window_), native_context_) != 0) {
         SDL_Log("SDL_GL_MakeCurrent failed: %s", SDL_GetError());
-        destroy();
+        SDL_GL_DeleteContext(native_context_);
+        native_context_ = nullptr;
         return false;
     }
 
@@ -81,24 +111,37 @@ bool Context::create(
     );
     if (pixel_width_ <= 0 || pixel_height_ <= 0) {
         SDL_Log("OpenGL ES context has no drawable surface");
-        destroy();
+        suspend();
         return false;
     }
+    ++generation_;
+    if (generation_ == 0) ++generation_;
     return true;
 }
 
 void Context::destroy() noexcept
 {
-    if (native_context_) {
-        SDL_GL_DeleteContext(native_context_);
-        native_context_ = nullptr;
-    }
+    suspend();
     if (window_) {
         SDL_DestroyWindow(as_window(window_));
         window_ = nullptr;
     }
     pixel_width_ = 0;
     pixel_height_ = 0;
+    generation_ = 0;
+    resources_preserved_ = false;
+}
+
+void Context::suspend() noexcept
+{
+    if (native_context_) {
+        SDL_GL_MakeCurrent(as_window(window_), nullptr);
+        SDL_GL_DeleteContext(native_context_);
+        native_context_ = nullptr;
+    }
+    pixel_width_ = 0;
+    pixel_height_ = 0;
+    resources_preserved_ = false;
 }
 
 void Context::refresh_viewport() noexcept
@@ -133,6 +176,16 @@ int Context::pixel_width() const noexcept
 int Context::pixel_height() const noexcept
 {
     return pixel_height_;
+}
+
+std::uint64_t Context::generation() const noexcept
+{
+    return generation_;
+}
+
+bool Context::resources_preserved() const noexcept
+{
+    return resources_preserved_;
 }
 
 }  // namespace squared::graphics

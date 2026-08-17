@@ -1,0 +1,22 @@
+// ZIP read and scratch-write flow.
+// Streamed reads from the cartridge; writes land in an overlay and
+// materialize on commit/unmount.
+digraph holodisk_zip_scratch_flow {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  open [label="open file by safe path", fillcolor="#dae8fc"];
+  read [label="streamed read from ZIP\n(no full-file materialization)", fillcolor="#dae8fc"];
+  write [label="write to scratch overlay\n(separate from cartridge)", fillcolor="#fff2cc"];
+  materialize [label="materialize:\nmerge scratch into final\non unmount/commit", fillcolor="#d5e8d4"];
+  limits [label="enforce resource limits\n(max files / max sizes)", fillcolor="#dae8fc"];
+  malformed [label="malformed entry:\ntagged error, operation fails", fillcolor="#ff9999"];
+
+  open -> read;
+  open -> write;
+  read -> limits;
+  write -> limits;
+  limits -> materialize;
+  limits -> malformed [style=dashed, label="violation"];
+}

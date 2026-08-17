@@ -1,6 +1,8 @@
 #include <squared/graphics/color.hpp>
+#include <squared/graphics/context.hpp>
 
 #include <cmath>
+#include <concepts>
 #include <cstdlib>
 #include <iostream>
 
@@ -19,6 +21,13 @@ bool near(float left, float right)
 }
 
 }  // namespace
+
+static_assert(requires(squared::graphics::Context& context) {
+    context.suspend();
+    { context.resume() } -> std::same_as<bool>;
+    { context.generation() } -> std::same_as<std::uint64_t>;
+    { context.resources_preserved() } -> std::same_as<bool>;
+});
 
 int main()
 {

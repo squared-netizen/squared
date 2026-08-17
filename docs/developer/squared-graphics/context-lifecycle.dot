@@ -1,0 +1,19 @@
+// Graphics context lifecycle.
+// Portable capabilities contract surfaced by the backend Context facade.
+digraph graphics_context_lifecycle {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  create [label="create()\n(window/surface attributes, capabilities)", fillcolor="#dae8fc"];
+  active [label="active: update + render + present", shape=oval, fillcolor="#fff2cc"];
+  suspend [label="suspend / background", fillcolor="#f8cecc"];
+  resume [label="resume:\nrecreate surface if lost,\ngeneration_++", fillcolor="#dae8fc"];
+  destroy [label="destroy()\nrelease GL + window resources", fillcolor="#f8cecc"];
+
+  create -> active;
+  active -> suspend [style=dashed];
+  suspend -> resume [style=dashed, label="foreground"];
+  resume -> active;
+  active -> destroy [label="shutdown"];
+}

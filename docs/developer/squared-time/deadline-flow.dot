@@ -1,0 +1,21 @@
+// Deadline schedule/cancel/fire flow.
+// Bounded min-heap (vector); FIFO among equal due times; cancel marks dead.
+digraph time_deadline_flow {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  schedule [label="schedule(deadline)\ncapacity check first", fillcolor="#dae8fc"];
+  heap [label="min-heap (vector)\nordered by due time,\nthen insertion sequence", fillcolor="#d5e8d4"];
+  ticket [label="Ticket (monotonic handle,\n0 = empty)", fillcolor="#dae8fc"];
+  cancel [label="cancel(ticket)\nO(n) scan, mark dead", fillcolor="#fff2cc"];
+  fire [label="update pops due entries\n(dead entries skipped)", fillcolor="#f8cecc"];
+  overflow [label="capacity exceeded:\ndocumented error result", fillcolor="#ff9999"];
+
+  schedule -> heap [label="insert"];
+  heap -> ticket;
+  ticket -> cancel;
+  cancel -> heap [style=dashed, label="dead-marked"];
+  heap -> fire;
+  schedule -> overflow [style=dashed, label="no capacity"];
+}

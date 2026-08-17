@@ -1,0 +1,36 @@
+// Application lifecycle and callback order.
+// Sequence of Application hooks invoked by the host loop. Callback names and
+// ordering derived from squared-application sources and tests.
+digraph application_lifecycle {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fillcolor="#dae8fc", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  start [label="host main()", shape=oval, fillcolor="#fff2cc"];
+  create [label="Application::create()\n(assets, subsystems)"];
+  handle [label="per-frame:\nhandle_event() for each queued event"];
+  update [label="Application::update(delta)"];
+  render [label="Application::render()"];
+  loop   [label="frame loop until quit_requested", shape=oval, fillcolor="#fff2cc"];
+  surface_created [label="surface_created()\n(re)creates drawing surface"];
+  surface_destroyed [label="surface_destroyed()\nsurface lost"];
+  pause  [label="pause()\n(background / focus lost)"];
+  resume [label="resume()\n(focus regained)"];
+  resize [label="resize(width, height)\nviewport changed"];
+  dispose [label="Application::dispose()\nrelease owned resources"];
+  quit   [label="exit", shape=oval, fillcolor="#fff2cc"];
+
+  start -> create;
+  create -> surface_created;
+  surface_created -> handle;
+  handle -> update;
+  update -> render;
+  render -> loop;
+  loop -> handle [style=bold, label="not quitting"];
+  resize -> handle [style=dashed, label="on window resize"];
+  surface_destroyed -> surface_created [style=dashed, label="context re-acquired"];
+  pause -> resume [style=dashed, label="foreground"];
+  loop -> pause [style=dashed, label="backgrounded"];
+  loop -> dispose [style=bold, label="quit_requested"];
+  dispose -> quit;
+}

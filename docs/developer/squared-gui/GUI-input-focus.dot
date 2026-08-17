@@ -1,0 +1,24 @@
+// Input/focus/capture event flow.
+// Capture -> target -> bubble through the widget tree; pointer capture and
+// keyboard focus govern delivery.
+digraph gui_input_focus {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  event [label="input event (pointer/key/text)\nfrom Application, stage coordinates", shape=oval, fillcolor="#fff2cc"];
+  hit [label="hit test:\ntopmost window / actor bounds first;\ncapture overrides hit test", fillcolor="#dae8fc"];
+  capture [label="pointer capture:\ncaptures_[pointer_id] = Widget*\n(begin on down, release on up)", fillcolor="#f8cecc"];
+  dispatch [label="dispatch capture -> target -> bubble\n(listeners snapshot)", fillcolor="#dae8fc"];
+  focus [label="keyboard focus:\nfocusable walk (collect_focusable),\nordered moves, FocusEvent pairs", fillcolor="#f8cecc"];
+  modal [label="modal window:\nreachable set restricted to modal subtree", fillcolor="#ff9999"];
+  text [label="text input routes to focused widget", fillcolor="#dae8fc"];
+
+  event -> hit;
+  hit -> capture [style=dashed, label="if captured"];
+  hit -> dispatch;
+  capture -> dispatch;
+  dispatch -> focus [style=dashed, label="key navigation"];
+  dispatch -> text [style=dashed, label="text events"];
+  dispatch -> modal [style=dashed, label="modal trap restricts"];
+}

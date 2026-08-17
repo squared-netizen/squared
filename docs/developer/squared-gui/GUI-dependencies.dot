@@ -1,0 +1,25 @@
+// GUI package dependencies.
+// Compile-time package edges from squared-gui manifest.json "module.requires".
+// No SDL, Android, OpenGL, or HoloDisk edges exist.
+digraph gui_dependencies {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  gui [label="squared-gui\n0.6.0-dev.12", fillcolor="#d5e8d4"];
+  data [label="squared-data\n0.6.0-dev.2", fillcolor="#dae8fc"];
+  application [label="squared-application\n0.6.0-dev.5", fillcolor="#dae8fc"];
+  scene2d [label="squared-scene2d\n0.6.0-dev.7", fillcolor="#dae8fc"];
+  graphics2d [label="squared-graphics2d\n0.6.0-dev.7", fillcolor="#dae8fc"];
+  graphics [label="squared-graphics\n0.6.0-dev.4", fillcolor="#dae8fc"];
+  math [label="squared-math\n0.6.0-dev.2", fillcolor="#dae8fc"];
+  holoDisk [label="squared-holoDisk\n0.6.0-dev.2\n(no edge: optional, not yet integrated)", fillcolor="#e1d5e7"];
+
+  gui -> data;
+  gui -> application;
+  gui -> scene2d;
+  gui -> graphics2d;
+  graphics2d -> graphics;
+  graphics2d -> math;
+  { rank=sink; holoDisk; }
+}

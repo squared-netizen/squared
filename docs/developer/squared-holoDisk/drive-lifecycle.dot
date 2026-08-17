@@ -1,0 +1,21 @@
+// Drive creation/mount/unmount lifecycle.
+// Single optional HoloDrive; mount validates cartridge before use.
+digraph holodisk_drive_lifecycle {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  create [label="drive factory\ncreate emulated / ZIP-backed drive", fillcolor="#dae8fc"];
+  open [label="open cartridge file (ZIP)", fillcolor="#dae8fc"];
+  validate [label="validate cartridge:\nparse ZIP, safe paths,\nresource limits", fillcolor="#dae8fc"];
+  mounted [label="mounted\n(list + read / write scratch)", shape=oval, fillcolor="#d5e8d4"];
+  unmount [label="unmount()\nmaterialize scratch writes,\nrelease handles, cleanup", fillcolor="#f8cecc"];
+  reject [label="reject mount:\nmalformed / unsafe cartridge", fillcolor="#ff9999"];
+
+  create -> open;
+  open -> validate;
+  validate -> mounted [label="valid"];
+  validate -> reject [label="invalid"];
+  mounted -> unmount;
+  reject -> unmount [style=dashed, label="cleanup still runs"];
+}

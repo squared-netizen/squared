@@ -18,6 +18,20 @@ This repository is the authoritative development home for:
 - Squared Scene2D
 - Squared Time
 
+## Package-owned planning and history
+
+Every source package directory owns two governance documents:
+
+- `history.md` is an append-only, versioned record of completed package work.
+- `TODO.md` contains only unfinished package work, with the immediate priority
+  under `## Next`.
+
+When work is completed, remove its checkbox from `TODO.md` and record the
+result under the released version in that package's `history.md`. These files
+live beside `manifest.json`; they govern the package source without being
+copied into generated applications or changing an immutable `.sq` payload.
+The host test workflow rejects packages that omit or fail to maintain them.
+
 The initial source snapshot was extracted from Squared Project Generator
 0.6.0-dev.6. Framework development now advances here while the corresponding
 packages in `squared-pg` remain frozen bootstrap and integration fixtures.
@@ -38,9 +52,13 @@ Squared HoloDisk is independently tested as a ZIP cartridge drive and links
 only its own sources and vendored miniz implementation.
 
 Squared GUI is independently tested with a recording painter, so skins,
-layout, focus, pointer capture, controls, text editing, framework event
+layout, focus, pointer capture, controls, keyboard/IME text editing, framework event
 routing, and Graphics2D region drawing remain portable and require no window
-or GPU. Its packaged skin fixture uses CC0 Kenney UI Pack images.
+or GPU. Nine-patch drawables preserve corners while scaling window, dialog,
+and control backgrounds. Floating windows support styled close controls,
+edge/corner resizing, minimum sizes, and viewport constraints. Its packaged
+skin fixture uses CC0 Kenney UI Pack images and libGDX-compatible split and
+padding metadata.
 
 ## Build packages
 
@@ -50,10 +68,10 @@ Generator:
 ```sh
 squared-pg package build \
   packages/squared-math \
-  dist/squared-math-0.6.0-dev.1.sq
+  dist/squared-math-0.6.0-dev.2.sq
 
 squared-pg package add \
-  dist/squared-math-0.6.0-dev.1.sq
+  dist/squared-math-0.6.0-dev.2.sq
 ```
 
 `package build` validates the resulting archive. `package add` validates it
@@ -68,6 +86,16 @@ implementation is `dev.squarednetizen.squared.backend.sdl2-opengl`, which owns
 SDL2 window/context operations, OpenGL ES resources, and platform asset image
 loading. This selection adds no runtime backend registry or per-draw virtual
 dispatch.
+
+On Android, the platform adapter stops rendering at the background lifecycle
+boundary and marks Graphics2D resources stale without issuing unsafe GL calls.
+Foreground recovery reactivates SDL's context or creates a replacement,
+advances the portable context generation, and validates or rebuilds texture,
+atlas, shader, and buffer objects from retained recipes.
+Texture owners select a backend-neutral recovery recipe: reload an asset,
+retain RGBA pixels, regenerate pixels through a synchronous callback, or
+discard the resource. The GUI showcase regenerates cached text, avoiding
+permanent CPU-side copies of its glyph textures.
 
 ## Optional HoloDisk extension
 
@@ -88,6 +116,20 @@ Android, HoloDisk, or template dependency. Projects add it explicitly through
 the generator's optional project-module workflow. Its libGDX-inspired `Table`,
 `Window`, and `Dialog` layer provides grid constraints, floating panels, and
 modal workflows without crossing that portable boundary.
+
+`examples/gui-showcase` contains a complete visual Android test application.
+It presents every current widget across multiple movable and resizable windows,
+with launcher buttons, modal confirmation and about dialogs, scrolling content,
+the packaged nine-patch skin, and an SDL_ttf/SpriteBatch painter frontend.
+Its input path is portable above the adapter: Scene2D dispatches capture,
+target, and bubble phases, while GUI provides modifier-aware traversal,
+modal focus trapping, directional keyboard/controller navigation, activation,
+and cancellation.
+
+GUI package installation also carries the SHA-256-pinned gdx-skins archive
+into generated-project assets. The showcase uses the selected gdx-holo theme
+through GUI's bounded, transactional memory loader. A future HoloDisk-backed
+AssetManager can supply the same bytes without changing the GUI parser API.
 
 ## Repository boundary
 

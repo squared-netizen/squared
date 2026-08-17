@@ -1,0 +1,32 @@
+// Texture/atlas loading and GPU resource lifetime.
+// Transactional .atlas parsing plus per-texture GPU recovery lifecycle.
+digraph texture_atlas_lifecycle {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  read_asset [label="read_asset(atlas_path)\nSDL_RWFromFile, full read", fillcolor="#dae8fc"];
+  parse [label="parse_atlas -> vector<ParsedPage>\n(ParsedPage/ParsedRegion; filters/repeat\nvalidated; unsafe paths rejected)", fillcolor="#dae8fc"];
+  page_loop [label="for each page:\nTexture::load(image)\nset_filter / set_wrap", fillcolor="#dae8fc"];
+  validate [label="validate each region:\nbounds within page texture,\nduplicate (name, index) rejected", fillcolor="#dae8fc"];
+  build [label="build vector<AtlasRegion>\n(non-owning TextureRegion views)", fillcolor="#dae8fc"];
+  commit [label="commit: textures_.swap + regions_.swap", fillcolor="#d5e8d4"];
+  failure [label="return false;\ndestination left untouched", shape=diamond, fillcolor="#ff9999"];
+  gpu_life [label="Texture GPU resource:\nhandle_, dimensions, filters, wraps,\nrecovery policy", fillcolor="#ffe6cc"];
+  release [label="release()\n(drop GL handles)", fillcolor="#ffe6cc"];
+  invalidate [label="invalidate()\n(context loss)", fillcolor="#ffe6cc"];
+  restore [label="restore(context_preserved)\nreload / retain / regenerate / discard", fillcolor="#ffe6cc"];
+
+  read_asset -> parse;
+  parse -> page_loop;
+  page_loop -> validate;
+  validate -> build;
+  build -> commit;
+  parse -> failure [style=dashed, label="parse error"];
+  validate -> failure [style=dashed, label="invalid / duplicate"];
+  page_loop -> failure [style=dashed, label="page load failed"];
+  commit -> gpu_life;
+  gpu_life -> release;
+  gpu_life -> invalidate -> restore [style=dashed];
+  restore -> gpu_life;
+}

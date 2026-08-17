@@ -77,4 +77,63 @@ int main()
     assert(stage.root().height() == 90.0F);
     stage.root().clear();
     assert(stage.root().child_count() == 0);
+
+    Stage input_stage(200.0F, 120.0F);
+    auto input_group = std::make_unique<Group>();
+    input_group->set_bounds(10.0F, 20.0F, 150.0F, 80.0F);
+    Group* input_group_pointer = input_group.get();
+    static_cast<void>(input_stage.add_actor(std::move(input_group)));
+    auto input_leaf = std::make_unique<Actor>();
+    input_leaf->set_bounds(5.0F, 7.0F, 40.0F, 30.0F);
+    Actor* input_leaf_pointer = input_leaf.get();
+    static_cast<void>(input_group_pointer->add_actor(std::move(input_leaf)));
+
+    std::vector<int> input_order;
+    static_cast<void>(input_stage.root().add_input_listener(
+        [&input_order](squared::scene2d::InputEvent&) {
+            input_order.push_back(1);
+        },
+        true
+    ));
+    static_cast<void>(input_group_pointer->add_input_listener(
+        [&input_order](squared::scene2d::InputEvent&) {
+            input_order.push_back(2);
+        },
+        true
+    ));
+    static_cast<void>(input_leaf_pointer->add_input_listener(
+        [&input_order](squared::scene2d::InputEvent& event) {
+            input_order.push_back(3);
+            assert(event.phase() == squared::scene2d::InputPhase::target);
+            assert(event.local_x() == 3.0F && event.local_y() == 4.0F);
+        },
+        true
+    ));
+    const auto removable = input_leaf_pointer->add_input_listener(
+        [&input_order](squared::scene2d::InputEvent& event) {
+            input_order.push_back(4);
+            event.handle();
+        }
+    );
+    static_cast<void>(input_group_pointer->add_input_listener(
+        [&input_order](squared::scene2d::InputEvent&) {
+            input_order.push_back(5);
+        }
+    ));
+    static_cast<void>(input_stage.root().add_input_listener(
+        [&input_order](squared::scene2d::InputEvent&) {
+            input_order.push_back(6);
+        }
+    ));
+
+    squared::scene2d::InputEvent input;
+    input.type = squared::scene2d::InputType::pointer_down;
+    input.stage_x = 18.0F;
+    input.stage_y = 31.0F;
+    assert(input_stage.dispatch_input(input));
+    assert(input.target() == input_leaf_pointer);
+    assert(input.handled_by() == input_leaf_pointer);
+    assert((input_order == std::vector<int>{1, 2, 3, 4, 5, 6}));
+    assert(input_leaf_pointer->remove_input_listener(removable));
+    assert(!input_leaf_pointer->remove_input_listener(removable));
 }

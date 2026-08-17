@@ -1,0 +1,14 @@
+// JSON serialization flow.
+// Deterministic output; object keys in bytewise UTF-8 order.
+digraph json_serialization_flow {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  value [label="const JsonValue&", shape=oval, fillcolor="#fff2cc"];
+  walk [label="walk tree:\nObject via std::map<string, JsonValue,\nstd::less<>> (bytewise UTF-8 key order)", fillcolor="#dae8fc"];
+  write [label="serialize to output buffer\n(no silent truncation; failure reported)", fillcolor="#f8cecc"];
+  out [label="deterministic bytes", shape=oval, fillcolor="#d5e8d4"];
+
+  value -> walk -> write -> out;
+}

@@ -1,0 +1,20 @@
+// Delayed queue and Time integration.
+// Messaging schedules delayed telegrams on the Time DeadlineQueue and pops
+// due entries each update.
+digraph messaging_delayed_time_integration {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  dispatcher [label="MessageDispatcher\nupdate(now)", fillcolor="#dae8fc"];
+  deadline [label="Time DeadlineQueue\nmin-heap ordered by due time,\nFIFO for equal deadlines", fillcolor="#d5e8d4"];
+  ticket [label="opaque Ticket handles\n(cancel = O(n) dead-mark scan)", fillcolor="#dae8fc"];
+  due [label="pop due entries", fillcolor="#f8cecc"];
+  deliver [label="deliver within per-cycle caps", fillcolor="#f8cecc"];
+
+  dispatcher -> deadline [label="schedule(delay, ...) -> Ticket"];
+  deadline -> ticket;
+  dispatcher -> due [label="update advances due time"];
+  due -> deliver;
+  ticket -> deadline [style=dashed, label="cancel / remove"];
+}

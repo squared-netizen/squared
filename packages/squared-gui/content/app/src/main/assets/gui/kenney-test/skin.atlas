@@ -9,6 +9,8 @@ button.normal
   size: 192, 64
   orig: 192, 64
   offset: 0, 0
+  split: 16, 16, 16, 16
+  pad: 12, 12, 10, 10
   index: -1
 
 button-pressed.png
@@ -22,6 +24,8 @@ button.pressed
   size: 192, 64
   orig: 192, 64
   offset: 0, 0
+  split: 16, 16, 16, 16
+  pad: 12, 12, 10, 10
   index: -1
 
 checkbox-unchecked.png

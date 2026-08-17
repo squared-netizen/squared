@@ -1,0 +1,20 @@
+// SpriteBatch begin/draw/end sequence.
+// CPU staging -> one GPU draw call per texture run -> flush at end.
+digraph sprite_batch_sequence {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  begin [label="begin(camera)\nprogram + uniforms + blend state", fillcolor="#dae8fc"];
+  draw [label="draw(region/x,y,w,h/color) or draw(Sprite)\nappend_quad into CPU vertex staging", fillcolor="#dae8fc"];
+  flush [label="auto-flush:\ntexture switch or max sprites (16383)", fillcolor="#f8cecc"];
+  end [label="end(): final flush + unbind", fillcolor="#dae8fc"];
+  gpu [label="glDrawElements on GPU", shape=oval, fillcolor="#e1d5e7"];
+
+  begin -> draw;
+  draw -> flush [style=dashed, label="condition met"];
+  flush -> draw;
+  draw -> end;
+  flush -> gpu;
+  end -> gpu [style=dashed];
+}

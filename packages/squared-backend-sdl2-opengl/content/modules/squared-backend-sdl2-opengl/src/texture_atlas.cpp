@@ -453,11 +453,6 @@ int AtlasRegion::index() const noexcept
     return index_;
 }
 
-const TextureRegion& AtlasRegion::region() const noexcept
-{
-    return region_;
-}
-
 int AtlasRegion::packed_width() const noexcept
 {
     return packed_width_;
@@ -493,17 +488,6 @@ int AtlasRegion::offset_y() const noexcept
     return offset_y_;
 }
 
-const std::optional<std::array<int, 4>>&
-AtlasRegion::splits() const noexcept
-{
-    return splits_;
-}
-
-const std::optional<std::array<int, 4>>& AtlasRegion::pads() const noexcept
-{
-    return pads_;
-}
-
 TextureAtlas::~TextureAtlas()
 {
     destroy();
@@ -511,7 +495,21 @@ TextureAtlas::~TextureAtlas()
 
 bool TextureAtlas::load(const char* atlas_path) noexcept
 {
+    return load(atlas_path, TextureRecoveryPolicy::ReloadFromAsset);
+}
+
+bool TextureAtlas::load(
+    const char* atlas_path,
+    TextureRecoveryPolicy page_recovery
+) noexcept
+{
     if (!atlas_path || !*atlas_path) return false;
+    if (page_recovery == TextureRecoveryPolicy::Regenerate) {
+        SDL_SetError(
+            "TextureAtlas does not accept a shared Regenerate page policy"
+        );
+        return false;
+    }
     std::string source;
     if (!read_asset(atlas_path, source)) return false;
 
@@ -532,7 +530,9 @@ bool TextureAtlas::load(const char* atlas_path) noexcept
         for (const ParsedPage& page : parsed_pages) {
             auto texture = std::make_unique<Texture>();
             const std::string image_path = base + page.image;
-            if (!texture->load(image_path.c_str())) {
+            TextureRecoveryOptions recovery;
+            recovery.policy = page_recovery;
+            if (!texture->load(image_path.c_str(), recovery)) {
                 SDL_SetError(
                     "TextureAtlas page load failed for %s: %s",
                     image_path.c_str(),
@@ -634,9 +634,35 @@ void TextureAtlas::destroy() noexcept
     textures_.clear();
 }
 
+void TextureAtlas::release() noexcept
+{
+    for (const auto& texture : textures_) texture->release();
+}
+
+void TextureAtlas::invalidate() noexcept
+{
+    for (const auto& texture : textures_) texture->invalidate();
+}
+
+bool TextureAtlas::restore(bool context_preserved) noexcept
+{
+    if (textures_.empty() || regions_.empty()) return false;
+    for (const auto& texture : textures_) {
+        if (!texture->restore(context_preserved)) {
+            release();
+            return false;
+        }
+    }
+    return true;
+}
+
 bool TextureAtlas::valid() const noexcept
 {
-    return !textures_.empty() && !regions_.empty();
+    return !textures_.empty() && !regions_.empty() &&
+        std::all_of(
+            textures_.begin(), textures_.end(),
+            [](const auto& texture) { return texture->valid(); }
+        );
 }
 
 std::size_t TextureAtlas::page_count() const noexcept

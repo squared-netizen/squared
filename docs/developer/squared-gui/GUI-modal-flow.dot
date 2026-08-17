@@ -1,0 +1,22 @@
+// Window/dialog modal flow.
+// Overlay stack; modal window traps input and restricts focus to its subtree.
+digraph gui_modal_flow {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  show [label="show_window / open dialog\npush Overlay{window, previous_focus,\ncenter_pending}", fillcolor="#dae8fc"];
+  center [label="center pending window over parent", fillcolor="#dae8fc"];
+  focus [label="move keyboard focus into window", fillcolor="#dae8fc"];
+  modal [label="modal?\ntrap input to window subtree;\nrestrict focusable set", shape=diamond, fillcolor="#fff2cc"];
+  normal [label="non-modal: other windows\nstill reachable", fillcolor="#dae8fc"];
+  dismiss [label="dialog dismissed / window closed\npop Overlay, restore previous_focus", fillcolor="#f8cecc"];
+
+  show -> center;
+  center -> focus;
+  focus -> modal;
+  modal -> normal [label="no"];
+  modal -> modal [label="yes", style=dashed, constraint=false];
+  normal -> dismiss;
+  modal -> dismiss [style=dashed];
+}

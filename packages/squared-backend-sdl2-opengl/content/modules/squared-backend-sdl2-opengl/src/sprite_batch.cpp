@@ -124,32 +124,49 @@ SpriteBatch::~SpriteBatch()
 bool SpriteBatch::initialize(std::size_t maximum_sprites) noexcept
 {
     destroy();
-    while (glGetError() != GL_NO_ERROR) {
-    }
     maximum_sprites_ = std::min(
         std::max<std::size_t>(maximum_sprites, 1),
         kMaximumIndexableSprites
     );
-    vertices_.reserve(
-        maximum_sprites_ * kVerticesPerSprite * kFloatsPerVertex
-    );
+    try {
+        vertices_.reserve(
+            maximum_sprites_ * kVerticesPerSprite * kFloatsPerVertex
+        );
+    } catch (...) {
+        SDL_Log("Squared sprite batch CPU allocation failed");
+        destroy();
+        return false;
+    }
+    return allocate_gpu_objects();
+}
+
+bool SpriteBatch::allocate_gpu_objects() noexcept
+{
+    if (invalidated_) release();
+    while (glGetError() != GL_NO_ERROR) {
+    }
 
     program_ = create_program();
     if (!program_) {
-        destroy();
+        release();
         return false;
     }
     projection_uniform_ = glGetUniformLocation(program_, "u_projection");
     texture_uniform_ = glGetUniformLocation(program_, "u_texture");
     if (projection_uniform_ < 0 || texture_uniform_ < 0) {
         SDL_Log("Squared sprite shader uniforms are unavailable");
-        destroy();
+        release();
         return false;
     }
 
-    std::vector<std::uint16_t> indices(
-        maximum_sprites_ * kIndicesPerSprite
-    );
+    std::vector<std::uint16_t> indices;
+    try {
+        indices.resize(maximum_sprites_ * kIndicesPerSprite);
+    } catch (...) {
+        SDL_Log("Squared sprite index allocation failed");
+        release();
+        return false;
+    }
     for (std::size_t sprite = 0; sprite < maximum_sprites_; ++sprite) {
         const auto vertex = static_cast<std::uint16_t>(
             sprite * kVerticesPerSprite
@@ -191,7 +208,7 @@ bool SpriteBatch::initialize(std::size_t maximum_sprites) noexcept
     if (!vertex_buffer_ || !index_buffer_ ||
         glGetError() != GL_NO_ERROR) {
         SDL_Log("Squared sprite batch buffer allocation failed");
-        destroy();
+        release();
         return false;
     }
     return true;
@@ -199,10 +216,26 @@ bool SpriteBatch::initialize(std::size_t maximum_sprites) noexcept
 
 void SpriteBatch::destroy() noexcept
 {
+    release();
+    maximum_sprites_ = 0;
+    vertices_.clear();
+}
+
+void SpriteBatch::release() noexcept
+{
     drawing_ = false;
     vertices_.clear();
     sprite_count_ = 0;
     active_texture_ = 0;
+    if (invalidated_) {
+        index_buffer_ = 0;
+        vertex_buffer_ = 0;
+        program_ = 0;
+        projection_uniform_ = -1;
+        texture_uniform_ = -1;
+        invalidated_ = false;
+        return;
+    }
     if (index_buffer_) glDeleteBuffers(1, &index_buffer_);
     if (vertex_buffer_) glDeleteBuffers(1, &vertex_buffer_);
     if (program_) glDeleteProgram(program_);
@@ -211,7 +244,47 @@ void SpriteBatch::destroy() noexcept
     program_ = 0;
     projection_uniform_ = -1;
     texture_uniform_ = -1;
-    maximum_sprites_ = 0;
+    invalidated_ = false;
+}
+
+void SpriteBatch::invalidate() noexcept
+{
+    drawing_ = false;
+    vertices_.clear();
+    sprite_count_ = 0;
+    active_texture_ = 0;
+    if (program_ || vertex_buffer_ || index_buffer_) invalidated_ = true;
+}
+
+bool SpriteBatch::restore(bool context_preserved) noexcept
+{
+    if (invalidated_) {
+        const bool program_valid = context_preserved && program_ &&
+            glIsProgram(program_) == GL_TRUE;
+        const bool vertex_buffer_valid = context_preserved && vertex_buffer_ &&
+            glIsBuffer(vertex_buffer_) == GL_TRUE;
+        const bool index_buffer_valid = context_preserved && index_buffer_ &&
+            glIsBuffer(index_buffer_) == GL_TRUE;
+        if (context_preserved && program_valid && vertex_buffer_valid &&
+            index_buffer_valid) {
+            invalidated_ = false;
+            return true;
+        }
+        if (context_preserved) {
+            if (index_buffer_valid) glDeleteBuffers(1, &index_buffer_);
+            if (vertex_buffer_valid) glDeleteBuffers(1, &vertex_buffer_);
+            if (program_valid) glDeleteProgram(program_);
+        }
+        index_buffer_ = 0;
+        vertex_buffer_ = 0;
+        program_ = 0;
+        projection_uniform_ = -1;
+        texture_uniform_ = -1;
+        invalidated_ = false;
+    }
+    if (valid()) return true;
+    if (maximum_sprites_ == 0) return false;
+    return allocate_gpu_objects();
 }
 
 bool SpriteBatch::begin(const OrthographicCamera& camera) noexcept
@@ -357,7 +430,7 @@ void SpriteBatch::flush() noexcept
 
 bool SpriteBatch::valid() const noexcept
 {
-    return program_ && vertex_buffer_ && index_buffer_;
+    return !invalidated_ && program_ && vertex_buffer_ && index_buffer_;
 }
 
 void SpriteBatch::append_quad(

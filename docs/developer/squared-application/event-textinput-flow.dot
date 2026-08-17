@@ -1,0 +1,28 @@
+// Event and text-input flow from the backend adapter to the application
+// consumer. Aggregated Event variants (pointer, key, text) are delivered
+// through handle_event(); text editing is committed as whole UTF-8.
+digraph event_textinput_flow {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  backend  [label="backend adapter\n(SDL2 events / text service)", fillcolor="#ffe6cc"];
+  set_text_input_service [label="Application::set_text_input_service\n(host supplies text provider)", fillcolor="#dae8fc"];
+  text_input_shown [label="TextInputShown / TextInputHidden\n(IME visibility)", fillcolor="#dae8fc"];
+  text_editing [label="TextEditing\ncomposition (editing_start / editing_length)", fillcolor="#dae8fc"];
+  text_input [label="TextInput\ncommitted UTF-8 text", fillcolor="#dae8fc"];
+  event [label="Event\naggregate (pointer / key / navigation / text)", fillcolor="#f8cecc"];
+  handle [label="Application::handle_event(Event)\nconsumed on the application thread", fillcolor="#f8cecc"];
+  stable_ids [label="pointer identifiers stable per session", fillcolor="#fff2cc"];
+
+  backend -> event [label="normalize + aggregate"];
+  backend -> set_text_input_service;
+  set_text_input_service -> text_input_shown [style=dashed];
+  backend -> text_input_shown [style=dashed, label="IME open/close"];
+  backend -> text_editing [style=dashed, label="composition change"];
+  backend -> text_input [style=dashed, label="commit"];
+  text_editing -> event [style=dashed];
+  text_input -> event [style=dashed];
+  event -> handle;
+  event -> stable_ids [style=dotted, constraint=false];
+}

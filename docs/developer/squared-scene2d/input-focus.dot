@@ -1,0 +1,21 @@
+// Input propagation and focus transitions.
+// Capture -> target -> bubble dispatch with a snapshot of listeners;
+// focus is owned by the GUI Ui, not Scene2D.
+digraph scene2d_input_focus {
+  rankdir="TB";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  event [label="NavigationAction / semantic input\nfrom squared-application", shape=oval, fillcolor="#fff2cc"];
+  capture [label="capture phase\n(root towards target)", fillcolor="#dae8fc"];
+  target [label="target phase\n(target itself)", fillcolor="#f8cecc"];
+  bubble [label="bubble phase\n(target back towards root)", fillcolor="#dae8fc"];
+  snapshot [label="listener snapshot\n(listener ids are actor-local\nmonotonic; safe during dispatch)", fillcolor="#fff2cc"];
+  focus [label="focus transitions\n(FocusEvent pairs)\nownership: GUI Ui", fillcolor="#e1d5e7"];
+
+  event -> capture;
+  capture -> target;
+  target -> bubble;
+  bubble -> snapshot;
+  snapshot -> focus [style=dashed, label="GUI consumes"];
+}

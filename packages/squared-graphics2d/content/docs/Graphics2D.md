@@ -28,6 +28,9 @@ application drawing does not include SDL, Android, or raw OpenGL headers.
 
 The default camera uses a top-left origin: positive X points right and positive
 Y points down. Texture regions also use top-left image coordinates.
+`TextureRegion::subregion` creates another non-owning logical view and maps
+coordinates correctly even when the containing atlas region is stored with a
+clockwise rotation. Invalid subregion bounds return an empty region.
 
 ## Texture atlases
 
@@ -62,11 +65,45 @@ Public headers live beneath `include/squared/`. Doxygen discovers new
 subdirectories recursively, so developers may organize additional framework
 or application code without editing the documentation configuration.
 
-## Current lifecycle limit
+## Graphics-context recovery
 
-GPU objects, including atlas page textures, must be created and destroyed
-while the selected backend context is current. Automatic restoration after
-context loss is deferred until the asset manager is introduced.
+`Texture`, `TextureAtlas`, and `SpriteBatch` support a three-step recovery
+cycle. `invalidate()` marks native handles stale without issuing graphics
+commands, which is safe after Android reports that rendering is unavailable.
+Once a context is current, `restore(context.resources_preserved())` either
+validates preserved handles or recreates missing textures, shaders, and
+buffers. `release()` remains available when a context is known to be current.
+
+Texture recovery is selected when the texture is created and remains entirely
+inside the portable Graphics2D API:
+
+| Policy | CPU recovery storage | Context-loss behavior |
+| --- | --- | --- |
+| `ReloadFromAsset` | Asset path | Decode and upload the asset again. |
+| `RetainPixels` | One RGBA8888 copy | Upload the retained pixels. |
+| `Regenerate` | Callback and caller-owned pointer | Ask application code to synchronously provide new pixels. |
+| `Discard` | None | Remain invalid; the owner may recreate or remove the resource. |
+
+`load(path)` defaults to `ReloadFromAsset`; `create_rgba(...)` and
+`create_solid(...)` default to `RetainPixels`, preserving source compatibility.
+Pass `TextureRecoveryOptions` to select another policy. A regeneration
+callback receives `TextureRecoveryTarget`, whose `upload_rgba()` consumes the
+pixels synchronously. Neither the callback nor public header refers to SDL,
+OpenGL, Android, or another backend API. The caller owns `user_data` and must
+keep it alive while restoration is possible.
+
+`recovery_policy()` reports the selection and `retained_recovery_bytes()`
+reports only the RGBA bytes held for `RetainPixels`. Asset paths, callback user
+state, backend allocations, and ordinary object bookkeeping are not included.
+Atlas loading accepts a page policy of `ReloadFromAsset`, `RetainPixels`, or
+`Discard`; its default remains asset reload. `Regenerate` is intentionally
+rejected for an atlas-wide policy because different pages require distinct
+recipes.
+
+Atlas restoration preserves page object addresses and region objects, so
+existing sprites and GUI drawables do not acquire dangling texture references.
+Sprite batches retain their configured capacity and rebuild the built-in
+shader and buffers when required.
 
 ## Scene and UI boundary
 

@@ -3,7 +3,7 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.holodisk",
-  "version": "0.6.0-dev.1",
+  "version": "0.6.0-dev.2",
   "name": "Squared HoloDisk",
   "description": "Optional standalone ZIP cartridge drives with scratch-backed mutation and transactional materialization.",
   "module": {

@@ -3,7 +3,7 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.time",
-  "version": "0.6.0-dev.1",
+  "version": "0.6.0-dev.2",
   "name": "Squared Time",
   "description": "Low-allocation time domains and deadline scheduling for Squared applications.",
   "module": {

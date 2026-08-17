@@ -34,6 +34,8 @@ cmake_language(DEFER
     CALL add_dependencies
         squared_gui
         squared_application
+        squared_data
+        squared_graphics2d
         squared_scene2d
 )
 cmake_language(DEFER
@@ -42,6 +44,8 @@ cmake_language(DEFER
         squared_gui
         PUBLIC
         squared_application
+        squared_data
+        squared_graphics2d
         squared_scene2d
 )
 
