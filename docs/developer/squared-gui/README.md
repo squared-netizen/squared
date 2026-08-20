@@ -31,18 +31,19 @@ The manifest declares `module.requires` as exactly:
 | `dev.squarednetizen.squared.data` | `0.6.0-dev.2` |
 | `dev.squarednetizen.squared.application` | `0.6.0-dev.5` |
 | `dev.squarednetizen.squared.scene2d` | `0.6.0-dev.7` |
-| `dev.squarednetizen.squared.graphics2d` | `0.6.0-dev.7` |
+| `dev.squarednetizen.squared.graphics2d` | `0.6.0-dev.8` |
 
 The CMake target `squared_gui` links exactly those four targets
 (`content/modules/squared-gui/CMakeLists.txt` defers the edges to the top-level
 directory because generated projects register module targets alphabetically).
 The public headers include Application `event.hpp`/`text_input.hpp`, Scene2D
-`group.hpp`/`stage.hpp`, and Graphics2D `texture_atlas.hpp`/`texture_region.hpp`
+`group.hpp`/`stage.hpp`, and Graphics2D `bitmap_font.hpp`,
+`texture_atlas.hpp`, and `texture_region.hpp`
 plus `graphics/color.hpp`, which arrives transitively through Graphics2D. No
 SDL, Android, OpenGL, or HoloDisk header or link requirement appears anywhere;
 `history.md` records that runtime JSON skin loading through a
-HoloDisk-backed AssetManager remains future work, and HoloDisk must stay absent
-from the GUI dependency graph until that integration exists. The GUI depends on
+HoloDisk now owns the generic AssetManager, but GUI loader registration remains
+future work; HoloDisk must stay absent from the GUI dependency graph. The GUI depends on
 portable Scene2D input propagation and the portable Application event type; it
 never names a backend or another widget hierarchy.
 
@@ -50,19 +51,21 @@ never names a backend or another widget hierarchy.
 
 | Component | Source | Responsibility |
 | --- | --- | --- |
-| `Painter`, `Drawable` + concrete drawables, `Skin`, styles | `src/gui.cpp`, `include/…/gui.hpp` | Drawing boundary, image abstractions, named resource and style tables. |
+| `Painter`, `FontResource`, `Drawable` + concrete drawables, `Skin`, styles | `src/gui.cpp`, `include/…/gui.hpp` | Font-aware drawing boundary, immutable font/image abstractions, named resource and style tables. |
 | `Widget` + all concrete widgets, `Cell`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane` | `src/gui.cpp` | Measure/layout, painting, pointer/key/text handling. |
 | `Window`, `Dialog` | `src/gui.cpp` | Floating panels, dragging, resizing, modal blocking, focus restoration. |
-| `Ui` | `src/gui.cpp` | Facade owning stage, skin, content, windows, captures, and focus. |
-| `SkinLoadSeverity/Issue/Limits/Report`, `load_libgdx_skin`, `SkinDrawableResolver` | `src/skin_loader.cpp` | Normalization, strict parsing, validation, staged import, commit. |
+| `Ui` | `src/gui.cpp` | Facade owning stage, skin, content, windows, captures, focus, and transient tooltip state. |
+| `SkinLoadSeverity/Issue/Limits/Report`, `load_libgdx_skin`, drawable/font resolvers | `src/skin_loader.cpp` | Normalization, resource resolution, typed inheritance, staged import, commit. |
 | `resolve_atlas_drawable` | `src/skin_atlas_resolver.cpp` | Converts atlas regions to region or nine-patch drawables. |
 
 `Ui` is the facade over the `scene2d::Stage`, the by-value `Skin`, the
 `SkinLoader` entry point, pointer capture bookkeeping, and the focus list. The
 retained widget component list is: `Label`, `Image`, `Panel`, `Separator`,
-`Button`, `ToggleButton`, `CheckBox`, `TextField`, `Slider`, `Table`,
-`LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane`, `Window`, and
-`Dialog`. Every one derives from `Widget`, which derives from `scene2d::Group`.
+`Button`, `ToggleButton`, `CheckBox`, `RadioButton`, `TextField`, `Slider`,
+`ProgressBar`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`,
+`ScrollPane`, `Window`, and `Dialog`. Every visual component derives from
+`Widget`, which derives from `scene2d::Group`; non-visual `ButtonGroup`
+coordinates existing toggle widgets without owning them.
 
 ## Ownership and threading
 
@@ -80,6 +83,19 @@ retained widget component list is: `Label`, `Image`, `Panel`, `Separator`,
   window; Widget* previous_focus; bool center_pending}`) hold non-owning views
   into that tree. `captures_` is a non-owning `unordered_map<int64_t,
   Widget*>` keyed by framework pointer id.
+- **Tooltip lifetimes.** Each declaring `Widget` owns a copyable factory. When
+  one delay expires, the factory returns a fresh `unique_ptr<Widget>` subtree;
+  `Ui` recursively marks it untouchable and transfers it to the same Stage
+  root that owns content and windows. `tooltip_widget_` and `tooltip_owner_`
+  are non-owning views. Dismissal detaches and destroys the subtree. Opening a
+  window, replacing content, closing an owning window, input activity, or a
+  modal-scope failure clears the applicable transient state.
+- **Button-group lifetimes.** A `ButtonGroup` stores non-owning
+  `ToggleButton*` members and each member points back to at most one group.
+  Both destructors detach the relation, making group-first and button-first
+  destruction safe while leaving widget ownership solely in the Composite.
+  Checked-count changes may invoke ordinary button change callbacks and must
+  remain on the UI thread.
 - **Window lifetimes.** `show_window`/`show_dialog` push an `Overlay`, then
   adopt the window; if adoption throws the overlay is popped. `close_window`
   clears captured pointers inside the window, removes the actor (returning
@@ -93,6 +109,11 @@ retained widget component list is: `Label`, `Image`, `Panel`, `Separator`,
   views, so the backing texture/atlas must outlive every drawable — a hard
   constraint on Android graphics recovery, where textures are recreated and
   restored by the application while the widget tree and skin survive.
+- **Font lifetimes.** `Skin` stores `shared_ptr<const FontResource>`. A
+  resolved resource owns its Graphics2D BMFont metrics and page-region values,
+  but each `TextureRegion` remains a non-owning view. Page textures are owned
+  by the application/asset layer and must survive every layout and paint call.
+  Descriptor-only resources allow old painters to retain their default font.
 - **Threading.** One thread drives the `Ui`. All state — stage, skin, focus,
   captures, overlays, widget `layout_valid_` flags — is unsynchronized and must
   not be mutated concurrently. The single thread model matches the
@@ -134,6 +155,10 @@ the stage, windows are constrained to the stage bounds, and the window (and
 hence its content table) is validated. Finally, when a `TextField` is focused
 and a text-input service is active, the field's stage rectangle is recomputed
 and pushed through `update_area`. Layout runs before paint on every frame.
+Finally `layout_tooltip` measures the ordinary tooltip subtree, caps it to the
+viewport less twice the configured margin, prefers below-right placement for
+pointer triggers or below-centered placement for focus, flips above on bottom
+overflow, clamps both axes, and validates its child layout.
 
 ## Input and focus
 
@@ -182,6 +207,17 @@ Closing a modal restores the recorded previous focus; overlays record the focus
 at their own open time and rewrite `previous_focus` when a window they point
 into closes.
 
+**Tooltips.** Pointer hit testing for tooltip discovery ignores touchability so
+read-only labels can declare help, then walks to the nearest declaring Widget.
+Move arms hover; primary down arms a single long press; distance squared beyond
+the configured tolerance cancels the press without a square root. Tab,
+directional keys, and semantic navigation arm the focused widget or its nearest
+declaring ancestor. `Ui::update` gives press, hover, then focus candidates
+priority and materializes content when its delay expires. A completed long
+press dispatches pointer-cancel to and releases the captured control before
+showing help, preventing an activation on release. Eligibility requires
+a visible Stage descendant and, when present, membership in the top modal.
+
 ## Skin loading transaction
 
 `load_libgdx_skin` (in `skin_loader.cpp`) is `noexcept` and follows a strict
@@ -201,15 +237,14 @@ pipeline; failure at any point leaves `destination` untouched:
    4096, `maximum_name_bytes` default 128; class names capped at 240 bytes).
    Any error-severity issue aborts before any resource is loaded.
 5. **Staged load** — an `Importer` fills a private `Skin candidate_`, phase by
-   phase: `load_colors` (named colors plus the `default`/`grey`/`ui`/`white`
-   palette hooks), `validate_fonts` (bitmap-font `file` paths must be relative
-   contained asset paths), `load_tinted_colors`, `load_buttons` (button and
-   text-button classes), `load_text_fields`, `load_check_boxes`,
-   `load_sliders`, `load_windows`, then `report_unsupported` warnings for any
-   other libGDX class. Drawables resolve through the caller's resolver
-   callback and are cached and counted; an unresolved drawable reference is an
-   error. Colors accept inline objects or references to named colors and
-   reject non-finite or out-of-range components.
+   phase: colors, fonts, tinted drawables, then labels, buttons/text buttons,
+   text fields, check boxes, sliders, progress bars, and windows. Fonts and drawables resolve
+   through caller callbacks and are cached and counted. Each supported style
+   class is resolved by a three-state DFS, so `parent` or `extends` may name a
+   same-class style declared before or after the child; missing parents,
+   cycles, both keywords on one style, and cross-class references are errors.
+   Colors accept inline objects or named references and reject non-finite or
+   out-of-range components. Other libGDX classes produce warnings.
 6. **Commit** — if no error-severity issue was recorded, `destination_ =
    std::move(candidate_)` swaps the finished skin into place. Otherwise the
    candidate is dropped and `destination` keeps its prior bytes.
@@ -221,15 +256,19 @@ and text payloads are copied without re-encoding.
 
 ## Data structures and complexity
 
-- `Skin` is `unordered_map<std::string, DrawablePtr>` plus six
+- `Skin` is two resource maps (`DrawablePtr`, `FontPtr`) plus eight
   `unordered_map<std::string, Style>` tables — average O(1) lookup and insert,
-  worst case O(n) on hash collision. Drawable/style lookups construct a
+  worst case O(n) on hash collision. Resource/style lookups construct a
   temporary `std::string` from the `string_view` key.
 - `Ui::captures_` is an `unordered_map<int64_t, Widget*>`: O(1) average
   capture lookup and erase.
 - `Ui::overlays_` is a `std::vector<Overlay>`; push is amortized O(1),
   `close_window` is O(n) linear find, and `top_modal` scans from the back in
   O(n) worst case (O(1) when only the top overlay is modal).
+- Tooltip state is a fixed set of raw candidate/owner pointers, elapsed values,
+  and anchors: O(1) update and reset. Owner discovery and scope validation walk
+  one ancestor chain, O(depth); recursive untouchability is O(nodes) only when
+  a fresh tooltip subtree is created.
 - `Table` cells are a `std::deque<Cell>`: amortized O(1) `push_back` and stable
   Cell references across growth. `add` performs a linear scan of existing
   cells to find the next free column (O(cells)). `measure`/`layout` are
@@ -254,13 +293,19 @@ and text payloads are copied without re-encoding.
   are a *rich* composite — the same class participates in input, layout, and
   painting, rather than separating structure from strategy.
 - **Strategy** — `Painter` is an abstract interface (measure, fill, stroke,
-  region, text, clip) implemented by the application (e.g. the showcase's
+  region, font-aware text, clip) implemented by the application (e.g. the showcase's
   SDL2/OpenGL `SpriteGuiPainter`, the tests' `RecordingPainter`). Widgets and
   drawables depend only on the interface. Alternatives rejected: direct
   backend calls in widgets (ties GUI to a backend) and a global function
   table (no place for state such as the text cache). Deviation: the strategy
   is supplied *by the caller* rather than selected by the framework, keeping
   the package free of any backend.
+- **Flyweight** — immutable `FontResource` objects and drawables are shared by
+  styles through `shared_ptr<const T>`, so metrics and resource references are
+  not duplicated across widgets. The application still owns page textures.
+- **Prototype** — a typed imported style begins as a copy of its same-class
+  parent and then overlays only declared fields. This matches libGDX style
+  inheritance without introducing a runtime style-object hierarchy.
 - **Facade** — `Ui` hides the `Stage`, the by-value `Skin`, the skin-loader
   entry point, capture bookkeeping, and focus management behind a compact
   surface (`event`, `pointer`, `key_down`, `layout`, `paint`, `show_window`,
@@ -273,7 +318,7 @@ and text payloads are copied without re-encoding.
   callback-driven loader (loses deterministic ordering of colors before
   styles).
 - **Observer** — change notification is expressed through `std::function`
-  callbacks: button click, toggle/check change, slider change, dialog result,
+  callbacks: button click, toggle/check/radio change, slider change, dialog result,
   plus the Scene2D input-listener interface for actors. Alternatives rejected:
   a framework-wide event bus (unneeded global state; callbacks suffice).
 - **Factory (simple, data-driven)** — `resolve_atlas_drawable` (and the
@@ -282,6 +327,11 @@ and text payloads are copied without re-encoding.
   nine-patch splits becomes a `NinePatchDrawable`. This is not the classic
   Factory Method (no virtual creation hook per subclass); the choice is a
   single function branching on data.
+- **Factory (callback)** — `Widget::TooltipFactory` constructs a fresh
+  Composite subtree each time a tooltip appears. Storing a widget instance on
+  its owner was rejected because one actor cannot have two parents and retained
+  hidden children would pollute owner layout/hit testing. The plain-text helper
+  is a concrete factory assembling existing primitives.
 - **Transactional commit** — the skin import stages work into a candidate and
   commits with one move, giving a strong all-or-nothing guarantee enforced by
   the `noexcept` boundary and the report's error aggregation.
@@ -291,17 +341,20 @@ and text payloads are copied without re-encoding.
 - **Layout pass order**: `Ui::layout` → content `validate_layout` (recursing
   parent-first, children depth-first via each container's own `layout`) →
   each overlay: size-if-zero → center if pending → `constrain_to_parent` →
-  window `validate_layout` → text-input area refresh. Painting then walks the
+  window `validate_layout` → text-input area refresh → tooltip measure,
+  flip/clamp, and validation. Painting then walks the
   stage children (content first, then overlays in open order, top-most last),
   pushing a clip per widget, painting it, then its children, then popping.
 - **Input dispatch order**: pointer → capture lookup → hit test (with modal
-  trap) → focus assignment → Scene2D capture/target/bubble dispatch →
+  trap) plus tooltip candidate update → focus assignment → Scene2D
+  capture/target/bubble dispatch →
   capture bookkeeping → prune closed windows. Keys → focused widget → Tab →
   arrows → Escape; then prune.
 - **Skin-load pipeline order**: byte limit → normalize → strict bounded parse
-  → importer limit checks → colors → fonts → tinted drawables → buttons →
-  text fields → check boxes → sliders → windows → unsupported-class warnings →
-  commit by swap.
+  → importer limit checks → colors → fonts → tinted drawables → labels →
+  buttons → text fields → check boxes → sliders → progress bars → windows → unsupported-class
+  warnings → commit by swap. Each style-class step resolves its inheritance
+  graph before inserting the resulting values.
 
 ## Limitations and technical debt
 
@@ -315,14 +368,19 @@ and text payloads are copied without re-encoding.
   tracks list/select-box popups and keyboard-accessible popup behavior.
 - **Touch**: pointer capture is per pointer id; there are no pinch, pan
   (beyond `ScrollPane` drag), or multi-touch gesture handlers.
+- **Tooltip content**: plain text is single-line because `Label` is
+  single-line. Applications can supply a custom composed subtree, but content
+  wider/taller than the viewport is clipped rather than automatically wrapped
+  or scrolled.
 - **Skin model**: one `Skin` per `Ui`, styles fall back to `"default"`, and
   only a subset of libGDX resource classes is supported; unknown classes only
-  warn. Font rasterization and typed style inheritance are recorded as the
-  next unfinished work in `TODO.md`. Text rendering remains the application's
-  responsibility through `Painter`.
+  warn. Font pages and drawable textures remain application-owned resources.
+- **Text shaping**: `GlyphLayout` supplies portable BMFont glyph placement,
+  advances, kerning, line breaks, and scaling. It does not yet provide script
+  shaping, bidi reordering, fallback-font runs, or rich-text spans.
 - **Atlas resolution**: drawables hold raw region views, so texture lifetimes
   bind to application assets; resolution must be provided by the application
-  (the HoloDisk-backed AssetManager is future work per `TODO.md`).
+  (registration with HoloDisk's AssetManager remains future work per `TODO.md`).
 - **Layout**: `ScrollPane` is vertical-only with no rendered scrollbar; every
   layout pass re-measures from scratch (no incremental layout); cell `grow`
   weights are binary rather than proportional shares.
@@ -331,7 +389,3 @@ and text payloads are copied without re-encoding.
   center can shrink to nothing.
 - **Modal model**: only the top modal dims and traps; `Overlay` bookkeeping
   keeps focus restoration best-effort across nested window closes.
-- **Header/implementation agreement**: the `Skin` style-getter Doxygen claims
-  `@throws std::out_of_range` when a name is absent, but the implementation
-  falls back to `"default"` and throws only when `"default"` is also missing;
-  the header comment is the only mismatch and no code change was made.

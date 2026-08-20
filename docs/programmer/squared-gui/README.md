@@ -4,7 +4,10 @@ Squared GUI is the framework's portable retained-mode widget library. It
 provides a widget tree with measured layouts, a named drawable and style
 `Skin`, pointer/keyboard/focus input routed through Scene2D propagation,
 floating draggable and resizable `Window`s, modal `Dialog`s, and a
-transactional loader for a supported subset of libGDX skin JSON. All widgets
+transactional loader for a supported subset of libGDX skin JSON, immutable
+bitmap-font resources, same-type imported style inheritance, and composed
+hover/touch/focus tooltips, determinate progress, grouped radio choices, and
+drawable-or-glyph buttons. All widgets
 are C++ objects owned by the widget tree; nothing here touches SDL, OpenGL,
 Android, or HoloDisk, and there is no separate second widget hierarchy.
 
@@ -12,7 +15,7 @@ Android, or HoloDisk, and there is no separate second widget hierarchy.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.gui` | `0.6.0-dev.12` | `dev.squarednetizen.squared.data@0.6.0-dev.2`, `dev.squarednetizen.squared.application@0.6.0-dev.5`, `dev.squarednetizen.squared.scene2d@0.6.0-dev.7`, `dev.squarednetizen.squared.graphics2d@0.6.0-dev.7` |
+| `dev.squarednetizen.squared.gui` | `0.6.0-dev.15` | `dev.squarednetizen.squared.data@0.6.0-dev.2`, `dev.squarednetizen.squared.application@0.6.0-dev.5`, `dev.squarednetizen.squared.scene2d@0.6.0-dev.7`, `dev.squarednetizen.squared.graphics2d@0.6.0-dev.8` |
 
 The CMake target is `squared_gui`, a static library exporting the `include/`
 directory and the C++20 requirement. It links Application, Data, Scene2D, and
@@ -30,22 +33,24 @@ All types live in namespace `squared::gui` and in the two headers listed.
 | `SizeHints` | `squared/gui/gui.hpp` | Minimum, preferred, and maximum size of one widget. |
 | `Direction`, `Alignment` | `squared/gui/gui.hpp` | Layout axis and per-cell alignment enums. |
 | `Painter` | `squared/gui/gui.hpp` | Application-implemented drawing boundary used for measure and paint. |
+| `FontResource`, `FontPtr` | `squared/gui/gui.hpp` | Immutable descriptor-only or resolved BMFont resource shared by styles. |
 | `Drawable`, `DrawablePtr` | `squared/gui/gui.hpp` | Immutable image abstraction; `shared_ptr<const Drawable>`. |
 | `ColorDrawable`, `RegionDrawable`, `NinePatchDrawable`, `NinePatchSplits` | `squared/gui/gui.hpp` | Concrete drawables: flat color, one texture region, scalable nine-piece region. |
-| `Skin` | `squared/gui/gui.hpp` | Named drawable table plus named styles for panel, button, text field, check box, slider, window. |
-| `PanelStyle`, `ButtonStyle`, `TextFieldStyle`, `CheckBoxStyle`, `SliderStyle`, `WindowStyle` | `squared/gui/gui.hpp` | Style value types referencing drawables and colors. |
+| `Skin` | `squared/gui/gui.hpp` | Named font/drawable tables plus named widget styles. |
+| `PanelStyle`, `LabelStyle`, `ButtonStyle`, `TextFieldStyle`, `CheckBoxStyle`, `SliderStyle`, `ProgressBarStyle`, `WindowStyle` | `squared/gui/gui.hpp` | Style value types referencing immutable fonts, drawables, and colors. |
 | `PointerAction`, `PointerEvent`, `Key`, `KeyModifiers` | `squared/gui/gui.hpp` | Portable input payloads at the GUI boundary. |
 | `Widget` | `squared/gui/gui.hpp` | Base class of every GUI node; derives from `scene2d::Group`. |
+| `Widget::TooltipFactory`, `TooltipConfig` | `squared/gui/gui.hpp` | Fresh custom tooltip content plus Ui timing, movement, and placement policy. |
 | `Label`, `Image`, `Panel`, `Separator` | `squared/gui/gui.hpp` | Content and structure widgets. |
-| `Button`, `ToggleButton`, `CheckBox` | `squared/gui/gui.hpp` | Clickable and selectable controls. |
+| `Button`, `ToggleButton`, `CheckBox`, `RadioButton`, `ButtonGroup` | `squared/gui/gui.hpp` | Clickable controls and bounded selection coordination. |
 | `TextField` | `squared/gui/gui.hpp` | Single-line UTF-8 text entry with cursor and composition. |
-| `Slider` | `squared/gui/gui.hpp` | Draggable one-axis value selector. |
+| `Slider`, `ProgressBar` | `squared/gui/gui.hpp` | Interactive values and read-only determinate progress. |
 | `Cell`, `Table` | `squared/gui/gui.hpp` | Grid layout with chainable per-cell constraints. |
 | `LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane` | `squared/gui/gui.hpp` | Additional compositional containers. |
 | `Window`, `Dialog` | `squared/gui/gui.hpp` | Floating table-backed panels; `Dialog` adds modal blocking and results. |
 | `Ui` | `squared/gui/gui.hpp` | Owns one widget tree, the stage, the skin, and all open windows. |
 | `SkinLoadSeverity`, `SkinLoadIssue`, `SkinLoadLimits`, `SkinLoadReport` | `squared/gui/skin_loader.hpp` | Diagnostics, limits, and counts for transactional skin loading. |
-| `SkinDrawableResolver`, `load_libgdx_skin`, `resolve_atlas_drawable` | `squared/gui/skin_loader.hpp` | Portable libGDX skin import entry points. |
+| `SkinDrawableResolver`, `SkinFontResolver`, `load_libgdx_skin`, `resolve_atlas_drawable` | `squared/gui/skin_loader.hpp` | Portable libGDX skin import and resource-resolution entry points. |
 
 ## Creating a Ui over an Application
 
@@ -120,7 +125,7 @@ private:
   or through the narrower `pointer()`, `key_down()`, `key_up()`,
   `navigation()`, `text_input()`, and `text_editing()` entry points.
 - `update(delta_seconds)` advances time-based state and removes
-  close-requested windows. `layout(painter)` validates layout of every visible
+  close-requested windows and advances tooltip delays. `layout(painter)` validates layout of every visible
   widget; `paint(painter)` draws the content and all overlays with per-widget
   clipping. Call both once per frame.
 - `set_text_input_service(service)` installs the platform-neutral soft-keyboard
@@ -170,9 +175,9 @@ squared::gui::Skin load_theme(
   `resolve_atlas_drawable(atlas, name)` is the ready-made helper: it produces a
   `RegionDrawable`, or a `NinePatchDrawable` when the atlas region carries
   libGDX `split`/`pad` metadata.
-- On success `report` counts `colors_loaded`, `drawables_loaded`, and
-  `styles_loaded`; `report.success()` is `true` when no error-severity issue
-  was recorded.
+- On success `report` counts `colors_loaded`, `drawables_loaded`,
+  `fonts_loaded`, and `styles_loaded`; `report.success()` is `true` when no
+  error-severity issue was recorded.
 - The default `SkinLoadLimits` bound the document to 1 MiB of JSON, 64 levels
   of nesting, 4096 loaded resources, and 128 bytes per resource name. Override
   the limits by passing a modified copy:
@@ -187,11 +192,63 @@ squared::gui::SkinLoadReport report;
 // ... load_libgdx_skin(skin, json, resolver, report, limits);
 ```
 
+### Fonts and typed imported styles
+
+Every declared libGDX bitmap font becomes a named `FontResource`. The
+compatibility overload shown above stores a descriptor-only resource, so an
+existing Painter continues using its default text implementation. Supply the
+full overload's `SkinFontResolver` to return a resolved resource containing a
+valid `graphics2d::BitmapFont`, its page regions in page-id order, and an
+optional logical scale:
+
+```cpp
+auto gui_font = std::make_shared<squared::gui::FontResource>(
+    "fonts/default.fnt",
+    std::move(parsed_bitmap_font),
+    std::move(page_regions),
+    1.0F
+);
+
+const bool loaded = squared::gui::load_libgdx_skin(
+    skin,
+    json_bytes,
+    drawable_resolver,
+    [gui_font](std::string_view name, std::string_view path) {
+        return name == "default-font" && path == "fonts/default.fnt"
+            ? gui_font : squared::gui::FontPtr{};
+    },
+    report
+);
+```
+
+`ButtonStyle::font`, `TextFieldStyle::font`, `CheckBoxStyle::font`,
+`WindowStyle::title_font`, and `LabelStyle::font` carry that immutable shared
+handle. Widgets pass it to the font-aware Painter overloads for both
+measurement and drawing. The base `Painter::measure_text(text, font)` uses
+Graphics2D `GlyphLayout` when metrics are resolved; the base font-aware draw
+overload delegates to the painter's original text method. A bitmap renderer
+overrides the font-aware draw call, lays out text, calls
+`FontResource::glyph_region` for each placement, and submits the region to its
+SpriteBatch. Page textures remain application-owned and must outlive the font.
+
+Imported styles may inherit another named style in the same libGDX resource
+class with `parent` or `extends`:
+
+```text
+default: { up: button-up, down: button-down, font: default-font },
+compact: { parent: default, up: compact-up }
+```
+
+Resolution is independent of declaration order. The parent is copied first,
+then child fields override it. A parent cannot cross from one concrete style
+type to another; unknown parents, both keywords on one style, and cycles are
+errors that preserve the previous destination Skin.
+
 ## Skins and drawables
 
-A `Skin` is a named resource table. Drawables are immutable and shared through
-`DrawablePtr` (`std::shared_ptr<const Drawable>`); style values are plain
-structs that reference drawables.
+A `Skin` is a named resource table. Fonts and drawables are immutable and
+shared through `FontPtr` and `DrawablePtr`; style values are plain structs
+that reference those resources.
 
 ```cpp
 squared::gui::Skin skin;
@@ -262,8 +319,28 @@ squared::gui::Window& shown = ui.show_window(std::move(window));
   `set_on_click(callback)` replaces it later. `ToggleButton` and `CheckBox`
   report new states through `set_on_change(std::function<void(bool)>`;
   `Slider` through `set_on_change(std::function<void(float)>`.
+- `Button::set_icon` displays a shared drawable and `set_glyph` displays UTF-8
+  text using an optional `FontResource`; either replaces the other while the
+  normal button label, focus, and activation paths remain unchanged.
+- `ButtonGroup(minimum, maximum)` coordinates existing `ToggleButton` or
+  `RadioButton` instances without owning them. A `(1, 1)` group is ordinary
+  one-of-many radio behavior. Group and buttons detach in either destruction
+  order. `ProgressBar(minimum, maximum, value)` clamps its value and exposes a
+  normalized `progress()` without accepting pointer or keyboard input.
 - `show_window` transfers ownership of the window to the `Ui`; the returned
   reference is stable until the window closes.
+
+```cpp
+squared::gui::ButtonGroup difficulty(1, 1);
+auto casual = std::make_unique<squared::gui::RadioButton>("Casual", true);
+auto expert = std::make_unique<squared::gui::RadioButton>("Expert");
+difficulty.add(*casual);
+difficulty.add(*expert);
+
+auto save = std::make_unique<squared::gui::Button>("Save", save_and_close);
+save->set_glyph("S", skin.font("icons"));
+auto loading = std::make_unique<squared::gui::ProgressBar>(0.0F, 100.0F, 35.0F);
+```
 
 ## Focus and keyboard navigation
 
@@ -293,6 +370,50 @@ ui.key_down(squared::gui::Key::escape);                 // dismiss cancellable d
 - Semantic controller navigation arrives through `ui.navigation(action, id)`
   and maps to the same directional, next/previous, activate, and cancel
   behavior without exposing a controller API in the GUI.
+
+## Tooltips
+
+Every `Widget` can declare either plain text or a factory producing a fresh
+custom widget subtree. Plain text is assembled from the existing `Stack`,
+`Panel`, `MarginContainer`, and `Label` primitives. A custom factory may return
+any unparented `Widget`; while visible, the `Ui` temporarily owns that subtree
+through the normal Scene2D Stage root and makes it untouchable.
+
+```cpp
+auto save = std::make_unique<squared::gui::Button>("Save", save_document);
+save->set_tooltip("Write the current document");
+
+auto swatch = std::make_unique<squared::gui::Button>("Color");
+swatch->set_tooltip_factory([] {
+    auto row = std::make_unique<squared::gui::LinearLayout>(
+        squared::gui::Direction::horizontal
+    );
+    row->add(std::make_unique<squared::gui::Label>("Current color"));
+    return row;
+});
+
+squared::gui::TooltipConfig tips;
+tips.hover_delay = 0.45;
+tips.long_press_delay = 0.60;
+tips.focus_delay = 0.35;
+ui.set_tooltip_config(tips);
+```
+
+- Hover requires a stationary pointer for `hover_delay`. A primary contact
+  uses `long_press_delay`; movement beyond `movement_tolerance` cancels it.
+  When the delay completes, Ui sends pointer-cancel to the captured control so
+  releasing a help gesture does not also activate it.
+- Tab, arrow-key, and semantic controller focus arm `focus_delay`. Pointer or
+  key interaction dismisses the current tooltip.
+- Only owners inside the active modal subtree are eligible. Opening or closing
+  windows resets stale candidates.
+- `Ui::layout` prefers placement below the pointer or focused owner, flips
+  above when necessary, and clamps the result inside `viewport_margin`.
+  `tooltip_visible()`, `tooltip_owner()`, and `tooltip_bounds()` expose
+  read-only state for diagnostics and tests.
+- `clear_tooltip()` removes a declaration. An empty text or factory does the
+  same. Factories execute on the UI thread when the delay expires and must
+  return a fresh, unparented subtree.
 
 ## Pointer input coordinates and coordinate spaces
 
@@ -391,6 +512,10 @@ window.set_minimum_window_size({320.0F, 240.0F});
   on a `Skin` or constructing a `NinePatchDrawable` whose splits exceed the
   source region. Style lookups raise `std::out_of_range` only when the
   `"default"` style of that kind is missing.
+- **Tooltips** reject negative or non-finite configuration values with
+  `std::invalid_argument`. A custom factory exception propagates from
+  `Ui::update`; returning a parented widget is rejected with
+  `std::invalid_argument`, while returning null simply declines to show.
 - **Input entry points** (`event`, `pointer`, `key_down`, `key_up`,
   `navigation`, `text_input`, `text_editing`) return `true` when the widget
   tree handled the event. There is no exception channel across the input
@@ -406,13 +531,18 @@ window.set_minimum_window_size({320.0F, 240.0F});
   table to that content table. References returned by `add`, `set_content`,
   `content_table`, and `button_table` are valid for the child's lifetime.
 - **`Ui` owns the stage and the skin.** It adopts the content widget and every
-  shown window. A window is removed when it is closed; the `Ui` then drops its
-  ownership and the window and its contents are destroyed.
+  shown window. It also temporarily adopts the fresh tooltip subtree; hiding
+  the tooltip removes and destroys that subtree. A window is removed when it
+  is closed; the `Ui` then drops its ownership and the window and its contents
+  are destroyed. Tooltip factories remain owned by their declaring widgets.
 - **Drawables are shared and immutable.** `DrawablePtr` gives shared ownership
   of the drawable object, but a `RegionDrawable`/`NinePatchDrawable` stores a
   raw view of a `TextureRegion`, so the owning `Texture`/`TextureAtlas` must
   outlive every use of the drawable. This matters on Android context loss: the
   application rebuilds or restores its textures before drawing again.
+- **Fonts are shared and immutable.** `FontPtr` owns its descriptor identity,
+  parsed metrics, and page-region values. Those regions are non-owning; their
+  application-owned textures must outlive the resource and all painter calls.
 - **Focus and listener references must not outlive their widgets.** Callbacks
   captured into buttons, toggles, sliders, and dialogs must not reference
   widgets that can be closed and destroyed while the callback is installed.

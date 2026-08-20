@@ -111,6 +111,7 @@ target_include_directories(squared_math_test
 
 add_executable(squared_graphics2d_portable_test
     tests/graphics2d-portable-test.cpp
+    "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GRAPHICS2D_ROOT}/src/orthographic_camera.cpp"
     "${SQUARED_MATH_ROOT}/src/matrix4.cpp"
 )
@@ -164,6 +165,7 @@ target_link_libraries(squared_messaging_test
 
 add_executable(squared_holodisk_test
     tests/holodisk-test.cpp
+    "${SQUARED_HOLODISK_ROOT}/src/asset_manager.cpp"
     "${SQUARED_HOLODISK_ROOT}/src/holodrive.cpp"
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz.c"
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tdef.c"
@@ -173,6 +175,7 @@ add_executable(squared_holodisk_test
 
 add_executable(squared_gui_test
     tests/gui-test.cpp
+    "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
     "${SQUARED_GUI_ROOT}/src/skin_loader.cpp"
     "${SQUARED_DATA_ROOT}/src/json.cpp"
@@ -234,6 +237,7 @@ target_compile_definitions(squared_gui_test
 add_executable(squared_gui_showcase_test
     tests/gui-showcase-test.cpp
     examples/gui-showcase/src/showcase.cpp
+    "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/group.cpp"

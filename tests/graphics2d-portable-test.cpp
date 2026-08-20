@@ -1,4 +1,5 @@
 #include <squared/graphics/context.hpp>
+#include <squared/graphics2d/bitmap_font.hpp>
 #include <squared/graphics2d/orthographic_camera.hpp>
 #include <squared/graphics2d/sprite_batch.hpp>
 #include <squared/graphics2d/texture.hpp>
@@ -9,6 +10,7 @@
 #include <concepts>
 #include <cstdlib>
 #include <iostream>
+#include <string_view>
 #include <type_traits>
 
 namespace {
@@ -132,6 +134,77 @@ int main()
         std::abs(camera.zoom() - 2.0F) < 0.0001F,
         "camera zoom remains portable"
     );
+
+    constexpr std::string_view font_descriptor = R"FONT(info face="Test Face" size=20 bold=0 italic=0 charset="" unicode=1
+common lineHeight=20 base=15 scaleW=64 scaleH=64 pages=1 packed=0
+page id=0 file="fonts/test.png"
+chars count=4
+char id=32 x=0 y=0 width=0 height=0 xoffset=0 yoffset=0 xadvance=5 page=0 chnl=15
+char id=63 x=0 y=0 width=7 height=10 xoffset=1 yoffset=2 xadvance=9 page=0 chnl=15
+char id=65 x=8 y=0 width=8 height=10 xoffset=1 yoffset=2 xadvance=10 page=0 chnl=15
+char id=86 x=16 y=0 width=8 height=10 xoffset=0 yoffset=2 xadvance=10 page=0 chnl=15
+char id=937 x=24 y=0 width=10 height=10 xoffset=0 yoffset=2 xadvance=10 page=0 chnl=15
+kernings count=1
+kerning first=65 second=86 amount=-2
+)FONT";
+
+    squared::graphics2d::BitmapFont font;
+    squared::graphics2d::BitmapFontError font_error;
+    require(font.load(font_descriptor, font_error),
+            "text BMFont descriptor loads");
+    require(font.valid() && font.info().face == "Test Face",
+            "font metadata is retained");
+    require(font.pages().size() == 1 &&
+                font.pages().front().file == "fonts/test.png",
+            "font keeps a safe relative texture-page reference");
+    require(font.glyph(U'\u03A9') != nullptr && font.kerning(U'A', U'V') == -2,
+            "Unicode glyphs and kerning pairs are indexed");
+
+    squared::graphics2d::GlyphLayout layout;
+    squared::graphics2d::GlyphLayoutOptions layout_options;
+    layout_options.target_width = 30.0F;
+    layout_options.alignment = squared::graphics2d::GlyphAlignment::center;
+    require(layout.set_text(font, "AV\n\xCE\xA9", layout_options, font_error),
+            "UTF-8 glyph layout succeeds");
+    require(layout.lines().size() == 2 && layout.glyphs().size() == 3,
+            "explicit newlines create distinct glyph lines");
+    require(std::abs(layout.lines()[0].width - 18.0F) < 0.0001F &&
+                std::abs(layout.lines()[0].x_offset - 6.0F) < 0.0001F,
+            "kerning affects width before center alignment");
+    require(std::abs(layout.glyphs()[1].x - 14.0F) < 0.0001F &&
+                std::abs(layout.glyphs()[2].x - 10.0F) < 0.0001F,
+            "aligned placements retain kerning and per-line offsets");
+    require(std::abs(layout.width() - 30.0F) < 0.0001F &&
+                std::abs(layout.height() - 40.0F) < 0.0001F,
+            "layout exposes target width and multiline height");
+
+    const auto prior_glyph_count = layout.glyphs().size();
+    require(!layout.set_text(font, std::string_view{"\xFF", 1}, font_error) &&
+                font_error.code ==
+                    squared::graphics2d::BitmapFontErrorCode::invalid_utf8,
+            "strict layout rejects malformed UTF-8");
+    require(layout.glyphs().size() == prior_glyph_count,
+            "failed layout preserves the previous glyph run");
+    layout_options.reject_invalid_utf8 = false;
+    layout_options.target_width = 0.0F;
+    require(layout.set_text(font, std::string_view{"\xFF", 1}, layout_options,
+                            font_error) &&
+                layout.glyphs().size() == 1 &&
+                layout.glyphs().front().codepoint == U'?',
+            "permissive layout substitutes malformed UTF-8");
+
+    constexpr std::string_view unsafe_descriptor = R"FONT(info face="Bad" size=20 bold=0 italic=0 unicode=1
+common lineHeight=20 base=15 scaleW=64 scaleH=64 pages=1
+page id=0 file="../escape.png"
+chars count=1
+char id=65 x=0 y=0 width=8 height=10 xoffset=0 yoffset=0 xadvance=8 page=0
+)FONT";
+    require(!font.load(unsafe_descriptor, font_error) &&
+                font_error.code ==
+                    squared::graphics2d::BitmapFontErrorCode::malformed,
+            "unsafe texture-page paths are rejected");
+    require(font.valid() && font.glyph(U'\u03A9') != nullptr,
+            "failed BMFont load preserves the previous resource");
 
     std::cout << "Squared Graphics2D portable boundary: OK\n";
     return 0;

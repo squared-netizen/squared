@@ -2,12 +2,40 @@
 
 ## Unreleased
 
+- Advance GUI to `0.6.0-dev.15` with determinate progress bars, lifetime-safe
+  button groups and radio behavior, drawable-or-glyph button content, imported
+  libGDX progress styles, portable tests, documentation, and showcase coverage.
+
+- Advance GUI to `0.6.0-dev.14` with tooltip factories on every Widget,
+  plain-text tooltips composed from existing containers and labels, configurable
+  hover/touch/focus timing, movement cancellation, modal scoping, and
+  viewport-aware placement through the existing Stage root.
+
+- Advance GUI to `0.6.0-dev.13` and its exact Graphics2D requirement to
+  `0.6.0-dev.8`. Add immutable bitmap-font resources, font-aware Painter and
+  widget measurement/drawing, imported Label styles, and order-independent
+  same-type style inheritance with cycle detection and transactional rollback.
+
+- Advance Graphics2D to `0.6.0-dev.8` with bounded, transactional text
+  BMFont resources and UTF-8 glyph layout. The portable result carries page,
+  source-rectangle, placement, and advance values ready for GUI page
+  resolution and SpriteBatch submission without adding a backend or HoloDisk
+  dependency.
+
+- Advance HoloDisk to `0.6.0-dev.3` with a synchronous application-owned,
+  typed AssetManager: registered loader strategies, immutable shared handles,
+  bounded reads, cache/dependency tracking, cycle detection, transactional
+  reload, explicit unload, and manager-owned nested in-memory ZIP mounts.
+- Record the next GUI foundation order: Graphics2D bitmap fonts and glyph
+  layout, GUI font resources/style inheritance, tooltips, and the remaining
+  primitive widgets before File Picker, Canvas, Text Editor, and Console.
+
 - Advance Graphics2D to `0.6.0-dev.7`, Scene2D to `0.6.0-dev.7`, the
   SDL2/OpenGL backend to `0.6.0-dev.5`, Messaging to `0.6.0-dev.3`, and GUI
   to `0.6.0-dev.12` as dependency-alignment-only releases. The exact
   dependency coordinates now reference the published leaf versions
   (Application `0.6.0-dev.5`, Data `0.6.0-dev.2`, Graphics `0.6.0-dev.4`,
-  Math `0.6.0-dev.2`, Time `0.6.0-dev.2`, and HoloDisk `0.6.0-dev.2`); no
+  Math `0.6.0-dev.2`, Time `0.6.0-dev.2`, and HoloDisk `0.6.0-dev.3`); no
   ABI or behavior changes.
 - Add repository documentation trees `docs/programmer` and `docs/developer`
   with paired package guides, a Doxygen-integrated programmer index, and

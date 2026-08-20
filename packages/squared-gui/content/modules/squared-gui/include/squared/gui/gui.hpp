@@ -3,6 +3,7 @@
 #include <squared/application/event.hpp>
 #include <squared/application/text_input.hpp>
 #include <squared/graphics/color.hpp>
+#include <squared/graphics2d/bitmap_font.hpp>
 #include <squared/graphics2d/texture_atlas.hpp>
 #include <squared/graphics2d/texture_region.hpp>
 #include <squared/scene2d/group.hpp>
@@ -16,6 +17,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -69,6 +71,86 @@ struct SizeHints {
 };
 
 /**
+ * @brief Immutable portable bitmap-font resource selected by GUI styles.
+ *
+ * A descriptor-only resource records the safe asset path imported from a
+ * skin. A resolved resource additionally owns parsed BMFont metrics and
+ * non-owning texture-page regions. The textures referenced by those regions
+ * must outlive the resource. FontResource performs no I/O and has no HoloDisk
+ * or rendering-backend dependency.
+ */
+class FontResource final {
+public:
+    /**
+     * @brief Construct a descriptor-only resource.
+     * @param descriptor_path Contained relative BMFont descriptor path.
+     * @throws std::invalid_argument when the path is empty, absolute, contains
+     * a backslash, or contains an empty, `.` or `..` component.
+     */
+    explicit FontResource(std::string descriptor_path);
+
+    /**
+     * @brief Construct a resolved bitmap-font resource.
+     * @param descriptor_path Contained relative descriptor identity.
+     * @param font Valid parsed BMFont value transferred into the resource.
+     * @param pages Page regions in BMFont page-id order. Each region must be
+     * at least as large as the descriptor page dimensions and its texture
+     * must outlive this resource.
+     * @param scale Uniform logical-unit scale; finite and greater than zero.
+     * @throws std::invalid_argument when any invariant is not satisfied.
+     */
+    FontResource(
+        std::string descriptor_path,
+        graphics2d::BitmapFont font,
+        std::vector<graphics2d::TextureRegion> pages,
+        float scale = 1.0F
+    );
+
+    /** @brief Return the descriptor asset path owned by this resource. */
+    [[nodiscard]] const std::string& descriptor_path() const noexcept
+    {
+        return descriptor_path_;
+    }
+
+    /** @brief Return true when parsed metrics and matching pages are present. */
+    [[nodiscard]] bool resolved() const noexcept { return font_.has_value(); }
+
+    /** @brief Return parsed metrics, or null for a descriptor-only resource. */
+    [[nodiscard]] const graphics2d::BitmapFont* bitmap_font() const noexcept
+    {
+        return font_ ? &*font_ : nullptr;
+    }
+
+    /** @brief Return page regions in BMFont page-id order. */
+    [[nodiscard]] std::span<const graphics2d::TextureRegion> pages() const noexcept
+    {
+        return pages_;
+    }
+
+    /**
+     * @brief Derive the texture view for one placement from this font.
+     * @param glyph Placement produced from this resource's BitmapFont.
+     * @return Non-owning page subregion, or an empty region when unresolved
+     * or when the placement does not fit its declared page.
+     */
+    [[nodiscard]] graphics2d::TextureRegion glyph_region(
+        const graphics2d::GlyphPlacement& glyph
+    ) const noexcept;
+
+    /** @brief Return the uniform conversion from source pixels to GUI units. */
+    [[nodiscard]] float scale() const noexcept { return scale_; }
+
+private:
+    std::string descriptor_path_;
+    std::optional<graphics2d::BitmapFont> font_;
+    std::vector<graphics2d::TextureRegion> pages_;
+    float scale_{1.0F};
+};
+
+/** @brief Immutable shared ownership of one GUI font resource. */
+using FontPtr = std::shared_ptr<const FontResource>;
+
+/**
  * @brief Portable drawing boundary implemented over Squared Graphics2D.
  *
  * All coordinate systems are logical pixels in the same space used for widget
@@ -85,6 +167,18 @@ public:
      * @return Extent the text occupies when drawn with the current font.
      */
     [[nodiscard]] virtual Size measure_text(std::string_view text) = 0;
+
+    /**
+     * @brief Measure text using a style-selected font when it is resolved.
+     * @param text UTF-8 text to measure.
+     * @param font Borrowed font resource, or null for the painter default.
+     * @return Extent in logical units. The base implementation uses
+     * GlyphLayout for resolved resources and otherwise calls measure_text(text).
+     */
+    [[nodiscard]] virtual Size measure_text(
+        std::string_view text,
+        const FontResource* font
+    );
 
     /**
      * @brief Fill a rectangle with a solid color.
@@ -133,6 +227,24 @@ public:
         float y,
         graphics::Color color
     ) = 0;
+
+    /**
+     * @brief Draw single-line text with a style-selected font.
+     * @param text UTF-8 text to render.
+     * @param x Left position in logical units.
+     * @param y Top position in logical units.
+     * @param font Borrowed font resource, or null for the painter default.
+     * @param color Normalized text color.
+     * @note The base implementation delegates to the font-agnostic overload;
+     * renderers supporting bitmap pages override this method.
+     */
+    virtual void draw_text(
+        std::string_view text,
+        float x,
+        float y,
+        const FontResource* font,
+        graphics::Color color
+    );
 
     /**
      * @brief Push a clipping rectangle.
@@ -343,6 +455,16 @@ struct PanelStyle {
     DrawablePtr background;
 };
 
+/** @brief Style data for a Label widget. */
+struct LabelStyle {
+    /** @brief Font resource, or empty to use the painter default. */
+    FontPtr font;
+    /** @brief Primary label color. */
+    std::optional<graphics::Color> text;
+    /** @brief Muted label color. */
+    std::optional<graphics::Color> muted_text;
+};
+
 /** @brief Style data for a Button widget. */
 struct ButtonStyle {
     /** @brief Drawable shown in the normal state. */
@@ -361,6 +483,12 @@ struct ButtonStyle {
     float minimum_height{44.0F};
     /** @brief Horizontal label padding in logical units. */
     float horizontal_padding{12.0F};
+    /** @brief Label font, or empty to use the painter default. */
+    FontPtr font;
+    /** @brief Square drawable/glyph slot size in logical units. */
+    float icon_size{20.0F};
+    /** @brief Gap between an icon and non-empty label in logical units. */
+    float icon_spacing{8.0F};
 };
 
 /** @brief Style data for a TextField widget. */
@@ -377,6 +505,8 @@ struct TextFieldStyle {
     float minimum_height{44.0F};
     /** @brief Horizontal text padding in logical units. */
     float horizontal_padding{10.0F};
+    /** @brief Text font, or empty to use the painter default. */
+    FontPtr font;
 };
 
 /** @brief Style data for a CheckBox widget. */
@@ -393,6 +523,8 @@ struct CheckBoxStyle {
     float spacing{8.0F};
     /** @brief Minimum touch target size in logical units. */
     float minimum_touch_size{44.0F};
+    /** @brief Label font, or empty to use the painter default. */
+    FontPtr font;
 };
 
 /** @brief Style data for a Slider widget. */
@@ -407,6 +539,18 @@ struct SliderStyle {
     float minimum_length{120.0F};
     /** @brief Minimum touch target size in logical units. */
     float minimum_touch_size{44.0F};
+};
+
+/** @brief Style data for a non-interactive ProgressBar widget. */
+struct ProgressBarStyle {
+    /** @brief Drawable for the complete progress track. */
+    DrawablePtr track;
+    /** @brief Drawable for the completed portion of the track. */
+    DrawablePtr fill;
+    /** @brief Preferred horizontal length in logical units. */
+    float minimum_length{120.0F};
+    /** @brief Preferred track thickness in logical units. */
+    float thickness{12.0F};
 };
 
 /** @brief Style data for a Window widget. */
@@ -435,6 +579,8 @@ struct WindowStyle {
     float close_size{28.0F};
     /** @brief Resize grab border width in logical units. */
     float resize_border{8.0F};
+    /** @brief Title and close-glyph font, or empty for the painter default. */
+    FontPtr title_font;
 };
 
 /**
@@ -525,11 +671,33 @@ public:
     [[nodiscard]] DrawablePtr drawable(std::string_view name) const noexcept;
 
     /**
+     * @brief Register or replace a named immutable font resource.
+     * @param name Lookup name; must be non-empty.
+     * @param font Shared font resource; must be non-empty.
+     * @throws std::invalid_argument when name or font is empty.
+     */
+    void add_font(std::string name, FontPtr font);
+
+    /**
+     * @brief Look up a named font resource.
+     * @param name Font name to look up.
+     * @return Shared font, or an empty pointer when absent.
+     */
+    [[nodiscard]] FontPtr font(std::string_view name) const noexcept;
+
+    /**
      * @brief Register or replace a named panel style.
      * @param name Style name.
      * @param style Style value to store.
      */
     void add_panel_style(std::string name, PanelStyle style);
+
+    /**
+     * @brief Register or replace a named label style.
+     * @param name Style name.
+     * @param style Style value to store.
+     */
+    void add_label_style(std::string name, LabelStyle style);
 
     /**
      * @brief Register or replace a named button style.
@@ -560,6 +728,13 @@ public:
     void add_slider_style(std::string name, SliderStyle style);
 
     /**
+     * @brief Register or replace a named progress-bar style.
+     * @param name Style name.
+     * @param style Style value to store.
+     */
+    void add_progress_bar_style(std::string name, ProgressBarStyle style);
+
+    /**
      * @brief Register or replace a named window style.
      * @param name Style name.
      * @param style Style value to store.
@@ -569,58 +744,79 @@ public:
     /**
      * @brief Look up a panel style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const PanelStyle& panel_style(std::string_view name) const;
 
     /**
+     * @brief Look up a label style.
+     * @param name Style name to look up.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
+     */
+    [[nodiscard]] const LabelStyle& label_style(std::string_view name) const;
+
+    /**
      * @brief Look up a button style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const ButtonStyle& button_style(std::string_view name) const;
 
     /**
      * @brief Look up a text-field style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const TextFieldStyle& text_field_style(std::string_view name) const;
 
     /**
      * @brief Look up a check-box style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const CheckBoxStyle& check_box_style(std::string_view name) const;
 
     /**
      * @brief Look up a slider style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const SliderStyle& slider_style(std::string_view name) const;
 
     /**
+     * @brief Look up a progress-bar style.
+     * @param name Style name to look up.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
+     */
+    [[nodiscard]] const ProgressBarStyle& progress_bar_style(
+        std::string_view name
+    ) const;
+
+    /**
      * @brief Look up a window style.
      * @param name Style name to look up.
-     * @return Reference to the stored style.
-     * @throws std::out_of_range when the name is absent.
+     * @return Named style, or `default` when the name is absent.
+     * @throws std::out_of_range only when `default` is also absent.
      */
     [[nodiscard]] const WindowStyle& window_style(std::string_view name) const;
 
 private:
     std::unordered_map<std::string, DrawablePtr> drawables_;
+    std::unordered_map<std::string, FontPtr> fonts_;
     std::unordered_map<std::string, PanelStyle> panel_styles_;
+    std::unordered_map<std::string, LabelStyle> label_styles_;
     std::unordered_map<std::string, ButtonStyle> button_styles_;
     std::unordered_map<std::string, TextFieldStyle> text_field_styles_;
     std::unordered_map<std::string, CheckBoxStyle> check_box_styles_;
     std::unordered_map<std::string, SliderStyle> slider_styles_;
+    std::unordered_map<std::string, ProgressBarStyle> progress_bar_styles_;
     std::unordered_map<std::string, WindowStyle> window_styles_;
 };
 
@@ -672,6 +868,9 @@ using KeyModifiers = scene2d::InputModifiers;
  */
 class Widget : public scene2d::Group {
 public:
+    /** @brief Factory creating one fresh tooltip widget subtree on demand. */
+    using TooltipFactory = std::function<std::unique_ptr<Widget>()>;
+
     ~Widget() override = default;
 
     /**
@@ -685,9 +884,13 @@ public:
     /**
      * @brief Report the preferred size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing style, font, and spacing values.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] virtual Size preferred_size(Painter& painter) const;
+    [[nodiscard]] virtual Size preferred_size(
+        Painter& painter,
+        const Skin& skin
+    ) const;
 
     /**
      * @brief Report the largest acceptable size.
@@ -798,9 +1001,36 @@ public:
      */
     [[nodiscard]] bool enabled() const noexcept { return enabled_; }
 
+    /**
+     * @brief Attach a plain-text tooltip composed from standard GUI widgets.
+     * @param text UTF-8 tooltip text. An empty string clears the tooltip.
+     * @post A fresh Stack/Panel/MarginContainer/Label subtree is created each
+     * time the tooltip is shown.
+     */
+    void set_tooltip(std::string text);
+
+    /**
+     * @brief Attach a custom tooltip widget factory.
+     * @param factory Copyable callback returning a fresh unparented widget
+     * subtree. An empty callback clears the tooltip.
+     * @note The Ui temporarily owns each returned subtree while it is shown.
+     */
+    void set_tooltip_factory(TooltipFactory factory);
+
+    /** @brief Remove the tooltip declaration from this widget. */
+    void clear_tooltip() noexcept;
+
+    /** @brief Return true when this widget declares tooltip content. */
+    [[nodiscard]] bool has_tooltip() const noexcept
+    {
+        return static_cast<bool>(tooltip_factory_);
+    }
+
 private:
+    friend class Ui;
     bool layout_valid_{false};
     bool enabled_{true};
+    TooltipFactory tooltip_factory_;
 
 protected:
     /**
@@ -808,6 +1038,24 @@ protected:
      * @param event Scene2D input event to adapt.
      */
     void input_event(scene2d::InputEvent& event) override;
+};
+
+/** @brief Timing and placement policy for transient Ui tooltips. */
+struct TooltipConfig final {
+    /** @brief Stationary pointer delay in seconds. */
+    double hover_delay{0.5};
+    /** @brief Primary-contact hold delay in seconds. */
+    double long_press_delay{0.6};
+    /** @brief Keyboard/controller focus delay in seconds. */
+    double focus_delay{0.5};
+    /** @brief Pointer travel cancelling a long press, in logical units. */
+    float movement_tolerance{8.0F};
+    /** @brief Minimum tooltip distance from viewport edges, in logical units. */
+    float viewport_margin{8.0F};
+    /** @brief Gap between focused owner and tooltip, in logical units. */
+    float owner_gap{8.0F};
+    /** @brief Offset from a hover/press pointer, in logical units. */
+    float pointer_offset{14.0F};
 };
 
 /** @brief Read-only text widget. */
@@ -832,6 +1080,15 @@ public:
     [[nodiscard]] const std::string& text() const noexcept { return text_; }
 
     /**
+     * @brief Select a named LabelStyle from the active Skin.
+     * @param style Style name; an unknown name falls back to `default`.
+     */
+    void set_style(std::string style);
+
+    /** @brief Return the selected label-style name. */
+    [[nodiscard]] const std::string& style() const noexcept { return style_; }
+
+    /**
      * @brief Control the muted visual style.
      * @param muted true renders with the muted text color.
      */
@@ -840,9 +1097,10 @@ public:
     /**
      * @brief Report the measured text size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing the selected label style and font.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the label text.
@@ -853,6 +1111,7 @@ public:
 
 private:
     std::string text_;
+    std::string style_{"default"};
     bool muted_{false};
 };
 
@@ -874,9 +1133,10 @@ public:
     /**
      * @brief Report the drawable size.
      * @param painter Active painter used for measurement.
+     * @param skin Active skin; unused by image measurement.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the drawable.
@@ -1056,9 +1316,10 @@ public:
     /**
      * @brief Report the preferred size from cell content.
      * @param painter Active painter used for measurement.
+     * @param skin Skin forwarded to every cell widget.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Compute cell rectangles and position every child.
@@ -1119,9 +1380,10 @@ public:
     /**
      * @brief Report the preferred size from stacked content.
      * @param painter Active painter used for measurement.
+     * @param skin Skin forwarded to every child widget.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Position children along the layout axis.
@@ -1152,9 +1414,10 @@ public:
     /**
      * @brief Report the largest child as preferred.
      * @param painter Active painter used for measurement.
+     * @param skin Skin forwarded to every child widget.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Expand every child to the stack box.
@@ -1183,9 +1446,10 @@ public:
     /**
      * @brief Report the content size plus margins.
      * @param painter Active painter used for measurement.
+     * @param skin Skin forwarded to the content widget.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Position the content inside the margin insets.
@@ -1224,9 +1488,10 @@ public:
     /**
      * @brief Report the content size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin forwarded to the content widget.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Position the content and clamp the scroll offset.
@@ -1251,7 +1516,82 @@ private:
     std::optional<std::int64_t> drag_pointer_;
 };
 
-/** @brief Clickable, focusable control with an optional label. */
+class ToggleButton;
+
+/**
+ * @brief Non-owning coordinator for toggle buttons and radio-style choices.
+ *
+ * A button may belong to at most one group. The group and every registered
+ * button detach from each other during destruction, so either may be owned by
+ * an ordinary Widget subtree without imposing a second ownership hierarchy.
+ */
+class ButtonGroup final {
+public:
+    /**
+     * @brief Construct a checked-count policy.
+     * @param minimum_checked Minimum checked buttons while members exist.
+     * @param maximum_checked Maximum checked buttons; must not be smaller
+     * than `minimum_checked`.
+     * @throws std::invalid_argument when the limits are reversed.
+     */
+    explicit ButtonGroup(
+        std::size_t minimum_checked = 0,
+        std::size_t maximum_checked =
+            std::numeric_limits<std::size_t>::max()
+    );
+    ~ButtonGroup();
+
+    ButtonGroup(const ButtonGroup&) = delete;
+    ButtonGroup& operator=(const ButtonGroup&) = delete;
+    ButtonGroup(ButtonGroup&&) = delete;
+    ButtonGroup& operator=(ButtonGroup&&) = delete;
+
+    /**
+     * @brief Register a non-owned toggle button.
+     * @param button Button that must outlive the call; duplicate adds are no-ops.
+     * @throws std::invalid_argument when the button already belongs to another
+     * group.
+     */
+    void add(ToggleButton& button);
+
+    /**
+     * @brief Detach one registered button.
+     * @param button Candidate member.
+     * @return true when the button was a member.
+     */
+    bool remove(ToggleButton& button);
+
+    /** @brief Detach every member without destroying any button. */
+    void clear() noexcept;
+
+    /**
+     * @brief Replace the checked-count policy and rebalance current members.
+     * @param minimum_checked Minimum checked buttons while members exist.
+     * @param maximum_checked Maximum checked buttons.
+     * @throws std::invalid_argument when the limits are reversed.
+     */
+    void set_limits(std::size_t minimum_checked, std::size_t maximum_checked);
+
+    /** @brief Return the number of registered buttons. */
+    [[nodiscard]] std::size_t size() const noexcept { return buttons_.size(); }
+
+    /** @brief Return the number of currently checked members. */
+    [[nodiscard]] std::size_t checked_count() const noexcept;
+
+    /** @brief Return the first checked member, or null when none is checked. */
+    [[nodiscard]] ToggleButton* checked_button() const noexcept;
+
+private:
+    friend class ToggleButton;
+    bool request_state(ToggleButton& button, bool checked);
+    void rebalance();
+
+    std::vector<ToggleButton*> buttons_;
+    std::size_t minimum_checked_{0};
+    std::size_t maximum_checked_{std::numeric_limits<std::size_t>::max()};
+};
+
+/** @brief Clickable, focusable control with an optional label and icon. */
 class Button : public Widget {
 public:
     /** @brief Click action invoked when the button is activated. */
@@ -1289,6 +1629,24 @@ public:
     void set_style(std::string style);
 
     /**
+     * @brief Display a drawable before the label.
+     * @param drawable Shared immutable drawable; empty clears the icon.
+     * @post Any previously configured glyph is cleared.
+     */
+    void set_icon(DrawablePtr drawable);
+
+    /**
+     * @brief Display one UTF-8 glyph before the label.
+     * @param glyph UTF-8 glyph text; empty clears the icon.
+     * @param font Optional immutable font, or empty for the button style font.
+     * @post Any previously configured drawable icon is cleared.
+     */
+    void set_glyph(std::string glyph, FontPtr font = {});
+
+    /** @brief Remove either kind of icon while preserving the label. */
+    void clear_icon();
+
+    /**
      * @brief Report the style-driven minimum size.
      * @note Parameters match Widget::minimum_size: an active painter and the
      * skin providing the button style.
@@ -1299,9 +1657,10 @@ public:
     /**
      * @brief Report the label-plus-padding size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing the selected button style and font.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the styled button background and label.
@@ -1375,6 +1734,9 @@ private:
     std::string text_;
     std::string style_{"default"};
     Callback callback_;
+    DrawablePtr icon_drawable_;
+    std::string glyph_;
+    FontPtr glyph_font_;
     bool pressed_{false};
     bool hovered_{false};
     bool focused_{false};
@@ -1392,6 +1754,7 @@ public:
      * @param checked Initial checked state.
      */
     explicit ToggleButton(std::string text = {}, bool checked = false);
+    ~ToggleButton() override;
 
     /**
      * @brief Set the checked state.
@@ -1423,12 +1786,16 @@ protected:
     [[nodiscard]] bool selected() const noexcept override;
 
 private:
+    friend class ButtonGroup;
+    void apply_checked(bool checked);
+
     bool checked_{false};
     ChangeCallback change_callback_;
+    ButtonGroup* group_{nullptr};
 };
 
 /** @brief Toggle button rendering a checkbox glyph and label. */
-class CheckBox final : public ToggleButton {
+class CheckBox : public ToggleButton {
 public:
     /**
      * @brief Construct a checkbox.
@@ -1454,9 +1821,10 @@ public:
     /**
      * @brief Report the box-plus-label size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing the selected check-box style and font.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the checkbox glyph and label.
@@ -1467,6 +1835,17 @@ public:
 
 private:
     std::string check_style_{"default"};
+};
+
+/** @brief CheckBox-shaped choice intended for a one-of-many ButtonGroup. */
+class RadioButton final : public CheckBox {
+public:
+    /**
+     * @brief Construct a radio choice using the named `radio` check style.
+     * @param text Optional label text.
+     * @param checked Initial checked state before group registration.
+     */
+    explicit RadioButton(std::string text = {}, bool checked = false);
 };
 
 /**
@@ -1515,9 +1894,10 @@ public:
     /**
      * @brief Report the text-plus-padding size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing the selected text-field style and font.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the field background, text, cursor, and composition.
@@ -1641,9 +2021,10 @@ public:
     /**
      * @brief Report the track-driven preferred size.
      * @param painter Active painter used for measurement.
+     * @param skin Active skin; unused by slider measurement.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the track, gradient fill, and knob.
@@ -1693,6 +2074,53 @@ private:
     bool focused_{false};
 };
 
+/** @brief Read-only determinate progress indicator. */
+class ProgressBar final : public Widget {
+public:
+    /**
+     * @brief Construct a progress bar.
+     * @param minimum Value represented by an empty bar.
+     * @param maximum Value represented by a full bar.
+     * @param value Initial value; clamped into the ordered range.
+     */
+    ProgressBar(float minimum = 0.0F, float maximum = 1.0F, float value = 0.0F);
+
+    /**
+     * @brief Replace the value range.
+     * @param minimum First range endpoint.
+     * @param maximum Second range endpoint.
+     * @post Endpoints are ordered and the current value is clamped.
+     */
+    void set_range(float minimum, float maximum) noexcept;
+
+    /** @brief Set and clamp the represented value. */
+    void set_value(float value) noexcept;
+
+    /** @brief Return the represented value. */
+    [[nodiscard]] float value() const noexcept { return value_; }
+
+    /** @brief Return completion normalized to the closed range `[0, 1]`. */
+    [[nodiscard]] float progress() const noexcept;
+
+    /** @brief Select a named ProgressBarStyle from the active Skin. */
+    void set_style(std::string style);
+
+    /** @brief Report the selected style's minimum horizontal extent. */
+    [[nodiscard]] Size minimum_size(Painter&, const Skin&) const override;
+
+    /** @brief Report the selected style's preferred extent. */
+    [[nodiscard]] Size preferred_size(Painter&, const Skin&) const override;
+
+    /** @brief Paint the complete track and completed portion. */
+    void paint(Painter&, const Skin&, float, float) const override;
+
+private:
+    float minimum_{0.0F};
+    float maximum_{1.0F};
+    float value_{0.0F};
+    std::string style_{"default"};
+};
+
 /** @brief Thin vertical or horizontal divider line. */
 class Separator final : public Widget {
 public:
@@ -1705,9 +2133,10 @@ public:
     /**
      * @brief Report the line-driven preferred size.
      * @param painter Active painter used for measurement.
+     * @param skin Active skin; unused by separator measurement.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Paint the divider line.
@@ -1851,9 +2280,10 @@ public:
     /**
      * @brief Report the content-driven preferred size.
      * @param painter Active painter used for measurement.
+     * @param skin Skin providing window metrics and the title font.
      * @return Preferred extent in logical units.
      */
-    [[nodiscard]] Size preferred_size(Painter& painter) const override;
+    [[nodiscard]] Size preferred_size(Painter& painter, const Skin& skin) const override;
 
     /**
      * @brief Lay out the title bar and content table.
@@ -2068,6 +2498,8 @@ public:
     /**
      * @brief Advance time-based state and prune close-requested windows.
      * @param delta_seconds Elapsed time in seconds; non-negative.
+     * @throws Any exception raised by a tooltip factory, or
+     * std::invalid_argument when a factory returns a parented widget.
      */
     void update(double delta_seconds);
 
@@ -2169,6 +2601,50 @@ public:
     [[nodiscard]] Widget* focused() noexcept { return focused_; }
 
     /**
+     * @brief Replace tooltip timing and placement policy.
+     * @param config Finite, non-negative delays and distances.
+     * @throws std::invalid_argument when any value is negative or non-finite.
+     */
+    void set_tooltip_config(TooltipConfig config);
+
+    /** @brief Return the active tooltip policy.
+     * @return Reference valid for the lifetime of this Ui.
+     */
+    [[nodiscard]] const TooltipConfig& tooltip_config() const noexcept
+    {
+        return tooltip_config_;
+    }
+
+    /** @brief Return true while a tooltip subtree is attached to the Stage.
+     * @return true between materialization and dismissal.
+     */
+    [[nodiscard]] bool tooltip_visible() const noexcept
+    {
+        return tooltip_widget_ != nullptr;
+    }
+
+    /** @brief Return the widget whose tooltip is visible, or null.
+     * @return Non-owning pointer invalidated when its owning tree is removed.
+     */
+    [[nodiscard]] const Widget* tooltip_owner() const noexcept
+    {
+        return tooltip_owner_;
+    }
+
+    /**
+     * @brief Return the visible tooltip rectangle in Stage coordinates.
+     * @return Bounds after layout, or no value when no tooltip is attached.
+     */
+    [[nodiscard]] std::optional<Rectangle> tooltip_bounds() const noexcept
+    {
+        if (!tooltip_widget_) return std::nullopt;
+        return Rectangle{
+            tooltip_widget_->x(), tooltip_widget_->y(),
+            tooltip_widget_->width(), tooltip_widget_->height()
+        };
+    }
+
+    /**
      * @brief Access the skin, read-only.
      * @return Reference to the Ui's skin.
      */
@@ -2198,6 +2674,14 @@ private:
         float& x,
         float& y
     ) noexcept;
+    [[nodiscard]] Widget* tooltip_owner_for(Widget* target) const noexcept;
+    [[nodiscard]] bool tooltip_owner_allowed(const Widget* owner) const noexcept;
+    void arm_focus_tooltip(Widget* owner) noexcept;
+    void show_tooltip(Widget& owner, bool pointer_anchor);
+    void hide_tooltip() noexcept;
+    void reset_tooltip_candidates() noexcept;
+    void layout_tooltip(Painter& painter);
+    static void make_subtree_untouchable(scene2d::Actor& actor) noexcept;
     void prune_closed_windows();
     [[nodiscard]] Window* top_modal() noexcept;
     [[nodiscard]] const Window* top_modal() const noexcept;
@@ -2213,6 +2697,22 @@ private:
     application::TextInputService* text_input_service_{nullptr};
     struct Overlay { Window* window; Widget* previous_focus; bool center_pending; };
     std::vector<Overlay> overlays_;
+    TooltipConfig tooltip_config_;
+    Widget* hover_tooltip_owner_{nullptr};
+    double hover_tooltip_elapsed_{0.0};
+    Widget* press_tooltip_owner_{nullptr};
+    double press_tooltip_elapsed_{0.0};
+    std::int64_t press_tooltip_pointer_id_{0};
+    float press_start_x_{0.0F};
+    float press_start_y_{0.0F};
+    bool press_tooltip_active_{false};
+    Widget* focus_tooltip_owner_{nullptr};
+    double focus_tooltip_elapsed_{0.0};
+    float tooltip_anchor_x_{0.0F};
+    float tooltip_anchor_y_{0.0F};
+    bool tooltip_pointer_anchor_{false};
+    Widget* tooltip_owner_{nullptr};
+    Widget* tooltip_widget_{nullptr};
 };
 
 } // namespace squared::gui

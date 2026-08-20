@@ -21,6 +21,10 @@ application drawing does not include SDL, Android, or raw OpenGL headers.
 - `squared::graphics2d::TextureRegion` references a rectangle within a texture.
 - `squared::graphics2d::TextureAtlas` owns one or more page textures and
   exposes named regions.
+- `squared::graphics2d::BitmapFont` owns portable BMFont metrics and safe
+  relative texture-page references.
+- `squared::graphics2d::GlyphLayout` converts UTF-8 text into page-indexed,
+  SpriteBatch-ready glyph placements.
 - `squared::graphics2d::Sprite` stores a region, transform, and color.
 - `squared::graphics2d::SpriteBatch` batches ordered textured quads.
 - `squared::graphics2d::OrthographicCamera` maps logical 2D coordinates to the
@@ -64,6 +68,26 @@ decoder.
 Public headers live beneath `include/squared/`. Doxygen discovers new
 subdirectories recursively, so developers may organize additional framework
 or application code without editing the documentation configuration.
+
+## Bitmap fonts and glyph layout
+
+`BitmapFont::load` consumes the text form of the AngelCode BMFont format. It
+validates bounded input, Unicode scalar IDs, page rectangles, unique glyphs
+and kerning pairs, contiguous page IDs, and relative page paths. Parsing is
+transactional: a failure fills `BitmapFontError` and preserves the prior font.
+The resource contains no textures and performs no I/O; the application or a
+later AssetManager loader resolves each `BitmapFontPage::file` relative to the
+descriptor asset. The parser accepts the libGDX/Hiero no-kerning sentinel
+`kernings count=-1`. Character and kerning counts are treated as bounded
+allocation hints because existing libGDX assets may report advisory counts.
+
+`GlyphLayout::set_text` strictly decodes UTF-8 by default and emits
+`GlyphPlacement` values containing the font page, source rectangle,
+top-left destination rectangle, and advance. Options provide uniform scale,
+replacement behavior, tab expansion, an optional line-box width, and
+start/center/end alignment. Explicit CR, LF, and CRLF line breaks are
+supported. Word wrapping, shaping, bidirectional layout, and GPU page
+resolution remain outside this first portable slice.
 
 ## Graphics-context recovery
 

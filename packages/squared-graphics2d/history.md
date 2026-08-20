@@ -1,5 +1,15 @@
 # Squared Graphics2D History
 
+## 0.6.0-dev.8
+
+- Added bounded, transactional text BMFont parsing with portable font, glyph,
+  kerning, and safe relative texture-page metadata.
+- Added strict or replacement-based UTF-8 decoding and value-semantic glyph
+  runs with scaling, explicit lines, tab expansion, kerning, and horizontal
+  alignment for later GUI and SpriteBatch integration.
+- Accepted the libGDX/Hiero `kernings count=-1` sentinel and advisory
+  character counts used by the packaged gdx-holo font.
+
 ## 0.6.0-dev.7
 
 - Dependency alignment only: advanced the exact Graphics and Math dependency

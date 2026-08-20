@@ -4,6 +4,7 @@ if(NOT COMMAND squared_register_module)
     )
 endif()
 add_library(squared_graphics2d STATIC
+    src/bitmap_font.cpp
     src/orthographic_camera.cpp
 )
 set_target_properties(squared_graphics2d PROPERTIES

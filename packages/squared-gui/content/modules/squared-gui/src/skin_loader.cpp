@@ -30,10 +30,14 @@ constexpr std::string_view text_button_class =
     "com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle";
 constexpr std::string_view text_field_class =
     "com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle";
+constexpr std::string_view label_class =
+    "com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle";
 constexpr std::string_view check_box_class =
     "com.badlogic.gdx.scenes.scene2d.ui.CheckBox$CheckBoxStyle";
 constexpr std::string_view slider_class =
     "com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle";
+constexpr std::string_view progress_bar_class =
+    "com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle";
 constexpr std::string_view window_class =
     "com.badlogic.gdx.scenes.scene2d.ui.Window$WindowStyle";
 
@@ -172,10 +176,11 @@ public:
     Importer(
         Skin& destination,
         const SkinDrawableResolver& resolver,
+        const SkinFontResolver& font_resolver,
         SkinLoadReport& report,
         const SkinLoadLimits& limits
     ) : destination_(destination), resolver_(resolver), report_(report),
-        limits_(limits)
+        limits_(limits), font_resolver_(font_resolver)
     {
     }
 
@@ -219,13 +224,15 @@ public:
         }
         if (!report_.success()) return false;
         load_colors(*classes);
-        validate_fonts(*classes);
+        load_fonts(*classes);
         load_tinted_colors(*classes);
         load_buttons(*classes, button_class, false);
         load_buttons(*classes, text_button_class, true);
+        load_labels(*classes);
         load_text_fields(*classes);
         load_check_boxes(*classes);
         load_sliders(*classes);
+        load_progress_bars(*classes);
         load_windows(*classes);
         report_unsupported(*classes);
         if (!report_.success()) return false;
@@ -373,6 +380,30 @@ private:
         return resolved;
     }
 
+    FontPtr font_value(
+        const JsonValue::Object& style,
+        std::string_view field,
+        FontPtr fallback,
+        std::string_view path
+    )
+    {
+        const auto found = style.find(field);
+        if (found == style.end()) return fallback;
+        const auto* name = found->second.string_if();
+        if (!name || name->empty() || name->size() > limits_.maximum_name_bytes) {
+            error(std::string(path) + "." + std::string(field),
+                  "font reference must be a bounded name");
+            return fallback;
+        }
+        const auto font = fonts_.find(*name);
+        if (font == fonts_.end()) {
+            error(std::string(path) + "." + std::string(field),
+                  "unknown font resource: " + *name);
+            return fallback;
+        }
+        return font->second;
+    }
+
     void load_colors(const JsonValue::Object& classes)
     {
         const auto* values = section(classes, color_class);
@@ -403,7 +434,7 @@ private:
         }
     }
 
-    void validate_fonts(const JsonValue::Object& classes)
+    void load_fonts(const JsonValue::Object& classes)
     {
         const auto* values = section(classes, font_class);
         if (!values) return;
@@ -414,6 +445,101 @@ private:
             const auto* file = object ? string_member(*object, "file") : nullptr;
             if (!file || !contained_asset_path(*file)) {
                 error(path + ".file", "font path must stay within the skin directory");
+                continue;
+            }
+            FontPtr font = font_resolver_
+                ? font_resolver_(name, *file)
+                : std::make_shared<FontResource>(*file);
+            if (!font) {
+                error(path + ".file", "font resolver rejected: " + *file);
+                continue;
+            }
+            candidate_.add_font(name, font);
+            fonts_.emplace(name, std::move(font));
+            ++report_.fonts_loaded;
+        }
+    }
+
+    enum class StyleVisit { visiting, complete };
+
+    template <typename Style, typename Apply, typename Commit>
+    void load_typed_styles(
+        const JsonValue::Object& classes,
+        std::string_view class_name,
+        std::string_view description,
+        Style fallback,
+        Apply apply,
+        Commit commit
+    )
+    {
+        const auto* values = section(classes, class_name);
+        if (!values) return;
+
+        std::unordered_set<std::string> accepted;
+        for (const auto& [name, value] : *values) {
+            static_cast<void>(value);
+            const std::string path = std::string(class_name) + "." + name;
+            if (count_resource(path, name)) accepted.insert(name);
+        }
+
+        std::unordered_map<std::string, Style> resolved;
+        std::unordered_map<std::string, StyleVisit> visits;
+        std::function<const Style*(const std::string&)> resolve;
+        resolve = [&](const std::string& name) -> const Style* {
+            if (!accepted.contains(name)) return nullptr;
+            if (const auto ready = resolved.find(name); ready != resolved.end()) {
+                return &ready->second;
+            }
+            if (const auto visit = visits.find(name);
+                visit != visits.end() && visit->second == StyleVisit::visiting) {
+                error(std::string(class_name) + "." + name,
+                      "cyclic typed style inheritance");
+                return nullptr;
+            }
+            const auto source = values->find(name);
+            if (source == values->end()) {
+                error(std::string(class_name) + "." + name,
+                      "unknown parent " + std::string(description) + " style");
+                return nullptr;
+            }
+            const auto* object = source->second.object_if();
+            const std::string path = std::string(class_name) + "." + name;
+            if (!object) {
+                error(path, std::string(description) + " style must be an object");
+                return nullptr;
+            }
+
+            visits[name] = StyleVisit::visiting;
+            Style style = fallback;
+            const std::string* parent = string_member(*object, "parent");
+            const std::string* extends = string_member(*object, "extends");
+            if (parent && extends) {
+                error(path, "style cannot declare both parent and extends");
+                return nullptr;
+            }
+            const std::string* base = parent ? parent : extends;
+            if (base) {
+                if (base->empty() || base->size() > limits_.maximum_name_bytes) {
+                    error(path, "parent style name is empty or too long");
+                    return nullptr;
+                }
+                const Style* inherited = resolve(*base);
+                if (!inherited) return nullptr;
+                style = *inherited;
+            }
+            apply(style, *object, path);
+            visits[name] = StyleVisit::complete;
+            const auto [stored, inserted] = resolved.emplace(name, std::move(style));
+            static_cast<void>(inserted);
+            return &stored->second;
+        };
+
+        for (const auto& [name, value] : *values) {
+            static_cast<void>(value);
+            if (!accepted.contains(name)) continue;
+            if (const Style* style = resolve(name)) {
+                commit(name, *style);
+                ++report_.styles_loaded;
             }
         }
     }
@@ -444,128 +570,208 @@ private:
         bool text_style
     )
     {
-        const auto* values = section(classes, class_name);
-        if (!values) return;
-        for (const auto& [name, value] : *values) {
-            const std::string path = std::string(class_name) + "." + name;
-            if (!count_resource(path, name)) continue;
-            const auto* object = value.object_if();
-            if (!object) { error(path, "button style must be an object"); continue; }
-            ButtonStyle style = candidate_.button_style("default");
-            style.normal = drawable_value(*object, "up", style.normal, path);
-            style.hovered = drawable_value(*object, "over", style.normal, path);
-            style.pressed = drawable_value(*object, "down", style.pressed, path);
-            style.disabled = drawable_value(*object, "disabled", style.disabled, path);
-            if (text_style) {
-                style.text = color_value(*object, "fontColor", style.text, path);
-                style.disabled_text = color_value(
-                    *object, "disabledFontColor", style.disabled_text, path
+        load_typed_styles(
+            classes, class_name, "button",
+            candidate_.button_style("default"),
+            [this, text_style](
+                ButtonStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.normal = drawable_value(object, "up", style.normal, path);
+                style.hovered = drawable_value(
+                    object, "over", style.normal, path
                 );
+                style.pressed = drawable_value(
+                    object, "down", style.pressed, path
+                );
+                style.disabled = drawable_value(
+                    object, "disabled", style.disabled, path
+                );
+                if (text_style) {
+                    style.font = font_value(object, "font", style.font, path);
+                    style.text = color_value(
+                        object, "fontColor", style.text, path
+                    );
+                    style.disabled_text = color_value(
+                        object, "disabledFontColor", style.disabled_text, path
+                    );
+                }
+            },
+            [this](const std::string& name, const ButtonStyle& style) {
+                candidate_.add_button_style(name, style);
             }
-            candidate_.add_button_style(name, std::move(style));
-            ++report_.styles_loaded;
-        }
+        );
+    }
+
+    void load_labels(const JsonValue::Object& classes)
+    {
+        load_typed_styles(
+            classes, label_class, "label", candidate_.label_style("default"),
+            [this](
+                LabelStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.font = font_value(object, "font", style.font, path);
+                if (object.contains("fontColor")) {
+                    style.text = color_value(
+                        object, "fontColor",
+                        style.text.value_or(candidate_.text), path
+                    );
+                }
+                if (object.contains("disabledFontColor")) {
+                    style.muted_text = color_value(
+                        object, "disabledFontColor",
+                        style.muted_text.value_or(candidate_.muted_text), path
+                    );
+                }
+            },
+            [this](const std::string& name, const LabelStyle& style) {
+                candidate_.add_label_style(name, style);
+            }
+        );
     }
 
     void load_text_fields(const JsonValue::Object& classes)
     {
-        const auto* values = section(classes, text_field_class);
-        if (!values) return;
-        for (const auto& [name, value] : *values) {
-            const std::string path = std::string(text_field_class) + "." + name;
-            if (!count_resource(path, name)) continue;
-            const auto* object = value.object_if();
-            if (!object) { error(path, "text-field style must be an object"); continue; }
-            TextFieldStyle style = candidate_.text_field_style("default");
-            style.normal = drawable_value(*object, "background", style.normal, path);
-            style.focused = drawable_value(
-                *object, "focusedBackground", style.normal, path
-            );
-            style.text = color_value(*object, "fontColor", style.text, path);
-            candidate_.add_text_field_style(name, std::move(style));
-            ++report_.styles_loaded;
-        }
+        load_typed_styles(
+            classes, text_field_class, "text-field",
+            candidate_.text_field_style("default"),
+            [this](
+                TextFieldStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.normal = drawable_value(
+                    object, "background", style.normal, path
+                );
+                style.focused = drawable_value(
+                    object, "focusedBackground", style.normal, path
+                );
+                style.font = font_value(object, "font", style.font, path);
+                style.text = color_value(object, "fontColor", style.text, path);
+            },
+            [this](const std::string& name, const TextFieldStyle& style) {
+                candidate_.add_text_field_style(name, style);
+            }
+        );
     }
 
     void load_check_boxes(const JsonValue::Object& classes)
     {
-        const auto* values = section(classes, check_box_class);
-        if (!values) return;
-        for (const auto& [name, value] : *values) {
-            const std::string path = std::string(check_box_class) + "." + name;
-            if (!count_resource(path, name)) continue;
-            const auto* object = value.object_if();
-            if (!object) { error(path, "check-box style must be an object"); continue; }
-            CheckBoxStyle style = candidate_.check_box_style("default");
-            style.unchecked = drawable_value(
-                *object, "checkboxOff", style.unchecked, path
-            );
-            style.checked = drawable_value(
-                *object, "checkboxOn", style.checked, path
-            );
-            style.disabled = drawable_value(
-                *object, "checkboxOffDisabled", style.disabled, path
-            );
-            style.text = color_value(*object, "fontColor", style.text, path);
-            candidate_.add_check_box_style(name, std::move(style));
-            ++report_.styles_loaded;
-        }
+        load_typed_styles(
+            classes, check_box_class, "check-box",
+            candidate_.check_box_style("default"),
+            [this](
+                CheckBoxStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.unchecked = drawable_value(
+                    object, "checkboxOff", style.unchecked, path
+                );
+                style.checked = drawable_value(
+                    object, "checkboxOn", style.checked, path
+                );
+                style.disabled = drawable_value(
+                    object, "checkboxOffDisabled", style.disabled, path
+                );
+                style.font = font_value(object, "font", style.font, path);
+                style.text = color_value(object, "fontColor", style.text, path);
+            },
+            [this](const std::string& name, const CheckBoxStyle& style) {
+                candidate_.add_check_box_style(name, style);
+            }
+        );
     }
 
     void load_sliders(const JsonValue::Object& classes)
     {
-        const auto* values = section(classes, slider_class);
-        if (!values) return;
-        for (const auto& [name, value] : *values) {
-            const std::string path = std::string(slider_class) + "." + name;
-            if (!count_resource(path, name)) continue;
-            const auto* object = value.object_if();
-            if (!object) { error(path, "slider style must be an object"); continue; }
-            SliderStyle style = candidate_.slider_style("default");
-            style.track = drawable_value(*object, "background", style.track, path);
-            style.filled_track = drawable_value(
-                *object, "knobBefore", style.track, path
-            );
-            style.knob = drawable_value(*object, "knob", style.knob, path);
-            candidate_.add_slider_style(name, std::move(style));
-            ++report_.styles_loaded;
-        }
+        load_typed_styles(
+            classes, slider_class, "slider", candidate_.slider_style("default"),
+            [this](
+                SliderStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.track = drawable_value(
+                    object, "background", style.track, path
+                );
+                style.filled_track = drawable_value(
+                    object, "knobBefore", style.track, path
+                );
+                style.knob = drawable_value(object, "knob", style.knob, path);
+            },
+            [this](const std::string& name, const SliderStyle& style) {
+                candidate_.add_slider_style(name, style);
+            }
+        );
+    }
+
+    void load_progress_bars(const JsonValue::Object& classes)
+    {
+        load_typed_styles(
+            classes, progress_bar_class, "progress-bar",
+            candidate_.progress_bar_style("default"),
+            [this](
+                ProgressBarStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.track = drawable_value(
+                    object, "background", style.track, path
+                );
+                style.fill = drawable_value(
+                    object, "knobBefore", style.fill, path
+                );
+            },
+            [this](const std::string& name, const ProgressBarStyle& style) {
+                candidate_.add_progress_bar_style(name, style);
+            }
+        );
     }
 
     void load_windows(const JsonValue::Object& classes)
     {
-        const auto* values = section(classes, window_class);
-        if (!values) return;
-        for (const auto& [name, value] : *values) {
-            const std::string path = std::string(window_class) + "." + name;
-            if (!count_resource(path, name)) continue;
-            const auto* object = value.object_if();
-            if (!object) { error(path, "window style must be an object"); continue; }
-            WindowStyle style = candidate_.window_style("default");
-            style.background = drawable_value(
-                *object, "background", style.background, path
-            );
-            style.title_text = color_value(
-                *object, "titleFontColor", style.title_text, path
-            );
-            if (const auto* stage = string_member(*object, "stageBackground")) {
-                const auto color = tinted_colors_.find(*stage);
-                if (color == tinted_colors_.end()) {
-                    error(path + ".stageBackground",
-                          "unknown tinted drawable: " + *stage);
-                } else style.modal_overlay = color->second;
+        load_typed_styles(
+            classes, window_class, "window", candidate_.window_style("default"),
+            [this](
+                WindowStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.background = drawable_value(
+                    object, "background", style.background, path
+                );
+                style.title_font = font_value(
+                    object, "titleFont", style.title_font, path
+                );
+                style.title_text = color_value(
+                    object, "titleFontColor", style.title_text, path
+                );
+                if (const auto* stage = string_member(object, "stageBackground")) {
+                    const auto color = tinted_colors_.find(*stage);
+                    if (color == tinted_colors_.end()) {
+                        error(path + ".stageBackground",
+                              "unknown tinted drawable: " + *stage);
+                    } else {
+                        style.modal_overlay = color->second;
+                    }
+                }
+            },
+            [this](const std::string& name, const WindowStyle& style) {
+                candidate_.add_window_style(name, style);
             }
-            candidate_.add_window_style(name, std::move(style));
-            ++report_.styles_loaded;
-        }
+        );
     }
 
     void report_unsupported(const JsonValue::Object& classes)
     {
         static const std::unordered_set<std::string_view> supported{
             color_class, font_class, tinted_class, button_class,
-            text_button_class, text_field_class, check_box_class,
-            slider_class, window_class
+            text_button_class, label_class, text_field_class, check_box_class,
+            slider_class, progress_bar_class, window_class
         };
         for (const auto& [name, value] : classes) {
             static_cast<void>(value);
@@ -579,11 +785,13 @@ private:
     const SkinDrawableResolver& resolver_;
     SkinLoadReport& report_;
     const SkinLoadLimits& limits_;
+    const SkinFontResolver& font_resolver_;
     Skin candidate_;
     std::size_t resources_{0};
     std::unordered_map<std::string, graphics::Color> colors_;
     std::unordered_map<std::string, graphics::Color> tinted_colors_;
     std::unordered_map<std::string, DrawablePtr> drawables_;
+    std::unordered_map<std::string, FontPtr> fonts_;
 };
 
 } // namespace
@@ -602,6 +810,7 @@ bool load_libgdx_skin(
     Skin& destination,
     std::string_view json,
     const SkinDrawableResolver& resolver,
+    const SkinFontResolver& font_resolver,
     SkinLoadReport& report,
     const SkinLoadLimits& limits
 ) noexcept
@@ -638,7 +847,7 @@ bool load_libgdx_skin(
             });
             return false;
         }
-        Importer importer(destination, resolver, report, limits);
+        Importer importer(destination, resolver, font_resolver, report, limits);
         return importer.import(parsed.value);
     } catch (const std::exception& exception) {
         report.issues.push_back({
@@ -652,6 +861,20 @@ bool load_libgdx_skin(
         });
         return false;
     }
+}
+
+bool load_libgdx_skin(
+    Skin& destination,
+    std::string_view json,
+    const SkinDrawableResolver& resolver,
+    SkinLoadReport& report,
+    const SkinLoadLimits& limits
+) noexcept
+{
+    const SkinFontResolver descriptor_only;
+    return load_libgdx_skin(
+        destination, json, resolver, descriptor_only, report, limits
+    );
 }
 
 } // namespace squared::gui

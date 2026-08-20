@@ -8,6 +8,12 @@ only through explicit materialization, which is transactional. The package
 is independent: it requires no other Squared module and relies only on the
 vendored miniz 3.1.2 source shipped inside the package.
 
+The same package supplies a synchronous, application-owned `AssetManager`.
+It type-erases application loader strategies behind a cache keyed by C++ type
+and normalized virtual path, records dependency edges, and owns optional
+nested memory-backed archive mounts without introducing Graphics or GUI
+dependencies.
+
 - Programmer counterpart: [Squared HoloDisk — Programmer Guide](../programmer/squared-holoDisk/README.md)
 - Package payload: [HoloDisk.md](../../packages/squared-holoDisk/content/docs/HoloDisk.md)
 - Documentation index: [Developer documentation](../README.md)
@@ -15,12 +21,13 @@ vendored miniz 3.1.2 source shipped inside the package.
   - [Drive creation, mount, and unmount lifecycle](drive-lifecycle.dot)
   - [ZIP read and scratch-write flow](zip-scratch-flow.dot)
   - [Path validation and rejection flow](path-validation.dot)
+  - [Typed asset loading and nested mounts](asset-loading-flow.dot)
 
 ## Dependency boundary
 
 The manifest declares no `module.requires` entry: the package is standalone
 and optional. The CMake target `squared_holodisk` is a `STATIC` library that
-compiles `src/holodrive.cpp` together with the vendored miniz sources
+compiles `src/holodrive.cpp` and `src/asset_manager.cpp` together with the vendored miniz sources
 (`miniz.c`, `miniz_tdef.c`, `miniz_tinfl.c`, `miniz_zip.c` from
 `content/third_party/miniz-3.1.2`) under `MINIZ_NO_ZLIB_APIS`. The miniz
 include directory is `PRIVATE`; the public header
@@ -43,6 +50,7 @@ integration milestone; no package currently requires it.
 | `ZipReader` | `src/holodrive.cpp` (private) | RAII `mz_zip_archive` reader wrapper. |
 | `DiskState` / `MountState` / `FileState` | `src/holodrive.cpp` (private) | Per-object bookkeeping. |
 | `ErrorCode` / `Error` / `Result<T>` / `Status` | `include/squared/holodisk/holodrive.hpp` | Dependency-free failure and result channels. |
+| `AssetManager`, `AssetLoadContext`, loader/handle aliases | `include/squared/holodisk/asset_manager.hpp`, `src/asset_manager.cpp` | Typed loader registry, cache, dependency graph, bounded source reads, reload/unload, and nested mounts. |
 
 ## Ownership and threading
 
@@ -64,6 +72,14 @@ integration milestone; no package currently requires it.
   a single external lock. `guard`/`guard_status` translate a private `Failure`
   exception (and any other `std::exception`) into the corresponding `Error`,
   keeping every public member `noexcept`.
+- `AssetManager` owns an `Implementation` through `std::unique_ptr`, but only
+  borrows its `HoloDrive`; declaration order must therefore destroy the manager
+  first. Cached objects are `shared_ptr<const void>` internally and
+  `AssetHandle<T>` externally. Clearing/unloading drops cache ownership without
+  invalidating external handles.
+- Each manager-owned nested archive records its `DiskId` and `MountId`. The
+  cache is cleared before destructor cleanup. Direct file handles beneath a
+  manager-owned mount can make the drive refuse unmount with `Busy`.
 
 ## Invariants and failure behavior
 
@@ -89,6 +105,14 @@ integration milestone; no package currently requires it.
   overlay entries, replacing overlaid names) before committing a write.
 - Error codes are stable across releases; a default `Error` means success
   (`ErrorCode::None`).
+- Asset keys are `(std::type_index, normalized absolute path)`. Exactly one
+  loader may be registered for each type. A cache insertion occurs only after
+  its loader succeeds with a non-null handle; failed reload leaves the old
+  entry and handles unchanged.
+- Dependency requests are bounded in depth and compared against the active
+  load stack before cache lookup, so self-cycles are rejected even during a
+  reload of an already cached object. Unload refuses while reverse dependency
+  edges remain.
 
 ## Data structures and complexity
 
@@ -108,6 +132,13 @@ integration milestone; no package currently requires it.
   iterator or from the overlay `fstream`, O(1) per call plus the compressed
   read cost. `reset_archive_position` reinitializes the reader and discards
   forward through the entry, which is O(target position) on a seek.
+- Asset loader and cache lookup use `unordered_map<std::type_index, ...>` and
+  `unordered_map<AssetKey, CacheEntry>`: average O(1), worst-case O(n).
+  Dependencies/dependents are `unordered_set<AssetKey>`; edge insert/erase is
+  average O(1). Cycle detection scans the bounded active-frame vector, O(d).
+- `read_bytes` is O(n) in source bytes and uses an 8 KiB streaming buffer.
+  Memory-backed ZIP loading copies compressed bytes once, O(n), then retains
+  that bounded vector. Nested-mount busy validation scans cached paths, O(n).
 
 ## Algorithms and execution order
 
@@ -126,6 +157,25 @@ integration milestone; no package currently requires it.
    paths (normalizing directory names). Directory entries are validated but
    not stored.
 3. Store the index and return a new `DiskId`. Payload bytes are not copied.
+
+The memory overload first checks `maximum_archive_size`, copies the caller's
+span into shared drive-owned storage, initializes miniz over that storage, and
+then uses the same `inspect_archive` validation path as host-file loading.
+
+`AssetManager::load<T>(path)`:
+
+1. Normalize the absolute virtual path and reject a key already on the active
+   frame stack (`DependencyCycle`).
+2. Return the cached immutable handle unless this is an explicit reload.
+3. Enforce loader, cache-entry, and dependency-depth limits; push a load frame.
+4. Invoke the registered Strategy through `AssetLoadContext`. Nested
+   `context.load<U>()` calls populate that frame's dependency set.
+5. On success, detach old reverse edges, replace the cache entry, attach new
+   reverse edges, and return it. On failure, preserve the old cache entry.
+
+`mount_archive` reads a bounded source through the manager, calls the memory
+`load_holodisk` overload, mounts the disk read-only, and records the pair only
+after both steps succeed. Failure unwinds mount/disk state.
 
 `mount`/`unmount`/`open`:
 
@@ -187,6 +237,17 @@ integration milestone; no package currently requires it.
   exception) to returned `Error`s, keeping the public surface `noexcept`.
 - **Value/error result** — `Result<T>`/`Status` make the no-throw contract
   structural instead of relying on errno-style globals.
+- **Strategy plus Registry** — applications register `AssetLoader<T>`
+  callbacks. The manager type-erases them by `std::type_index`, so HoloDisk
+  stays unaware of bitmap fonts, atlases, skins, or application types.
+- **Identity Map / Repository** — the `(type,path)` cache returns one shared
+  object identity until reload/unload. This prevents duplicate parsing and
+  resource construction without introducing global state.
+- **Dependency graph** — forward and reverse adjacency sets protect unload and
+  make cycles structural errors. Automatic dependent reload was deliberately
+  deferred because partial graph replacement would obscure failure semantics.
+- **Transactional replacement** — reload constructs off-cache and commits only
+  after success, mirroring the package's materialization discipline.
 
 Alternatives rejected: a direct miniz API surface (rejected — leaks the
 third-party boundary); expanding archives into RAM (rejected — untrusted
@@ -202,9 +263,11 @@ HoloDisk depend on graphics or GUI).
 - `ensure_expanded_size` recomputes the whole disk per write (O(entries)),
   and archive seeks re-read from the entry start; fine for current sizes,
   not for large-file random access.
-- `TODO.md` records the next AssetManager design (resolving/caching typed
-  assets through `HoloDrive`, including mounting pinned nested archives such
-  as GUI's `gdx-skins.zip`), cartridge metadata/compatibility validation, and
+- Asset loading is intentionally synchronous. Reload replaces only the named
+  cache entry; dependents keep their current handles until explicitly reloaded.
+  Async queues and graph-wide reload remain deferred until profiling justifies
+  their policy and complexity.
+- `TODO.md` records cartridge metadata/compatibility validation and
   interrupted-write recovery tests as unfinished.
 - No explicit read-only-mount option beyond the per-mount `MountAccess`, and
   no atomic export workflow yet (`TODO.md` "Later").

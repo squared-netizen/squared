@@ -33,6 +33,8 @@ these pages and rendered beneath `build/docs/`. Validate changes with
 - [GUI implementation dependencies](squared-gui/GUI-dependencies.dot)
 - [GUI input/focus event flow](squared-gui/GUI-input-focus.dot)
 - [Skin-loading transaction](squared-gui/GUI-skin-loading.dot)
+- [HoloDisk typed asset loading](squared-holoDisk/asset-loading-flow.dot)
+- [Graphics2D bitmap-font layout](squared-graphics2d/bitmap-font-layout-flow.dot)
 
 ## Package payloads
 

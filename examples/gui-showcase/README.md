@@ -18,11 +18,12 @@ The showcase exercises:
   Enter/Space/Escape activation;
 - semantic D-pad, shoulder-button, A, and B controller navigation through the
   portable Application event boundary.
+- hover, long-press, and focus tooltips on launcher controls.
 
 `src/showcase.cpp` is platform-neutral and is covered by the host test suite.
 `android/src/application.cpp` implements the generated Android application's
 factory and painter boundary. A generated project must enable both
-`dev.squarednetizen.squared.gui@0.6.0-dev.12` and
+`dev.squarednetizen.squared.gui@0.6.0-dev.15` and
 `dev.squarednetizen.squared.backend.sdl2-opengl@0.6.0-dev.5` through
 `squared-pg project module add`. The GUI coordinate composes its portable
 dependencies and assets; the backend coordinate supplies the link-time

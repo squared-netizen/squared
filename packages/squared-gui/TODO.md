@@ -4,7 +4,8 @@ Only unfinished work belongs here. Move completed work into `history.md`.
 
 ## Next
 
-- [ ] Define font resources and typed style inheritance for imported skins.
+- [ ] Continue rounding out the primitive widget set with scroll bars, list
+  views with injected selection models, popup overlays, and select boxes.
 - [ ] Add a file picker composed from `Window`/`Dialog`, `Table`, `ScrollPane`,
   `TextField`, `Label`, and `Button`; storage enumeration must be injected.
 - [ ] Add a canvas widget using the existing `Widget`, input propagation,
@@ -20,5 +21,4 @@ Only unfinished work belongs here. Move completed work into `history.md`.
 
 - [ ] Connect skin archives, file picking, editor documents, and canvas saves
   to a HoloDisk-backed AssetManager after the primitive components stabilize.
-- [ ] Add list/select-box widgets and keyboard-accessible popup behavior.
 - [ ] Polish scrolling and disabled-state behavior in the showcase.

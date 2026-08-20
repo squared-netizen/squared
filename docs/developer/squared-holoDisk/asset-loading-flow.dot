@@ -1,0 +1,30 @@
+digraph AssetLoadingFlow {
+    graph [rankdir=TB, bgcolor="transparent"];
+    node [shape=box, style="rounded"];
+
+    request [label="load<T>(virtual path)"];
+    cache [label="Typed cache\n(type_index + path)"];
+    loader [label="Registered AssetLoader<T>"];
+    context [label="AssetLoadContext\nbounded bytes + dependencies"];
+    drive [label="HoloDrive mounted namespace"];
+    commit [label="Transactional cache commit"];
+    cycle [label="Reject cycle / limit", shape=diamond];
+
+    request -> cache;
+    cache -> loader [label="miss or reload"];
+    cache -> request [label="hit", style=dashed];
+    loader -> context;
+    context -> drive [label="read_bytes"];
+    context -> request [label="load dependency"];
+    context -> cycle [label="active stack"];
+    loader -> commit [label="non-null success"];
+    commit -> cache;
+
+    archive [label="mount_archive(source, point)"];
+    memory [label="Bounded memory ZIP"];
+    nested [label="Manager-owned read-only mount"];
+    archive -> drive [label="read source"];
+    archive -> memory;
+    memory -> nested;
+    nested -> drive;
+}

@@ -13,6 +13,8 @@ digraph gui_input_focus {
   focus [label="keyboard focus:\nfocusable walk (collect_focusable),\nordered moves, FocusEvent pairs", fillcolor="#f8cecc"];
   modal [label="modal window:\nreachable set restricted to modal subtree", fillcolor="#ff9999"];
   text [label="text input routes to focused widget", fillcolor="#dae8fc"];
+  tooltip [label="tooltip candidates:\nhover / long press / focus timers\nmodal scope + movement cancellation", fillcolor="#e1d5e7"];
+  transient [label="untouchable normal-widget subtree\nStage-owned, viewport constrained", fillcolor="#d5e8d4"];
 
   event -> hit;
   hit -> capture [style=dashed, label="if captured"];
@@ -21,4 +23,8 @@ digraph gui_input_focus {
   dispatch -> focus [style=dashed, label="key navigation"];
   dispatch -> text [style=dashed, label="text events"];
   dispatch -> modal [style=dashed, label="modal trap restricts"];
+  hit -> tooltip [style=dashed, label="pointer candidate"];
+  focus -> tooltip [style=dashed, label="keyboard/controller"];
+  modal -> tooltip [style=dashed, label="scope"];
+  tooltip -> transient [label="delay reached"];
 }

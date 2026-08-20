@@ -24,6 +24,15 @@ public:
         return {static_cast<float>(text.size()) * 8.0F, 16.0F};
     }
 
+    [[nodiscard]] Size measure_text(
+        std::string_view text,
+        const squared::gui::FontResource* font
+    ) override
+    {
+        measured_fonts.push_back(font);
+        return squared::gui::Painter::measure_text(text, font);
+    }
+
     void fill_rectangle(
         const Rectangle& rectangle,
         squared::graphics::Color
@@ -64,6 +73,18 @@ public:
         strings.emplace_back(text);
     }
 
+    void draw_text(
+        std::string_view text,
+        float x,
+        float y,
+        const squared::gui::FontResource* font,
+        squared::graphics::Color color
+    ) override
+    {
+        drawn_fonts.push_back(font);
+        squared::gui::Painter::draw_text(text, x, y, font, color);
+    }
+
     void push_clip(const Rectangle&) override { ++clip_depth; }
     void pop_clip() override { --clip_depth; }
 
@@ -71,6 +92,8 @@ public:
     std::vector<Rectangle> regions;
     std::vector<Size> region_sizes;
     std::vector<std::string> strings;
+    std::vector<const squared::gui::FontResource*> measured_fonts;
+    std::vector<const squared::gui::FontResource*> drawn_fonts;
     int strokes{0};
     int clip_depth{0};
 };
@@ -184,6 +207,33 @@ int main()
 
     RecordingPainter painter;
 
+    constexpr std::string_view font_descriptor = R"FONT(info face="GUI Test" size=20 bold=0 italic=0 unicode=1
+common lineHeight=20 base=15 scaleW=64 scaleH=64 pages=1
+page id=0 file="gui-font.png"
+chars count=3
+char id=63 x=0 y=0 width=7 height=10 xoffset=0 yoffset=2 xadvance=9 page=0
+char id=65 x=8 y=0 width=8 height=10 xoffset=0 yoffset=2 xadvance=10 page=0
+char id=86 x=16 y=0 width=8 height=10 xoffset=0 yoffset=2 xadvance=10 page=0
+kernings count=1
+kerning first=65 second=86 amount=-2
+)FONT";
+    squared::graphics2d::BitmapFont bitmap_font;
+    squared::graphics2d::BitmapFontError font_error;
+    require(bitmap_font.load(font_descriptor, font_error),
+            "GUI font fixture parses through Graphics2D");
+    auto resolved_font = std::make_shared<FontResource>(
+        "fonts/gui-test.fnt",
+        std::move(bitmap_font),
+        std::vector<squared::graphics2d::TextureRegion>{
+            squared::graphics2d::TextureRegion(64, 64)
+        }
+    );
+    require(resolved_font->resolved() && resolved_font->pages().size() == 1,
+            "GUI font retains metrics and page regions portably");
+    const Size glyph_measure = painter.measure_text("AV", resolved_font.get());
+    require(glyph_measure.width == 18.0F && glyph_measure.height == 20.0F,
+            "font-aware painter measurement uses Graphics2D glyph layout");
+
     verify_pinned_gdx_skins();
 
     const std::filesystem::path skin_root{SQUARED_GUI_TEST_ASSET_DIR};
@@ -224,7 +274,12 @@ int main()
           com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle: {
             default: { up: button-up, down: button-down,
               disabled: button-disabled, fontColor: ink,
-              disabledFontColor: muted, font: default-font }
+              disabledFontColor: muted, font: default-font },
+            compact: { parent: default, up: compact-up }
+          },
+          com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle: {
+            default: { font: default-font, fontColor: ink },
+            muted-label: { extends: default, disabledFontColor: muted }
           },
           com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
             default: { background: field, focusedBackground: field-focus,
@@ -238,6 +293,9 @@ int main()
           com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle: {
             default-horizontal: { background: slider-track,
               knobBefore: slider-fill, knob: slider-knob }
+          },
+          com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle: {
+            default: { background: progress-track, knobBefore: progress-fill }
           },
           com.badlogic.gdx.scenes.scene2d.ui.Window$WindowStyle: {
             default: { background: window, titleFontColor: ink,
@@ -257,12 +315,17 @@ int main()
                 resolved.emplace(std::string(name), drawable);
                 return drawable;
             },
+            [&resolved_font](std::string_view name, std::string_view path) {
+                return name == "default-font" && path == "default.fnt"
+                    ? resolved_font : FontPtr{};
+            },
             report
         );
         require(loaded && report.success(),
                 "relaxed libGDX skin JSON loads transactionally");
-        require(report.styles_loaded == 5 && report.colors_loaded == 2,
-                "supported style and color resources are counted");
+        require(report.styles_loaded == 9 && report.colors_loaded == 2 &&
+                    report.fonts_loaded == 1,
+                "supported style, color, and font resources are counted");
         require(imported.button_style("default").normal == resolved["button-up"] &&
                     imported.text_field_style("default").focused ==
                         resolved["field-focus"] &&
@@ -270,9 +333,47 @@ int main()
                         resolved["check-on"] &&
                     imported.slider_style("default-horizontal").knob ==
                         resolved["slider-knob"] &&
+                    imported.progress_bar_style("default").fill ==
+                        resolved["progress-fill"] &&
                     imported.window_style("default").background ==
                         resolved["window"],
                 "libGDX fields map to primitive Squared styles");
+        require(imported.font("default-font") == resolved_font &&
+                    imported.button_style("default").font == resolved_font &&
+                    imported.label_style("default").font == resolved_font &&
+                    imported.window_style("default").title_font == resolved_font,
+                "typed imported styles retain named font resources");
+        require(imported.button_style("compact").normal ==
+                    resolved["compact-up"] &&
+                    imported.button_style("compact").pressed ==
+                        resolved["button-down"] &&
+                    imported.button_style("compact").font == resolved_font,
+                "same-type inheritance copies then overrides style fields");
+        Label imported_label("AV");
+        const Size imported_label_size = imported_label.preferred_size(
+            painter, imported
+        );
+        imported_label.paint(painter, imported, 0.0F, 0.0F);
+        require(imported_label_size.width == 18.0F &&
+                    !painter.measured_fonts.empty() &&
+                    painter.measured_fonts.back() == resolved_font.get() &&
+                    !painter.drawn_fonts.empty() &&
+                    painter.drawn_fonts.back() == resolved_font.get(),
+                "label measurement and painting use the imported font handle");
+
+        Skin cycle_destination = imported;
+        const DrawablePtr inherited_original =
+            cycle_destination.button_style("default").normal;
+        SkinLoadReport cycle_report;
+        require(!load_libgdx_skin(
+                    cycle_destination,
+                    R"({com.badlogic.gdx.scenes.scene2d.ui.Button$ButtonStyle:{one:{parent:two},two:{parent:one}}})",
+                    [](std::string_view) { return DrawablePtr{}; },
+                    cycle_report
+                ) &&
+                    cycle_destination.button_style("default").normal ==
+                        inherited_original,
+                "cyclic typed style inheritance rolls back transactionally");
 
         const DrawablePtr original = imported.button_style("default").normal;
         SkinLoadReport invalid_report;
@@ -303,10 +404,64 @@ int main()
         skin.text,
         skin.muted_text,
         48.0F,
-        14.0F
+        14.0F,
+        nullptr
     });
     require(skin.drawable("kenney.button") == test_normal,
             "skin returns named drawable resources");
+
+    Button icon_button("Save");
+    icon_button.set_glyph("A", resolved_font);
+    const Size icon_button_size = icon_button.preferred_size(painter, skin);
+    require(icon_button_size.width > painter.measure_text("Save").width + 24.0F,
+            "glyph buttons reserve a styled icon slot and spacing");
+    icon_button.set_bounds(0.0F, 0.0F, icon_button_size.width, icon_button_size.height);
+    icon_button.paint(painter, skin, 0.0F, 0.0F);
+    require(std::find(painter.strings.begin(), painter.strings.end(), "A") !=
+                painter.strings.end() &&
+                std::find(painter.drawn_fonts.begin(), painter.drawn_fonts.end(),
+                          resolved_font.get()) != painter.drawn_fonts.end(),
+            "glyph buttons draw through the selected bitmap-font resource");
+    icon_button.set_icon(test_pressed);
+    icon_button.paint(painter, skin, 0.0F, 0.0F);
+    icon_button.clear_icon();
+    require(icon_button.preferred_size(painter, skin).width < icon_button_size.width,
+            "drawable icons replace glyphs and clear without changing the label");
+
+    RadioButton easy("Easy");
+    RadioButton hard("Hard");
+    ButtonGroup difficulty(1, 1);
+    difficulty.add(easy);
+    difficulty.add(hard);
+    require(easy.checked() && !hard.checked() &&
+                difficulty.checked_button() == &easy,
+            "radio group establishes its required initial selection");
+    hard.set_checked(true);
+    require(!easy.checked() && hard.checked() &&
+                difficulty.checked_count() == 1,
+            "radio selection atomically replaces the checked member");
+    hard.set_checked(false);
+    require(hard.checked(), "required radio selection cannot be toggled off");
+    require(difficulty.remove(hard) && easy.checked(),
+            "removing the checked choice rebalances remaining members");
+    ButtonGroup surviving_group;
+    {
+        ToggleButton temporary("Temporary");
+        surviving_group.add(temporary);
+        require(surviving_group.size() == 1,
+                "button may join a longer-lived group");
+    }
+    require(surviving_group.size() == 0,
+            "destroying a member detaches it from the surviving group");
+
+    ProgressBar progress(0.0F, 100.0F, 25.0F);
+    progress.set_bounds(0.0F, 0.0F, 200.0F, 20.0F);
+    const std::size_t progress_fill_start = painter.fills.size();
+    progress.paint(painter, skin, 0.0F, 0.0F);
+    require(progress.progress() == 0.25F &&
+                painter.fills.size() == progress_fill_start + 2 &&
+                painter.fills.back().width == 50.0F,
+            "progress bar clamps and paints the normalized completed portion");
 
     squared::graphics2d::TextureRegion patch_region(30, 30);
     NinePatchDrawable nine_patch(
@@ -353,6 +508,7 @@ int main()
     auto button = std::make_unique<Button>("Mount");
     field->set_style("default");
     button->set_style("kenney");
+    button->set_tooltip("Mount the selected cartridge");
     TextField* field_pointer = field.get();
     CheckBox* check_pointer = check.get();
     Slider* slider_pointer = slider.get();
@@ -366,6 +522,21 @@ int main()
     column->add(std::move(slider));
     column->add(std::move(button));
     ui.set_content(std::move(column));
+    bool invalid_tooltip_config_rejected = false;
+    try {
+        TooltipConfig invalid;
+        invalid.focus_delay = -1.0;
+        ui.set_tooltip_config(invalid);
+    } catch (const std::invalid_argument&) {
+        invalid_tooltip_config_rejected = true;
+    }
+    require(invalid_tooltip_config_rejected,
+            "tooltip configuration rejects negative timing values");
+    TooltipConfig tooltip_config;
+    tooltip_config.hover_delay = 0.20;
+    tooltip_config.long_press_delay = 0.30;
+    tooltip_config.focus_delay = 0.20;
+    ui.set_tooltip_config(tooltip_config);
     ui.layout(painter);
 
     require(field_pointer->width() == 304.0F, "vertical layout fills width");
@@ -374,6 +545,67 @@ int main()
     field_pointer->set_text("changed");
     require(!ui.content()->layout_valid(), "child changes invalidate ancestors");
     ui.layout(painter);
+
+    const float button_x = 20.0F;
+    const float button_y = button_pointer->y() + 10.0F;
+    static_cast<void>(ui.pointer(
+        PointerAction::move, button_x, button_y, 0, 90
+    ));
+    ui.update(0.19);
+    require(!ui.tooltip_visible(), "hover tooltip waits for its delay");
+    ui.update(0.02);
+    ui.layout(painter);
+    require(ui.tooltip_visible() && ui.tooltip_owner() == button_pointer,
+            "stationary pointer shows the nearest declared tooltip");
+    const auto hover_bounds = ui.tooltip_bounds();
+    require(hover_bounds && hover_bounds->x >= 0.0F && hover_bounds->y >= 0.0F &&
+                hover_bounds->x + hover_bounds->width <= 320.0F &&
+                hover_bounds->y + hover_bounds->height <= 240.0F,
+            "hover tooltip is constrained to the viewport");
+    const std::size_t tooltip_text_start = painter.strings.size();
+    ui.paint(painter);
+    require(std::find(
+                painter.strings.begin() +
+                    static_cast<std::ptrdiff_t>(tooltip_text_start),
+                painter.strings.end(),
+                "Mount the selected cartridge"
+            ) != painter.strings.end(),
+            "plain-text tooltip is composed and painted as normal widgets");
+
+    static_cast<void>(ui.pointer(
+        PointerAction::down, button_x, button_y, 0, 91
+    ));
+    ui.update(0.29);
+    require(!ui.tooltip_visible(), "touch tooltip waits for long press");
+    ui.update(0.02);
+    ui.layout(painter);
+    require(ui.tooltip_visible() && ui.tooltip_owner() == button_pointer,
+            "primary touch hold shows the widget tooltip");
+    static_cast<void>(ui.pointer(
+        PointerAction::move,
+        button_x + tooltip_config.movement_tolerance + 1.0F,
+        button_y,
+        0,
+        91
+    ));
+    require(!ui.tooltip_visible(),
+            "pointer travel cancels and dismisses a long-press tooltip");
+    static_cast<void>(ui.pointer(
+        PointerAction::up, button_x, button_y, 0, 91
+    ));
+    require(clicks == 0,
+            "a consumed long press cancels the underlying button click");
+    int custom_tooltip_creations = 0;
+    button_pointer->set_tooltip_factory([&custom_tooltip_creations] {
+        ++custom_tooltip_creations;
+        auto content = std::make_unique<MarginContainer>(
+            Insets{5.0F, 5.0F, 5.0F, 5.0F}
+        );
+        static_cast<void>(content->set_content(
+            std::make_unique<Label>("Custom focused help")
+        ));
+        return content;
+    });
 
     squared::application::Event event;
     event.type = squared::application::Event::Type::PointerDown;
@@ -500,6 +732,12 @@ int main()
             "semantic next navigation follows traversal order");
     require(ui.focused() == button_pointer,
             "semantic next navigation reaches the button");
+    ui.update(0.21);
+    ui.layout(painter);
+    require(ui.tooltip_visible() && ui.tooltip_owner() == button_pointer,
+            "keyboard/controller focus shows its tooltip after the focus delay");
+    require(custom_tooltip_creations == 1,
+            "custom tooltip factory creates one fresh normal-widget subtree");
 
     auto stack = std::make_unique<Stack>();
     stack->set_size(100.0F, 80.0F);
@@ -604,6 +842,8 @@ int main()
     dialog->text("Mount read-only?").button("Cancel", "cancel").button("Mount", "mount");
     Dialog* dialog_pointer = dialog.get();
     ui.show_dialog(std::move(dialog));
+    require(!ui.tooltip_visible(),
+            "opening a modal dismisses tooltip state from the prior scope");
     ui.layout(painter);
     auto* cancel_button = dynamic_cast<Button*>(
         dialog_pointer->button_table().child_at(0)
@@ -613,6 +853,7 @@ int main()
     );
     require(cancel_button && mount_button,
             "dialog convenience method creates action buttons");
+    cancel_button->set_tooltip("Keep the cartridge unmounted");
     require(ui.focused() == cancel_button,
             "opening a modal focuses its first control");
     require(ui.key_down(Key::tab) && ui.focused() == mount_button,
@@ -620,6 +861,16 @@ int main()
     require(ui.key_down(Key::tab, {.shift = true}) &&
                 ui.focused() == cancel_button,
             "Shift+Tab reverses inside the modal scope");
+    ui.update(0.21);
+    ui.layout(painter);
+    require(ui.tooltip_visible() && ui.tooltip_owner() == cancel_button,
+            "focused tooltip is allowed inside the active modal scope");
+    static_cast<void>(ui.pointer(
+        PointerAction::move, 20.0F, button_pointer->y() + 10.0F, 0, 92
+    ));
+    ui.update(0.21);
+    require(!ui.tooltip_visible(),
+            "modal scoping prevents tooltips from underlying content");
     const std::size_t fills_before_modal_paint = painter.fills.size();
     ui.paint(painter);
     require(std::any_of(

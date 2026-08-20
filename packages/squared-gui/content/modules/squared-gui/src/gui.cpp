@@ -36,6 +36,25 @@ float clamp_dimension(float value, float minimum, float maximum) noexcept
     return std::min(std::max(value, minimum), maximum);
 }
 
+bool valid_font_path(std::string_view path) noexcept
+{
+    if (path.empty() || path.front() == '/' ||
+        path.find('\\') != std::string_view::npos) {
+        return false;
+    }
+    std::size_t start = 0;
+    while (start <= path.size()) {
+        const auto slash = path.find('/', start);
+        const auto part = path.substr(
+            start, slash == path.npos ? path.size() - start : slash - start
+        );
+        if (part.empty() || part == "." || part == "..") return false;
+        if (slash == path.npos) break;
+        start = slash + 1;
+    }
+    return true;
+}
+
 std::size_t previous_codepoint(const std::string& text, std::size_t cursor)
 {
     if (cursor == 0) return 0;
@@ -70,6 +89,76 @@ const typename Map::mapped_type& style_or_default(
 }
 
 } // namespace
+
+FontResource::FontResource(std::string descriptor_path)
+    : descriptor_path_(std::move(descriptor_path))
+{
+    if (!valid_font_path(descriptor_path_)) {
+        throw std::invalid_argument("FontResource requires a descriptor path");
+    }
+}
+
+FontResource::FontResource(
+    std::string descriptor_path,
+    graphics2d::BitmapFont font,
+    std::vector<graphics2d::TextureRegion> pages,
+    float scale
+) : descriptor_path_(std::move(descriptor_path)), font_(std::move(font)),
+    pages_(std::move(pages)), scale_(scale)
+{
+    if (!valid_font_path(descriptor_path_) || !font_->valid() ||
+        !std::isfinite(scale_) || scale_ <= 0.0F ||
+        pages_.size() != font_->pages().size()) {
+        throw std::invalid_argument("FontResource metrics or pages are invalid");
+    }
+    const bool valid_pages = std::all_of(
+        pages_.begin(), pages_.end(), [this](const auto& page) {
+            return page.width() >= font_->page_width() &&
+                   page.height() >= font_->page_height();
+        }
+    );
+    if (!valid_pages) {
+        throw std::invalid_argument("FontResource page is smaller than BMFont metrics");
+    }
+}
+
+graphics2d::TextureRegion FontResource::glyph_region(
+    const graphics2d::GlyphPlacement& glyph
+) const noexcept
+{
+    if (!resolved() || glyph.page >= pages_.size()) return {};
+    return pages_[glyph.page].subregion(
+        glyph.source_x,
+        glyph.source_y,
+        glyph.source_width,
+        glyph.source_height
+    );
+}
+
+Size Painter::measure_text(
+    std::string_view text,
+    const FontResource* font
+)
+{
+    if (font == nullptr || !font->resolved()) return measure_text(text);
+    graphics2d::GlyphLayout layout;
+    graphics2d::GlyphLayoutOptions options;
+    options.scale = font->scale();
+    graphics2d::BitmapFontError error;
+    if (!layout.set_text(*font->bitmap_font(), text, options, error)) return {};
+    return {layout.width(), layout.height()};
+}
+
+void Painter::draw_text(
+    std::string_view text,
+    float x,
+    float y,
+    const FontResource*,
+    graphics::Color color
+)
+{
+    draw_text(text, x, y, color);
+}
 
 ColorDrawable::ColorDrawable(
     graphics::Color color,
@@ -230,6 +319,9 @@ void NinePatchDrawable::draw(
 Skin::Skin()
 {
     const auto panel = std::make_shared<ColorDrawable>(surface);
+    const auto tooltip = std::make_shared<ColorDrawable>(
+        graphics::Color::from_rgba8(24, 27, 34, 245)
+    );
     const auto normal = std::make_shared<ColorDrawable>(
         control, Size{0.0F, minimum_touch_size}, Insets{12, 8, 12, 8}
     );
@@ -246,28 +338,34 @@ Skin::Skin()
     );
 
     add_drawable("panel", panel);
+    add_drawable("tooltip", tooltip);
     add_drawable("control", normal);
     add_drawable("control.hover", hover);
     add_drawable("control.active", active);
     add_drawable("control.disabled", disabled);
     add_panel_style("default", {panel});
+    add_panel_style("tooltip", {tooltip});
+    add_label_style("default", {});
     add_button_style("default", {
         normal, hover, active, disabled, text, muted_text,
-        minimum_touch_size, 12.0F
+        minimum_touch_size, 12.0F, nullptr
     });
     add_text_field_style("default", {
-        normal, active, text, accent, minimum_touch_size, 10.0F
+        normal, active, text, accent, minimum_touch_size, 10.0F, nullptr
     });
     add_check_box_style("default", {
-        normal, active, disabled, text, 8.0F, minimum_touch_size
+        normal, active, disabled, text, 8.0F, minimum_touch_size, nullptr
     });
     add_slider_style("default", {
         normal, active, active, 120.0F, minimum_touch_size
     });
+    add_progress_bar_style("default", {
+        normal, active, 120.0F, 12.0F
+    });
     add_window_style("default", {
         panel, normal, normal, hover, active, text, text,
         graphics::Color::from_rgba8(0, 0, 0, 140),
-        Insets{8.0F, 8.0F, 8.0F, 8.0F}, 36.0F, 28.0F, 8.0F
+        Insets{8.0F, 8.0F, 8.0F, 8.0F}, 36.0F, 28.0F, 8.0F, nullptr
     });
 }
 
@@ -336,9 +434,28 @@ DrawablePtr Skin::drawable(std::string_view name) const noexcept
     return found == drawables_.end() ? DrawablePtr{} : found->second;
 }
 
+void Skin::add_font(std::string name, FontPtr font)
+{
+    if (name.empty() || !font) {
+        throw std::invalid_argument("Skin font requires a name and value");
+    }
+    fonts_[std::move(name)] = std::move(font);
+}
+
+FontPtr Skin::font(std::string_view name) const noexcept
+{
+    const auto found = fonts_.find(std::string(name));
+    return found == fonts_.end() ? FontPtr{} : found->second;
+}
+
 void Skin::add_panel_style(std::string name, PanelStyle style)
 {
     panel_styles_[std::move(name)] = std::move(style);
+}
+
+void Skin::add_label_style(std::string name, LabelStyle style)
+{
+    label_styles_[std::move(name)] = std::move(style);
 }
 
 void Skin::add_button_style(std::string name, ButtonStyle style)
@@ -361,6 +478,11 @@ void Skin::add_slider_style(std::string name, SliderStyle style)
     slider_styles_[std::move(name)] = std::move(style);
 }
 
+void Skin::add_progress_bar_style(std::string name, ProgressBarStyle style)
+{
+    progress_bar_styles_[std::move(name)] = std::move(style);
+}
+
 void Skin::add_window_style(std::string name, WindowStyle style)
 {
     window_styles_[std::move(name)] = std::move(style);
@@ -369,6 +491,11 @@ void Skin::add_window_style(std::string name, WindowStyle style)
 const PanelStyle& Skin::panel_style(std::string_view name) const
 {
     return style_or_default(panel_styles_, name);
+}
+
+const LabelStyle& Skin::label_style(std::string_view name) const
+{
+    return style_or_default(label_styles_, name);
 }
 
 const ButtonStyle& Skin::button_style(std::string_view name) const
@@ -391,13 +518,21 @@ const SliderStyle& Skin::slider_style(std::string_view name) const
     return style_or_default(slider_styles_, name);
 }
 
+const ProgressBarStyle& Skin::progress_bar_style(std::string_view name) const
+{
+    return style_or_default(progress_bar_styles_, name);
+}
+
 const WindowStyle& Skin::window_style(std::string_view name) const
 {
     return style_or_default(window_styles_, name);
 }
 
 Size Widget::minimum_size(Painter&, const Skin&) const { return {}; }
-Size Widget::preferred_size(Painter&) const { return {width(), height()}; }
+Size Widget::preferred_size(Painter&, const Skin&) const
+{
+    return {width(), height()};
+}
 
 Size Widget::maximum_size(Painter&, const Skin&) const
 {
@@ -409,7 +544,7 @@ SizeHints Widget::size_hints(Painter& painter, const Skin& skin) const
 {
     SizeHints hints{
         minimum_size(painter, skin),
-        preferred_size(painter),
+        preferred_size(painter, skin),
         maximum_size(painter, skin)
     };
     hints.preferred.width = clamp_dimension(
@@ -452,6 +587,34 @@ bool Widget::text_input(std::string_view) { return false; }
 bool Widget::text_editing(std::string_view, int, int) { return false; }
 void Widget::focus_changed(bool) {}
 bool Widget::focusable() const noexcept { return false; }
+
+void Widget::set_tooltip(std::string text)
+{
+    if (text.empty()) {
+        clear_tooltip();
+        return;
+    }
+    set_tooltip_factory([text = std::move(text)]() {
+        auto stack = std::make_unique<Stack>();
+        stack->add(std::make_unique<Panel>("tooltip"));
+        auto margin = std::make_unique<MarginContainer>(
+            Insets{8.0F, 6.0F, 8.0F, 6.0F}
+        );
+        static_cast<void>(margin->set_content(std::make_unique<Label>(text)));
+        stack->add(std::move(margin));
+        return stack;
+    });
+}
+
+void Widget::set_tooltip_factory(TooltipFactory factory)
+{
+    tooltip_factory_ = std::move(factory);
+}
+
+void Widget::clear_tooltip() noexcept
+{
+    tooltip_factory_ = {};
+}
 
 void Widget::input_event(scene2d::InputEvent& event)
 {
@@ -518,9 +681,16 @@ void Label::set_text(std::string text)
     invalidate_layout();
 }
 
-Size Label::preferred_size(Painter& painter) const
+void Label::set_style(std::string style)
 {
-    return painter.measure_text(text_);
+    style_ = std::move(style);
+    invalidate_layout();
+}
+
+Size Label::preferred_size(Painter& painter, const Skin& skin) const
+{
+    const auto& style = skin.label_style(style_);
+    return painter.measure_text(text_, style.font.get());
 }
 
 void Label::paint(
@@ -530,7 +700,12 @@ void Label::paint(
     float y
 ) const
 {
-    painter.draw_text(text_, x, y, muted_ ? skin.muted_text : skin.text);
+    const auto& style = skin.label_style(style_);
+    painter.draw_text(
+        text_, x, y, style.font.get(),
+        muted_ ? style.muted_text.value_or(skin.muted_text)
+               : style.text.value_or(skin.text)
+    );
 }
 
 Image::Image(DrawablePtr drawable) : drawable_(std::move(drawable))
@@ -544,7 +719,7 @@ void Image::set_drawable(DrawablePtr drawable)
     invalidate_layout();
 }
 
-Size Image::preferred_size(Painter&) const
+Size Image::preferred_size(Painter&, const Skin&) const
 {
     return drawable_ ? drawable_->minimum_size() : Size{};
 }
@@ -689,7 +864,7 @@ Table::GridMetrics Table::measure(
     for (const Cell& cell : cells_) {
         const Size size = minimum
             ? cell.widget_->minimum_size(painter, *skin)
-            : cell.widget_->preferred_size(painter);
+            : cell.widget_->preferred_size(painter, *skin);
         const float padded_width = size.width + cell.padding_.left + cell.padding_.right;
         const float padded_height = size.height + cell.padding_.top + cell.padding_.bottom;
         result.rows[cell.row_] = std::max(result.rows[cell.row_], padded_height);
@@ -703,7 +878,7 @@ Table::GridMetrics Table::measure(
         if (cell.column_span_ == 1) continue;
         const Size size = minimum
             ? cell.widget_->minimum_size(painter, *skin)
-            : cell.widget_->preferred_size(painter);
+            : cell.widget_->preferred_size(painter, *skin);
         const float needed = size.width + cell.padding_.left + cell.padding_.right;
         float present = gap * static_cast<float>(cell.column_span_ - 1);
         for (std::size_t column = cell.column_;
@@ -738,9 +913,9 @@ Size Table::minimum_size(Painter& painter, const Skin& skin) const
     return {result.width, result.height};
 }
 
-Size Table::preferred_size(Painter& painter) const
+Size Table::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const GridMetrics result = measure(painter, nullptr, false);
+    const GridMetrics result = measure(painter, &skin, false);
     return {result.width, result.height};
 }
 
@@ -892,7 +1067,7 @@ Size LinearLayout::measured_size(
     for (std::size_t index = 0; index < slots_.size(); ++index) {
         const Size child = minimum
             ? slots_[index].widget->minimum_size(painter, *skin)
-            : slots_[index].widget->preferred_size(painter);
+            : slots_[index].widget->preferred_size(painter, *skin);
         if (direction_ == Direction::horizontal) {
             result.width += child.width;
             result.height = std::max(result.height, child.height + padding * 2.0F);
@@ -913,9 +1088,9 @@ Size LinearLayout::minimum_size(Painter& painter, const Skin& skin) const
     return measured_size(painter, &skin, true);
 }
 
-Size LinearLayout::preferred_size(Painter& painter) const
+Size LinearLayout::preferred_size(Painter& painter, const Skin& skin) const
 {
-    return measured_size(painter, nullptr, false);
+    return measured_size(painter, &skin, false);
 }
 
 void LinearLayout::layout(Painter& painter, const Skin& skin)
@@ -1006,12 +1181,12 @@ Widget& Stack::add(std::unique_ptr<Widget> child)
     return result;
 }
 
-Size Stack::preferred_size(Painter& painter) const
+Size Stack::preferred_size(Painter& painter, const Skin& skin) const
 {
     Size result{};
     for (std::size_t index = 0; index < child_count(); ++index) {
         if (const auto* child = dynamic_cast<const Widget*>(child_at(index))) {
-            const Size size = child->preferred_size(painter);
+            const Size size = child->preferred_size(painter, skin);
             result.width = std::max(result.width, size.width);
             result.height = std::max(result.height, size.height);
         }
@@ -1042,9 +1217,10 @@ Widget& MarginContainer::set_content(std::unique_ptr<Widget> content)
     return *content_;
 }
 
-Size MarginContainer::preferred_size(Painter& painter) const
+Size MarginContainer::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const Size child = content_ ? content_->preferred_size(painter) : Size{};
+    const Size child = content_
+        ? content_->preferred_size(painter, skin) : Size{};
     return {
         child.width + margin_.left + margin_.right,
         child.height + margin_.top + margin_.bottom
@@ -1081,15 +1257,15 @@ void ScrollPane::set_scroll_y(float scroll_y) noexcept
     if (content_) content_->set_position(0.0F, -scroll_y_);
 }
 
-Size ScrollPane::preferred_size(Painter& painter) const
+Size ScrollPane::preferred_size(Painter& painter, const Skin& skin) const
 {
-    return content_ ? content_->preferred_size(painter) : Size{};
+    return content_ ? content_->preferred_size(painter, skin) : Size{};
 }
 
 void ScrollPane::layout(Painter& painter, const Skin& skin)
 {
     if (!content_) return;
-    const Size preferred = content_->preferred_size(painter);
+    const Size preferred = content_->preferred_size(painter, skin);
     content_->set_bounds(
         0.0F,
         -scroll_y_,
@@ -1127,6 +1303,120 @@ void ScrollPane::clamp_scroll() noexcept
     scroll_y_ = std::clamp(scroll_y_, 0.0F, maximum);
 }
 
+ButtonGroup::ButtonGroup(
+    std::size_t minimum_checked,
+    std::size_t maximum_checked
+) : minimum_checked_(minimum_checked), maximum_checked_(maximum_checked)
+{
+    if (minimum_checked_ > maximum_checked_) {
+        throw std::invalid_argument("ButtonGroup minimum exceeds maximum");
+    }
+}
+
+ButtonGroup::~ButtonGroup()
+{
+    clear();
+}
+
+void ButtonGroup::add(ToggleButton& button)
+{
+    if (button.group_ == this) return;
+    if (button.group_ != nullptr) {
+        throw std::invalid_argument("ToggleButton already belongs to a group");
+    }
+    buttons_.push_back(&button);
+    button.group_ = this;
+    rebalance();
+}
+
+bool ButtonGroup::remove(ToggleButton& button)
+{
+    const auto found = std::find(buttons_.begin(), buttons_.end(), &button);
+    if (found == buttons_.end()) return false;
+    buttons_.erase(found);
+    button.group_ = nullptr;
+    rebalance();
+    return true;
+}
+
+void ButtonGroup::clear() noexcept
+{
+    for (ToggleButton* button : buttons_) button->group_ = nullptr;
+    buttons_.clear();
+}
+
+void ButtonGroup::set_limits(
+    std::size_t minimum_checked,
+    std::size_t maximum_checked
+)
+{
+    if (minimum_checked > maximum_checked) {
+        throw std::invalid_argument("ButtonGroup minimum exceeds maximum");
+    }
+    minimum_checked_ = minimum_checked;
+    maximum_checked_ = maximum_checked;
+    rebalance();
+}
+
+std::size_t ButtonGroup::checked_count() const noexcept
+{
+    return static_cast<std::size_t>(std::count_if(
+        buttons_.begin(), buttons_.end(),
+        [](const ToggleButton* button) { return button->checked_; }
+    ));
+}
+
+ToggleButton* ButtonGroup::checked_button() const noexcept
+{
+    const auto found = std::find_if(
+        buttons_.begin(), buttons_.end(),
+        [](const ToggleButton* button) { return button->checked_; }
+    );
+    return found == buttons_.end() ? nullptr : *found;
+}
+
+bool ButtonGroup::request_state(ToggleButton& button, bool checked)
+{
+    if (button.group_ != this || button.checked_ == checked) return false;
+    std::size_t count = checked_count();
+    if (!checked) {
+        if (count <= std::min(minimum_checked_, buttons_.size())) return false;
+        button.apply_checked(false);
+        return true;
+    }
+    if (maximum_checked_ == 0) return false;
+    for (ToggleButton* member : buttons_) {
+        if (count < maximum_checked_) break;
+        if (member != &button && member->checked_) {
+            member->apply_checked(false);
+            --count;
+        }
+    }
+    if (count >= maximum_checked_) return false;
+    button.apply_checked(true);
+    return true;
+}
+
+void ButtonGroup::rebalance()
+{
+    std::size_t count = checked_count();
+    for (auto iterator = buttons_.rbegin();
+         count > maximum_checked_ && iterator != buttons_.rend(); ++iterator) {
+        if ((*iterator)->checked_) {
+            (*iterator)->apply_checked(false);
+            --count;
+        }
+    }
+    const std::size_t required = std::min(minimum_checked_, buttons_.size());
+    for (ToggleButton* button : buttons_) {
+        if (count >= required) break;
+        if (!button->checked_) {
+            button->apply_checked(true);
+            ++count;
+        }
+    }
+}
+
 Button::Button(std::string text, Callback callback)
     : text_(std::move(text)), callback_(std::move(callback))
 {
@@ -1149,20 +1439,62 @@ void Button::set_style(std::string style)
     invalidate_layout();
 }
 
+void Button::set_icon(DrawablePtr drawable)
+{
+    icon_drawable_ = std::move(drawable);
+    glyph_.clear();
+    glyph_font_.reset();
+    invalidate_layout();
+}
+
+void Button::set_glyph(std::string glyph, FontPtr font)
+{
+    glyph_ = std::move(glyph);
+    glyph_font_ = std::move(font);
+    icon_drawable_.reset();
+    invalidate_layout();
+}
+
+void Button::clear_icon()
+{
+    icon_drawable_.reset();
+    glyph_.clear();
+    glyph_font_.reset();
+    invalidate_layout();
+}
+
 Size Button::minimum_size(Painter& painter, const Skin& skin) const
 {
     const auto& style = skin.button_style(style_);
-    const Size text = painter.measure_text(text_);
+    const Size text = painter.measure_text(text_, style.font.get());
+    const bool has_icon = icon_drawable_ || !glyph_.empty();
+    const float icon = has_icon ? std::max(0.0F, style.icon_size) : 0.0F;
+    const float spacing = has_icon && !text_.empty()
+        ? std::max(0.0F, style.icon_spacing) : 0.0F;
     return {
-        text.width + 2.0F * style.horizontal_padding,
-        std::max(skin.minimum_touch_size, style.minimum_height)
+        std::max(
+            style.minimum_height,
+            text.width + icon + spacing + 2.0F * style.horizontal_padding
+        ),
+        std::max({skin.minimum_touch_size, style.minimum_height, icon})
     };
 }
 
-Size Button::preferred_size(Painter& painter) const
+Size Button::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const Size text = painter.measure_text(text_);
-    return {text.width + 24.0F, default_touch_size};
+    const auto& style = skin.button_style(style_);
+    const Size text = painter.measure_text(text_, style.font.get());
+    const bool has_icon = icon_drawable_ || !glyph_.empty();
+    const float icon = has_icon ? std::max(0.0F, style.icon_size) : 0.0F;
+    const float spacing = has_icon && !text_.empty()
+        ? std::max(0.0F, style.icon_spacing) : 0.0F;
+    return {
+        std::max(
+            style.minimum_height,
+            text.width + icon + spacing + 2.0F * style.horizontal_padding
+        ),
+        std::max({skin.minimum_touch_size, style.minimum_height, icon})
+    };
 }
 
 void Button::paint(Painter& painter, const Skin& skin, float x, float y) const
@@ -1177,12 +1509,37 @@ void Button::paint(Painter& painter, const Skin& skin, float x, float y) const
     if (focused_) {
         painter.stroke_rectangle(bounds_of(*this, x, y), skin.accent, 2.0F);
     }
-    const Size text_size = painter.measure_text(text_);
+    const FontResource* glyph_font = glyph_font_ ? glyph_font_.get() : style.font.get();
+    const Size text_size = painter.measure_text(text_, style.font.get());
+    const bool has_icon = icon_drawable_ || !glyph_.empty();
+    const float icon_size = has_icon ? std::max(0.0F, style.icon_size) : 0.0F;
+    const float spacing = has_icon && !text_.empty()
+        ? std::max(0.0F, style.icon_spacing) : 0.0F;
+    const float content_width = icon_size + spacing + text_size.width;
+    const float content_x = x + std::max(0.0F, (width() - content_width) * 0.5F);
+    const graphics::Color content_color = enabled()
+        ? style.text : style.disabled_text;
+    if (icon_drawable_) {
+        icon_drawable_->draw(
+            painter,
+            {content_x, y + std::max(0.0F, (height() - icon_size) * 0.5F),
+             icon_size, icon_size},
+            content_color
+        );
+    } else if (!glyph_.empty()) {
+        const Size glyph_size = painter.measure_text(glyph_, glyph_font);
+        painter.draw_text(
+            glyph_,
+            content_x + std::max(0.0F, (icon_size - glyph_size.width) * 0.5F),
+            y + std::max(0.0F, (height() - glyph_size.height) * 0.5F),
+            glyph_font, content_color
+        );
+    }
     painter.draw_text(
         text_,
-        x + std::max(0.0F, (width() - text_size.width) * 0.5F),
+        content_x + icon_size + spacing,
         y + std::max(0.0F, (height() - text_size.height) * 0.5F),
-        enabled() ? style.text : style.disabled_text
+        style.font.get(), content_color
     );
 }
 
@@ -1228,7 +1585,28 @@ ToggleButton::ToggleButton(std::string text, bool checked)
 {
 }
 
+ToggleButton::~ToggleButton()
+{
+    if (group_ != nullptr) {
+        try {
+            static_cast<void>(group_->remove(*this));
+        } catch (...) {
+            // Destruction has already detached this button before rebalance.
+        }
+    }
+}
+
 void ToggleButton::set_checked(bool checked)
+{
+    if (checked_ == checked) return;
+    if (group_ != nullptr) {
+        static_cast<void>(group_->request_state(*this, checked));
+        return;
+    }
+    apply_checked(checked);
+}
+
+void ToggleButton::apply_checked(bool checked)
 {
     if (checked_ == checked) return;
     checked_ = checked;
@@ -1253,6 +1631,12 @@ CheckBox::CheckBox(std::string text, bool checked)
 {
 }
 
+RadioButton::RadioButton(std::string text, bool checked)
+    : CheckBox(std::move(text), checked)
+{
+    set_check_style("radio");
+}
+
 void CheckBox::set_check_style(std::string style)
 {
     check_style_ = std::move(style);
@@ -1269,10 +1653,14 @@ Size CheckBox::minimum_size(Painter& painter, const Skin& skin) const
     };
 }
 
-Size CheckBox::preferred_size(Painter& painter) const
+Size CheckBox::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const Size text_size = painter.measure_text(text());
-    return {default_touch_size + 8.0F + text_size.width, default_touch_size};
+    const auto& style = skin.check_box_style(check_style_);
+    const Size text_size = painter.measure_text(text(), style.font.get());
+    return {
+        style.minimum_touch_size + style.spacing + text_size.width,
+        std::max(skin.minimum_touch_size, style.minimum_touch_size)
+    };
 }
 
 void CheckBox::paint(Painter& painter, const Skin& skin, float x, float y) const
@@ -1284,12 +1672,12 @@ void CheckBox::paint(Painter& painter, const Skin& skin, float x, float y) const
     if (mark) {
         mark->draw(painter, {x, y + (height() - size) * 0.5F, size, size});
     }
-    const Size text_size = painter.measure_text(text());
+    const Size text_size = painter.measure_text(text(), style.font.get());
     painter.draw_text(
         text(),
         x + size + style.spacing,
         y + std::max(0.0F, (height() - text_size.height) * 0.5F),
-        style.text
+        style.font.get(), style.text
     );
     if (focused()) {
         painter.stroke_rectangle(bounds_of(*this, x, y), skin.accent, 2.0F);
@@ -1320,10 +1708,17 @@ Size TextField::minimum_size(Painter&, const Skin& skin) const
     return {80.0F, std::max(skin.minimum_touch_size, style.minimum_height)};
 }
 
-Size TextField::preferred_size(Painter& painter) const
+Size TextField::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const Size text_size = painter.measure_text(text_.empty() ? "M" : text_);
-    return {std::max(120.0F, text_size.width + 20.0F), default_touch_size};
+    const auto& style = skin.text_field_style(style_);
+    const Size text_size = painter.measure_text(
+        text_.empty() ? std::string_view{"M"} : std::string_view{text_},
+        style.font.get()
+    );
+    return {
+        std::max(120.0F, text_size.width + 2.0F * style.horizontal_padding),
+        std::max(skin.minimum_touch_size, style.minimum_height)
+    };
 }
 
 void TextField::paint(Painter& painter, const Skin& skin, float x, float y) const
@@ -1332,17 +1727,24 @@ void TextField::paint(Painter& painter, const Skin& skin, float x, float y) cons
     const DrawablePtr background = focused_ ? style.focused : style.normal;
     if (background) background->draw(painter, bounds_of(*this, x, y));
     const float text_y = y + std::max(
-        0.0F, (height() - painter.measure_text("M").height) * 0.5F
+        0.0F,
+        (height() - painter.measure_text("M", style.font.get()).height) * 0.5F
     );
-    painter.draw_text(text_, x + style.horizontal_padding, text_y, style.text);
+    painter.draw_text(
+        text_, x + style.horizontal_padding, text_y, style.font.get(), style.text
+    );
     if (focused_) {
         const Size prefix = painter.measure_text(
-            std::string_view(text_).substr(0, cursor_)
+            std::string_view(text_).substr(0, cursor_), style.font.get()
         );
         if (!composition_.empty()) {
             const float composition_x = x + style.horizontal_padding + prefix.width;
-            painter.draw_text(composition_, composition_x, text_y, style.cursor);
-            const Size composition_size = painter.measure_text(composition_);
+            painter.draw_text(
+                composition_, composition_x, text_y, style.font.get(), style.cursor
+            );
+            const Size composition_size = painter.measure_text(
+                composition_, style.font.get()
+            );
             painter.fill_rectangle(
                 {composition_x, text_y + composition_size.height - 1.0F,
                  composition_size.width, 1.0F},
@@ -1449,7 +1851,7 @@ Size Slider::minimum_size(Painter&, const Skin& skin) const
     return {style.minimum_length, std::max(style.minimum_touch_size, skin.minimum_touch_size)};
 }
 
-Size Slider::preferred_size(Painter&) const
+Size Slider::preferred_size(Painter&, const Skin&) const
 {
     return {120.0F, default_touch_size};
 }
@@ -1517,12 +1919,81 @@ void Slider::update_from_pointer(float x)
     set_value(minimum_ + ratio * (maximum_ - minimum_));
 }
 
+ProgressBar::ProgressBar(float minimum, float maximum, float value)
+{
+    set_touchable(false);
+    set_range(minimum, maximum);
+    set_value(value);
+}
+
+void ProgressBar::set_range(float minimum, float maximum) noexcept
+{
+    minimum_ = std::min(minimum, maximum);
+    maximum_ = std::max(minimum, maximum);
+    value_ = std::clamp(value_, minimum_, maximum_);
+}
+
+void ProgressBar::set_value(float value) noexcept
+{
+    value_ = std::clamp(value, minimum_, maximum_);
+}
+
+float ProgressBar::progress() const noexcept
+{
+    return maximum_ > minimum_
+        ? std::clamp((value_ - minimum_) / (maximum_ - minimum_), 0.0F, 1.0F)
+        : 0.0F;
+}
+
+void ProgressBar::set_style(std::string style)
+{
+    style_ = std::move(style);
+    invalidate_layout();
+}
+
+Size ProgressBar::minimum_size(Painter&, const Skin& skin) const
+{
+    const auto& style = skin.progress_bar_style(style_);
+    return {
+        std::max(0.0F, style.minimum_length),
+        std::max(0.0F, style.thickness)
+    };
+}
+
+Size ProgressBar::preferred_size(Painter& painter, const Skin& skin) const
+{
+    return minimum_size(painter, skin);
+}
+
+void ProgressBar::paint(
+    Painter& painter,
+    const Skin& skin,
+    float x,
+    float y
+) const
+{
+    const auto& style = skin.progress_bar_style(style_);
+    const float thickness = std::min(
+        height(), std::max(0.0F, style.thickness)
+    );
+    const Rectangle track{
+        x, y + std::max(0.0F, (height() - thickness) * 0.5F), width(), thickness
+    };
+    if (style.track) style.track->draw(painter, track);
+    if (style.fill && progress() > 0.0F) {
+        style.fill->draw(
+            painter,
+            {track.x, track.y, track.width * progress(), track.height}
+        );
+    }
+}
+
 Separator::Separator(Direction direction) noexcept : direction_(direction)
 {
     set_touchable(false);
 }
 
-Size Separator::preferred_size(Painter&) const
+Size Separator::preferred_size(Painter&, const Skin&) const
 {
     return direction_ == Direction::horizontal
         ? Size{0.0F, 1.0F} : Size{1.0F, 0.0F};
@@ -1572,7 +2043,7 @@ Size Window::minimum_size(Painter& painter, const Skin& skin) const
 {
     const WindowStyle& style = skin.window_style(style_);
     const Size table = content_->minimum_size(painter, skin);
-    const Size title = painter.measure_text(title_);
+    const Size title = painter.measure_text(title_, style.title_font.get());
     const Size background = style.background
         ? style.background->minimum_size() : Size{};
     const float title_controls = closable_
@@ -1595,15 +2066,21 @@ Size Window::minimum_size(Painter& painter, const Skin& skin) const
     };
 }
 
-Size Window::preferred_size(Painter& painter) const
+Size Window::preferred_size(Painter& painter, const Skin& skin) const
 {
-    const Size table = content_->preferred_size(painter);
-    const Size title = painter.measure_text(title_);
-    const float title_controls = closable_ ? close_size_ + 8.0F : 0.0F;
+    const auto& style = skin.window_style(style_);
+    const Size table = content_->preferred_size(painter, skin);
+    const Size title = painter.measure_text(title_, style.title_font.get());
+    const float title_controls = closable_
+        ? style.close_size + style.content_insets.right : 0.0F;
     return {
-        std::max({table.width + 16.0F, title.width + 24.0F + title_controls,
-                  requested_minimum_.width}),
-        std::max(table.height + title_height_ + 16.0F,
+        std::max({
+            table.width + style.content_insets.left + style.content_insets.right,
+            title.width + style.content_insets.left + title_controls,
+            requested_minimum_.width
+        }),
+        std::max(table.height + style.title_height + style.content_insets.top +
+                     style.content_insets.bottom,
                  requested_minimum_.height)
     };
 }
@@ -1611,7 +2088,10 @@ Size Window::preferred_size(Painter& painter) const
 void Window::layout(Painter& painter, const Skin& skin)
 {
     const WindowStyle& style = skin.window_style(style_);
-    title_height_ = std::max(style.title_height, painter.measure_text(title_).height);
+    title_height_ = std::max(
+        style.title_height,
+        painter.measure_text(title_, style.title_font.get()).height
+    );
     close_size_ = std::min(title_height_, std::max(0.0F, style.close_size));
     resize_border_ = std::max(1.0F, style.resize_border);
     measured_minimum_ = minimum_size(painter, skin);
@@ -1640,11 +2120,11 @@ void Window::paint(Painter& painter, const Skin& skin, float x, float y) const
     if (style.title_background) {
         style.title_background->draw(painter, {x, y, width(), title_height_});
     }
-    const Size title_size = painter.measure_text(title_);
+    const Size title_size = painter.measure_text(title_, style.title_font.get());
     painter.draw_text(
         title_, x + style.content_insets.left,
         y + std::max(0.0F, (title_height_ - title_size.height) * 0.5F),
-        style.title_text
+        style.title_font.get(), style.title_text
     );
     if (closable_) {
         const Rectangle bounds = close_bounds();
@@ -1656,12 +2136,12 @@ void Window::paint(Painter& painter, const Skin& skin, float x, float y) const
                 {x + bounds.x, y + bounds.y, bounds.width, bounds.height}
             );
         }
-        const Size close_text = painter.measure_text("x");
+        const Size close_text = painter.measure_text("x", style.title_font.get());
         painter.draw_text(
             "x",
             x + bounds.x + std::max(0.0F, (bounds.width - close_text.width) * 0.5F),
             y + bounds.y + std::max(0.0F, (bounds.height - close_text.height) * 0.5F),
-            style.close_text
+            style.title_font.get(), style.close_text
         );
     }
 }
@@ -1879,6 +2359,8 @@ Ui::Ui(float width, float height, Skin skin)
 Widget& Ui::set_content(std::unique_ptr<Widget> content)
 {
     if (!content) throw std::invalid_argument("GUI content must not be null");
+    hide_tooltip();
+    reset_tooltip_candidates();
     clear_focus();
     captures_.clear();
     overlays_.clear();
@@ -1892,6 +2374,8 @@ Widget& Ui::set_content(std::unique_ptr<Widget> content)
 Window& Ui::show_window(std::unique_ptr<Window> window, bool center)
 {
     if (!window) throw std::invalid_argument("GUI window must not be null");
+    hide_tooltip();
+    reset_tooltip_candidates();
     Window* reference = window.get();
     overlays_.push_back({reference, focused_, center});
     try {
@@ -1923,6 +2407,12 @@ void Ui::close_window(Window& window)
         [&window](const Overlay& overlay) { return overlay.window == &window; }
     );
     if (found == overlays_.end()) return;
+    if (is_descendant_of(tooltip_owner_, &window)) hide_tooltip();
+    if (is_descendant_of(hover_tooltip_owner_, &window) ||
+        is_descendant_of(press_tooltip_owner_, &window) ||
+        is_descendant_of(focus_tooltip_owner_, &window)) {
+        reset_tooltip_candidates();
+    }
     Widget* restore = found->previous_focus;
     for (Overlay& overlay : overlays_) {
         if (is_descendant_of(overlay.previous_focus, &window)) {
@@ -1954,8 +2444,67 @@ void Ui::resize(float width, float height)
 
 void Ui::update(double delta_seconds)
 {
-    stage_.act(delta_seconds);
+    const double elapsed = std::isfinite(delta_seconds)
+        ? std::max(0.0, delta_seconds) : 0.0;
+    stage_.act(elapsed);
     prune_closed_windows();
+
+    if (tooltip_owner_ && !tooltip_owner_allowed(tooltip_owner_)) {
+        hide_tooltip();
+    }
+    if (press_tooltip_active_ && press_tooltip_owner_) {
+        if (!tooltip_owner_allowed(press_tooltip_owner_)) {
+            press_tooltip_active_ = false;
+            press_tooltip_owner_ = nullptr;
+        } else if (tooltip_owner_ != press_tooltip_owner_) {
+            press_tooltip_elapsed_ += elapsed;
+            if (press_tooltip_elapsed_ >= tooltip_config_.long_press_delay) {
+                show_tooltip(*press_tooltip_owner_, true);
+                if (tooltip_owner_ == press_tooltip_owner_) {
+                    const auto capture = captures_.find(
+                        press_tooltip_pointer_id_
+                    );
+                    if (capture != captures_.end()) {
+                        scene2d::InputEvent cancelled;
+                        cancelled.type = scene2d::InputType::pointer_cancel;
+                        cancelled.pointer_id = press_tooltip_pointer_id_;
+                        cancelled.stage_x = tooltip_anchor_x_;
+                        cancelled.stage_y = tooltip_anchor_y_;
+                        static_cast<void>(
+                            stage_.dispatch_input(cancelled, capture->second)
+                        );
+                        captures_.erase(capture);
+                    }
+                }
+                press_tooltip_active_ = false;
+            }
+        }
+        return;
+    }
+    if (hover_tooltip_owner_) {
+        if (!tooltip_owner_allowed(hover_tooltip_owner_)) {
+            hover_tooltip_owner_ = nullptr;
+            hover_tooltip_elapsed_ = 0.0;
+        } else if (tooltip_owner_ != hover_tooltip_owner_) {
+            hover_tooltip_elapsed_ += elapsed;
+            if (hover_tooltip_elapsed_ >= tooltip_config_.hover_delay) {
+                show_tooltip(*hover_tooltip_owner_, true);
+            }
+        }
+        return;
+    }
+    if (focus_tooltip_owner_) {
+        if (!tooltip_owner_allowed(focus_tooltip_owner_) ||
+            !is_descendant_of(focused_, focus_tooltip_owner_)) {
+            focus_tooltip_owner_ = nullptr;
+            focus_tooltip_elapsed_ = 0.0;
+        } else if (tooltip_owner_ != focus_tooltip_owner_) {
+            focus_tooltip_elapsed_ += elapsed;
+            if (focus_tooltip_elapsed_ >= tooltip_config_.focus_delay) {
+                show_tooltip(*focus_tooltip_owner_, false);
+            }
+        }
+    }
 }
 
 void Ui::layout(Painter& painter)
@@ -1991,6 +2540,7 @@ void Ui::layout(Painter& painter)
             {stage_x, stage_y, focused_->width(), focused_->height()}
         );
     }
+    layout_tooltip(painter);
 }
 
 void Ui::paint(Painter& painter) const
@@ -2102,6 +2652,60 @@ bool Ui::pointer(
     std::int64_t pointer_id
 )
 {
+    tooltip_anchor_x_ = x;
+    tooltip_anchor_y_ = y;
+    const bool tooltip_was_visible = tooltip_widget_ != nullptr;
+    if (tooltip_widget_) hide_tooltip();
+
+    scene2d::Actor* tooltip_hit = stage_.hit(x, y, false);
+    if (Window* modal = top_modal();
+        modal && !is_descendant_of(tooltip_hit, modal)) {
+        tooltip_hit = modal;
+    }
+    Widget* tooltip_target = nullptr;
+    for (scene2d::Actor* actor = tooltip_hit; actor; actor = actor->parent()) {
+        if (auto* widget = dynamic_cast<Widget*>(actor)) {
+            tooltip_target = widget;
+            break;
+        }
+    }
+    Widget* candidate = tooltip_owner_for(tooltip_target);
+
+    if (action == PointerAction::move) {
+        focus_tooltip_owner_ = nullptr;
+        focus_tooltip_elapsed_ = 0.0;
+        if (press_tooltip_active_ && pointer_id == press_tooltip_pointer_id_) {
+            const float dx = x - press_start_x_;
+            const float dy = y - press_start_y_;
+            const float tolerance = tooltip_config_.movement_tolerance;
+            if (dx * dx + dy * dy > tolerance * tolerance) {
+                press_tooltip_active_ = false;
+                press_tooltip_owner_ = nullptr;
+                press_tooltip_elapsed_ = 0.0;
+            }
+        } else if (candidate != hover_tooltip_owner_ || tooltip_was_visible) {
+            hover_tooltip_owner_ = candidate;
+            hover_tooltip_elapsed_ = 0.0;
+        }
+    } else if (action == PointerAction::down) {
+        hover_tooltip_owner_ = nullptr;
+        hover_tooltip_elapsed_ = 0.0;
+        focus_tooltip_owner_ = nullptr;
+        focus_tooltip_elapsed_ = 0.0;
+        press_tooltip_owner_ = button == 0 ? candidate : nullptr;
+        press_tooltip_elapsed_ = 0.0;
+        press_tooltip_pointer_id_ = pointer_id;
+        press_start_x_ = x;
+        press_start_y_ = y;
+        press_tooltip_active_ = press_tooltip_owner_ != nullptr;
+    } else if (action == PointerAction::up || action == PointerAction::cancel) {
+        if (pointer_id == press_tooltip_pointer_id_) {
+            press_tooltip_active_ = false;
+            press_tooltip_owner_ = nullptr;
+            press_tooltip_elapsed_ = 0.0;
+        }
+    }
+
     Widget* target = nullptr;
     const auto capture = captures_.find(pointer_id);
     if (capture != captures_.end()) target = capture->second;
@@ -2143,6 +2747,9 @@ bool Ui::pointer(
 
 bool Ui::key_down(Key key, KeyModifiers modifiers)
 {
+    hide_tooltip();
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
     scene2d::InputEvent routed;
     routed.type = scene2d::InputType::key_down;
     routed.modifiers = modifiers;
@@ -2205,6 +2812,9 @@ bool Ui::navigation(
     std::int32_t input_device_id
 )
 {
+    hide_tooltip();
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
     using Navigation = application::Event::Navigation;
     scene2d::InputEvent routed;
     routed.type = scene2d::InputType::navigation;
@@ -2255,15 +2865,45 @@ bool Ui::navigation(
 
 bool Ui::text_input(std::string_view text)
 {
+    hide_tooltip();
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
     return focused_ && focused_->text_input(text);
 }
 
 bool Ui::text_editing(std::string_view text, int start, int length)
 {
+    hide_tooltip();
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
     return focused_ && focused_->text_editing(text, start, length);
 }
 
 void Ui::clear_focus() { set_focus(nullptr); }
+
+void Ui::set_tooltip_config(TooltipConfig config)
+{
+    const bool valid =
+        std::isfinite(config.hover_delay) && config.hover_delay >= 0.0 &&
+        std::isfinite(config.long_press_delay) &&
+            config.long_press_delay >= 0.0 &&
+        std::isfinite(config.focus_delay) && config.focus_delay >= 0.0 &&
+        std::isfinite(config.movement_tolerance) &&
+            config.movement_tolerance >= 0.0F &&
+        std::isfinite(config.viewport_margin) &&
+            config.viewport_margin >= 0.0F &&
+        std::isfinite(config.owner_gap) && config.owner_gap >= 0.0F &&
+        std::isfinite(config.pointer_offset) &&
+            config.pointer_offset >= 0.0F;
+    if (!valid) {
+        throw std::invalid_argument(
+            "Tooltip configuration values must be finite and non-negative"
+        );
+    }
+    tooltip_config_ = config;
+    hide_tooltip();
+    reset_tooltip_candidates();
+}
 
 Widget* Ui::widget_at(float x, float y) noexcept
 {
@@ -2324,6 +2964,9 @@ void Ui::set_focus(Widget* widget)
         }
         return;
     }
+    if (tooltip_widget_ && !tooltip_pointer_anchor_) hide_tooltip();
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
     if (focused_) focused_->focus_changed(false);
     focused_ = widget;
     if (focused_) focused_->focus_changed(true);
@@ -2364,6 +3007,7 @@ bool Ui::focus_next(bool reverse)
         index = candidates.size() - 1;
     }
     set_focus(candidates[index]);
+    arm_focus_tooltip(candidates[index]);
     return true;
 }
 
@@ -2417,6 +3061,7 @@ bool Ui::focus_direction(Key direction)
     }
     if (!best) return false;
     set_focus(best);
+    arm_focus_tooltip(best);
     return true;
 }
 
@@ -2458,6 +3103,143 @@ void Ui::stage_position(
          current = current->parent()) {
         x += current->x();
         y += current->y();
+    }
+}
+
+Widget* Ui::tooltip_owner_for(Widget* target) const noexcept
+{
+    for (Widget* current = target; current;
+         current = dynamic_cast<Widget*>(current->parent())) {
+        if (current->has_tooltip() && tooltip_owner_allowed(current)) {
+            return current;
+        }
+    }
+    return nullptr;
+}
+
+bool Ui::tooltip_owner_allowed(const Widget* owner) const noexcept
+{
+    if (!owner || !owner->has_tooltip() ||
+        !is_descendant_of(owner, &stage_.root())) {
+        return false;
+    }
+    for (const scene2d::Actor* current = owner; current;
+         current = current->parent()) {
+        if (!current->visible()) return false;
+    }
+    const Window* modal = top_modal();
+    return !modal || is_descendant_of(owner, modal);
+}
+
+void Ui::arm_focus_tooltip(Widget* owner) noexcept
+{
+    focus_tooltip_owner_ = tooltip_owner_for(owner);
+    focus_tooltip_elapsed_ = 0.0;
+    hover_tooltip_owner_ = nullptr;
+    hover_tooltip_elapsed_ = 0.0;
+}
+
+void Ui::show_tooltip(Widget& owner, bool pointer_anchor)
+{
+    if (!tooltip_owner_allowed(&owner) || tooltip_owner_ == &owner) return;
+    std::unique_ptr<Widget> tooltip = owner.tooltip_factory_();
+    if (!tooltip) return;
+    if (tooltip->parent()) {
+        throw std::invalid_argument("Tooltip factory returned a parented widget");
+    }
+    make_subtree_untouchable(*tooltip);
+    hide_tooltip();
+    tooltip_widget_ = tooltip.get();
+    tooltip_owner_ = &owner;
+    tooltip_pointer_anchor_ = pointer_anchor;
+    try {
+        static_cast<void>(stage_.add_actor(std::move(tooltip)));
+    } catch (...) {
+        tooltip_widget_ = nullptr;
+        tooltip_owner_ = nullptr;
+        throw;
+    }
+}
+
+void Ui::hide_tooltip() noexcept
+{
+    if (tooltip_widget_ && tooltip_widget_->parent() == &stage_.root()) {
+        [[maybe_unused]] auto removed =
+            stage_.root().remove_actor(*tooltip_widget_);
+    }
+    tooltip_widget_ = nullptr;
+    tooltip_owner_ = nullptr;
+}
+
+void Ui::reset_tooltip_candidates() noexcept
+{
+    hover_tooltip_owner_ = nullptr;
+    hover_tooltip_elapsed_ = 0.0;
+    press_tooltip_owner_ = nullptr;
+    press_tooltip_elapsed_ = 0.0;
+    press_tooltip_active_ = false;
+    focus_tooltip_owner_ = nullptr;
+    focus_tooltip_elapsed_ = 0.0;
+}
+
+void Ui::layout_tooltip(Painter& painter)
+{
+    if (!tooltip_widget_ || !tooltip_owner_) return;
+    if (!tooltip_owner_allowed(tooltip_owner_)) {
+        hide_tooltip();
+        return;
+    }
+
+    const float viewport_width = stage_.root().width();
+    const float viewport_height = stage_.root().height();
+    const float margin = std::min(
+        tooltip_config_.viewport_margin,
+        std::max(0.0F, std::min(viewport_width, viewport_height) * 0.5F)
+    );
+    const Size preferred = tooltip_widget_->size_hints(painter, skin_).preferred;
+    const float width = std::min(
+        preferred.width, std::max(0.0F, viewport_width - 2.0F * margin)
+    );
+    const float height = std::min(
+        preferred.height, std::max(0.0F, viewport_height - 2.0F * margin)
+    );
+
+    float anchor_left = tooltip_anchor_x_;
+    float anchor_top = tooltip_anchor_y_;
+    float anchor_bottom = tooltip_anchor_y_;
+    float x = 0.0F;
+    float y = 0.0F;
+    float gap = tooltip_config_.pointer_offset;
+    if (tooltip_pointer_anchor_) {
+        x = tooltip_anchor_x_ + gap;
+        y = tooltip_anchor_y_ + gap;
+    } else {
+        stage_position(*tooltip_owner_, anchor_left, anchor_top);
+        anchor_bottom = anchor_top + tooltip_owner_->height();
+        gap = tooltip_config_.owner_gap;
+        x = anchor_left + (tooltip_owner_->width() - width) * 0.5F;
+        y = anchor_bottom + gap;
+    }
+    if (y + height > viewport_height - margin) {
+        y = anchor_top - gap - height;
+    }
+    const float maximum_x = std::max(margin, viewport_width - margin - width);
+    const float maximum_y = std::max(margin, viewport_height - margin - height);
+    x = std::clamp(x, margin, maximum_x);
+    y = std::clamp(y, margin, maximum_y);
+
+    tooltip_widget_->set_bounds(x, y, width, height);
+    tooltip_widget_->invalidate_layout();
+    tooltip_widget_->validate_layout(painter, skin_);
+}
+
+void Ui::make_subtree_untouchable(scene2d::Actor& actor) noexcept
+{
+    actor.set_touchable(false);
+    if (auto* group = dynamic_cast<scene2d::Group*>(&actor)) {
+        for (std::size_t index = 0; index < group->child_count(); ++index) {
+            make_subtree_untouchable(*group->child_at(index));
+        }
     }
 }
 

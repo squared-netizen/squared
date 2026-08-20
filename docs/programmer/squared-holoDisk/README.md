@@ -12,7 +12,7 @@ source shipped inside the package.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.holodisk` | `0.6.0-dev.2` | (none) |
+| `dev.squarednetizen.squared.holodisk` | `0.6.0-dev.3` | (none) |
 
 The CMake target is `squared_holodisk`. The module is optional; the GUI does
 not depend on it yet.
@@ -35,6 +35,10 @@ not depend on it yet.
 | `squared::holodisk::HoloDrive` | `squared/holodisk/holodrive.hpp` | Sole operational boundary. |
 | `squared::holodisk::HoloDriveFactory` | `squared/holodisk/holodrive.hpp` | Optional extension interface that creates a drive. |
 | `make_standard_holodrive_factory` | `squared/holodisk/holodrive.hpp` | Create the standard ZIP-backed factory. |
+| `AssetHandle<T>` / `AssetLoader<T>` | `squared/holodisk/asset_manager.hpp` | Immutable typed handle and loader strategy. |
+| `AssetManagerOptions` | `squared/holodisk/asset_manager.hpp` | Cache, byte, and dependency-depth limits. |
+| `AssetLoadContext` | `squared/holodisk/asset_manager.hpp` | Bounded source reads and typed dependency requests. |
+| `AssetManager` | `squared/holodisk/asset_manager.hpp` | Application-owned typed cache and nested-archive owner. |
 
 ## Creating a drive
 
@@ -205,6 +209,78 @@ int main()
 }
 ```
 
+## Typed asset loading
+
+Construct an `AssetManager` after its `HoloDrive`; the drive must outlive the
+manager. Register one loader for each C++ asset type. A loader reads bounded
+source bytes or requests typed dependencies through its call-scoped
+`AssetLoadContext`.
+
+```cpp
+#include <squared/holodisk/asset_manager.hpp>
+
+#include <memory>
+#include <string>
+
+struct TextAsset final { std::string text; };
+
+squared::holodisk::Status register_text(
+    squared::holodisk::AssetManager& assets
+)
+{
+    using namespace squared::holodisk;
+    return assets.register_loader<TextAsset>([](
+        AssetLoadContext& context,
+        std::string_view path
+    ) -> Result<AssetHandle<TextAsset>> {
+        auto bytes = context.read_bytes(path);
+        if (!bytes) return Result<AssetHandle<TextAsset>>::failure(bytes.error());
+        return Result<AssetHandle<TextAsset>>::success(
+            std::make_shared<TextAsset>(TextAsset{std::string(
+                reinterpret_cast<const char*>(bytes.value().data()),
+                bytes.value().size()
+            )})
+        );
+    });
+}
+```
+
+- `load<T>(path)` returns the cached handle when present, otherwise invokes
+  the registered strategy. Missing strategies report `LoaderNotFound`.
+- `AssetLoadContext::load<T>()` records a typed dependency. A dependency cycle
+  reports `DependencyCycle`; depth and cache limits report `LimitExceeded`.
+- `reload<T>()` builds a replacement transactionally. On failure the cached
+  object is unchanged. Existing handles intentionally keep the old object,
+  and cached dependents are not rebuilt automatically.
+- `unload<T>()` reports `Busy` while cached dependents remain. External shared
+  handles survive a successful unload. `clear()` drops all cache ownership.
+- Paths are absolute virtual `HoloDrive` paths and receive the same traversal
+  rejection. The manager is synchronous and single-threaded.
+
+## Nested pinned archives
+
+`mount_archive(source, point)` reads the source under
+`maximum_asset_bytes`, validates it under the drive's archive limits, and
+owns a new read-only mount. This is intended for assets such as a pinned
+`gdx-skins.zip` stored inside another cartridge.
+
+```cpp
+using namespace squared::holodisk;
+
+AssetManager assets(*drive);
+auto mounted = assets.mount_archive("/packages/gdx-skins.zip", "/skins");
+if (!mounted) return 1;
+
+// Registered loaders can now read /skins/gdx-holo/uiskin.json.
+assets.clear();
+auto removed = assets.unmount_archive("/skins");
+```
+
+Unloading a nested mount reports `Busy` while the cache contains any typed
+asset beneath it. The manager removes its nested mounts on destruction after
+dropping its cache. Do not keep direct `HoloDrive` file handles open beneath a
+manager-owned mount during manager destruction.
+
 ## Unsafe-path rejection
 
 Path validation rejects anything that could escape the archive or virtual
@@ -268,6 +344,9 @@ test the result first. Stable `ErrorCode` categories:
 | `Busy` | An open file or mount blocks the operation. |
 | `InvalidHandle` | A `DiskId`, `MountId`, or `FileId` is zero or unknown. |
 | `Io` | Host filesystem, scratch, or ZIP write/install failure. |
+| `LoaderNotFound` | No loader is registered for the requested C++ asset type. |
+| `DependencyCycle` | Typed asset dependencies contain a cycle. |
+| `LoadFailed` | A loader threw, returned an empty handle, or failed construction. |
 
 Code values are stable across releases so callers can switch on them.
 
@@ -284,13 +363,19 @@ Code values are stable across releases so callers can switch on them.
 - Loading a ZIP indexes metadata only; payload bytes are not expanded into
   RAM. The host file must remain readable for streamed reads while files of
   that disk are open.
+- Loading from memory copies the compressed archive once into drive-owned
+  storage. The caller's input span may be released when the call returns.
+- `AssetManager` owns its cache and nested mounts but not its drive. Every
+  `AssetHandle<T>` has shared immutable ownership independent of cache entry
+  lifetime.
 
 ## Threading
 
-A drive is not thread-safe: confine each `HoloDrive` to one thread or guard
-all of its calls with a single external lock. The standard factory is also
-used single-threaded. Every member is `noexcept` and reports failures via
-return values rather than exceptions.
+A drive and its AssetManager are not thread-safe: confine both to one thread
+or guard all calls with a single external lock. The standard factory is also
+used single-threaded. Operational members report failures via return values;
+the AssetManager constructor alone throws `std::invalid_argument` for a zero
+resource limit.
 
 ## Lua bindings
 

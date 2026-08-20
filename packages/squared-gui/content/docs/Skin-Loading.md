@@ -1,14 +1,16 @@
 # Portable libGDX skin loading
 
 `load_libgdx_skin` translates a supported libGDX skin subset into Squared's
-existing primitive style records. It accepts JSON bytes and a drawable
-resolver, so parsing has no dependency on SDL, Android assets, HoloDisk, or a
-specific graphics backend.
+portable resources and typed style records. It accepts JSON bytes plus
+drawable and font resolvers, so parsing has no dependency on SDL, Android
+assets, HoloDisk, or a specific graphics backend.
 
-The loader supports colors, bitmap-font path validation, tinted modal colors,
-buttons/text buttons, text fields, check boxes, sliders, and windows. Unknown
+The loader supports colors, bitmap fonts, tinted modal colors, labels,
+buttons/text buttons, text fields, check boxes, sliders, progress bars, and
+windows. Unknown
 libGDX resource classes produce warnings. A supported style with an invalid
-type, unsafe font path, unknown color, or unresolved drawable is an error.
+type, unsafe font path, unresolved resource, or invalid inheritance graph is
+an error.
 
 Input is treated as untrusted. The loader bounds source bytes, nesting,
 resource counts, and names; rejects duplicate JSON keys and non-finite or
@@ -26,14 +28,27 @@ const bool loaded = squared::gui::load_libgdx_skin(
     [&atlas](std::string_view name) {
         return squared::gui::resolve_atlas_drawable(atlas, name);
     },
+    [&assets](std::string_view name, std::string_view descriptor) {
+        return assets.resolve_gui_font(name, descriptor);
+    },
     report
 );
 ```
+
+The compatibility overload omits the font resolver. It still imports safe
+font declarations as descriptor-only `FontResource` objects, allowing an
+existing painter to use its default font while applications migrate.
+
+Within each supported style class, `parent` or `extends` copies a named style
+before applying the child's declared fields. Resolution is order-independent
+and same-class only. Missing parents, cycles, and specifying both keywords are
+errors; the destination skin remains unchanged.
 
 The GUI showcase uses `gdx-holo/skin/uiskin.json` and `uiskin.atlas`. Its
 platform layer reads the JSON and loads the atlas, while all interpretation and
 style mapping remain in Squared GUI. The atlas must outlive the resulting
 skin because region drawables hold portable views of its textures.
 
-Font rasterization and style inheritance are deliberately separate follow-up
-work. Current text rendering continues through the application's `Painter`.
+Font page textures and atlas textures remain application-owned and must outlive
+the resulting skin. `FontResource` owns portable metrics and region values;
+the painter decides how those glyph regions are submitted to the backend.

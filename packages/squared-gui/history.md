@@ -1,5 +1,38 @@
 # Squared GUI History
 
+## 0.6.0-dev.15
+
+- Added determinate progress bars with named programmatic and imported libGDX
+  styles, clamped range values, normalized completion, and read-only input.
+- Added non-owning, mutually detaching button groups with configurable checked
+  limits plus radio-button semantics built on the existing toggle controls.
+- Added drawable-or-UTF-8-glyph content to Button and its derived controls,
+  retaining the existing font, focus, input, and callback paths.
+- Expanded portable tests, paired documentation, and the complete showcase
+  without adding dependencies or another widget hierarchy.
+
+## 0.6.0-dev.14
+
+- Added plain-text and custom-factory tooltips composed from ordinary Widget
+  subtrees and temporarily owned by the existing Stage root.
+- Added configurable hover, primary-contact long-press, and keyboard/controller
+  focus delays, pointer-movement cancellation, modal scoping, and viewport-aware
+  below/above placement.
+- Added tooltip coverage to the portable GUI tests and launcher controls in the
+  complete showcase without adding dependencies or another overlay hierarchy.
+
+## 0.6.0-dev.13
+
+- Added immutable descriptor-only or resolved bitmap-font resources with
+  Graphics2D metrics, page regions, glyph-region derivation, and font-aware
+  Painter measurement/drawing fallbacks.
+- Added named fonts and label styles to Skin; text-bearing imported styles now
+  retain typed font handles through measurement and painting.
+- Added order-independent same-type style inheritance through `parent` or
+  `extends`, with bounded parent names, missing-parent diagnostics, cycle
+  detection, and transactional rollback.
+- Advanced the exact Graphics2D dependency to `0.6.0-dev.8`.
+
 ## 0.6.0-dev.12
 
 - Dependency alignment only: advanced the exact Application, Data, Scene2D,

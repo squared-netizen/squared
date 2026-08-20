@@ -31,7 +31,10 @@ enum class ErrorCode {
     ReadOnly,           ///< The mount or file does not permit the requested write.
     Busy,               ///< An open file or mount prevents the requested operation.
     InvalidHandle,      ///< A DiskId, MountId, or FileId is zero or unknown to the drive.
-    Io                  ///< A host filesystem, scratch, or ZIP write/install failure.
+    Io,                 ///< A host filesystem, scratch, or ZIP write/install failure.
+    LoaderNotFound,     ///< No typed AssetManager loader is registered for the requested type.
+    DependencyCycle,    ///< Typed asset dependencies form a cycle.
+    LoadFailed          ///< A registered asset loader rejected or could not construct the asset.
 };
 
 /**
@@ -333,6 +336,9 @@ struct DriveOptions {
     /** @brief Maximum total uncompressed size in bytes of all entries of one
      *  disk; range [1, UINT64_MAX], default 512 MiB (536,870,912). */
     std::uint64_t maximum_expanded_size{512U * 1024U * 1024U};
+    /** @brief Maximum compressed size in bytes of an archive loaded from
+     *  memory; range [1, UINT64_MAX], default 256 MiB (268,435,456). */
+    std::uint64_t maximum_archive_size{256U * 1024U * 1024U};
 };
 
 /**
@@ -402,6 +408,18 @@ public:
      */
     [[nodiscard]] virtual Result<DiskId> load_holodisk(
         std::string_view location
+    ) noexcept = 0;
+    /**
+     * @brief Load a ZIP HoloDisk from caller-owned memory.
+     * @param archive Complete ZIP bytes; copied during the call and bounded by
+     * DriveOptions::maximum_archive_size.
+     * @return Result holding a new DiskId, or a validation/resource failure.
+     * @note The drive owns its copy after success. This overload enables
+     * nested pinned archives to be mounted without extracting them into a
+     * package directory.
+     */
+    [[nodiscard]] virtual Result<DiskId> load_holodisk(
+        std::span<const std::byte> archive
     ) noexcept = 0;
     /**
      * @brief Materialize the current state of one disk to a ZIP HoloDisk.

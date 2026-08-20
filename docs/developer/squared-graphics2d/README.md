@@ -1,8 +1,9 @@
 # Squared Graphics2D — Developer Guide
 
 Squared Graphics2D is the portable 2D rendering contract layer. It ships the
-camera implementation and the pure data types (texture region views, sprite
-state), while texture, atlas, and sprite-batch bodies are implemented by
+bitmap-font parser, glyph-layout pipeline, camera implementation, and pure
+data types (texture region views, sprite state), while texture, atlas, and
+sprite-batch bodies are implemented by
 exactly one link-time backend — the shipped backend is
 squared-backend-sdl2-opengl. The portable headers contain no SDL, OpenGL, or
 Android symbols; portable tests (`graphics2d-portable-test.cpp`) compile
@@ -15,14 +16,16 @@ against only the include paths of Graphics2D, Graphics, and Math.
   - [Texture-atlas page/region ownership](atlas-page-region-ownership.dot)
   - [SpriteBatch begin/draw/end sequence](sprite-batch-sequence.dot)
   - [Camera-to-batch transform flow](camera-batch-transform.dot)
+  - [Bitmap-font parse and layout flow](bitmap-font-layout-flow.dot)
   - [Framework package dependencies](../architecture/package-dependencies.dot)
 
 ## Dependency boundary
 
 The manifest declares exactly two `module.requires`: `squared.graphics`
 `0.6.0-dev.4` and `squared.math` `0.6.0-dev.2`. The CMake target
-`squared_graphics2d` is a `STATIC` library that compiles
-`src/orthographic_camera.cpp` and links `squared_graphics` and `squared_math`
+`squared_graphics2d` is a `STATIC` library at `0.6.0-dev.8` that compiles
+`src/bitmap_font.cpp` and `src/orthographic_camera.cpp`, then links
+`squared_graphics` and `squared_math`
 (`content/modules/squared-graphics2d/CMakeLists.txt`).
 
 The portable/backend boundary is strict: every public header includes only
@@ -45,6 +48,8 @@ concrete class interface, not a virtual one.
 | `squared::graphics2d::Sprite` | `include/.../sprite.hpp` | Value state over one region: position, size, origin, scale, rotation, color. |
 | `squared::graphics2d::SpriteBatch` | `include/.../sprite_batch.hpp`; backend `src/sprite_batch.cpp` | Ordered textured-quad batching with a built-in GLSL program and GPU buffers. |
 | `squared::graphics2d::OrthographicCamera` | `src/orthographic_camera.cpp` | Logical viewport, pan, zoom, origin; computes the combined projection. |
+| `squared::graphics2d::BitmapFont` | `include/.../bitmap_font.hpp`; `src/bitmap_font.cpp` | Bounded transactional text BMFont resource with owned metadata and indexed glyph/kerning lookup. |
+| `squared::graphics2d::GlyphLayout` | `include/.../bitmap_font.hpp`; `src/bitmap_font.cpp` | Strict/replacement UTF-8 decoding and value-semantic line/glyph placement. |
 
 ## Ownership and threading
 
@@ -67,6 +72,10 @@ concrete class interface, not a virtual one.
   `[1, 16383]`; the 16-bit index format caps it.
 - **Camera owns its matrix.** `OrthographicCamera` keeps viewport, position,
   zoom, origin, and the computed `Matrix4 combined_`; it is a plain value.
+- **Fonts and layouts own portable values.** `BitmapFont` owns strings,
+  metadata vectors, and lookup maps. `GlyphLayout` owns line and placement
+  vectors. Neither owns or borrows a texture; the rendering integration owns
+  page textures and resolves them at submission time.
 - **Main-thread only.** Every GPU-touching operation requires the current
   graphics context; the package does no cross-thread synchronization, and all
   types are confined to the main game-loop thread.
@@ -101,6 +110,10 @@ concrete class interface, not a virtual one.
   uploads `vertices_` with `glBufferSubData` and resets the CPU count. `end()`
   flushes and clears GL state. Color components are clamped before upload so
   out-of-range values cannot reach GL.
+- **Font transactionality.** `BitmapFont::load` parses into a candidate and
+  commits only after required records, safe page paths, scalar IDs, page
+  rectangles, page references, duplicates, and resource limits validate.
+  `GlyphLayout::set_text` follows the same candidate-then-commit rule.
 
 ## Data structures and complexity
 
@@ -120,6 +133,11 @@ concrete class interface, not a virtual one.
 - **OrthographicCamera** — O(1) float arithmetic in `update()`; the
   `Matrix4::orthographic` computation is constant-time value math with no
   allocation.
+- **BitmapFont** — contiguous vectors retain deterministic page/glyph/kerning
+  iteration; unordered maps provide expected O(1) glyph and pair lookup.
+  Parsing is O(bytes + glyphs + kernings), plus sorting.
+- **GlyphLayout** — one UTF-8 pass, O(bytes + emitted glyphs), with one owned
+  placement per renderable scalar and one record per explicit line.
 
 ## Algorithms and execution order
 
@@ -156,7 +174,30 @@ half-extents from viewport and zoom, then calls `Matrix4::orthographic` with
 uniform (`glUniformMatrix4fv` with `GL_FALSE`), so the vertex shader projects
 each quad position with `u_projection * vec4(a_position, 0, 1)`.
 
+**Bitmap font: parse → validate → index → commit.** The parser tokenizes
+bounded lines and fields, validates portable metadata, then sorts pages,
+glyphs, and kerning pairs and builds lookup maps. Page IDs must be contiguous;
+character and kerning counts are bounded allocation hints to remain compatible
+with libGDX/Hiero output (including `kernings count=-1`). Layout decodes UTF-8,
+applies replacement policy, kerning, scale, line breaks, tab expansion, and
+per-line alignment into a candidate glyph run before committing it.
+
 ## Design patterns
+
+- **Builder pipeline / transactional commit** — font parsing and text layout
+  build complete candidates locally, validate them, and move-assign only on
+  success. Why it fits: callers can reload descriptors and reuse layout
+  objects without losing the last drawable state. Alternatives rejected:
+  mutating member vectors during parse (partial state leaks on failure) and
+  exception-only error reporting (poor fit for the framework's explicit
+  boundary errors). Deviation: the builder is an internal algorithm rather
+  than a separately exposed builder type.
+- **Flyweight resource metadata** — one `BitmapFont` stores shared glyph and
+  kerning metrics; any number of `GlyphLayout` values reference those metrics
+  only while computing and then retain compact placement values. Why it fits:
+  descriptors are parsed once while layouts remain independent. The page
+  texture resolver is intentionally left to the GUI/application layer so the
+  portable package does not acquire HoloDisk or backend ownership.
 
 - **Strategy** — texture recovery: `TextureRecoveryPolicy` selects a recovery
   strategy (`ReloadFromAsset`, `RetainPixels`, `Regenerate`, `Discard`) at
@@ -193,6 +234,11 @@ each quad position with `u_projection * vec4(a_position, 0, 1)`.
   pattern rather than a dynamic index generator.
 
 ## Limitations and technical debt
+
+- **Bitmap layout is intentionally unshaped.** It supports UTF-8 scalar
+  decoding, kerning, tabs, explicit lines, scaling, and horizontal alignment,
+  but not word wrapping, ligatures, complex-script shaping, bidirectional
+  ordering, markup, fallback chains, or signed-distance-field rendering.
 
 - **16-bit index cap.** `kMaximumIndexableSprites = 16383` bounds the batch
   capacity; larger scenes need multiple batches or a 32-bit index path (not

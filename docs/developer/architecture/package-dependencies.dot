@@ -12,16 +12,16 @@ digraph package_dependencies {
   application   [label="squared-application\n0.6.0-dev.5", fillcolor="#dae8fc"];
   data          [label="squared-data\n0.6.0-dev.2", fillcolor="#dae8fc"];
   graphics      [label="squared-graphics\n0.6.0-dev.4", fillcolor="#dae8fc"];
-  holoDisk      [label="squared-holoDisk\n0.6.0-dev.2", fillcolor="#dae8fc"];
+  holoDisk      [label="squared-holoDisk\n0.6.0-dev.3", fillcolor="#dae8fc"];
   math          [label="squared-math\n0.6.0-dev.2", fillcolor="#dae8fc"];
   time          [label="squared-time\n0.6.0-dev.2", fillcolor="#dae8fc"];
 
   // Consumers.
-  graphics2d    [label="squared-graphics2d\n0.6.0-dev.7", fillcolor="#f8cecc"];
+  graphics2d    [label="squared-graphics2d\n0.6.0-dev.8", fillcolor="#f8cecc"];
   scene2d       [label="squared-scene2d\n0.6.0-dev.7", fillcolor="#f8cecc"];
   backend       [label="squared-backend-sdl2-opengl\n0.6.0-dev.5", fillcolor="#ffe6cc"];
   messaging     [label="squared-messaging\n0.6.0-dev.3", fillcolor="#f8cecc"];
-  gui           [label="squared-gui\n0.6.0-dev.12", fillcolor="#d5e8d4"];
+  gui           [label="squared-gui\n0.6.0-dev.15", fillcolor="#d5e8d4"];
 
   graphics2d -> graphics [label="0.6.0-dev.4"];
   graphics2d -> math     [label="0.6.0-dev.2"];
@@ -32,7 +32,7 @@ digraph package_dependencies {
   gui        -> data      [label="0.6.0-dev.2"];
   gui        -> application [label="0.6.0-dev.5"];
   gui        -> scene2d   [label="0.6.0-dev.7"];
-  gui        -> graphics2d [label="0.6.0-dev.7"];
+  gui        -> graphics2d [label="0.6.0-dev.8"];
 
   // HoloDisk stays independent and optional: no incoming or outgoing edges
   // exist in any manifest. It must not appear as a GUI dependency before an

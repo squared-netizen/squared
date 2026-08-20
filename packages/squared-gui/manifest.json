@@ -3,9 +3,9 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.gui",
-  "version": "0.6.0-dev.12",
+  "version": "0.6.0-dev.15",
   "name": "Squared GUI",
-  "description": "Portable retained-mode widgets, transactional libGDX skin loading, tables, windows, dialogs, and keyboard/controller focus over Scene2D input propagation.",
+  "description": "Portable retained-mode widgets with progress, grouped radio choices, drawable-or-glyph buttons, tooltips, inherited libGDX styles, windows, dialogs, and input propagation.",
   "module": {
     "directory": "modules/squared-gui",
     "cmake_target": "squared_gui",
@@ -28,7 +28,7 @@
       {
         "kind": "module",
         "id": "dev.squarednetizen.squared.graphics2d",
-        "version": "0.6.0-dev.7"
+        "version": "0.6.0-dev.8"
       }
     ]
   }

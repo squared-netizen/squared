@@ -3,7 +3,9 @@
 Squared GUI is an optional portable retained-mode interface layer. It uses
 Scene2D for ownership and hierarchy, consumes the framework's existing
 `application::Event` values, and draws through Graphics and Graphics2D. It has
-no dependency on SDL, OpenGL, Android, HoloDisk, or a particular font system.
+no dependency on SDL, OpenGL, Android, or HoloDisk. Portable bitmap-font
+metrics and glyph layout come from Graphics2D; the application painter remains
+responsible for rendering the page textures.
 
 ## Small, composable boundary
 
@@ -23,9 +25,10 @@ control geometrically when the focused widget does not consume them. Semantic
 navigation provides the same directional, next/previous, activate, and cancel
 behavior to controllers without mentioning a controller API in GUI.
 
-Buttons, toggle buttons, and check boxes activate with Enter or Space. Sliders
-consume Left and Right. Escape closes cancellable dialogs. Buttons, choices,
-text fields, and sliders render a visible focus treatment.
+Buttons, toggle buttons, check boxes, and grouped radio choices activate with
+Enter or Space. Sliders consume Left and Right. Progress bars are read-only.
+Escape closes cancellable dialogs. Buttons, choices, text fields, and sliders
+render a visible focus treatment.
 
 `Ui::set_text_input_service` accepts the platform-neutral Application service.
 Focusing a `TextField` starts text input and supplies its stage rectangle;
@@ -37,15 +40,55 @@ The basic controls are:
 
 - `Label` and `Image` for content;
 - `Panel` and `Separator` for structure;
-- `Button`, `ToggleButton`, and `CheckBox` for actions and choices;
+- `Button`, `ToggleButton`, `CheckBox`, `RadioButton`, and non-owning
+  `ButtonGroup` for actions and bounded choices;
 - `TextField` for UTF-8 text insertion and cursor editing;
-- `Slider` for continuous values.
+- `Slider` for continuous values and `ProgressBar` for determinate output.
+
+Buttons may place either a shared immutable drawable or UTF-8 glyph before
+their label with `set_icon` or `set_glyph`. Glyphs use the explicitly supplied
+`FontResource`, or the selected `ButtonStyle::font`. A group coordinates
+existing toggle instances without owning them; both sides detach during
+destruction, so widgets remain owned only by the ordinary UI tree.
+
+```cpp
+squared::gui::ButtonGroup difficulty(1, 1);
+auto casual = std::make_unique<squared::gui::RadioButton>("Casual", true);
+auto expert = std::make_unique<squared::gui::RadioButton>("Expert");
+difficulty.add(*casual);
+difficulty.add(*expert);
+
+auto save = std::make_unique<squared::gui::Button>("Save", save_game);
+save->set_glyph("S", skin.font("icons"));
+auto loading = std::make_unique<squared::gui::ProgressBar>(0.0F, 100.0F, 35.0F);
+```
 
 The compositional containers are `Table`, `LinearLayout`, `Stack`,
 `MarginContainer`, and `ScrollPane`. `Table` provides rows, column spans,
 padding, alignment, fill, and weighted growth through chainable `Cell`
 constraints. This makes adaptive forms and game menus possible without
 absolute positioning.
+
+Every widget may declare a tooltip with `set_tooltip(text)` or a
+`set_tooltip_factory` callback returning a fresh custom widget subtree. Text
+tooltips are assembled from the normal `Stack`, `Panel`, `MarginContainer`,
+and `Label` primitives. `TooltipConfig` controls hover, primary-contact
+long-press, and keyboard/controller focus delays, movement tolerance, and
+viewport spacing. The active `Ui` temporarily owns visible tooltip content in
+its existing Stage root, restricts it to the current modal scope, keeps it
+untouchable, flips it above its anchor when necessary, and clamps it to the
+viewport. A completed long press cancels the captured control, so releasing a
+help gesture does not also activate the control.
+
+```cpp
+auto mount = std::make_unique<squared::gui::Button>("Mount", mount_disk);
+mount->set_tooltip("Mount the selected HoloDisk cartridge");
+
+squared::gui::TooltipConfig tooltip_config;
+tooltip_config.hover_delay = 0.45;
+tooltip_config.long_press_delay = 0.60;
+ui.set_tooltip_config(tooltip_config);
+```
 
 `Window` is a floating, draggable, table-backed panel with a styled title bar.
 It can expose a close control and edge/corner resizing, enforce an application
@@ -61,7 +104,18 @@ default interactive controls enforce a 44-unit touch target.
 
 ## Skins and graphics
 
-`Skin` is a named resource table for drawables and per-control styles.
+`Skin` is a named resource table for drawables, immutable `FontResource`
+objects, and per-control styles. Labels and every text-bearing control can
+select a font through its style. A resolved font owns its BMFont metrics and
+page-region values, while the page textures remain application-owned. A
+descriptor-only font keeps existing painters compatible with their default
+font.
+
+`Painter` retains its original text methods and adds font-aware overloads. The
+default font-aware measurement uses Graphics2D `GlyphLayout`; its drawing
+fallback delegates to the original text method. Backends may override the new
+drawing overload to emit the placed glyph regions directly.
+
 `ColorDrawable` provides a dependency-free fallback. `RegionDrawable` accepts
 the portable `graphics2d::TextureRegion` contract and sends it to `Painter`;
 the GUI module never sees an SDL texture or renderer.
@@ -117,8 +171,9 @@ as memory, normalizes libGDX's relaxed syntax under explicit limits, parses it
 through Squared Data, resolves atlas drawables through a callback, and commits
 only after the supported styles validate. See `Skin-Loading.md`.
 
-The future HoloDisk-backed AssetManager will mount the complete archive and
-supply bytes to this same loader; GUI does not depend on storage APIs.
+HoloDisk's AssetManager can mount the complete archive and supply bytes to the
+same loader through application-provided resolver callbacks; GUI does not
+depend on storage APIs.
 
 ## Minimal use
 

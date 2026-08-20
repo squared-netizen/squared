@@ -100,6 +100,17 @@ struct ZipReader final {
         active = true;
     }
 
+    explicit ZipReader(std::span<const std::byte> bytes)
+    {
+        mz_zip_zero_struct(&archive);
+        if (bytes.empty() || !mz_zip_reader_init_mem(
+                &archive, bytes.data(), bytes.size(), 0)) {
+            fail(ErrorCode::InvalidArchive,
+                 zip_error(archive, "cannot open memory ZIP HoloDisk"));
+        }
+        active = true;
+    }
+
     ~ZipReader()
     {
         if (active) {
@@ -123,6 +134,7 @@ struct OverlayEntry {
 
 struct DiskState {
     fs::path source;
+    std::shared_ptr<const std::vector<std::byte>> memory_source;
     std::map<std::string, ArchiveEntry> archive_entries;
     std::map<std::string, OverlayEntry> overlay_entries;
 };
@@ -190,67 +202,40 @@ public:
             if (error || !fs::is_regular_file(source, error)) {
                 fail(ErrorCode::NotFound, "HoloDisk file does not exist");
             }
+            const auto compressed_size = fs::file_size(source, error);
+            if (error) {
+                fail(ErrorCode::Io, "cannot inspect HoloDisk file size");
+            }
+            if (compressed_size > options_.maximum_archive_size) {
+                fail(ErrorCode::LimitExceeded, "HoloDisk archive size limit exceeded");
+            }
 
             ZipReader reader(source);
             DiskState disk;
             disk.source = std::move(source);
-            std::uint64_t expanded = 0;
-            const auto count = mz_zip_reader_get_num_files(&reader.archive);
-            if (count > options_.maximum_entries_per_disk) {
-                fail(ErrorCode::LimitExceeded, "HoloDisk entry limit exceeded");
-            }
-            for (mz_uint index = 0; index < count; ++index) {
-                mz_zip_archive_file_stat stat{};
-                if (!mz_zip_reader_file_stat(&reader.archive, index, &stat)) {
-                    fail(ErrorCode::InvalidArchive, zip_error(reader.archive, "cannot inspect ZIP entry"));
-                }
-                if (!stat.m_is_supported || stat.m_is_encrypted) {
-                    fail(ErrorCode::UnsupportedArchive, "HoloDisk contains an unsupported ZIP entry");
-                }
-                const auto filename_size = mz_zip_reader_get_filename(
-                    &reader.archive, index, nullptr, 0
-                );
-                if (filename_size == 0 || filename_size > 4097) {
-                    fail(ErrorCode::InvalidArchive, "HoloDisk entry path is invalid or too long");
-                }
-                std::vector<char> filename(filename_size);
-                if (mz_zip_reader_get_filename(
-                        &reader.archive, index, filename.data(), filename_size
-                    ) != filename_size) {
-                    fail(ErrorCode::InvalidArchive, "cannot read HoloDisk entry path");
-                }
-                std::string raw(filename.data(), filename_size - 1);
-                if (raw.empty()) {
-                    fail(ErrorCode::InvalidArchive, "HoloDisk contains an unnamed entry");
-                }
-                if (stat.m_is_directory) {
-                    if (raw.back() == '/') {
-                        raw.pop_back();
-                    }
-                    if (!raw.empty()) {
-                        normalize_archive_path(raw);
-                    }
-                    continue;
-                }
-                auto name = normalize_archive_path(raw);
-                if (stat.m_uncomp_size > options_.maximum_file_size) {
-                    fail(ErrorCode::LimitExceeded, "HoloDisk file size limit exceeded");
-                }
-                if (stat.m_uncomp_size > options_.maximum_expanded_size ||
-                    expanded > options_.maximum_expanded_size - stat.m_uncomp_size) {
-                    fail(ErrorCode::LimitExceeded, "HoloDisk expanded size limit exceeded");
-                }
-                expanded += stat.m_uncomp_size;
-                if (!disk.archive_entries.emplace(
-                        std::move(name), ArchiveEntry{index, stat.m_uncomp_size}
-                    ).second) {
-                    fail(ErrorCode::InvalidArchive, "HoloDisk contains duplicate paths");
-                }
-            }
+            return inspect_archive(reader, std::move(disk));
+        });
+    }
 
-            const DiskId id{next_disk_++};
-            disks_.emplace(id.value, std::move(disk));
-            return id;
+    Result<DiskId> load_holodisk(
+        std::span<const std::byte> archive
+    ) noexcept override
+    {
+        return guard<DiskId>([&] {
+            ensure_capacity(disks_.size(), options_.maximum_disks, "HoloDisks");
+            if (archive.empty()) {
+                fail(ErrorCode::InvalidArgument, "HoloDisk archive bytes are empty");
+            }
+            if (archive.size() > options_.maximum_archive_size) {
+                fail(ErrorCode::LimitExceeded, "HoloDisk archive size limit exceeded");
+            }
+            auto storage = std::make_shared<std::vector<std::byte>>(
+                archive.begin(), archive.end()
+            );
+            ZipReader reader{std::span<const std::byte>(*storage)};
+            DiskState disk;
+            disk.memory_source = std::move(storage);
+            return inspect_archive(reader, std::move(disk));
         });
     }
 
@@ -610,6 +595,76 @@ private:
         }
     }
 
+    DiskId inspect_archive(ZipReader& reader, DiskState disk)
+    {
+        std::uint64_t expanded = 0;
+        const auto count = mz_zip_reader_get_num_files(&reader.archive);
+        if (count > options_.maximum_entries_per_disk) {
+            fail(ErrorCode::LimitExceeded, "HoloDisk entry limit exceeded");
+        }
+        for (mz_uint index = 0; index < count; ++index) {
+            mz_zip_archive_file_stat stat{};
+            if (!mz_zip_reader_file_stat(&reader.archive, index, &stat)) {
+                fail(ErrorCode::InvalidArchive,
+                     zip_error(reader.archive, "cannot inspect ZIP entry"));
+            }
+            if (!stat.m_is_supported || stat.m_is_encrypted) {
+                fail(ErrorCode::UnsupportedArchive,
+                     "HoloDisk contains an unsupported ZIP entry");
+            }
+            const auto filename_size = mz_zip_reader_get_filename(
+                &reader.archive, index, nullptr, 0
+            );
+            if (filename_size == 0 || filename_size > 4097) {
+                fail(ErrorCode::InvalidArchive,
+                     "HoloDisk entry path is invalid or too long");
+            }
+            std::vector<char> filename(filename_size);
+            if (mz_zip_reader_get_filename(
+                    &reader.archive, index, filename.data(), filename_size
+                ) != filename_size) {
+                fail(ErrorCode::InvalidArchive, "cannot read HoloDisk entry path");
+            }
+            std::string raw(filename.data(), filename_size - 1);
+            if (raw.empty()) {
+                fail(ErrorCode::InvalidArchive, "HoloDisk contains an unnamed entry");
+            }
+            if (stat.m_is_directory) {
+                if (raw.back() == '/') raw.pop_back();
+                if (!raw.empty()) normalize_archive_path(raw);
+                continue;
+            }
+            auto name = normalize_archive_path(raw);
+            if (stat.m_uncomp_size > options_.maximum_file_size) {
+                fail(ErrorCode::LimitExceeded, "HoloDisk file size limit exceeded");
+            }
+            if (stat.m_uncomp_size > options_.maximum_expanded_size ||
+                expanded > options_.maximum_expanded_size - stat.m_uncomp_size) {
+                fail(ErrorCode::LimitExceeded, "HoloDisk expanded size limit exceeded");
+            }
+            expanded += stat.m_uncomp_size;
+            if (!disk.archive_entries.emplace(
+                    std::move(name), ArchiveEntry{index, stat.m_uncomp_size}
+                ).second) {
+                fail(ErrorCode::InvalidArchive, "HoloDisk contains duplicate paths");
+            }
+        }
+
+        const DiskId id{next_disk_++};
+        disks_.emplace(id.value, std::move(disk));
+        return id;
+    }
+
+    static std::unique_ptr<ZipReader> make_reader(const DiskState& disk)
+    {
+        if (disk.memory_source) {
+            return std::make_unique<ZipReader>(
+                std::span<const std::byte>(*disk.memory_source)
+            );
+        }
+        return std::make_unique<ZipReader>(disk.source);
+    }
+
     DiskState& get_disk(DiskId disk)
     {
         const auto found = disks_.find(disk.value);
@@ -706,10 +761,12 @@ private:
     void extract_archive_entry(const DiskState& disk, const ArchiveEntry& entry,
                                const fs::path& destination)
     {
-        ZipReader reader(disk.source);
+        auto reader = make_reader(disk);
         const auto text = destination.string();
-        if (!mz_zip_reader_extract_to_file(&reader.archive, entry.index, text.c_str(), 0)) {
-            fail(ErrorCode::InvalidArchive, zip_error(reader.archive, "cannot extract HoloDisk entry"));
+        if (!mz_zip_reader_extract_to_file(
+                &reader->archive, entry.index, text.c_str(), 0)) {
+            fail(ErrorCode::InvalidArchive,
+                 zip_error(reader->archive, "cannot extract HoloDisk entry"));
         }
     }
 
@@ -754,7 +811,7 @@ private:
 
     static void initialize_archive_reader(FileState& file, const DiskState& disk)
     {
-        file.reader = std::make_unique<ZipReader>(disk.source);
+        file.reader = make_reader(disk);
         file.iterator = mz_zip_reader_extract_iter_new(
             &file.reader->archive, file.archive_index, 0
         );
@@ -809,8 +866,8 @@ private:
         bool writer_active = true;
         try {
             std::unique_ptr<ZipReader> source;
-            if (!disk.source.empty()) {
-                source = std::make_unique<ZipReader>(disk.source);
+            if (!disk.source.empty() || disk.memory_source) {
+                source = make_reader(disk);
             }
             std::set<std::string> names;
             for (const auto& [name, _] : disk.archive_entries) {
@@ -908,7 +965,7 @@ public:
             if (options.scratch_directory.empty() || options.maximum_disks == 0 ||
                 options.maximum_mounts == 0 || options.maximum_open_files == 0 ||
                 options.maximum_entries_per_disk == 0 || options.maximum_file_size == 0 ||
-                options.maximum_expanded_size == 0) {
+                options.maximum_expanded_size == 0 || options.maximum_archive_size == 0) {
                 fail(ErrorCode::InvalidArgument, "invalid HoloDrive resource policy");
             }
             std::error_code error;

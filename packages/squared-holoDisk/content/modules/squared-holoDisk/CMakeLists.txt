@@ -3,6 +3,7 @@ set(SQUARED_HOLODISK_MINIZ_ROOT
 )
 
 add_library(squared_holodisk STATIC
+    src/asset_manager.cpp
     src/holodrive.cpp
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz.c"
     "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tdef.c"

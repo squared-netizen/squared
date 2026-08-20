@@ -3,9 +3,9 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.holodisk",
-  "version": "0.6.0-dev.2",
+  "version": "0.6.0-dev.3",
   "name": "Squared HoloDisk",
-  "description": "Optional standalone ZIP cartridge drives with scratch-backed mutation and transactional materialization.",
+  "description": "Optional ZIP cartridge drives and a synchronous typed asset cache with nested in-memory archive mounts.",
   "module": {
     "directory": "modules/squared-holoDisk",
     "cmake_target": "squared_holodisk"

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace squared_gui_showcase {
 
@@ -85,6 +86,7 @@ private:
     squared::gui::Label* status_label_{nullptr};
     squared::gui::Label* volume_label_{nullptr};
     squared::gui::TextField* name_field_{nullptr};
+    std::vector<std::unique_ptr<squared::gui::ButtonGroup>> button_groups_;
     std::string status_{"Ready"};
 };
 

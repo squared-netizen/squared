@@ -105,6 +105,13 @@ other Squared package. A factory creates a `HoloDrive`; that drive then owns
 disk loading, mounting, mounted file operations, ZIP materialization, and
 cleanup behind one compact API boundary.
 
+Its application-owned `AssetManager` adds synchronous typed loader strategies,
+bounded byte reads, shared caching, dependency/cycle tracking, transactional
+reload, and explicit unload without learning any Graphics or GUI type. It can
+load a ZIP directly from bounded memory and own read-only nested mounts, so a
+pinned archive such as GUI's `gdx-skins.zip` need not be extracted into package
+paths. Graphics2D and GUI will register their loaders in later milestones.
+
 ## Optional GUI extension
 
 `dev.squarednetizen.squared.gui` provides a compact retained-mode widget tree
@@ -128,8 +135,9 @@ and cancellation.
 
 GUI package installation also carries the SHA-256-pinned gdx-skins archive
 into generated-project assets. The showcase uses the selected gdx-holo theme
-through GUI's bounded, transactional memory loader. A future HoloDisk-backed
-AssetManager can supply the same bytes without changing the GUI parser API.
+through GUI's bounded, transactional memory loader. HoloDisk's AssetManager
+can now mount the pinned archive; registering Graphics2D font/atlas and GUI
+skin loaders remains the later integration step.
 
 ## Repository boundary
 

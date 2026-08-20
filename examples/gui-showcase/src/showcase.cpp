@@ -9,6 +9,7 @@ namespace {
 
 using squared::gui::Alignment;
 using squared::gui::Button;
+using squared::gui::ButtonGroup;
 using squared::gui::CheckBox;
 using squared::gui::Dialog;
 using squared::gui::Direction;
@@ -18,6 +19,8 @@ using squared::gui::Label;
 using squared::gui::LinearLayout;
 using squared::gui::MarginContainer;
 using squared::gui::Panel;
+using squared::gui::ProgressBar;
+using squared::gui::RadioButton;
 using squared::gui::ScrollPane;
 using squared::gui::Separator;
 using squared::gui::Slider;
@@ -72,18 +75,30 @@ std::unique_ptr<squared::gui::Widget> Showcase::make_launcher()
     table->add(std::make_unique<Separator>())
         .column_span(4).grow_x().fill_x().pad(4.0F);
     table->row();
-    table->add(std::make_unique<Button>("Controls", [this] {
+    auto controls = std::make_unique<Button>("Controls", [this] {
         show_controls_window();
-    })).fill_x();
-    table->add(std::make_unique<Button>("Layouts", [this] {
+    });
+    controls->set_glyph("C");
+    controls->set_tooltip("Open another complete controls window");
+    table->add(std::move(controls)).fill_x();
+    auto layouts = std::make_unique<Button>("Layouts", [this] {
         show_layout_window();
-    })).fill_x();
-    table->add(std::make_unique<Button>("Inspector", [this] {
+    });
+    layouts->set_glyph("L");
+    layouts->set_tooltip("Open the scrolling layout gallery");
+    table->add(std::move(layouts)).fill_x();
+    auto inspector = std::make_unique<Button>("Inspector", [this] {
         show_inspector_window();
-    })).fill_x();
-    table->add(std::make_unique<Button>("Modal dialog", [this] {
+    });
+    inspector->set_glyph("I");
+    inspector->set_tooltip("Open a compact floating-window inspector");
+    table->add(std::move(inspector)).fill_x();
+    auto modal = std::make_unique<Button>("Modal dialog", [this] {
         show_confirmation_dialog();
-    })).fill_x();
+    });
+    modal->set_glyph("!");
+    modal->set_tooltip("Show a modal-scoped confirmation dialog");
+    table->add(std::move(modal)).fill_x();
     table->row();
 
     auto status = std::make_unique<Label>(status_);
@@ -105,7 +120,7 @@ std::unique_ptr<squared::gui::Widget> Showcase::make_launcher()
 std::unique_ptr<Window> Showcase::make_controls_window()
 {
     auto window = std::make_unique<Window>("Widget controls");
-    window->set_bounds(36.0F, 106.0F, 350.0F, 390.0F);
+    window->set_bounds(36.0F, 66.0F, 350.0F, 460.0F);
     window->set_closable(true);
     window->set_resizable(true);
     window->set_minimum_window_size({310.0F, 330.0F});
@@ -139,15 +154,37 @@ std::unique_ptr<Window> Showcase::make_controls_window()
     table.add(std::move(challenge)).column_span(2).grow_x().fill_x();
     table.row();
 
+    auto difficulty = std::make_unique<ButtonGroup>(1, 1);
+    auto casual = std::make_unique<RadioButton>("Casual", true);
+    auto expert = std::make_unique<RadioButton>("Expert");
+    difficulty->add(*casual);
+    difficulty->add(*expert);
+    casual->set_on_change([this](bool checked) {
+        if (checked) set_status("Casual difficulty selected");
+    });
+    expert->set_on_change([this](bool checked) {
+        if (checked) set_status("Expert difficulty selected");
+    });
+    table.add(std::move(casual)).grow_x().fill_x();
+    table.add(std::move(expert)).grow_x().fill_x();
+    table.row();
+    button_groups_.push_back(std::move(difficulty));
+
     auto volume = std::make_unique<Label>(volume_text(65.0F));
     volume_label_ = volume.get();
     table.add(std::move(volume)).align(Alignment::end);
+    auto progress = std::make_unique<ProgressBar>(0.0F, 100.0F, 65.0F);
+    ProgressBar* progress_pointer = progress.get();
     auto slider = std::make_unique<Slider>(0.0F, 100.0F, 65.0F);
     slider->set_step(5.0F);
-    slider->set_on_change([this](float value) {
+    slider->set_on_change([this, progress_pointer](float value) {
         if (volume_label_) volume_label_->set_text(volume_text(value));
+        progress_pointer->set_value(value);
     });
     table.add(std::move(slider)).grow_x().fill_x();
+    table.row();
+    table.add(std::make_unique<Label>("Progress")).align(Alignment::end);
+    table.add(std::move(progress)).grow_x().fill_x();
     table.row();
     table.add(std::make_unique<Separator>())
         .column_span(2).grow_x().fill_x().pad(4.0F);

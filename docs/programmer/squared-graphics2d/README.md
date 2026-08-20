@@ -1,9 +1,10 @@
 # Squared Graphics2D — Programmer Guide
 
 Squared Graphics2D defines the portable 2D rendering contracts of the
-framework: textures with selectable context-loss recovery, non-owning texture
-subregions, transactionally loaded libGDX texture atlases, sprites, an
-ordered sprite batch, and orthographic cameras. The package contains no SDL,
+framework: portable bitmap fonts and UTF-8 glyph layout, textures with
+selectable context-loss recovery, non-owning texture subregions,
+transactionally loaded libGDX texture atlases, sprites, an ordered sprite
+batch, and orthographic cameras. The package contains no SDL,
 OpenGL, or Android headers; an application draws through these portable types
 and the platform template selects the backend implementation at link time.
 
@@ -11,7 +12,7 @@ and the platform template selects the backend implementation at link time.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.graphics2d` | `0.6.0-dev.7` | `dev.squarednetizen.squared.graphics` `0.6.0-dev.4`, `dev.squarednetizen.squared.math` `0.6.0-dev.2` |
+| `dev.squarednetizen.squared.graphics2d` | `0.6.0-dev.8` | `dev.squarednetizen.squared.graphics` `0.6.0-dev.4`, `dev.squarednetizen.squared.math` `0.6.0-dev.2` |
 
 The CMake target is `squared_graphics2d`, a `STATIC` library. Camera math
 lives in this package; texture, atlas, and batch bodies are provided by the
@@ -31,6 +32,8 @@ selected link-time backend.
 | `squared::graphics2d::TextureRegion` | `squared/graphics2d/texture_region.hpp` | Non-owning rectangular view into a `Texture` with UV coordinates. |
 | `squared::graphics2d::AtlasRegion` | `squared/graphics2d/texture_atlas.hpp` | One named atlas entry: region view plus libGDX metadata. |
 | `squared::graphics2d::TextureAtlas` | `squared/graphics2d/texture_atlas.hpp` | Owning, transactionally loaded libGDX text atlas. |
+| `squared::graphics2d::BitmapFont` | `squared/graphics2d/bitmap_font.hpp` | Value-semantic, transactionally parsed text BMFont metrics and page references. |
+| `squared::graphics2d::GlyphLayout` | `squared/graphics2d/bitmap_font.hpp` | Reusable UTF-8 layout producing page-indexed glyph placements. |
 | `squared::graphics2d::Sprite` | `squared/graphics2d/sprite.hpp` | Lightweight mutable draw state over one region. |
 | `squared::graphics2d::SpriteBatch` | `squared/graphics2d/sprite_batch.hpp` | Ordered textured-quad batching with an internal shader. |
 | `squared::graphics2d::CoordinateOrigin` | `squared/graphics2d/orthographic_camera.hpp` | Camera orientation: `BottomLeft`, `TopLeft`. |
@@ -147,6 +150,52 @@ the default entry) and returns `nullptr` on a miss. Indexed duplicates are
 retrieved by index. The atlas owns every page `Texture`; returned
 `AtlasRegion` pointers and their `TextureRegion` views stay valid until the
 atlas is destroyed or a later load succeeds.
+
+## Bitmap fonts and glyph runs
+
+`BitmapFont` parses text BMFont descriptors without loading a texture or
+depending on a filesystem. Supply bytes from HoloDisk, an embedded resource,
+or another application-owned source. A successful load owns the face,
+line-height, baseline, page size, safe relative page filenames, glyph metrics,
+and kerning pairs. A failed load reports a stable `BitmapFontErrorCode` plus a
+line when applicable and leaves the previous font unchanged.
+
+```cpp
+#include <squared/graphics2d/bitmap_font.hpp>
+
+squared::graphics2d::BitmapFont font;
+squared::graphics2d::BitmapFontError error;
+if (!font.load(font_descriptor_bytes, error)) {
+    // error.code, error.line, error.message
+    return;
+}
+
+squared::graphics2d::GlyphLayoutOptions options;
+options.scale = 1.5F;
+options.target_width = 320.0F;
+options.alignment = squared::graphics2d::GlyphAlignment::center;
+
+squared::graphics2d::GlyphLayout title;
+if (!title.set_text(font, "Squared \xE2\x96\xA1", options, error)) {
+    return;
+}
+
+for (const auto& glyph : title.glyphs()) {
+    // Resolve font.pages()[glyph.page] to a Texture, create a TextureRegion
+    // from glyph.source_*, then batch.draw(region, glyph.x, glyph.y,
+    //                                      glyph.width, glyph.height).
+}
+```
+
+Layout is strict UTF-8 by default. Set `reject_invalid_utf8 = false` to emit
+the configured replacement glyph instead. Tabs expand to `tab_spaces` spaces;
+CR, LF, and CRLF create explicit lines. Kerning is applied before placement,
+and start/center/end alignment shifts each line inside `target_width`.
+
+The page resolver owns textures and must keep them alive through submission;
+`BitmapFont`, `GlyphLayout`, and `GlyphPlacement` own no GPU resources or
+borrowed texture pointers. Word wrapping, complex-script shaping,
+bidirectional layout, markup, and font fallback are not implemented.
 
 ## Sprite construction
 
@@ -336,6 +385,8 @@ capacity when required.
 - `TextureAtlas` owns every page `Texture`; region objects are values inside
   the atlas and are invalidated when the atlas is destroyed or successfully
   reloaded.
+- `BitmapFont` and `GlyphLayout` are independent values. Page filenames and
+  metrics are owned strings/values; a later renderer owns resolved textures.
 - `Sprite` references a region non-owningly and must not outlive it.
 - `SpriteBatch` owns its CPU vertex staging buffer, GPU buffers, and compiled
   shader; it is non-copyable and non-movable.
