@@ -78,3 +78,18 @@ results, warnings, and anything that could not run. Before any package version
 change, present the immutable-version and downstream-coordinate impact to the
 user.
 
+<!-- squared-clang-policy:begin -->
+## Mandatory Clang workflow
+
+This package inherits the repository-root `.clang-format`, `.clang-tidy`, and `AGENTS.md`.
+Whenever project-owned C or C++ files in this package change, agents must configure a compilation
+database and run narrow formatter and Clang-Tidy checks on touched files when practical. The
+repository-wide `tools/clang-check.fish --full` audit runs in GitHub Actions and is mandatory for
+releases, package-version milestones, public API changes, and broad refactors.
+
+Clang warnings are actionable failures. Agents must report work as awaiting CI until the required
+workflow passes. Missing local tools or compilation commands must be reported rather than silently
+skipped. Global warning suppression is forbidden; any necessary suppression must be narrow,
+justified, documented, and reported. Generated, vendored, and third-party source remains excluded
+unless explicitly owned by the task.
+<!-- squared-clang-policy:end -->

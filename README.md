@@ -61,6 +61,10 @@ edge/corner resizing, minimum sizes, and viewport constraints. Its packaged
 skin fixture uses CC0 Kenney UI Pack images and libGDX-compatible split and
 padding metadata.
 
+## Clang quality
+
+GitHub Actions performs repository-wide clang-format, Clang-Tidy, and Clang Static Analyzer checks. Full local execution is optional on constrained Termux devices. Agents must run narrow checks when practical and treat the GitHub quality gate as authoritative.
+
 ## Build packages
 
 Package sources retain the public layout consumed by Squared Project
