@@ -1,5 +1,14 @@
 # Changelog
 
+## GUI HoloDisk file picker 0.6.0-dev.1
+
+- Added an optional composite file-picker package requiring exact GUI dev.15
+  and HoloDisk dev.3 coordinates.
+- Added transactional HoloDrive navigation, typed AssetManager selection
+  loading, and AssetManager-backed gdx-holo skin JSON loading.
+- Kept core GUI independent from HoloDisk and platform filesystem APIs.
+- Added host tests, package documentation, and dependency diagrams.
+
 ## Unreleased
 
 - Advance GUI to `0.6.0-dev.15` with determinate progress bars, lifetime-safe

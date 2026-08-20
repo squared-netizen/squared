@@ -1,0 +1,25 @@
+{
+  "format": "dev.squarednetizen.sq",
+  "format_version": 0,
+  "kind": "module",
+  "id": "dev.squarednetizen.squared.gui.file-picker",
+  "version": "0.6.0-dev.1",
+  "name": "Squared GUI File Picker",
+  "description": "A gdx-holo-styled composite file picker over HoloDrive and the HoloDisk AssetManager.",
+  "module": {
+    "directory": "modules/squared-gui-file-picker",
+    "cmake_target": "squared_gui_file_picker",
+    "requires": [
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.gui",
+        "version": "0.6.0-dev.15"
+      },
+      {
+        "kind": "module",
+        "id": "dev.squarednetizen.squared.holodisk",
+        "version": "0.6.0-dev.3"
+      }
+    ]
+  }
+}

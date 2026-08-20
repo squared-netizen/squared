@@ -22,6 +22,7 @@ digraph package_dependencies {
   backend       [label="squared-backend-sdl2-opengl\n0.6.0-dev.5", fillcolor="#ffe6cc"];
   messaging     [label="squared-messaging\n0.6.0-dev.3", fillcolor="#f8cecc"];
   gui           [label="squared-gui\n0.6.0-dev.15", fillcolor="#d5e8d4"];
+  file_picker   [label="squared-gui-file-picker\n0.6.0-dev.1", fillcolor="#fff2cc"];
 
   graphics2d -> graphics [label="0.6.0-dev.4"];
   graphics2d -> math     [label="0.6.0-dev.2"];
@@ -33,9 +34,10 @@ digraph package_dependencies {
   gui        -> application [label="0.6.0-dev.5"];
   gui        -> scene2d   [label="0.6.0-dev.7"];
   gui        -> graphics2d [label="0.6.0-dev.8"];
+  file_picker -> gui       [label="0.6.0-dev.15"];
+  file_picker -> holoDisk  [label="0.6.0-dev.3"];
 
-  // HoloDisk stays independent and optional: no incoming or outgoing edges
-  // exist in any manifest. It must not appear as a GUI dependency before an
-  // explicit integration milestone.
+  // HoloDisk remains independent and optional for core GUI. Only the explicit
+  // file-picker integration package requires it.
   { rank=sink; holoDisk; }
 }

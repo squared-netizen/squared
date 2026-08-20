@@ -1,5 +1,11 @@
 # Squared GUI History
 
+## Integration milestones
+
+- The optional `squared-gui-file-picker` `0.6.0-dev.1` package composes GUI
+  dev.15 primitives with HoloDisk dev.3 without changing this package's bytes,
+  version, ABI, or dependency boundary.
+
 ## 0.6.0-dev.15
 
 - Added determinate progress bars with named programmatic and imported libGDX

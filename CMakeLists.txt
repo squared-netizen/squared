@@ -54,6 +54,9 @@ set(SQUARED_HOLODISK_MINIZ_ROOT
 set(SQUARED_GUI_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui/content/modules/squared-gui"
 )
+set(SQUARED_GUI_FILE_PICKER_ROOT
+    "${CMAKE_CURRENT_SOURCE_DIR}/packages/squared-gui-file-picker/content/modules/squared-gui-file-picker"
+)
 
 add_library(squared_test_yyjson STATIC
     "${SQUARED_DATA_YYJSON_ROOT}/src/yyjson.c"
@@ -243,6 +246,37 @@ add_executable(squared_gui_showcase_test
     "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
 )
+
+add_executable(squared_gui_file_picker_test
+    tests/gui-file-picker-test.cpp
+    "${SQUARED_GUI_FILE_PICKER_ROOT}/src/file_picker.cpp"
+    "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
+    "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_GUI_ROOT}/src/skin_loader.cpp"
+    "${SQUARED_DATA_ROOT}/src/json.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
+    "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
+    "${SQUARED_HOLODISK_ROOT}/src/asset_manager.cpp"
+    "${SQUARED_HOLODISK_ROOT}/src/holodrive.cpp"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tdef.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_tinfl.c"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}/miniz_zip.c"
+)
+squared_test_target(squared_gui_file_picker_test)
+target_include_directories(squared_gui_file_picker_test PRIVATE
+    "${SQUARED_APPLICATION_ROOT}/include"
+    "${SQUARED_DATA_ROOT}/include"
+    "${SQUARED_GRAPHICS_ROOT}/include"
+    "${SQUARED_GRAPHICS2D_ROOT}/include"
+    "${SQUARED_GUI_ROOT}/include"
+    "${SQUARED_GUI_FILE_PICKER_ROOT}/include"
+    "${SQUARED_HOLODISK_ROOT}/include"
+    "${SQUARED_HOLODISK_MINIZ_ROOT}"
+    "${SQUARED_SCENE2D_ROOT}/include"
+)
+target_link_libraries(squared_gui_file_picker_test PRIVATE squared_test_yyjson)
 squared_test_target(squared_gui_showcase_test)
 target_include_directories(squared_gui_showcase_test
     PRIVATE
@@ -310,5 +344,9 @@ if(BUILD_TESTING)
     add_test(
         NAME squared_gui_complete_showcase
         COMMAND "$<TARGET_FILE:squared_gui_showcase_test>"
+    )
+    add_test(
+        NAME squared_gui_holodisk_file_picker
+        COMMAND "$<TARGET_FILE:squared_gui_file_picker_test>"
     )
 endif()

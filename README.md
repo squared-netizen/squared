@@ -12,6 +12,7 @@ This repository is the authoritative development home for:
 - Squared Graphics
 - Squared Graphics2D
 - Squared GUI (optional)
+- Squared GUI File Picker (optional HoloDisk integration)
 - Squared HoloDisk (optional)
 - Squared Math
 - Squared Messaging
@@ -99,6 +100,13 @@ permanent CPU-side copies of its glyph textures.
 
 ## Optional HoloDisk extension
 
+The optional `dev.squarednetizen.squared.gui.file-picker` module requires both
+GUI and HoloDisk. Adding that coordinate through `squared-pg` resolves the exact
+GUI dev.15 and HoloDisk dev.3 packages automatically; core GUI remains usable
+without HoloDisk. The picker browses `HoloDrive`, loads typed selections and the
+packaged gdx-holo JSON through `AssetManager`, and receives backend drawable and
+font resolvers from the application.
+
 `dev.squarednetizen.squared.holodisk` provides emulated and ZIP-backed
 cartridges without becoming a required I/O layer. It has no dependency on any
 other Squared package. A factory creates a `HoloDrive`; that drive then owns
@@ -136,8 +144,9 @@ and cancellation.
 GUI package installation also carries the SHA-256-pinned gdx-skins archive
 into generated-project assets. The showcase uses the selected gdx-holo theme
 through GUI's bounded, transactional memory loader. HoloDisk's AssetManager
-can now mount the pinned archive; registering Graphics2D font/atlas and GUI
-skin loaders remains the later integration step.
+can mount the pinned archive. The optional file-picker module now loads the
+selected skin JSON through that manager while retaining application-injected
+atlas, texture, and bitmap-font resolvers.
 
 ## Repository boundary
 

@@ -20,6 +20,7 @@ of *how to use* it, see the counterpart developer page.
 | graphics | [squared-graphics/](squared-graphics/README.md) | [developer](../developer/squared-graphics/README.md) |
 | graphics2d | [squared-graphics2d/](squared-graphics2d/README.md) | [developer](../developer/squared-graphics2d/README.md) |
 | gui | [squared-gui/](squared-gui/README.md) | [developer](../developer/squared-gui/README.md) |
+| gui-file-picker | [squared-gui-file-picker/](squared-gui-file-picker/README.md) | [developer](../developer/squared-gui-file-picker/README.md) |
 | holoDisk | [squared-holoDisk/](squared-holoDisk/README.md) | [developer](../developer/squared-holoDisk/README.md) |
 | math | [squared-math/](squared-math/README.md) | [developer](../developer/squared-math/README.md) |
 | messaging | [squared-messaging/](squared-messaging/README.md) | [developer](../developer/squared-messaging/README.md) |

@@ -23,6 +23,7 @@ INPUT                  = README.md \
                          packages/squared-graphics/content/modules/squared-graphics/include \
                          packages/squared-graphics2d/content/modules/squared-graphics2d/include \
                          packages/squared-gui/content/modules/squared-gui/include \
+                         packages/squared-gui-file-picker/content/modules/squared-gui-file-picker/include \
                          packages/squared-holoDisk/content/modules/squared-holoDisk/include \
                          packages/squared-math/content/modules/squared-math/include \
                          packages/squared-messaging/content/modules/squared-messaging/include \

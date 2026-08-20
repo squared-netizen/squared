@@ -21,6 +21,7 @@ these pages and rendered beneath `build/docs/`. Validate changes with
 | graphics | [squared-graphics/](squared-graphics/README.md) | [programmer](../programmer/squared-graphics/README.md) |
 | graphics2d | [squared-graphics2d/](squared-graphics2d/README.md) | [programmer](../programmer/squared-graphics2d/README.md) |
 | gui | [squared-gui/](squared-gui/README.md) | [programmer](../programmer/squared-gui/README.md) |
+| gui-file-picker | [squared-gui-file-picker/](squared-gui-file-picker/README.md) | [programmer](../programmer/squared-gui-file-picker/README.md) |
 | holoDisk | [squared-holoDisk/](squared-holoDisk/README.md) | [programmer](../programmer/squared-holoDisk/README.md) |
 | math | [squared-math/](squared-math/README.md) | [programmer](../programmer/squared-math/README.md) |
 | messaging | [squared-messaging/](squared-messaging/README.md) | [programmer](../programmer/squared-messaging/README.md) |
@@ -34,6 +35,7 @@ these pages and rendered beneath `build/docs/`. Validate changes with
 - [GUI input/focus event flow](squared-gui/GUI-input-focus.dot)
 - [Skin-loading transaction](squared-gui/GUI-skin-loading.dot)
 - [HoloDisk typed asset loading](squared-holoDisk/asset-loading-flow.dot)
+- [GUI file-picker integration](squared-gui-file-picker/file-picker-dependencies.dot)
 - [Graphics2D bitmap-font layout](squared-graphics2d/bitmap-font-layout-flow.dot)
 
 ## Package payloads

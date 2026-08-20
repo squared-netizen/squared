@@ -1,0 +1,14 @@
+digraph file_picker_dependencies {
+  rankdir="LR";
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  picker [label="GUI File Picker\n0.6.0-dev.1", fillcolor="#fff2cc"];
+  gui [label="GUI\n0.6.0-dev.15", fillcolor="#d5e8d4"];
+  holodisk [label="HoloDisk\n0.6.0-dev.3", fillcolor="#dae8fc"];
+  assets [label="Application mounts +\nbackend resolvers", fillcolor="#f5f5f5"];
+
+  picker -> gui [label="composite widgets"];
+  picker -> holodisk [label="drive + asset manager"];
+  assets -> picker [style=dashed, label="runtime injection"];
+}
