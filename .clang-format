@@ -1,0 +1,87 @@
+Language: Cpp
+Standard: c++20
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+NamespaceIndentation: None
+AccessModifierOffset: -4
+IndentRequiresClause: true
+RequiresClausePosition: OwnLine
+
+ColumnLimit: 100
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeConceptDeclarations: Always
+PackConstructorInitializers: NextLine
+InsertNewlineAtEOF: true
+SeparateDefinitionBlocks: Always
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Left
+
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: Never
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeRangeBasedForLoopColon: true
+
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<[a-z_]+>$'
+    Priority: 1
+  - Regex: '^<SDL.*\.h>$'
+    Priority: 2
+  - Regex: '^<(lua|lauxlib|lualib)\.h>$'
+    Priority: 3
+  - Regex: '^<.*\.h>$'
+    Priority: 4
+  - Regex: '^<squared/'
+    Priority: 5
+  - Regex: '^"[^"]+"$'
+    Priority: 6
+  - Regex: '.*'
+    Priority: 7
+
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments: true
+AlignAfterOpenBracket: Align
+
+FixNamespaceComments: true
+SpaceAroundPointerQualifiers: Default
+BitFieldColonSpacing: Both
+Cpp11BracedListStyle: true
+IntegerLiteralSeparator:
+  Decimal: 0
+  Hex: -1

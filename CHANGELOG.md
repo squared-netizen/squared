@@ -11,6 +11,8 @@
 
 ## Unreleased
 
+- Add repository-wide Clang formatting, Clang-Tidy, Static Analyzer, and GitHub Actions quality gates. Package agent policies inherit the root configuration without changing immutable package content.
+
 - Advance GUI to `0.6.0-dev.15` with determinate progress bars, lifetime-safe
   button groups and radio behavior, drawable-or-glyph button content, imported
   libGDX progress styles, portable tests, documentation, and showcase coverage.
