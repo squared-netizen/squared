@@ -4,6 +4,19 @@ Only unfinished work belongs here. Move completed work into `history.md`.
 
 ## Next
 
+- [ ] Decompose the monolithic `gui.hpp` and `gui.cpp` implementation into
+  cohesive component-focused headers and translation units, following
+  `list_view.cpp` as the extraction precedent.
+- [ ] Keep `squared/gui/gui.hpp` as a compatibility umbrella while introducing
+  focused public headers for core geometry and style contracts, widget
+  foundations, layouts, primitive controls, overlays and windows, and composite
+  controls.
+- [ ] Split implementation by ownership and behavior rather than creating one
+  file for every trivial class; avoid cyclic includes, duplicate widget
+  hierarchies, and backend or platform leakage.
+- [ ] Preserve behavior with component-level tests, run the mandatory Clang
+  workflow for each slice, and update CMake and programmer/developer
+  documentation as each extraction lands.
 - [ ] Continue rounding out the primitive widget set with popup overlays,
   select boxes, and menus.
 - [ ] Add a canvas widget using the existing `Widget`, input propagation,
