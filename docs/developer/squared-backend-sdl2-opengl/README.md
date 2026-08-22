@@ -18,7 +18,7 @@ dispatch in the frame loop.
 ## Dependency boundary
 
 The manifest declares exactly one requirement: `squared.graphics2d` version
-`0.6.0-dev.7`, which itself requires Graphics `0.6.0-dev.4` and Math
+`0.6.0-dev.8`, which itself requires Graphics `0.6.0-dev.4` and Math
 `0.6.0-dev.2`. The CMake module `squared_backend_sdl2_opengl` is a `STATIC`
 library, `POSITION_INDEPENDENT_CODE ON`, compiled with `-Wall -Wextra
 -Wpedantic`, and it links `squared_graphics2d`, `SDL2_image`, `SDL2`, and the

@@ -11,7 +11,7 @@ in this slice.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.scene2d` | `0.6.0-dev.7` | `dev.squarednetizen.squared.graphics2d` `0.6.0-dev.7` |
+| `dev.squarednetizen.squared.scene2d` | `0.6.0-dev.8` | `dev.squarednetizen.squared.graphics2d` `0.6.0-dev.8` |
 
 The CMake target is `squared_scene2d`, a `STATIC` library exporting the
 `include/` directory and the C++20 requirement.

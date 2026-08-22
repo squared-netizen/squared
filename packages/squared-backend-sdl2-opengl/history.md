@@ -1,5 +1,9 @@
 # Squared SDL2/OpenGL Backend History
 
+## 0.6.0-dev.6
+
+- Advanced the exact Graphics2D dependency to `0.6.0-dev.8` so clean registries resolve the backend from canonical packages alone.
+
 ## 0.6.0-dev.5
 
 - Dependency alignment only: advanced the exact Graphics2D dependency

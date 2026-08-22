@@ -26,7 +26,8 @@ navigation provides the same directional, next/previous, activate, and cancel
 behavior to controllers without mentioning a controller API in GUI.
 
 Buttons, toggle buttons, check boxes, and grouped radio choices activate with
-Enter or Space. Sliders consume Left and Right. Progress bars are read-only.
+Enter or Space. Sliders and scroll bars consume directional keys. List views
+consume Up, Down, Home, and End. Progress bars are read-only.
 Escape closes cancellable dialogs. Buttons, choices, text fields, and sliders
 render a visible focus treatment.
 
@@ -44,6 +45,8 @@ The basic controls are:
   `ButtonGroup` for actions and bounded choices;
 - `TextField` for UTF-8 text insertion and cursor editing;
 - `Slider` for continuous values and `ProgressBar` for determinate output.
+- `ScrollBar` for one-axis viewport positions and `ListView` for text rows
+  backed by an injected `ListSelectionModel`.
 
 Buttons may place either a shared immutable drawable or UTF-8 glyph before
 their label with `set_icon` or `set_glyph`. Glyphs use the explicitly supplied
@@ -61,6 +64,16 @@ difficulty.add(*expert);
 auto save = std::make_unique<squared::gui::Button>("Save", save_game);
 save->set_glyph("S", skin.font("icons"));
 auto loading = std::make_unique<squared::gui::ProgressBar>(0.0F, 100.0F, 35.0F);
+```
+
+List selection state can be shared with application controllers without
+moving row ownership outside the widget tree:
+
+```cpp
+auto selection = std::make_shared<squared::gui::SingleListSelectionModel>();
+auto files = std::make_unique<squared::gui::ListView>(names);
+files->set_selection_model(selection);
+files->set_on_selection_changed(open_preview);
 ```
 
 The compositional containers are `Table`, `LinearLayout`, `Stack`,

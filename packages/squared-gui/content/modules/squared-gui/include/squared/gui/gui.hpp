@@ -553,6 +553,36 @@ struct ProgressBarStyle {
     float thickness{12.0F};
 };
 
+/** @brief Style data for a one-axis ScrollBar widget. */
+struct ScrollBarStyle {
+    /** @brief Drawable for the complete track. */
+    DrawablePtr track;
+    /** @brief Drawable for the draggable thumb. */
+    DrawablePtr knob;
+    /** @brief Minimum cross-axis touch target in logical units. */
+    float minimum_touch_size{44.0F};
+    /** @brief Minimum thumb length in logical units. */
+    float minimum_knob_length{24.0F};
+};
+
+/** @brief Style data for a text ListView widget. */
+struct ListViewStyle {
+    /** @brief Drawable behind the complete list. */
+    DrawablePtr background;
+    /** @brief Drawable behind selected rows. */
+    DrawablePtr selection;
+    /** @brief Text color for unselected rows. */
+    graphics::Color unselected_text{graphics::Color::from_rgba8(238, 241, 247)};
+    /** @brief Text color for selected rows. */
+    graphics::Color selected_text{graphics::Color::white()};
+    /** @brief Row font, or empty to use the painter default. */
+    FontPtr font;
+    /** @brief Minimum row height in logical units. */
+    float row_height{44.0F};
+    /** @brief Horizontal text padding in logical units. */
+    float horizontal_padding{10.0F};
+};
+
 /** @brief Style data for a Window widget. */
 struct WindowStyle {
     /** @brief Drawable for the window body. */
@@ -734,6 +764,12 @@ public:
      */
     void add_progress_bar_style(std::string name, ProgressBarStyle style);
 
+    /** @brief Register or replace a named scroll-bar style. */
+    void add_scroll_bar_style(std::string name, ScrollBarStyle style);
+
+    /** @brief Register or replace a named list-view style. */
+    void add_list_view_style(std::string name, ListViewStyle style);
+
     /**
      * @brief Register or replace a named window style.
      * @param name Style name.
@@ -799,6 +835,16 @@ public:
         std::string_view name
     ) const;
 
+    /** @brief Look up a scroll-bar style, falling back to `default`. */
+    [[nodiscard]] const ScrollBarStyle& scroll_bar_style(
+        std::string_view name
+    ) const;
+
+    /** @brief Look up a list-view style, falling back to `default`. */
+    [[nodiscard]] const ListViewStyle& list_view_style(
+        std::string_view name
+    ) const;
+
     /**
      * @brief Look up a window style.
      * @param name Style name to look up.
@@ -817,6 +863,8 @@ private:
     std::unordered_map<std::string, CheckBoxStyle> check_box_styles_;
     std::unordered_map<std::string, SliderStyle> slider_styles_;
     std::unordered_map<std::string, ProgressBarStyle> progress_bar_styles_;
+    std::unordered_map<std::string, ScrollBarStyle> scroll_bar_styles_;
+    std::unordered_map<std::string, ListViewStyle> list_view_styles_;
     std::unordered_map<std::string, WindowStyle> window_styles_;
 };
 
@@ -2072,6 +2120,143 @@ private:
     ChangeCallback callback_;
     std::optional<std::int64_t> drag_pointer_;
     bool focused_{false};
+};
+
+/** @brief Draggable one-axis viewport-position control. */
+class ScrollBar final : public Widget {
+public:
+    /** @brief Action invoked when the scroll value changes. */
+    using ChangeCallback = std::function<void(float)>;
+
+    /** @brief Construct a scroll bar for the requested axis. */
+    explicit ScrollBar(Direction direction = Direction::vertical) noexcept;
+
+    /** @brief Set ordered content-space limits and clamp the current value. */
+    void set_range(float minimum, float maximum) noexcept;
+
+    /** @brief Set the visible content extent used to size the thumb. */
+    void set_page_size(float page_size) noexcept;
+
+    /** @brief Set and clamp the current scroll value. */
+    void set_value(float value);
+
+    /** @brief Return the current scroll value. */
+    [[nodiscard]] float value() const noexcept { return value_; }
+
+    /** @brief Return the configured visible content extent. */
+    [[nodiscard]] float page_size() const noexcept { return page_size_; }
+
+    /** @brief Set arrow-key granularity; zero selects an automatic amount. */
+    void set_step(float step) noexcept;
+
+    /** @brief Install the change callback. */
+    void set_on_change(ChangeCallback callback);
+
+    /** @brief Select a named ScrollBarStyle. */
+    void set_style(std::string style);
+
+    [[nodiscard]] Size minimum_size(Painter&, const Skin&) const override;
+    [[nodiscard]] Size preferred_size(Painter&, const Skin&) const override;
+    void paint(Painter&, const Skin&, float, float) const override;
+    bool pointer_event(const PointerEvent&) override;
+    bool key_down(Key, KeyModifiers = {}) override;
+    void focus_changed(bool) override;
+    [[nodiscard]] bool focusable() const noexcept override;
+
+private:
+    [[nodiscard]] float axis_length() const noexcept;
+    [[nodiscard]] float knob_length(const ScrollBarStyle&) const noexcept;
+    void update_from_pointer(float coordinate, float grab_offset);
+
+    Direction direction_{Direction::vertical};
+    float minimum_{0.0F};
+    float maximum_{0.0F};
+    float value_{0.0F};
+    float page_size_{0.0F};
+    float step_{0.0F};
+    float grab_offset_{0.0F};
+    std::string style_{"default"};
+    ChangeCallback callback_;
+    std::optional<std::int64_t> drag_pointer_;
+    bool focused_{false};
+};
+
+/** @brief Injectable selection state used by ListView. */
+class ListSelectionModel {
+public:
+    virtual ~ListSelectionModel() = default;
+    [[nodiscard]] virtual bool selected(std::size_t index) const noexcept = 0;
+    [[nodiscard]] virtual std::optional<std::size_t> primary() const noexcept = 0;
+    virtual void select(std::size_t index, KeyModifiers modifiers = {}) = 0;
+    virtual void clear() noexcept = 0;
+    virtual void trim(std::size_t item_count) noexcept = 0;
+};
+
+/** @brief Single-choice ListView selection model. */
+class SingleListSelectionModel final : public ListSelectionModel {
+public:
+    [[nodiscard]] bool selected(std::size_t index) const noexcept override;
+    [[nodiscard]] std::optional<std::size_t> primary() const noexcept override;
+    void select(std::size_t index, KeyModifiers modifiers = {}) override;
+    void clear() noexcept override;
+    void trim(std::size_t item_count) noexcept override;
+
+private:
+    std::optional<std::size_t> selected_;
+};
+
+/** @brief Scrollable text list with externally supplied selection state. */
+class ListView final : public Widget {
+public:
+    using SelectionCallback = std::function<void(std::optional<std::size_t>)>;
+
+    /** @brief Construct a list with a default single-selection model. */
+    explicit ListView(std::vector<std::string> items = {});
+
+    /** @brief Replace all rows and trim selection to the new size. */
+    void set_items(std::vector<std::string> items);
+
+    /** @brief Return the immutable row labels. */
+    [[nodiscard]] std::span<const std::string> items() const noexcept;
+
+    /** @brief Inject shared selection state; null restores a private model. */
+    void set_selection_model(std::shared_ptr<ListSelectionModel> model);
+
+    /** @brief Return the active selection model. */
+    [[nodiscard]] const std::shared_ptr<ListSelectionModel>& selection_model() const noexcept;
+
+    /** @brief Set the first visible row, clamped during layout and painting. */
+    void set_scroll_index(std::size_t index) noexcept;
+
+    /** @brief Return the first visible row. */
+    [[nodiscard]] std::size_t scroll_index() const noexcept { return scroll_index_; }
+
+    /** @brief Install a callback fired after user-driven selection changes. */
+    void set_on_selection_changed(SelectionCallback callback);
+
+    /** @brief Select a named ListViewStyle. */
+    void set_style(std::string style);
+
+    [[nodiscard]] Size minimum_size(Painter&, const Skin&) const override;
+    [[nodiscard]] Size preferred_size(Painter&, const Skin&) const override;
+    void paint(Painter&, const Skin&, float, float) const override;
+    bool pointer_event(const PointerEvent&) override;
+    bool key_down(Key, KeyModifiers = {}) override;
+    void focus_changed(bool) override;
+    [[nodiscard]] bool focusable() const noexcept override;
+
+private:
+    [[nodiscard]] std::size_t visible_rows(float row_height) const noexcept;
+    void select_index(std::size_t index, KeyModifiers modifiers);
+    void reveal(std::size_t index, float row_height) noexcept;
+
+    std::vector<std::string> items_;
+    std::shared_ptr<ListSelectionModel> selection_model_;
+    std::size_t scroll_index_{0};
+    std::string style_{"default"};
+    SelectionCallback callback_;
+    bool focused_{false};
+    mutable float resolved_row_height_{44.0F};
 };
 
 /** @brief Read-only determinate progress indicator. */

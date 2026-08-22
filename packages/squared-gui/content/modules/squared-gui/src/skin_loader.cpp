@@ -38,6 +38,10 @@ constexpr std::string_view slider_class =
     "com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle";
 constexpr std::string_view progress_bar_class =
     "com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle";
+constexpr std::string_view scroll_pane_class =
+    "com.badlogic.gdx.scenes.scene2d.ui.ScrollPane$ScrollPaneStyle";
+constexpr std::string_view list_class =
+    "com.badlogic.gdx.scenes.scene2d.ui.List$ListStyle";
 constexpr std::string_view window_class =
     "com.badlogic.gdx.scenes.scene2d.ui.Window$WindowStyle";
 
@@ -233,6 +237,8 @@ public:
         load_check_boxes(*classes);
         load_sliders(*classes);
         load_progress_bars(*classes);
+        load_scroll_bars(*classes);
+        load_lists(*classes);
         load_windows(*classes);
         report_unsupported(*classes);
         if (!report_.success()) return false;
@@ -732,6 +738,65 @@ private:
         );
     }
 
+    void load_scroll_bars(const JsonValue::Object& classes)
+    {
+        load_typed_styles(
+            classes, scroll_pane_class, "scroll-bar",
+            candidate_.scroll_bar_style("default"),
+            [this](
+                ScrollBarStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.track = drawable_value(
+                    object, "vScroll", style.track, path
+                );
+                style.knob = drawable_value(
+                    object, "vScrollKnob", style.knob, path
+                );
+                ScrollBarStyle horizontal_style = style;
+                horizontal_style.knob = drawable_value(
+                    object, "hScrollKnob", horizontal_style.knob, path
+                );
+                candidate_.add_scroll_bar_style(
+                    "default-horizontal", horizontal_style
+                );
+            },
+            [this](const std::string& name, const ScrollBarStyle& style) {
+                candidate_.add_scroll_bar_style(name, style);
+            }
+        );
+    }
+
+    void load_lists(const JsonValue::Object& classes)
+    {
+        load_typed_styles(
+            classes, list_class, "list", candidate_.list_view_style("default"),
+            [this](
+                ListViewStyle& style,
+                const JsonValue::Object& object,
+                const std::string& path
+            ) {
+                style.background = drawable_value(
+                    object, "background", style.background, path
+                );
+                style.selection = drawable_value(
+                    object, "selection", style.selection, path
+                );
+                style.font = font_value(object, "font", style.font, path);
+                style.unselected_text = color_value(
+                    object, "fontColorUnselected", style.unselected_text, path
+                );
+                style.selected_text = color_value(
+                    object, "fontColorSelected", style.selected_text, path
+                );
+            },
+            [this](const std::string& name, const ListViewStyle& style) {
+                candidate_.add_list_view_style(name, style);
+            }
+        );
+    }
+
     void load_windows(const JsonValue::Object& classes)
     {
         load_typed_styles(
@@ -772,6 +837,7 @@ private:
             color_class, font_class, tinted_class, button_class,
             text_button_class, label_class, text_field_class, check_box_class,
             slider_class, progress_bar_class, window_class
+            , scroll_pane_class, list_class
         };
         for (const auto& [name, value] : classes) {
             static_cast<void>(value);

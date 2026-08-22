@@ -16,7 +16,7 @@ package provides their implementations.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.backend.sdl2-opengl` | `0.6.0-dev.5` | `dev.squarednetizen.squared.graphics2d` `0.6.0-dev.7` |
+| `dev.squarednetizen.squared.backend.sdl2-opengl` | `0.6.0-dev.6` | `dev.squarednetizen.squared.graphics2d` `0.6.0-dev.8` |
 
 The CMake target is `squared_backend_sdl2_opengl`, a `STATIC` library that
 links `squared_graphics2d`, `SDL2`, `SDL2_image`, and the configured OpenGL

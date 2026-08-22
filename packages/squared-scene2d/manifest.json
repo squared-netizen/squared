@@ -3,7 +3,7 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.scene2d",
-  "version": "0.6.0-dev.7",
+  "version": "0.6.0-dev.8",
   "name": "Squared Scene2D",
   "description": "Owned two-dimensional actor hierarchy with ordered traversal, hit testing, and portable capture-target-bubble input dispatch.",
   "module": {
@@ -13,7 +13,7 @@
       {
         "kind": "module",
         "id": "dev.squarednetizen.squared.graphics2d",
-        "version": "0.6.0-dev.7"
+        "version": "0.6.0-dev.8"
       }
     ]
   }

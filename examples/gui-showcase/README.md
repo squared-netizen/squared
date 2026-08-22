@@ -23,8 +23,8 @@ The showcase exercises:
 `src/showcase.cpp` is platform-neutral and is covered by the host test suite.
 `android/src/application.cpp` implements the generated Android application's
 factory and painter boundary. A generated project must enable both
-`dev.squarednetizen.squared.gui@0.6.0-dev.15` and
-`dev.squarednetizen.squared.backend.sdl2-opengl@0.6.0-dev.5` through
+`dev.squarednetizen.squared.gui@0.6.0-dev.17` and
+`dev.squarednetizen.squared.backend.sdl2-opengl@0.6.0-dev.6` through
 `squared-pg project module add`. The GUI coordinate composes its portable
 dependencies and assets; the backend coordinate supplies the link-time
 Graphics and Graphics2D implementations. Build the result with

@@ -15,7 +15,7 @@ Android, or HoloDisk, and there is no separate second widget hierarchy.
 
 | Module | Version | Requires |
 | --- | --- | --- |
-| `dev.squarednetizen.squared.gui` | `0.6.0-dev.15` | `dev.squarednetizen.squared.data@0.6.0-dev.2`, `dev.squarednetizen.squared.application@0.6.0-dev.5`, `dev.squarednetizen.squared.scene2d@0.6.0-dev.7`, `dev.squarednetizen.squared.graphics2d@0.6.0-dev.8` |
+| `dev.squarednetizen.squared.gui` | `0.6.0-dev.17` | `dev.squarednetizen.squared.data@0.6.0-dev.2`, `dev.squarednetizen.squared.application@0.6.0-dev.5`, `dev.squarednetizen.squared.scene2d@0.6.0-dev.8`, `dev.squarednetizen.squared.graphics2d@0.6.0-dev.8` |
 
 The CMake target is `squared_gui`, a static library exporting the `include/`
 directory and the C++20 requirement. It links Application, Data, Scene2D, and
@@ -37,7 +37,7 @@ All types live in namespace `squared::gui` and in the two headers listed.
 | `Drawable`, `DrawablePtr` | `squared/gui/gui.hpp` | Immutable image abstraction; `shared_ptr<const Drawable>`. |
 | `ColorDrawable`, `RegionDrawable`, `NinePatchDrawable`, `NinePatchSplits` | `squared/gui/gui.hpp` | Concrete drawables: flat color, one texture region, scalable nine-piece region. |
 | `Skin` | `squared/gui/gui.hpp` | Named font/drawable tables plus named widget styles. |
-| `PanelStyle`, `LabelStyle`, `ButtonStyle`, `TextFieldStyle`, `CheckBoxStyle`, `SliderStyle`, `ProgressBarStyle`, `WindowStyle` | `squared/gui/gui.hpp` | Style value types referencing immutable fonts, drawables, and colors. |
+| `PanelStyle`, `LabelStyle`, `ButtonStyle`, `TextFieldStyle`, `CheckBoxStyle`, `SliderStyle`, `ProgressBarStyle`, `ScrollBarStyle`, `ListViewStyle`, `WindowStyle` | `squared/gui/gui.hpp` | Style value types referencing immutable fonts, drawables, and colors. |
 | `PointerAction`, `PointerEvent`, `Key`, `KeyModifiers` | `squared/gui/gui.hpp` | Portable input payloads at the GUI boundary. |
 | `Widget` | `squared/gui/gui.hpp` | Base class of every GUI node; derives from `scene2d::Group`. |
 | `Widget::TooltipFactory`, `TooltipConfig` | `squared/gui/gui.hpp` | Fresh custom tooltip content plus Ui timing, movement, and placement policy. |
@@ -45,6 +45,7 @@ All types live in namespace `squared::gui` and in the two headers listed.
 | `Button`, `ToggleButton`, `CheckBox`, `RadioButton`, `ButtonGroup` | `squared/gui/gui.hpp` | Clickable controls and bounded selection coordination. |
 | `TextField` | `squared/gui/gui.hpp` | Single-line UTF-8 text entry with cursor and composition. |
 | `Slider`, `ProgressBar` | `squared/gui/gui.hpp` | Interactive values and read-only determinate progress. |
+| `ScrollBar`, `ListView`, `ListSelectionModel`, `SingleListSelectionModel` | `squared/gui/gui.hpp` | Viewport position, text rows, and injectable selection state. |
 | `Cell`, `Table` | `squared/gui/gui.hpp` | Grid layout with chainable per-cell constraints. |
 | `LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane` | `squared/gui/gui.hpp` | Additional compositional containers. |
 | `Window`, `Dialog` | `squared/gui/gui.hpp` | Floating table-backed panels; `Dialog` adds modal blocking and results. |
@@ -327,6 +328,11 @@ squared::gui::Window& shown = ui.show_window(std::move(window));
   one-of-many radio behavior. Group and buttons detach in either destruction
   order. `ProgressBar(minimum, maximum, value)` clamps its value and exposes a
   normalized `progress()` without accepting pointer or keyboard input.
+- `ScrollBar(direction)` sizes its thumb from `page_size`, pages when its track
+  is pressed, drags with pointer capture, and handles arrows plus Home/End.
+  `ListView` stores row labels but receives selection state through
+  `set_selection_model(shared_ptr<ListSelectionModel>)`; the built-in
+  `SingleListSelectionModel` is used when no model is injected.
 - `show_window` transfers ownership of the window to the `Ui`; the returned
   reference is stable until the window closes.
 
@@ -363,6 +369,9 @@ ui.key_down(squared::gui::Key::escape);                 // dismiss cancellable d
   focused slider adjusts with Left and Right; Escape closes dialogs that have
   `cancel_on_escape` enabled. Focusable controls paint a visible accent
   outline while focused.
+- Focused scroll bars handle directional keys and Home/End. Focused list views
+  handle Up, Down, Home, and End, keep the primary selection visible, and
+  report user changes through `set_on_selection_changed`.
 - `ui.clear_focus()` clears focus to no widget. When focus is on a
   `TextField`, focusing drives the soft keyboard through the installed
   `TextInputService`: `start` on focus, `update_area` when layout moves the

@@ -30,7 +30,7 @@ The manifest declares `module.requires` as exactly:
 | --- | --- |
 | `dev.squarednetizen.squared.data` | `0.6.0-dev.2` |
 | `dev.squarednetizen.squared.application` | `0.6.0-dev.5` |
-| `dev.squarednetizen.squared.scene2d` | `0.6.0-dev.7` |
+| `dev.squarednetizen.squared.scene2d` | `0.6.0-dev.8` |
 | `dev.squarednetizen.squared.graphics2d` | `0.6.0-dev.8` |
 
 The CMake target `squared_gui` links exactly those four targets
@@ -52,7 +52,7 @@ never names a backend or another widget hierarchy.
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | `Painter`, `FontResource`, `Drawable` + concrete drawables, `Skin`, styles | `src/gui.cpp`, `include/…/gui.hpp` | Font-aware drawing boundary, immutable font/image abstractions, named resource and style tables. |
-| `Widget` + all concrete widgets, `Cell`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane` | `src/gui.cpp` | Measure/layout, painting, pointer/key/text handling. |
+| `Widget` + concrete widgets, `Cell`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`, `ScrollPane` | `src/gui.cpp`, `src/list_view.cpp` | Measure/layout, painting, pointer/key/text handling. |
 | `Window`, `Dialog` | `src/gui.cpp` | Floating panels, dragging, resizing, modal blocking, focus restoration. |
 | `Ui` | `src/gui.cpp` | Facade owning stage, skin, content, windows, captures, focus, and transient tooltip state. |
 | `SkinLoadSeverity/Issue/Limits/Report`, `load_libgdx_skin`, drawable/font resolvers | `src/skin_loader.cpp` | Normalization, resource resolution, typed inheritance, staged import, commit. |
@@ -62,7 +62,7 @@ never names a backend or another widget hierarchy.
 `SkinLoader` entry point, pointer capture bookkeeping, and the focus list. The
 retained widget component list is: `Label`, `Image`, `Panel`, `Separator`,
 `Button`, `ToggleButton`, `CheckBox`, `RadioButton`, `TextField`, `Slider`,
-`ProgressBar`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`,
+`ProgressBar`, `ScrollBar`, `ListView`, `Table`, `LinearLayout`, `Stack`, `MarginContainer`,
 `ScrollPane`, `Window`, and `Dialog`. Every visual component derives from
 `Widget`, which derives from `scene2d::Group`; non-visual `ButtonGroup`
 coordinates existing toggle widgets without owning them.
@@ -319,7 +319,8 @@ and text payloads are copied without re-encoding.
   styles).
 - **Observer** — change notification is expressed through `std::function`
   callbacks: button click, toggle/check/radio change, slider change, dialog result,
-  plus the Scene2D input-listener interface for actors. Alternatives rejected:
+  scroll-bar change, list selection, plus the Scene2D input-listener interface
+  for actors. Alternatives rejected:
   a framework-wide event bus (unneeded global state; callbacks suffice).
 - **Factory (simple, data-driven)** — `resolve_atlas_drawable` (and the
   `Skin::add_*_drawable` overloads) select a concrete drawable subclass from
@@ -352,7 +353,8 @@ and text payloads are copied without re-encoding.
   arrows → Escape; then prune.
 - **Skin-load pipeline order**: byte limit → normalize → strict bounded parse
   → importer limit checks → colors → fonts → tinted drawables → labels →
-  buttons → text fields → check boxes → sliders → progress bars → windows → unsupported-class
+  buttons → text fields → check boxes → sliders → progress bars → scroll bars
+  → lists → windows → unsupported-class
   warnings → commit by swap. Each style-class step resolves its inheritance
   graph before inserting the resulting values.
 
@@ -381,7 +383,8 @@ and text payloads are copied without re-encoding.
 - **Atlas resolution**: drawables hold raw region views, so texture lifetimes
   bind to application assets; resolution must be provided by the application
   (registration with HoloDisk's AssetManager remains future work per `TODO.md`).
-- **Layout**: `ScrollPane` is vertical-only with no rendered scrollbar; every
+- **Layout**: `ScrollPane` remains vertical drag-only and is not yet composed
+  automatically with the new `ScrollBar`; every
   layout pass re-measures from scratch (no incremental layout); cell `grow`
   weights are binary rather than proportional shares.
 - **Nine-patch**: content insets are clamped to non-negative, and destination

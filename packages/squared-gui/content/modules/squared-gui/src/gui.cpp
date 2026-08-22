@@ -362,6 +362,13 @@ Skin::Skin()
     add_progress_bar_style("default", {
         normal, active, 120.0F, 12.0F
     });
+    add_scroll_bar_style("default", {
+        normal, active, minimum_touch_size, 24.0F
+    });
+    add_list_view_style("default", {
+        panel, active, text, graphics::Color::white(), nullptr,
+        minimum_touch_size, 10.0F
+    });
     add_window_style("default", {
         panel, normal, normal, hover, active, text, text,
         graphics::Color::from_rgba8(0, 0, 0, 140),
@@ -483,6 +490,16 @@ void Skin::add_progress_bar_style(std::string name, ProgressBarStyle style)
     progress_bar_styles_[std::move(name)] = std::move(style);
 }
 
+void Skin::add_scroll_bar_style(std::string name, ScrollBarStyle style)
+{
+    scroll_bar_styles_[std::move(name)] = std::move(style);
+}
+
+void Skin::add_list_view_style(std::string name, ListViewStyle style)
+{
+    list_view_styles_[std::move(name)] = std::move(style);
+}
+
 void Skin::add_window_style(std::string name, WindowStyle style)
 {
     window_styles_[std::move(name)] = std::move(style);
@@ -521,6 +538,16 @@ const SliderStyle& Skin::slider_style(std::string_view name) const
 const ProgressBarStyle& Skin::progress_bar_style(std::string_view name) const
 {
     return style_or_default(progress_bar_styles_, name);
+}
+
+const ScrollBarStyle& Skin::scroll_bar_style(std::string_view name) const
+{
+    return style_or_default(scroll_bar_styles_, name);
+}
+
+const ListViewStyle& Skin::list_view_style(std::string_view name) const
+{
+    return style_or_default(list_view_styles_, name);
 }
 
 const WindowStyle& Skin::window_style(std::string_view name) const

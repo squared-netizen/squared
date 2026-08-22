@@ -4,8 +4,8 @@ Only unfinished work belongs here. Move completed work into `history.md`.
 
 ## Next
 
-- [ ] Continue rounding out the primitive widget set with scroll bars, list
-  views with injected selection models, popup overlays, and select boxes.
+- [ ] Continue rounding out the primitive widget set with popup overlays,
+  select boxes, and menus.
 - [ ] Add a canvas widget using the existing `Widget`, input propagation,
   clipping, and `Painter` contracts for Paint-like drawing.
 - [ ] Add a multiline text editor composed from the canvas/text model,

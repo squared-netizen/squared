@@ -1,7 +1,7 @@
 # Squared GUI File Picker
 
 This optional module composes the ordinary Squared GUI hierarchy into a modal,
-resizable file picker. It requires Squared GUI `0.6.0-dev.15` and Squared
+resizable file picker. It requires Squared GUI `0.6.0-dev.17` and Squared
 HoloDisk `0.6.0-dev.3`; selecting the module through `squared-pg` installs both
 coordinates transitively.
 

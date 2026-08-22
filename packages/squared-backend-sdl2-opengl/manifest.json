@@ -3,7 +3,7 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.backend.sdl2-opengl",
-  "version": "0.6.0-dev.5",
+  "version": "0.6.0-dev.6",
   "name": "Squared SDL2/OpenGL Backend",
   "description": "Link-time SDL2 and OpenGL ES 2 implementation with Android context recovery for portable Squared Graphics and Graphics2D contracts.",
   "module": {
@@ -13,7 +13,7 @@
       {
         "kind": "module",
         "id": "dev.squarednetizen.squared.graphics2d",
-        "version": "0.6.0-dev.7"
+        "version": "0.6.0-dev.8"
       }
     ]
   }

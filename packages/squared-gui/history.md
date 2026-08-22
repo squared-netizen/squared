@@ -1,9 +1,25 @@
 # Squared GUI History
 
+## 0.6.0-dev.17
+
+- Formatted the ScrollBar/ListView translation unit with the repository Clang policy.
+- Advanced the exact Scene2D dependency to `0.6.0-dev.8` as part of the canonical package reconciliation wave.
+
+## 0.6.0-dev.16
+
+- Added horizontal and vertical scroll bars with proportional thumbs, track
+  paging, pointer capture, keyboard navigation, clamped values, and callbacks.
+- Added text list views with shared injectable selection models, pointer and
+  keyboard selection, viewport reveal, and safe trimming after item changes.
+- Imported libGDX ScrollPane and List styles, including the selected gdx-holo
+  thumb, background, selection, font, and selected/unselected colors.
+- Expanded portable tests, paired documentation, and the complete showcase
+  without adding dependencies or another widget hierarchy.
+
 ## Integration milestones
 
-- The optional `squared-gui-file-picker` `0.6.0-dev.1` package composes GUI
-  dev.15 primitives with HoloDisk dev.3 without changing this package's bytes,
+- The optional `squared-gui-file-picker` `0.6.0-dev.2` package composes GUI
+  dev.16 primitives with HoloDisk dev.3 without changing this package's bytes,
   version, ABI, or dependency boundary.
 
 ## 0.6.0-dev.15

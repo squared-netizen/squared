@@ -7,7 +7,8 @@ assets, HoloDisk, or a specific graphics backend.
 
 The loader supports colors, bitmap fonts, tinted modal colors, labels,
 buttons/text buttons, text fields, check boxes, sliders, progress bars, and
-windows. Unknown
+windows. ScrollPane styles supply vertical and horizontal `ScrollBar` thumbs;
+List styles supply `ListView` background, selection, font, and colors. Unknown
 libGDX resource classes produce warnings. A supported style with an invalid
 type, unsafe font path, unresolved resource, or invalid inheritance graph is
 an error.

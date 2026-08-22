@@ -11,6 +11,14 @@
 
 ## Unreleased
 
+- Reconcile the canonical package graph without overwriting registered coordinates: Scene2D `0.6.0-dev.8` and the SDL2/OpenGL backend `0.6.0-dev.6` now require Graphics2D `0.6.0-dev.8`; GUI `0.6.0-dev.17` and File Picker `0.6.0-dev.3` advance through the same self-contained dependency wave.
+
+- Advance GUI to `0.6.0-dev.16` with proportional horizontal/vertical scroll
+  bars, text list views with injectable shared selection models, gdx-holo
+  ScrollPane/List style import, portable tests, documentation, and showcase
+  coverage. Align GUI File Picker `0.6.0-dev.2` to exact GUI dev.16 while
+  preserving HoloDisk dev.3, AssetManager, and gdx-holo integration.
+
 - Add repository-wide Clang formatting, Clang-Tidy, Static Analyzer, and GitHub Actions quality gates. Package agent policies inherit the root configuration without changing immutable package content.
 
 - Advance GUI to `0.6.0-dev.15` with determinate progress bars, lifetime-safe

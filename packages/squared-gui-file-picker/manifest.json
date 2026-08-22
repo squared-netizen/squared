@@ -3,7 +3,7 @@
   "format_version": 0,
   "kind": "module",
   "id": "dev.squarednetizen.squared.gui.file-picker",
-  "version": "0.6.0-dev.1",
+  "version": "0.6.0-dev.3",
   "name": "Squared GUI File Picker",
   "description": "A gdx-holo-styled composite file picker over HoloDrive and the HoloDisk AssetManager.",
   "module": {
@@ -13,7 +13,7 @@
       {
         "kind": "module",
         "id": "dev.squarednetizen.squared.gui",
-        "version": "0.6.0-dev.15"
+        "version": "0.6.0-dev.17"
       },
       {
         "kind": "module",

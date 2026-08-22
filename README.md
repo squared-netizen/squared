@@ -106,7 +106,7 @@ permanent CPU-side copies of its glyph textures.
 
 The optional `dev.squarednetizen.squared.gui.file-picker` module requires both
 GUI and HoloDisk. Adding that coordinate through `squared-pg` resolves the exact
-GUI dev.15 and HoloDisk dev.3 packages automatically; core GUI remains usable
+GUI dev.16 and HoloDisk dev.3 packages automatically; core GUI remains usable
 without HoloDisk. The picker browses `HoloDrive`, loads typed selections and the
 packaged gdx-holo JSON through `AssetManager`, and receives backend drawable and
 font resolvers from the application.

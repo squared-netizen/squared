@@ -19,7 +19,7 @@ stack.
 ## Dependency boundary
 
 The manifest declares one exact `module.requires`: `squared.graphics2d`
-`0.6.0-dev.7`. The CMake target `squared_scene2d` links `squared_graphics2d`
+`0.6.0-dev.8`. The CMake target `squared_scene2d` links `squared_graphics2d`
 (`content/modules/squared-scene2d/CMakeLists.txt`).
 
 The code-level boundary is currently asymmetric with the manifest: no Scene2D

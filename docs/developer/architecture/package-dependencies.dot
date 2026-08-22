@@ -18,23 +18,23 @@ digraph package_dependencies {
 
   // Consumers.
   graphics2d    [label="squared-graphics2d\n0.6.0-dev.8", fillcolor="#f8cecc"];
-  scene2d       [label="squared-scene2d\n0.6.0-dev.7", fillcolor="#f8cecc"];
-  backend       [label="squared-backend-sdl2-opengl\n0.6.0-dev.5", fillcolor="#ffe6cc"];
+  scene2d       [label="squared-scene2d\n0.6.0-dev.8", fillcolor="#f8cecc"];
+  backend       [label="squared-backend-sdl2-opengl\n0.6.0-dev.6", fillcolor="#ffe6cc"];
   messaging     [label="squared-messaging\n0.6.0-dev.3", fillcolor="#f8cecc"];
-  gui           [label="squared-gui\n0.6.0-dev.15", fillcolor="#d5e8d4"];
-  file_picker   [label="squared-gui-file-picker\n0.6.0-dev.1", fillcolor="#fff2cc"];
+  gui           [label="squared-gui\n0.6.0-dev.17", fillcolor="#d5e8d4"];
+  file_picker   [label="squared-gui-file-picker\n0.6.0-dev.3", fillcolor="#fff2cc"];
 
   graphics2d -> graphics [label="0.6.0-dev.4"];
   graphics2d -> math     [label="0.6.0-dev.2"];
-  scene2d    -> graphics2d [label="0.6.0-dev.7"];
-  backend    -> graphics2d [label="0.6.0-dev.7"];
+  scene2d    -> graphics2d [label="0.6.0-dev.8"];
+  backend    -> graphics2d [label="0.6.0-dev.8"];
   messaging  -> data      [label="0.6.0-dev.2"];
   messaging  -> time      [label="0.6.0-dev.2"];
   gui        -> data      [label="0.6.0-dev.2"];
   gui        -> application [label="0.6.0-dev.5"];
-  gui        -> scene2d   [label="0.6.0-dev.7"];
+  gui        -> scene2d   [label="0.6.0-dev.8"];
   gui        -> graphics2d [label="0.6.0-dev.8"];
-  file_picker -> gui       [label="0.6.0-dev.15"];
+  file_picker -> gui       [label="0.6.0-dev.17"];
   file_picker -> holoDisk  [label="0.6.0-dev.3"];
 
   // HoloDisk remains independent and optional for core GUI. Only the explicit

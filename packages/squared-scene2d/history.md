@@ -1,5 +1,9 @@
 # Squared Scene2D History
 
+## 0.6.0-dev.8
+
+- Advanced the exact Graphics2D dependency to `0.6.0-dev.8` so the canonical source graph no longer relies on a historical registry entry.
+
 ## 0.6.0-dev.7
 
 - Dependency alignment only: advanced the exact Graphics2D dependency

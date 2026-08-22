@@ -1,8 +1,10 @@
 #include <squared_gui_showcase/showcase.hpp>
 
 #include <iomanip>
+#include <optional>
 #include <sstream>
 #include <utility>
+#include <vector>
 
 namespace squared_gui_showcase {
 namespace {
@@ -17,11 +19,12 @@ using squared::gui::Image;
 using squared::gui::Insets;
 using squared::gui::Label;
 using squared::gui::LinearLayout;
+using squared::gui::ListView;
 using squared::gui::MarginContainer;
 using squared::gui::Panel;
 using squared::gui::ProgressBar;
 using squared::gui::RadioButton;
-using squared::gui::ScrollPane;
+using squared::gui::ScrollBar;
 using squared::gui::Separator;
 using squared::gui::Slider;
 using squared::gui::Stack;
@@ -186,6 +189,17 @@ std::unique_ptr<Window> Showcase::make_controls_window()
     table.add(std::make_unique<Label>("Progress")).align(Alignment::end);
     table.add(std::move(progress)).grow_x().fill_x();
     table.row();
+    table.add(std::make_unique<Label>("ScrollBar")).align(Alignment::end);
+    auto scroll_bar = std::make_unique<ScrollBar>(Direction::horizontal);
+    scroll_bar->set_range(0.0F, 100.0F);
+    scroll_bar->set_page_size(25.0F);
+    scroll_bar->set_step(5.0F);
+    scroll_bar->set_style("default-horizontal");
+    scroll_bar->set_on_change([this](float value) {
+        set_status("Scroll position " + std::to_string(static_cast<int>(value)));
+    });
+    table.add(std::move(scroll_bar)).grow_x().fill_x();
+    table.row();
     table.add(std::make_unique<Separator>())
         .column_span(2).grow_x().fill_x().pad(4.0F);
     table.row();
@@ -212,28 +226,15 @@ std::unique_ptr<Window> Showcase::make_layout_window()
     window->set_resizable(true);
     window->set_minimum_window_size({260.0F, 260.0F});
 
-    auto list = std::make_unique<LinearLayout>(Direction::vertical);
-    list->set_padding(8.0F);
-    list->set_spacing(7.0F);
-    list->add(std::make_unique<Label>("Scrollable LinearLayout"));
-    list->add(std::make_unique<Separator>());
-    for (int index = 1; index <= 10; ++index) {
-        list->add(std::make_unique<Button>(
-            "Open dialog from row " + std::to_string(index),
-            [this, index] {
-                set_status("Layout row " + std::to_string(index) + " selected");
-                show_confirmation_dialog();
-            }
-        ));
-    }
-    list->add(std::make_unique<Separator>());
-    auto note = std::make_unique<Label>("Drag vertically here to scroll.");
-    note->set_muted(true);
-    list->add(std::move(note));
-
-    auto scroll = std::make_unique<ScrollPane>();
-    scroll->set_content(std::move(list));
-    window->content_table().add(std::move(scroll)).grow().fill();
+    auto list = std::make_unique<ListView>(std::vector<std::string>{
+        "Package manifest", "Module sources", "Documentation",
+        "Licenses", "Template files", "Runtime assets",
+        "Dependency metadata", "History", "Checksums", "Diagnostics"
+    });
+    list->set_on_selection_changed([this](std::optional<std::size_t> index) {
+        if (index) set_status("List row " + std::to_string(*index + 1U) + " selected");
+    });
+    window->content_table().add(std::move(list)).grow().fill();
     return window;
 }
 

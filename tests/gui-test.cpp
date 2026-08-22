@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -297,6 +298,15 @@ kerning first=65 second=86 amount=-2
           com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle: {
             default: { background: progress-track, knobBefore: progress-fill }
           },
+          com.badlogic.gdx.scenes.scene2d.ui.ScrollPane$ScrollPaneStyle: {
+            default: { vScroll: scroll-track, vScrollKnob: scroll-knob-v,
+              hScrollKnob: scroll-knob-h }
+          },
+          com.badlogic.gdx.scenes.scene2d.ui.List$ListStyle: {
+            default: { background: list-background, selection: list-selection,
+              fontColorUnselected: ink, fontColorSelected: muted,
+              font: default-font }
+          },
           com.badlogic.gdx.scenes.scene2d.ui.Window$WindowStyle: {
             default: { background: window, titleFontColor: ink,
               titleFont: default-font }
@@ -323,7 +333,7 @@ kerning first=65 second=86 amount=-2
         );
         require(loaded && report.success(),
                 "relaxed libGDX skin JSON loads transactionally");
-        require(report.styles_loaded == 9 && report.colors_loaded == 2 &&
+        require(report.styles_loaded == 11 && report.colors_loaded == 2 &&
                     report.fonts_loaded == 1,
                 "supported style, color, and font resources are counted");
         require(imported.button_style("default").normal == resolved["button-up"] &&
@@ -335,6 +345,12 @@ kerning first=65 second=86 amount=-2
                         resolved["slider-knob"] &&
                     imported.progress_bar_style("default").fill ==
                         resolved["progress-fill"] &&
+                    imported.scroll_bar_style("default").knob ==
+                        resolved["scroll-knob-v"] &&
+                    imported.scroll_bar_style("default-horizontal").knob ==
+                        resolved["scroll-knob-h"] &&
+                    imported.list_view_style("default").selection ==
+                        resolved["list-selection"] &&
                     imported.window_style("default").background ==
                         resolved["window"],
                 "libGDX fields map to primitive Squared styles");
@@ -462,6 +478,48 @@ kerning first=65 second=86 amount=-2
                 painter.fills.size() == progress_fill_start + 2 &&
                 painter.fills.back().width == 50.0F,
             "progress bar clamps and paints the normalized completed portion");
+
+    ScrollBar scroll_bar(Direction::vertical);
+    scroll_bar.set_range(0.0F, 90.0F);
+    scroll_bar.set_page_size(30.0F);
+    scroll_bar.set_step(5.0F);
+    scroll_bar.set_bounds(0.0F, 0.0F, 44.0F, 240.0F);
+    float reported_scroll = -1.0F;
+    scroll_bar.set_on_change([&reported_scroll](float value) {
+        reported_scroll = value;
+    });
+    require(scroll_bar.key_down(Key::down) && scroll_bar.value() == 5.0F &&
+                reported_scroll == 5.0F,
+            "scroll bar keyboard input updates and reports its value");
+    require(scroll_bar.pointer_event({PointerAction::down, 41, 22.0F, 220.0F}) &&
+                scroll_bar.value() == 35.0F,
+            "scroll bar track presses advance by the configured page");
+    require(scroll_bar.key_down(Key::end) && scroll_bar.value() == 90.0F &&
+                scroll_bar.key_down(Key::home) && scroll_bar.value() == 0.0F,
+            "scroll bar Home and End expose the complete range");
+    scroll_bar.paint(painter, skin, 0.0F, 0.0F);
+
+    auto shared_selection = std::make_shared<SingleListSelectionModel>();
+    ListView list_view({"Alpha", "Beta", "Gamma", "Delta", "Epsilon"});
+    list_view.set_selection_model(shared_selection);
+    list_view.set_bounds(0.0F, 0.0F, 180.0F, 88.0F);
+    std::optional<std::size_t> reported_selection;
+    list_view.set_on_selection_changed(
+        [&reported_selection](std::optional<std::size_t> selected) {
+            reported_selection = selected;
+        }
+    );
+    require(list_view.pointer_event({PointerAction::down, 7, 20.0F, 50.0F}) &&
+                shared_selection->primary() == 1U && reported_selection == 1U,
+            "list view pointer selection updates its injected model");
+    require(list_view.key_down(Key::down) &&
+                shared_selection->primary() == 2U &&
+                list_view.scroll_index() == 1U,
+            "list view keyboard selection reveals rows outside the viewport");
+    list_view.set_items({"Only"});
+    require(!shared_selection->primary().has_value(),
+            "list replacement trims stale injected selection state");
+    list_view.paint(painter, skin, 0.0F, 0.0F);
 
     squared::graphics2d::TextureRegion patch_region(30, 30);
     NinePatchDrawable nine_patch(

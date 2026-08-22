@@ -3,7 +3,7 @@
 [Developer counterpart](../../developer/squared-gui-file-picker/README.md)
 
 `squared_gui_file_picker` is the optional bridge between Squared GUI and
-HoloDisk. Its package manifest requires GUI `0.6.0-dev.15` and HoloDisk
+HoloDisk. Its package manifest requires GUI `0.6.0-dev.17` and HoloDisk
 `0.6.0-dev.3`, so adding the file-picker coordinate with `squared-pg` brings in
 both dependencies.
 
@@ -34,8 +34,8 @@ The selected file may be loaded through a registered typed loader with
 
 ## gdx-holo
 
-GUI dev.15 already packages the selected gdx-holo JSON, atlas, texture, and
-bitmap font. Mount generated-project assets at `/assets`, register or reuse the
+GUI dev.16 packages the selected gdx-holo JSON, atlas, texture, and bitmap
+font. Mount generated-project assets at `/assets`, register or reuse the
 file-picker text loader, then call `load_file_picker_holo_skin`. Drawable and
 font resolvers remain application-injected because texture construction belongs
 to the selected graphics backend. The Skin is unchanged when loading fails.

@@ -180,6 +180,7 @@ add_executable(squared_gui_test
     tests/gui-test.cpp
     "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_GUI_ROOT}/src/list_view.cpp"
     "${SQUARED_GUI_ROOT}/src/skin_loader.cpp"
     "${SQUARED_DATA_ROOT}/src/json.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
@@ -242,6 +243,7 @@ add_executable(squared_gui_showcase_test
     examples/gui-showcase/src/showcase.cpp
     "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_GUI_ROOT}/src/list_view.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/group.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/stage.cpp"
@@ -252,6 +254,7 @@ add_executable(squared_gui_file_picker_test
     "${SQUARED_GUI_FILE_PICKER_ROOT}/src/file_picker.cpp"
     "${SQUARED_GRAPHICS2D_ROOT}/src/bitmap_font.cpp"
     "${SQUARED_GUI_ROOT}/src/gui.cpp"
+    "${SQUARED_GUI_ROOT}/src/list_view.cpp"
     "${SQUARED_GUI_ROOT}/src/skin_loader.cpp"
     "${SQUARED_DATA_ROOT}/src/json.cpp"
     "${SQUARED_SCENE2D_ROOT}/src/actor.cpp"
