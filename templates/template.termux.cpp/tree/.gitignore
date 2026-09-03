@@ -1,0 +1,13 @@
+# Build output. §1.9: reproducible artifacts are not source.
+build/
+*.o
+*.d
+
+# Editor and tooling
+.cache/
+compile_commands.json
+.clangd/
+
+# The generator's transaction staging, if a run was interrupted before its
+# rename. Safe to delete; nothing was ever visible as a project.
+.*.squared-tmp/
