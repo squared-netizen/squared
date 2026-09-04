@@ -1,44 +1,61 @@
 {
   "format": "squared-cartridge",
   "format_version": 1,
-
   "kind": "kit",
   "id": "kit.terminal",
   "version": "0.1.0",
-
   "title": "Terminal Kit",
   "description": "Header-only terminal bridge: console I/O, a small regex facade, and a libGDX-style FileHandle.",
-
-  "engine": { "id": "squared-pg", "version": ">=0.1.0 <0.2.0" },
+  "engine": {
+    "id": "squared-pg",
+    "version": ">=0.1.0 <0.2.0"
+  },
   "requires_features": [],
+  "requires_capabilities": [
+    "capability.template.substitute@^1.0"
+  ],
   "license": "MIT",
-
-  "authors": [{ "name": "squared-pg maintainers" }],
-
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
   "kit": {
     "external": {
       "id": "posix-terminal",
       "version": ">=0.0.0",
       "acquisition": "vendored"
     },
-
-    "provides": ["console.io", "text.regex", "files.handle"],
-
-    "platforms": ["termux", "linux", "desktop"],
-    "compatible_templates": ["template.termux.cpp"],
-
+    "provides": [
+      "console.io",
+      "text.regex",
+      "files.handle"
+    ],
+    "platforms": [
+      "termux",
+      "linux",
+      "desktop"
+    ],
+    "compatible_templates": [
+      "template.termux.cpp"
+    ],
     "requires": {
       "framework": ">=1.0.0 <2.0.0",
       "packages": [],
       "kits": []
     },
-
-    "integration_areas": ["app.include", "build.make.fragments"],
-
-    "conflicts_with": ["kit.ncurses"],
-
+    "integration_areas": [
+      "app.include",
+      "build.make.fragments"
+    ],
+    "conflicts_with": [
+      "kit.ncurses"
+    ],
     "ownership": {
-      "generated": ["sq_kit/**", "mk/kit_terminal.mk"],
+      "generated": [
+        "sq_kit/**",
+        "mk/kit_terminal.mk"
+      ],
       "user": [],
       "shared": []
     }

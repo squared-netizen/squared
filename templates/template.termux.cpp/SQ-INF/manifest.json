@@ -1,51 +1,68 @@
 {
   "format": "squared-cartridge",
   "format_version": 1,
-
   "kind": "template",
   "id": "template.termux.cpp",
   "version": "0.1.0",
-
   "title": "Termux C++ terminal application",
   "description": "A C++20 terminal application workspace that builds with make and a compiler, nothing else. Optionally scriptable with kit.lua.",
-
-  "engine": { "id": "squared-pg", "version": ">=0.1.0 <0.2.0" },
+  "engine": {
+    "id": "squared-pg",
+    "version": ">=0.1.0 <0.2.0"
+  },
   "requires_features": [],
+  "requires_capabilities": [
+    "capability.template.substitute@^1.0",
+    "capability.project.plan@^1.0"
+  ],
   "license": "MIT",
-
-  "authors": [{ "name": "squared-pg maintainers" }],
-
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
   "template": {
-    "project_types": ["application"],
-    "platforms": ["termux", "linux", "desktop"],
+    "project_types": [
+      "application"
+    ],
+    "platforms": [
+      "termux",
+      "linux",
+      "desktop"
+    ],
     "tree": "tree/",
-
     "working_directory": "sq_app",
-
     "processor": "substitute",
-
     "layers": {
-      "application": ["sq_app"],
-      "framework": ["sq_kit"],
-      "platform": ["sq_app/src/platform"],
-      "build": ["Makefile", "mk"],
-      "resource": ["assets"]
+      "application": [
+        "sq_app"
+      ],
+      "framework": [
+        "sq_kit"
+      ],
+      "platform": [
+        "sq_app/src/platform"
+      ],
+      "build": [
+        "Makefile",
+        "mk"
+      ],
+      "resource": [
+        "assets"
+      ]
     },
-
     "integration_areas": [
       "app.include",
       "app.entrypoint",
       "build.make.fragments",
       "workspace.lua"
     ],
-
     "integration_arity": {
       "app.include": "multi",
       "build.make.fragments": "multi",
       "app.entrypoint": "single",
       "workspace.lua": "single"
     },
-
     "parameters": [
       {
         "name": "project_name",
@@ -61,18 +78,28 @@
         "description": "One-line project description for the README."
       }
     ],
-
     "requires": {
       "framework": ">=1.0.0 <2.0.0",
       "packages": [],
-      "kits": { "required": ["kit.terminal"], "optional": ["kit.lua"] }
+      "kits": {
+        "required": [
+          "kit.terminal"
+        ],
+        "optional": [
+          "kit.lua"
+        ]
+      }
     },
-
-    "executable": ["run.sh"],
-
+    "executable": [
+      "run.sh"
+    ],
     "ownership": {
-      "generated": ["mk/squared_generated.mk"],
-      "user": ["**"],
+      "generated": [
+        "mk/squared_generated.mk"
+      ],
+      "user": [
+        "**"
+      ],
       "shared": []
     }
   }
