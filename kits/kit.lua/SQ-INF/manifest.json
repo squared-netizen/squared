@@ -33,10 +33,11 @@
     "platforms": [
       "termux",
       "linux",
+      "macos",
       "desktop"
     ],
     "compatible_templates": [
-      "template.termux.cpp"
+      "template.terminal.cpp"
     ],
     "requires": {
       "framework": ">=1.0.0 <2.0.0",

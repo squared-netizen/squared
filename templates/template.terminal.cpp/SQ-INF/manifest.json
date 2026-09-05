@@ -2,10 +2,10 @@
   "format": "squared-cartridge",
   "format_version": 1,
   "kind": "template",
-  "id": "template.termux.cpp",
+  "id": "template.terminal.cpp",
   "version": "0.1.0",
-  "title": "Termux C++ terminal application",
-  "description": "A C++20 terminal application workspace that builds with make and a compiler, nothing else. Optionally scriptable with kit.lua.",
+  "title": "C++ terminal application",
+  "description": "A C++20 terminal application workspace that builds with make and a compiler, nothing else. Runs on Termux, Linux and macOS. Optionally scriptable with kit.lua.",
   "engine": {
     "id": "squared-pg",
     "version": ">=0.1.0 <0.2.0"
@@ -28,6 +28,7 @@
     "platforms": [
       "termux",
       "linux",
+      "macos",
       "desktop"
     ],
     "tree": "tree/",
