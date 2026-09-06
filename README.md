@@ -2,6 +2,8 @@
 
 Squared is a rapidly evolving C++ framework and development ecosystem.
 
+This is the squared package repo. These packages sole consumer is the squared-pg project generator.
+
 ## Status
 
 Squared is undergoing a ground-up rewrite and is currently unstable.
