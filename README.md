@@ -4,7 +4,7 @@ Squared is a rapidly evolving C++ framework and development ecosystem.
 
 ## Status
 
-Squared is currently undergoing a ground-up rewrite.
+Squared is undergoing a ground-up rewrite and is currently unstable.
 
 The project is in active development and APIs, architecture, tooling, and
 project structure may change substantially without notice. It should not
