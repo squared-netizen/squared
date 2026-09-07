@@ -1,47 +1,65 @@
 {
   "format": "squared-cartridge",
-  "format_version": 1,
-
+  "format_version": 2,
   "kind": "kit",
   "id": "kit.opengl",
   "version": "0.1.0",
-
+  "tree": "tree/",
   "title": "OpenGL ES Kit",
   "description": "EGL context management and an OpenGL ES 3.0 surface for Android NativeActivity projects.",
-
-  "engine": { "id": "squared-pg", "version": ">=0.1.0 <0.2.0" },
   "requires_features": [],
-  "requires_capabilities": ["capability.template.substitute@^1.0"],
   "license": "MIT",
-
-  "authors": [{ "name": "squared-pg maintainers" }],
-
-  "kit": {
-    "external": {
-      "id": "android-ndk",
-      "version": ">=25.0.0",
-      "acquisition": "system"
-    },
-
-    "provides": ["render.gles3", "render.egl"],
-
-    "platforms": ["android"],
-    "compatible_templates": ["template.android.cpp"],
-
-    "requires": {
-      "framework": ">=1.0.0 <2.0.0",
-      "packages": [],
-      "kits": []
-    },
-
-    "integration_areas": ["render.backend", "app.include", "build.make.fragments"],
-
-    "conflicts_with": ["kit.sfml", "kit.sdl3"],
-
-    "ownership": {
-      "generated": ["sq_kit/include/squared/kit/gl.hpp", "mk/kit_opengl.mk"],
-      "user": [],
-      "shared": []
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "android-ndk",
+        "version": ">=25.0.0",
+        "acquisition": "system"
+      },
+      "runtime": {
+        "model": "none"
+      },
+      "provides": [
+        "render.gles3",
+        "render.egl"
+      ],
+      "platforms": [
+        "android"
+      ],
+      "compatible_templates": [
+        "template.android.cpp"
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": [],
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0"
+        ]
+      },
+      "integration_areas": [
+        "render.backend",
+        "app.include",
+        "build.make.fragments"
+      ],
+      "conflicts_with": [
+        "kit.sfml",
+        "kit.sdl3"
+      ],
+      "ownership": {
+        "generated": [
+          "sq_kit/include/squared/kit/gl.hpp",
+          "mk/kit_opengl.mk"
+        ],
+        "user": [],
+        "shared": []
+      }
     }
   }
 }

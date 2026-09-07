@@ -1,107 +1,106 @@
 {
   "format": "squared-cartridge",
-  "format_version": 1,
+  "format_version": 2,
   "kind": "template",
   "id": "template.terminal.cpp",
   "version": "0.1.0",
+  "tree": "tree/",
   "title": "C++ terminal application",
   "description": "A C++20 terminal application workspace that builds with make and a compiler, nothing else. Runs on Termux, Linux and macOS. Optionally scriptable with kit.lua.",
-  "engine": {
-    "id": "squared-pg",
-    "version": ">=0.1.0 <0.2.0"
-  },
   "requires_features": [],
-  "requires_capabilities": [
-    "capability.template.substitute@^1.0",
-    "capability.project.plan@^1.0"
-  ],
   "license": "MIT",
   "authors": [
     {
       "name": "squared-pg maintainers"
     }
   ],
-  "template": {
-    "project_types": [
-      "application"
-    ],
-    "platforms": [
-      "termux",
-      "linux",
-      "macos",
-      "desktop"
-    ],
-    "tree": "tree/",
-    "working_directory": "sq_app",
-    "processor": "substitute",
-    "layers": {
-      "application": [
-        "sq_app"
+  "consumers": {
+    "squared_pg": {
+      "project_types": [
+        "application"
       ],
-      "framework": [
-        "sq_kit"
+      "platforms": [
+        "termux",
+        "linux",
+        "macos",
+        "desktop"
       ],
-      "platform": [
-        "sq_app/src/platform"
-      ],
-      "build": [
-        "Makefile",
-        "mk"
-      ],
-      "resource": [
-        "assets"
-      ]
-    },
-    "integration_areas": [
-      "app.include",
-      "app.entrypoint",
-      "build.make.fragments",
-      "workspace.lua"
-    ],
-    "integration_arity": {
-      "app.include": "multi",
-      "build.make.fragments": "multi",
-      "app.entrypoint": "single",
-      "workspace.lua": "single"
-    },
-    "parameters": [
-      {
-        "name": "project_name",
-        "type": "identifier",
-        "required": true,
-        "description": "Binary name and C++ namespace; a C identifier."
-      },
-      {
-        "name": "description",
-        "type": "string",
-        "required": false,
-        "default": "A C++20 terminal application built on the Squared framework.",
-        "description": "One-line project description for the README."
-      }
-    ],
-    "requires": {
-      "framework": ">=1.0.0 <2.0.0",
-      "packages": [],
-      "kits": {
-        "required": [
-          "kit.terminal"
+      "working_directory": "sq_app",
+      "processor": "substitute",
+      "layers": {
+        "application": [
+          "sq_app"
         ],
-        "optional": [
-          "kit.lua"
+        "framework": [
+          "sq_kit"
+        ],
+        "platform": [
+          "sq_app/src/platform"
+        ],
+        "build": [
+          "Makefile",
+          "mk"
+        ],
+        "resource": [
+          "assets"
         ]
+      },
+      "integration_areas": [
+        "app.include",
+        "app.entrypoint",
+        "build.make.fragments",
+        "workspace.lua"
+      ],
+      "integration_arity": {
+        "app.include": "multi",
+        "build.make.fragments": "multi",
+        "app.entrypoint": "single",
+        "workspace.lua": "single"
+      },
+      "parameters": [
+        {
+          "name": "project_name",
+          "type": "identifier",
+          "required": true,
+          "description": "Binary name and C++ namespace; a C identifier."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "default": "A C++20 terminal application built on the Squared framework.",
+          "description": "One-line project description for the README."
+        }
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": {
+          "required": [
+            "kit.terminal"
+          ],
+          "optional": [
+            "kit.lua"
+          ]
+        },
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0",
+          "capability.project.plan@^1.0"
+        ]
+      },
+      "executable": [
+        "run.sh"
+      ],
+      "ownership": {
+        "generated": [
+          "mk/squared_generated.mk"
+        ],
+        "user": [
+          "**"
+        ],
+        "shared": []
       }
-    },
-    "executable": [
-      "run.sh"
-    ],
-    "ownership": {
-      "generated": [
-        "mk/squared_generated.mk"
-      ],
-      "user": [
-        "**"
-      ],
-      "shared": []
     }
   }
 }

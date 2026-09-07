@@ -1,96 +1,113 @@
 {
   "format": "squared-cartridge",
-  "format_version": 1,
-
+  "format_version": 2,
   "kind": "template",
   "id": "template.android.cpp",
   "version": "0.1.0",
-
+  "tree": "tree/",
   "title": "Android C++ NativeActivity application",
   "description": "A plain NDK workspace: C++20, NativeActivity, no Java and no Gradle. Builds a signed APK with make and a compiler.",
-
-  "engine": { "id": "squared-pg", "version": ">=0.1.0 <0.2.0" },
   "requires_features": [],
-  "requires_capabilities": [
-    "capability.template.substitute@^1.0",
-    "capability.project.plan@^1.0"
-  ],
   "license": "MIT",
-
-  "authors": [{ "name": "squared-pg maintainers" }],
-
-  "template": {
-    "project_types": ["application"],
-    "platforms": ["android"],
-    "tree": "tree/",
-
-    "working_directory": "sq_app",
-
-    "processor": "substitute",
-
-    "layers": {
-      "application": ["sq_app"],
-      "platform": ["sq_android"],
-      "framework": ["sq_kit"],
-      "build": ["Makefile", "mk"],
-      "resource": ["sq_android/res"]
-    },
-
-    "integration_areas": [
-      "render.backend",
-      "app.include",
-      "build.make.fragments",
-      "android.manifest.features"
-    ],
-
-    "integration_arity": {
-      "render.backend": "single",
-      "app.include": "multi",
-      "build.make.fragments": "multi",
-      "android.manifest.features": "multi"
-    },
-
-    "parameters": [
-      {
-        "name": "project_name",
-        "type": "identifier",
-        "required": true,
-        "description": "Library name, C++ namespace and log tag; a C identifier."
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "project_types": [
+        "application"
+      ],
+      "platforms": [
+        "android"
+      ],
+      "working_directory": "sq_app",
+      "processor": "substitute",
+      "layers": {
+        "application": [
+          "sq_app"
+        ],
+        "platform": [
+          "sq_android"
+        ],
+        "framework": [
+          "sq_kit"
+        ],
+        "build": [
+          "Makefile",
+          "mk"
+        ],
+        "resource": [
+          "sq_android/res"
+        ]
       },
-      {
-        "name": "package_name",
-        "type": "java_package",
-        "required": true,
-        "description": "Android application id, e.g. com.example.myapp. Must be unique on the device."
+      "integration_areas": [
+        "render.backend",
+        "app.include",
+        "build.make.fragments",
+        "android.manifest.features"
+      ],
+      "integration_arity": {
+        "render.backend": "single",
+        "app.include": "multi",
+        "build.make.fragments": "multi",
+        "android.manifest.features": "multi"
       },
-      {
-        "name": "app_label",
-        "type": "string",
-        "required": false,
-        "default_from": "project_name",
-        "description": "Launcher label. Defaults to the project name."
+      "parameters": [
+        {
+          "name": "project_name",
+          "type": "identifier",
+          "required": true,
+          "description": "Library name, C++ namespace and log tag; a C identifier."
+        },
+        {
+          "name": "package_name",
+          "type": "java_package",
+          "required": true,
+          "description": "Android application id, e.g. com.example.myapp. Must be unique on the device."
+        },
+        {
+          "name": "app_label",
+          "type": "string",
+          "required": false,
+          "default_from": "project_name",
+          "description": "Launcher label. Defaults to the project name."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "default": "A C++20 Android application built on the Squared framework.",
+          "description": "One-line project description for the README."
+        }
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": {
+          "required": [],
+          "optional": [
+            "kit.opengl"
+          ]
+        },
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0",
+          "capability.project.plan@^1.0"
+        ]
       },
-      {
-        "name": "description",
-        "type": "string",
-        "required": false,
-        "default": "A C++20 Android application built on the Squared framework.",
-        "description": "One-line project description for the README."
+      "executable": [],
+      "ownership": {
+        "generated": [
+          "mk/squared_generated.mk",
+          "mk/squared_android_package.mk"
+        ],
+        "user": [
+          "**"
+        ],
+        "shared": []
       }
-    ],
-
-    "requires": {
-      "framework": ">=1.0.0 <2.0.0",
-      "packages": [],
-      "kits": { "required": [], "optional": ["kit.opengl"] }
-    },
-
-    "executable": [],
-
-    "ownership": {
-      "generated": ["mk/squared_generated.mk", "mk/squared_android_package.mk"],
-      "user": ["**"],
-      "shared": []
     }
   }
 }
