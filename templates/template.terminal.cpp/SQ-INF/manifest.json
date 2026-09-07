@@ -96,10 +96,9 @@
         "generated": [
           "mk/squared_generated.mk"
         ],
-        "user": [
-          "**"
-        ],
-        "shared": []
+        "user": [],
+        "shared": [],
+        "default": "user"
       }
     }
   }

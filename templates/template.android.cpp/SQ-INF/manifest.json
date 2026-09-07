@@ -103,10 +103,9 @@
           "mk/squared_generated.mk",
           "mk/squared_android_package.mk"
         ],
-        "user": [
-          "**"
-        ],
-        "shared": []
+        "user": [],
+        "shared": [],
+        "default": "user"
       }
     }
   }
