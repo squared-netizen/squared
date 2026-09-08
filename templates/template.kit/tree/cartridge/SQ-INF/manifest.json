@@ -1,0 +1,44 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+
+  "kind": "kit",
+  "id": "kit.{{project_name}}",
+  "version": "0.1.0",
+  "tree": "tree/",
+
+  "title": "{{project_name}} kit",
+  "description": "{{description}}",
+  "license": "MIT",
+
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "{{external_id}}",
+        "version": ">=0.0.0",
+        "acquisition": "system"
+      },
+
+      "runtime": { "model": "{{runtime_model}}" },
+
+      "platforms": ["all"],
+      "compatible_templates": [],
+      "integration_areas": ["build.make.fragments"],
+      "conflicts_with": [],
+      "provides": [],
+
+      "requires": {
+        "engine": ">=0.1.0 <0.2.0",
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": []
+      },
+
+      "ownership": {
+        "generated": ["**"],
+        "user": [],
+        "shared": [],
+        "default": "generated"
+      }
+    }
+  }
+}
