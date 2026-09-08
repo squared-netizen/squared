@@ -1,0 +1,16 @@
+build/
+*.o
+*.d
+*.apk
+*.idsig
+
+.cache/
+compile_commands.json
+.clangd/
+
+# Generator transaction staging, if a run was interrupted before its rename.
+.*.squared-tmp/
+
+# Signing material never belongs in a repository.
+*.keystore
+*.jks

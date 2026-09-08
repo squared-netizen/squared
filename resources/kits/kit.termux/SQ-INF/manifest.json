@@ -1,0 +1,66 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+  "kind": "kit",
+  "id": "kit.termux",
+  "version": "0.1.0",
+  "tree": "tree/",
+  "title": "Termux:API Kit",
+  "description": "Header-only bridge to the Termux:API command-line tools: battery, clipboard, notifications, dialogs, speech, location, sensors.",
+  "requires_features": [],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "termux-api",
+        "version": ">=0.50.0",
+        "acquisition": "system"
+      },
+      "runtime": {
+        "model": "none"
+      },
+      "provides": [
+        "device.battery",
+        "device.clipboard",
+        "device.notification",
+        "device.dialog",
+        "device.tts",
+        "device.location",
+        "device.sensor"
+      ],
+      "platforms": [
+        "termux"
+      ],
+      "compatible_templates": [
+        "template.terminal.cpp"
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": [],
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0"
+        ]
+      },
+      "integration_areas": [
+        "app.include",
+        "build.make.fragments"
+      ],
+      "conflicts_with": [],
+      "ownership": {
+        "generated": [
+          "sq_kit/include/squared/kit/termux.hpp",
+          "mk/kit_termux.mk"
+        ],
+        "user": [],
+        "shared": []
+      }
+    }
+  }
+}

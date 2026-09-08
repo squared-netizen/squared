@@ -1,0 +1,67 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+  "kind": "kit",
+  "id": "kit.terminal",
+  "version": "0.1.0",
+  "tree": "tree/",
+  "title": "Terminal Kit",
+  "description": "Header-only terminal bridge: console I/O, a small regex facade, and a libGDX-style FileHandle.",
+  "requires_features": [],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "posix-terminal",
+        "version": ">=0.0.0",
+        "acquisition": "vendored"
+      },
+      "runtime": {
+        "model": "none"
+      },
+      "provides": [
+        "console.io",
+        "text.regex",
+        "files.handle"
+      ],
+      "platforms": [
+        "termux",
+        "linux",
+        "macos",
+        "desktop"
+      ],
+      "compatible_templates": [
+        "template.terminal.cpp"
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": [],
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0"
+        ]
+      },
+      "integration_areas": [
+        "app.include",
+        "build.make.fragments"
+      ],
+      "conflicts_with": [
+        "kit.ncurses"
+      ],
+      "ownership": {
+        "generated": [
+          "sq_kit/**",
+          "mk/kit_terminal.mk"
+        ],
+        "user": [],
+        "shared": []
+      }
+    }
+  }
+}
