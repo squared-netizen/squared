@@ -15,10 +15,10 @@
 
 #include "app.hpp"
 
-#include <squared/kit/terminal.hpp>
+#include <terminal/terminal.hpp>
 
-#if __has_include(<squared/kit/lua_host.hpp>)
-#  include <squared/kit/lua_host.hpp>
+#if __has_include(<lua/lua_host.hpp>)
+#  include <lua/lua_host.hpp>
 #  define {{project_name}}_HAS_LUA 1
 #endif
 

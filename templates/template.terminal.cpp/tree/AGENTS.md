@@ -22,10 +22,10 @@ call sites shorter, not to replace the library.
 
 ## Kits
 
-`#include <squared/kit/terminal.hpp>` for console I/O, regex helpers and
+`#include <terminal/terminal.hpp>` for console I/O, regex helpers and
 `FileHandle`.
 
-If `kit.lua` was applied, `#include <squared/kit/lua_host.hpp>` embeds Lua 5.4
+If `kit.lua` was applied, `#include <lua/lua_host.hpp>` embeds Lua 5.4
 and `sq_lua/` holds the scripts. Guard the include with `__has_include`, as
 `app.cpp` does, so the same source compiles either way.
 

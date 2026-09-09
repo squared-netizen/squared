@@ -3,7 +3,7 @@
 Your Lua code. Seeded once; the generator will not touch these files again.
 
 `{{project_name}}` embeds Lua 5.4 through `sq::lua::Host` (see
-`sq_kit/include/squared/kit/lua_host.hpp`). At startup it adds this directory
+`sq_kit/include/lua/lua_host.hpp`). At startup it adds this directory
 to `package.path` and runs `main.lua`.
 
 ## Hooks

@@ -16,7 +16,7 @@ No `<android/...>`, no `<EGL/...>`, no `<GLES3/...>`. The platform layer in
 `sq_android/` owns all of that and calls into your `App` through the interface
 in `app.hpp`.
 
-The exception, and it is a deliberate one: `<squared/kit/gl.hpp>` guarded by
+The exception, and it is a deliberate one: `<opengl/gl.hpp>` guarded by
 `__has_include`, and `<android/log.h>` for logging. Both are cheap to replace
 if you ever port this elsewhere.
 

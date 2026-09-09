@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// squared/kit/terminal.hpp — terminal bridge for the Squared framework.
+// terminal/terminal.hpp — terminal bridge for the Squared framework.
 //
 // Contributed by kit.terminal. This is a *bridge*: it connects a Squared
 // application to the host terminal, in the same way kit.sdl3 would connect one

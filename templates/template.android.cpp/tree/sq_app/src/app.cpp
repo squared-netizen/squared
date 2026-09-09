@@ -13,8 +13,8 @@
 
 #include "app.hpp"
 
-#if __has_include(<squared/kit/gl.hpp>)
-#  include <squared/kit/gl.hpp>
+#if __has_include(<opengl/gl.hpp>)
+#  include <opengl/gl.hpp>
 #  define SQ_HAS_RENDERER 1
 #endif
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// squared/kit/lua_host.hpp — Lua 5.4 bridge for the Squared framework.
+// lua/lua_host.hpp — Lua 5.4 bridge for the Squared framework.
 //
 // Contributed by kit.lua. Connects a Squared application to an embedded Lua
 // 5.4 interpreter, so the generated project gets a `sq_lua/` script workspace

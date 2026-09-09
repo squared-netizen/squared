@@ -54,7 +54,7 @@
       ],
       "ownership": {
         "generated": [
-          "sq_kit/include/squared/kit/gl.hpp",
+          "sq_kit/include/opengl/gl.hpp",
           "mk/kit_opengl.mk"
         ],
         "user": [],

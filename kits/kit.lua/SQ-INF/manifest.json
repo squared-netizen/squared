@@ -54,7 +54,7 @@
       "conflicts_with": [],
       "ownership": {
         "generated": [
-          "sq_kit/include/squared/kit/lua_host.hpp",
+          "sq_kit/include/lua/lua_host.hpp",
           "mk/kit_lua.mk"
         ],
         "user": [

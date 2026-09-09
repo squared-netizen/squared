@@ -20,9 +20,9 @@ Add files freely. The build globs; there is no list to maintain.
 
 ## What you can use
 
-`#include <squared/kit/terminal.hpp>` — from kit.terminal. Console I/O, a
+`#include <terminal/terminal.hpp>` — from kit.terminal. Console I/O, a
 small regex facade, and a libGDX-style `FileHandle`. Header-only.
 
-`#include <squared/kit/lua_host.hpp>` — from kit.lua, if it was applied. Guard
+`#include <lua/lua_host.hpp>` — from kit.lua, if it was applied. Guard
 it with `__has_include` as `app.cpp` does, and the same source compiles with or
 without the kit.

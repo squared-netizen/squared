@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// squared/kit/termux.hpp — Termux:API bridge for the Squared framework.
+// termux/termux.hpp — Termux:API bridge for the Squared framework.
 //
 // Contributed by kit.termux. A *bridge*: it connects a Squared application to
 // the Android facilities Termux exposes — battery, clipboard, notifications,

@@ -55,7 +55,7 @@
       "conflicts_with": [],
       "ownership": {
         "generated": [
-          "sq_kit/include/squared/kit/termux.hpp",
+          "sq_kit/include/termux/termux.hpp",
           "mk/kit_termux.mk"
         ],
         "user": [],

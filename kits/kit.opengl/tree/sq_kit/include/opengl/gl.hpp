@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// squared/kit/gl.hpp — OpenGL ES 3.0 bridge for the Squared framework.
+// opengl/gl.hpp — OpenGL ES 3.0 bridge for the Squared framework.
 //
 // Contributed by kit.opengl. A *bridge*: it connects a Squared application to
 // EGL and GLES on Android, the way kit.terminal connects one to the console.
