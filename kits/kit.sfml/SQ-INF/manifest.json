@@ -1,0 +1,68 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+
+  "kind": "kit",
+  "id": "kit.sfml",
+  "version": "0.1.0",
+  "tree": "tree/",
+
+  "title": "SFML 3.1.0 platform layer for Android",
+  "description": "SFML's System and Window modules, built static for Android. Supplies the activity entry point, the window, the GLES context and input.",
+  "license": "MIT",
+
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "sfml",
+        "version": "3.1.0",
+        "acquisition": "vendored"
+      },
+
+      "runtime": { "model": "callback" },
+
+      "platforms": ["android"],
+
+      "compatible_templates": ["template.android.sfml"],
+
+      "integration_areas": ["app.include", "build.make.fragments"],
+
+      "conflicts_with": [],
+
+      "provides": [
+        "platform.entrypoint",
+        "window.surface",
+        "gl.context",
+        "input.touch"
+      ],
+
+      "binary": {
+        "abi": "arm64-v8a",
+        "api_level": 24,
+        "linkage": "static",
+        "archives": [
+          "sq_kit/lib/libsfml-main.a",
+          "sq_kit/lib/libsfml-window-s.a",
+          "sq_kit/lib/libsfml-system-s.a"
+        ]
+      },
+
+      "requires": {
+        "engine": ">=0.1.0 <0.2.0",
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": []
+      },
+
+      "ownership": {
+        "generated": [
+          "sq_kit/**",
+          "mk/kit_sfml.mk"
+        ],
+        "user": [],
+        "shared": [],
+        "default": "generated"
+      }
+    }
+  }
+}

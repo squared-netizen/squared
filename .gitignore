@@ -1,2 +1,8 @@
 /build/
 /dist/
+
+# kit.sfml payload — aarch64 binaries, built by squared-pg tools/build-sfml.sh.
+# Shipped inside the cartridge at release time, never committed.
+/kits/kit.sfml/tree/sq_kit/lib/
+/kits/kit.sfml/tree/sq_kit/include/SFML/
+/kits/kit.sfml/tree/sq_kit/BUILD-INFO

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  {{project_name}} — Android manifest.
+
+  This file is YOURS (ownership class: seeded). The generator wrote it once and
+  will not overwrite it.
+
+  Two things are deliberately absent:
+
+  <uses-sdk> — minSdkVersion and targetSdkVersion are passed to aapt2 by the
+  build (mk/squared_generated.mk), so `make apk SQ_MIN_SDK=21` retargets the
+  project without editing a file. Declaring them here as well would create two
+  sources of truth, and aapt2 would take this one.
+
+  android:debuggable — set by the build for debug APKs. Committing it would
+  ship a debuggable release.
+
+  There is no Java in this project. android.app.NativeActivity is a framework
+  class, so the APK carries no classes.dex and the build needs no JDK for
+  compilation — only for signing.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="{{package_name}}"
+          android:versionCode="1"
+          android:versionName="0.1.0">
+
+    <!-- GLES 3.0. Declared so the Play Store filters devices that cannot run
+         it; harmless when a rendering kit is not in use. -->
+    <uses-feature android:glEsVersion="0x00030000" android:required="false" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:hasCode="false"
+        android:extractNativeLibs="true">
+
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="@string/app_name"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|density|uiMode">
+
+            <!-- Tells NativeActivity which library to dlopen. Must match the
+                 SQ_PROJECT name the build produces. -->
+            <meta-data android:name="android.app.lib_name" android:value="{{project_name}}" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
