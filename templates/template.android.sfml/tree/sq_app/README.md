@@ -1,42 +1,50 @@
-# sq_app — your code
+# sq_app — your application
 
-The **user working directory**. Everything in it is yours; the generator will
-not write here again.
+Yours (ownership class: seeded). The generator wrote these files once and will
+not overwrite them.
 
-```text
-sq_app/include/    your headers
-sq_app/src/        your sources — every .cpp here is compiled
-```
+## What you get
 
-## The one rule
+An `sf::RenderTarget` per frame, a live GLES 3.0 context, and the five SFML
+modules kit.sfml ships: System, Window, Graphics, Audio, and the activity entry
+point.
 
-**No Android headers in this directory.**
-
-No `<android/...>`, no `<EGL/...>`, no `<GLES3/...>`. The platform layer in
-`sq_android/` owns all of that and calls into your `App` through the interface
-in `app.hpp`.
-
-The exception, and it is a deliberate one: `<opengl/gl.hpp>` guarded by
-`__has_include`, and `<android/log.h>` for logging. Both are cheap to replace
-if you ever port this elsewhere.
-
-Keeping to this means the same `App` compiles under `template.termux.cpp` with
-a different platform layer. It is easy to lose one include at a time, so it is
-worth checking when you add code.
-
-## Lifecycle
+`App` has seven methods the platform layer calls:
 
 | Method | When |
 |---|---|
-| `start()` | once, before the first frame |
-| `resume()` / `pause()` | focus gained and lost |
-| `resize(w, h)` | before the first render, and on rotation |
-| `render()` | each frame, only while a surface exists |
-| `touch(phase, x, y)` | a touch; return true if handled |
-| `stop()` | once, on the way out |
+| `start()` | once, after the window exists |
+| `stop()` | once, at shutdown |
+| `resume()` / `pause()` | foreground / background |
+| `resize(w, h)` | at startup and on every change |
+| `render(target)` | every frame |
+| `touch(phase, x, y)` | on touch |
 
-Called from the platform layer on the main thread. **None of them may block.**
-Android kills an unresponsive process without warning.
+## Use SFML here
 
-`pause()` is the last call you are guaranteed — Android may destroy the process
-afterwards without calling `stop()`. Save anything you cannot lose there.
+That is what this layer is for. `#include <SFML/Graphics.hpp>` and
+`<SFML/Audio.hpp>` in your `.cpp` files.
+
+`app.hpp` forward-declares `sf::RenderTarget` rather than including the SFML
+headers, because `<SFML/Graphics.hpp>` is large and every file including
+`app.hpp` would pay for it. Keep that pattern as you add members: the private
+`State` struct lives in the `.cpp`, so adding to it rebuilds one file.
+
+## Do not use `<android/...>` here
+
+Except `<android/log.h>`, which the demo uses and which is hard to regret. SFML
+already abstracts the platform; reaching past it gives up the portability that
+makes this code worth keeping.
+
+Anything that genuinely needs the Android API belongs in `sq_android/main.cpp`,
+which has `sf::getNativeActivity()` and the whole NDK available.
+
+## Assets
+
+`sq_android/assets/` is packaged into the APK. Load through SFML —
+`sf::Texture::loadFromFile`, `sf::Font::openFromFile`, `sf::Music::openFromFile`
+— which reaches Android's AAssetManager.
+
+Open by bare name relative to the assets root — `sq_android/assets/font.ttf`
+is `"font.ttf"`, `sq_android/assets/ui/panel.png` is `"ui/panel.png"`.
+Subdirectories survive; no prefix is wanted.

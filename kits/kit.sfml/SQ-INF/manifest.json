@@ -4,11 +4,12 @@
 
   "kind": "kit",
   "id": "kit.sfml",
-  "version": "0.1.0",
+  "version": "0.2.0",
+
   "tree": "tree/",
 
   "title": "SFML 3.1.0 platform layer for Android",
-  "description": "SFML's System and Window modules, built static for Android. Supplies the activity entry point, the window, the GLES context and input.",
+  "description": "SFML's System, Window, Graphics and Audio modules, built static for Android. Supplies the activity entry point, the window, the GLES context, input, 2D rendering, text and sound.",
   "license": "MIT",
 
   "consumers": {
@@ -33,18 +34,25 @@
         "platform.entrypoint",
         "window.surface",
         "gl.context",
-        "input.touch"
+        "input.touch",
+        "render.2d",
+        "text.font",
+        "audio.playback"
       ],
 
       "binary": {
         "abi": "arm64-v8a",
         "api_level": 24,
         "linkage": "static",
+        "modules": ["system", "window", "main", "graphics", "audio"],
         "archives": [
           "sq_kit/lib/libsfml-main.a",
+          "sq_kit/lib/libsfml-graphics-s.a",
+          "sq_kit/lib/libsfml-audio-s.a",
           "sq_kit/lib/libsfml-window-s.a",
           "sq_kit/lib/libsfml-system-s.a"
-        ]
+        ],
+        "note": "Dependency archives (freetype, harfbuzz, ogg, vorbis, FLAC) ship alongside these and are discovered by the make fragment rather than listed, since the set depends on how each dependency names its targets."
       },
 
       "requires": {

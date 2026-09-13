@@ -5,8 +5,8 @@
 // this project meets Android is here, and you may change all of it.
 //
 // You should not normally need to. Application code goes in sq_app/, which
-// includes no Android header and no SFML header, and compiles unchanged under
-// template.android.cpp with its NativeActivity platform layer.
+// draws through SFML but owns none of the platform: not the window, not the
+// event loop, not the context, not the activity. Those are here.
 //
 // ## Who owns the entry point
 //
@@ -40,7 +40,7 @@
 
 #include "app.hpp"
 
-#include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
 
 #include <android/log.h>
 
@@ -142,7 +142,9 @@ int main()
     // mode and takes the whole surface regardless; passing the desktop mode
     // keeps this line meaningful if the same platform layer is ever pointed at
     // a desktop build.
-    sf::Window window(sf::VideoMode::getDesktopMode(), kTag, sf::State::Fullscreen);
+    // RenderWindow, not Window: it is an sf::RenderTarget, which is what
+    // App::render draws into. A plain sf::Window has no draw().
+    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), kTag, sf::State::Fullscreen);
 
     window.setVerticalSyncEnabled(true);
 
@@ -184,7 +186,7 @@ int main()
             continue;
         }
 
-        app.render();
+        app.render(window);
         window.display();
     }
 

@@ -32,7 +32,38 @@ $(SQ_APK_DIR)/resources.zip: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null)
 	@echo "  aapt2 compile  $(SQ_RES_DIR)"
 	@$(SQ_AAPT2) compile --dir $(SQ_RES_DIR) -o $@
 
-$(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST)
+# ---------------------------------------------------------------------------
+# Assets
+#
+# SFML reads every file it opens on Android through AAssetManager, which sees
+# only what packaging placed under assets/ in the APK. Without the -A below,
+# sq_android/assets/ exists, looks right, and reaches nothing: sf::Font,
+# sf::Texture and sf::Music all fail to open at runtime with no build-time
+# complaint.
+#
+# The stamp exists because a file list is an unreliable prerequisite. Removing
+# the last asset changes no prerequisite at all, so make would relink nothing
+# and the APK would keep shipping a file the tree no longer has. A stamp
+# holding names and mtimes, sorted, flips on add, rename, remove and touch
+# alike.
+#
+# -A is passed only when the directory holds something: aapt2 rejects an empty
+# asset directory, and a freshly generated project has one.
+
+SQ_ASSETS_DIR  ?= sq_android/assets
+SQ_ASSET_FILES := $(shell find $(SQ_ASSETS_DIR) -type f 2>/dev/null)
+SQ_ASSET_STAMP := $(SQ_APK_DIR)/.assets.stamp
+
+.PHONY: FORCE
+FORCE:
+
+$(SQ_ASSET_STAMP): FORCE
+	@mkdir -p $(SQ_APK_DIR)
+	@list=$$(find $(SQ_ASSETS_DIR) -type f -printf '%T@ %p\n' 2>/dev/null | sort); \
+	 old=$$(cat $(SQ_ASSET_STAMP) 2>/dev/null || true); \
+	 if [ "$$old" != "$$list" ]; then printf '%s\n' "$$list" > $@; fi
+
+$(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_STAMP)
 	@if [ -z "$(SQ_ANDROID_JAR)" ]; then \
 	  echo "no android.jar found. Set SQ_ANDROID_JAR, or see 'make android-help'." >&2; \
 	  exit 1; \
@@ -43,6 +74,7 @@ $(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST)
 	    --manifest $(SQ_MANIFEST) \
 	    --min-sdk-version $(SQ_MIN_SDK) \
 	    --target-sdk-version $(SQ_TARGET_SDK) \
+            $(if $(strip $(SQ_ASSET_FILES)),-A $(SQ_ASSETS_DIR),) \
 	    $(SQ_APK_DIR)/resources.zip
 
 # The libraries the APK carries. libc++_shared.so is not optional: Termux's
@@ -125,6 +157,7 @@ android-status:
 	@printf '  %-14s %s\n' "abi" "$(SQ_ABI) ($(SQ_TRIPLE))"
 	@printf '  %-14s %s\n' "sdk" "min $(SQ_MIN_SDK), target $(SQ_TARGET_SDK)"
 	@printf '  %-14s %s\n' "kits" "$(if $(SQ_KITS_PRESENT),$(SQ_KITS_PRESENT),none)"
+	@printf '  %-14s %s\n' "assets" "$(if $(strip $(SQ_ASSET_FILES)),$(words $(SQ_ASSET_FILES)) file(s),none - nothing will be packaged)"
 
 android-help:
 	@echo "$(SQ_PROJECT) — Android targets"
