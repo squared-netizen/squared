@@ -1,0 +1,74 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+  "kind": "package",
+  "id": "package.squared-core",
+  "version": "1.0.0",
+  "tree": "tree/",
+  "title": "squared-core",
+  "description": "The squared framework: application lifecycle, virtual filesystem, asset cache, JSON, messaging, 2D graphics, scene graph, and the GUI widget set. Vendored into the project so it can be modified.",
+  "requires_features": [],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "android-ndk",
+        "version": ">=25.0.0",
+        "acquisition": "system"
+      },
+      "runtime": {
+        "model": "none"
+      },
+      "provides": [
+        "framework.core",
+        "app.lifecycle",
+        "files.vfs",
+        "assets.cache",
+        "data.json",
+        "graphics.context",
+        "graphics.gles3",
+        "graphics2d.sprites",
+        "scene2d.graph",
+        "gui.widgets",
+        "messaging.dispatch",
+        "time.clock"
+      ],
+      "platforms": [
+        "android",
+        "linux"
+      ],
+      "compatible_templates": [
+        "template.android.cpp",
+        "template.termux.cpp"
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": [],
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0"
+        ]
+      },
+      "integration_areas": [
+        "build.make.fragments",
+        "app.include",
+        "framework.source"
+      ],
+      "conflicts_with": [],
+      "ownership": {
+        "default": "shared",
+        "generated": [
+          "mk/pkg_squared_core.mk"
+        ],
+        "user": [],
+        "shared": []
+      }
+    }
+  }
+}

@@ -42,7 +42,7 @@ SQ_SO := $(BUILD)/lib$(SQ_PROJECT).so
 # is no glue to compile. See mk/squared_generated.mk.
 APP_SRC  := $(shell find sq_app/src -name '*.cpp' 2>/dev/null | sort)
 PLAT_SRC := $(shell find sq_android -maxdepth 1 -name '*.cpp' 2>/dev/null | sort)
-CXX_SRC  := $(APP_SRC) $(PLAT_SRC)
+CXX_SRC  := $(APP_SRC) $(PLAT_SRC) $(SQ_KIT_SRC)
 
 OBJ      := $(patsubst %.cpp,$(BUILD)/%.o,$(CXX_SRC))
 DEPS     := $(OBJ:.o=.d)

@@ -11,7 +11,8 @@
 #   make                 build lib{{project_name}}.so
 #   make apk             package and sign an installable APK
 #   make install         hand it to the package installer
-#   make android-status  what the build found on this host
+#   make status          what the build found on this host
+#   make squared-core    build the vendored framework
 #   make android-help    every target and override
 #   make clean
 #
@@ -31,6 +32,7 @@ BUILD    ?= build
 .DEFAULT_GOAL := all
 
 include mk/squared_generated.mk
+-include $(wildcard mk/pkg_*.mk)
 -include $(wildcard mk/kit_*.mk)
 
 SQ_SO := $(BUILD)/lib$(SQ_PROJECT).so
@@ -39,7 +41,7 @@ SQ_SO := $(BUILD)/lib$(SQ_PROJECT).so
 # globs; there is no source list to keep in sync.
 APP_SRC  := $(shell find sq_app/src -name '*.cpp' 2>/dev/null | sort)
 PLAT_SRC := $(shell find sq_android -maxdepth 1 -name '*.cpp' 2>/dev/null | sort)
-CXX_SRC  := $(APP_SRC) $(PLAT_SRC)
+CXX_SRC  := $(APP_SRC) $(PLAT_SRC) $(SQ_KIT_SRC)
 
 CXX_OBJ  := $(patsubst %.cpp,$(BUILD)/%.o,$(CXX_SRC))
 GLUE_OBJ := $(BUILD)/glue/android_native_app_glue.o
@@ -54,9 +56,9 @@ LDLIBS   += $(SQ_LDLIBS) $(SQ_KIT_LDLIBS)
 include mk/squared_android_package.mk
 
 .PHONY: all clean help
-all: require-ndk $(SQ_SO)
+all: require-ndk squared-core $(SQ_SO)
 
-$(SQ_SO): $(OBJ)
+$(SQ_SO): $(OBJ) $(SQ_SQUARED_LIBS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -shared $(OBJ) $(LDFLAGS) $(LDLIBS) -o $@
 	@$(MAKE) --no-print-directory verify-link
@@ -108,5 +110,7 @@ clean:
 	rm -rf $(BUILD)
 
 help: android-help
+
+status: android-status squared-core-status
 
 -include $(DEPS)

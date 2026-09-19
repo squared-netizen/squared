@@ -120,6 +120,7 @@ SQ_LDLIBS   := -landroid -llog
 SQ_KIT_CPPFLAGS ?=
 SQ_KIT_LDFLAGS  ?=
 SQ_KIT_LDLIBS   ?=
+SQ_KIT_SRC      ?=
 SQ_KITS_PRESENT ?=
 
 # ---------------------------------------------------------------------------
