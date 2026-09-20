@@ -6,3 +6,9 @@
 /kits/kit.sfml/tree/sq_kit/lib/
 /kits/kit.sfml/tree/sq_kit/include/SFML/
 /kits/kit.sfml/tree/sq_kit/BUILD-INFO
+
+# Framework development inside a package payload. build/common.mk is source
+# and stays tracked; everything else under build/ is output.
+packages/*/tree/squared/build/release/
+packages/*/tree/squared/build/debug/
+packages/*/tree/squared/local.mk

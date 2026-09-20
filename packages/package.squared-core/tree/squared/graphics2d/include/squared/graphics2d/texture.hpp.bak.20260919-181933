@@ -1,6 +1,5 @@
 #pragma once
 
-#include <squared/files/file_handle.hpp>
 #include <squared/graphics/color.hpp>
 #include <squared/graphics2d/texture_filter.hpp>
 #include <squared/graphics2d/texture_recovery_callback.hpp>
@@ -10,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace sq::graphics2d {
@@ -47,24 +47,19 @@ public:
 
     /**
      * @brief Load an image asset through the selected backend.
-     * @param source Handle naming the encoded image. The handle is retained,
-     * so the file system it came from must outlive this texture.
+     * @param asset_path Null-terminated path of the image asset.
      * @return true when the texture loaded successfully.
-     * @note A handle rather than a path because a path alone cannot be read
-     * back: the handle carries its file system with it, which is what lets
-     * restore() refill this texture after context loss without reaching into
-     * the asset manager that created it.
      */
-    [[nodiscard]] bool load(const files::FileHandle& source) noexcept;
+    [[nodiscard]] bool load(const char* asset_path) noexcept;
 
     /**
      * @brief Load an asset with an explicit recovery policy.
-     * @param source Handle naming the encoded image.
+     * @param asset_path Null-terminated path of the image asset.
      * @param recovery Policy controlling post-context-loss recovery.
      * @return true when the texture loaded successfully.
      */
     [[nodiscard]] bool load(
-        const files::FileHandle& source,
+        const char* asset_path,
         TextureRecoveryOptions recovery
     ) noexcept;
 
@@ -199,37 +194,13 @@ public:
      */
     [[nodiscard]] int height() const noexcept;
 
-    /**
-     * @brief Read the counter that changes whenever the content does.
-     * @return A value that increments on every upload, restore, release and
-     * invalidate.
-     * @note This is what makes a stale TextureRegion detectable. A region
-     * records the generation it was built against; when the two differ, the
-     * region's coordinates no longer describe the pixels that are there, and
-     * after a Discard there are no pixels at all. Without it, a region
-     * outliving its texture's content is a crash after a phone call.
-     */
-    [[nodiscard]] std::uint32_t content_generation() const noexcept;
-
-    /**
-     * @brief Check whether the texture currently holds usable content.
-     * @return true when a backend object exists and has not been released,
-     * invalidated or discarded.
-     */
-    [[nodiscard]] bool has_content() const noexcept;
-
 private:
     friend class SpriteBatch;
     friend class TextureRecoveryTarget;
 
-    // Implemented per backend; everything else is backend-independent.
     [[nodiscard]] bool upload_rgba(
         int width, int height, const std::uint8_t* pixels
     ) noexcept;
-    void destroy_backend_object() noexcept;
-    void apply_sampling() noexcept;
-
-
     [[nodiscard]] bool restore_asset() noexcept;
     [[nodiscard]] bool restore_callback() noexcept;
 
@@ -240,7 +211,7 @@ private:
     // this from the options it was given, so the value here is what an empty,
     // never-created texture reports.
     TextureRecoveryPolicy recovery_policy_{TextureRecoveryPolicy::ReloadFromAsset};
-    files::FileHandle source_;
+    std::string asset_path_;
     std::vector<std::uint8_t> pixels_;
     TextureRecoveryCallback recovery_callback_{nullptr};
     void* recovery_user_data_{nullptr};
@@ -248,7 +219,6 @@ private:
     TextureFilter magnification_{TextureFilter::Nearest};
     TextureWrap horizontal_wrap_{TextureWrap::ClampToEdge};
     TextureWrap vertical_wrap_{TextureWrap::ClampToEdge};
-    std::uint32_t content_generation_{0};
     bool invalidated_{false};
 };
 

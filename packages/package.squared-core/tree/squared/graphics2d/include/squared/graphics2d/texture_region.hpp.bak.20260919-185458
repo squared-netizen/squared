@@ -2,8 +2,6 @@
 
 #include <squared/graphics2d/texture.hpp>
 
-#include <cstdint>
-
 namespace sq::graphics2d {
 
 /**
@@ -40,7 +38,6 @@ public:
      */
     explicit TextureRegion(const Texture& texture) noexcept
         : texture_(&texture),
-          texture_generation_(texture.content_generation()),
           width_(texture.width()),
           height_(texture.height())
     {
@@ -67,7 +64,6 @@ public:
         bool rotated_clockwise = false
     ) noexcept
         : texture_(&texture),
-          texture_generation_(texture.content_generation()),
           width_(width),
           height_(height),
           rotated_clockwise_(rotated_clockwise)
@@ -90,53 +86,11 @@ public:
 
     /**
      * @brief Check whether this region can be rendered.
-     * @return true when the referenced texture still holds the content this
-     * region was built against, and the region has positive size.
-     *
-     * @note The generation check is what stops a crash after a phone call. A
-     * texture whose content was discarded, reloaded or regenerated has moved
-     * its content_generation(); this region's coordinates then describe pixels
-     * that are no longer there, or are not there at all. Drawing it would
-     * sample whatever now occupies that texture unit.
+     * @return true when a valid texture is referenced with positive size.
      */
     [[nodiscard]] bool valid() const noexcept
     {
-        return texture_ != nullptr
-            && texture_->has_content()
-            && texture_->content_generation() == texture_generation_
-            && width_ > 0
-            && height_ > 0;
-    }
-
-    /**
-     * @brief Report whether the texture's content changed under this region.
-     * @return true when the region still references a texture but that
-     * texture's content has since been replaced or discarded.
-     * @note Distinguishes "never had a texture" from "had one and lost it",
-     * which valid() alone cannot. A caller rebuilding an atlas wants the
-     * second; a caller checking an empty slot wants neither.
-     */
-    [[nodiscard]] bool stale() const noexcept
-    {
-        return texture_ != nullptr
-            && (!texture_->has_content()
-                || texture_->content_generation() != texture_generation_);
-    }
-
-    /**
-     * @brief Re-bind this region to its texture's current content.
-     * @return true when the region is valid afterwards.
-     * @note For a region whose texture was restored with the same dimensions
-     * and layout - the common case after context loss, where the pixels come
-     * back exactly as they were. A region into an atlas that was repacked is
-     * not made correct by this, because its coordinates never described the
-     * new layout.
-     */
-    [[nodiscard]] bool refresh() noexcept
-    {
-        if (texture_ == nullptr) return false;
-        texture_generation_ = texture_->content_generation();
-        return valid();
+        return texture_ && texture_->valid() && width_ > 0 && height_ > 0;
     }
 
     /**
@@ -219,7 +173,6 @@ public:
 
         TextureRegion result;
         result.texture_ = texture_;
-        result.texture_generation_ = texture_generation_;
         result.width_ = width;
         result.height_ = height;
         result.rotated_clockwise_ = rotated_clockwise_;
@@ -249,11 +202,6 @@ public:
 
 private:
     const Texture* texture_{nullptr};
-    // The texture's content_generation() when this region was built. Four
-    // bytes per region; a nine-patch pays 36, a 200-region atlas 800. Against
-    // an atlas measured in megabytes that is free, and it is the only thing
-    // standing between a discarded texture and a draw call into nothing.
-    std::uint32_t texture_generation_{0};
     int width_{0};
     int height_{0};
     float u1_{0.0F};

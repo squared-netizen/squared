@@ -13,7 +13,6 @@ INCLUDES := -I$(SQUARED_ROOT)/gui/include \
             -I$(SQUARED_ROOT)/data/include \
             -I$(SQUARED_ROOT)/graphics/include \
             -I$(SQUARED_ROOT)/graphics2d/include \
-            -I$(SQUARED_ROOT)/files/include \
             -I$(SQUARED_ROOT)/scene2d/include \
             -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 

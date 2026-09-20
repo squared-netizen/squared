@@ -24,7 +24,7 @@ way `GL_ELEMENT_ARRAY_BUFFER` does not.
 |---|---:|---|
 | `VertexArray` | 4 | a name |
 | `Shader` | 8 | a name and a stage |
-| `Program` | 4 | a name |
+| `Program` | 8 | a name |
 | `Buffer` | 16 | a name, a target, a size |
 | `Texture2D` | 16 | a name, dimensions, a format |
 
@@ -89,36 +89,6 @@ reads `local.mk` directly for that test: module Makefiles reach `local.mk`
 through `build/common.mk`, but the root one does not include `common.mk`, so a
 backend chosen in `local.mk` would otherwise select the right `context.cpp` and
 the wrong module list.
-
-## Testing against a fake driver
-
-`make -C gles test` links the module against `test/gl_stub.cpp`, which defines
-the GL entry points this module calls. The stub is compiled against the real GL
-headers, so every signature is checked by the compiler rather than by hand, and
-it records what was called.
-
-That records-what-was-called property is the point. It lets the test assert
-things no real driver can be asked about, and the one that matters most is:
-
-```cpp
-texture.invalidate();
-assert(!glstub::deleted("glDeleteTextures", name));
-```
-
-On a device, getting that wrong frees an unrelated object in the new context
-and the corruption reads as a driver bug. Here it is one assertion.
-
-The suite also covers: destroy() deleting exactly once even when called twice,
-move construction not double-deleting, compile and link failures carrying the
-driver's log, shaders being detached after linking, introspection reusing the
-caller's vector, `GL_UNPACK_ALIGNMENT` reaching 1 before an R8 upload, sampling
-defaults being set at creation, out-of-range regions and short pixel spans
-being refused before they reach GL, and a `-1` attribute location being skipped
-rather than passed through.
-
-**What it does not prove:** that a real driver accepts these enum combinations,
-that `GL_R8` exists on the target, or that anything renders. Those need a
-device.
 
 ## Not yet written
 

@@ -58,45 +58,6 @@ failure rather than leaving an empty texture that would draw as garbage.
 encoded file, the decoded pixels and the GPU copy would otherwise all be
 resident at the same moment.
 
-## TextureRegion and the stale check
-
-`TextureRegion` was already fully inline in its header; the work here was the
-validity signal.
-
-A region records `texture_->content_generation()` at construction.
-`valid()` then requires the texture to still hold content *and* to be at the
-same generation. A texture that was discarded, reloaded or regenerated has
-moved on, and the region's coordinates describe pixels that are no longer
-there - or are not there at all. Drawing it would sample whatever now occupies
-that texture unit.
-
-**It cost zero bytes.** `sizeof(TextureRegion)` is 40 before and after: the
-`std::uint32_t` fits in padding the struct already had between its pointer and
-its ints. A nine-patch holds nine regions and pays nothing for the check.
-
-Three states, not two:
-
-| | `valid()` | `stale()` |
-|---|---|---|
-| never had a texture | false | false |
-| has current content | true | false |
-| had content, lost or replaced it | false | true |
-
-`stale()` exists because `valid()` alone cannot tell an empty slot from a
-region whose atlas needs rebuilding, and those want different responses.
-
-`refresh()` re-binds to the current generation. It is for the common case
-after context loss, where a texture was restored with the same pixels in the
-same layout - the caller asserting that the layout still matches. A region
-into an atlas that was repacked is not made correct by it, because its
-coordinates never described the new layout. It returns `valid()` so a caller
-that guessed wrong finds out.
-
-`AtlasRegion::rotated_clockwise()` delegates to its `TextureRegion` rather
-than storing a second copy. The region already carries it because its UV
-arithmetic depends on it, and a duplicate could disagree with the coordinates
-it is meant to describe.
-
 ## Notes
 
 `graphics2d/src/detail/bitmap_font_detail.hpp` holds the

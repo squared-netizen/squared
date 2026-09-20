@@ -25,9 +25,9 @@ MODULES := math data files assets graphics \
 
 all: $(MODULES)
 
-graphics2d: graphics math files
-scene2d: graphics2d math files
-gui: graphics graphics2d scene2d math data files
+graphics2d: graphics math
+scene2d: graphics2d math
+gui: graphics graphics2d scene2d math data
 messaging: time data
 assets: files
 gles: graphics

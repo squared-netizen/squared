@@ -5,25 +5,16 @@
 
 include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 
-# Texture is split the way graphics::Context is: a backend-independent half in
-# src/common, and a GPU half chosen at link time. The null backend hands out
-# names from a counter so every observable - valid(), has_content(), the
-# generation counter - behaves as it does against a real driver.
-SQUARED_GRAPHICS_BACKEND ?= null
-
 MODULE := graphics2d
 MODULE_DIR := $(SQUARED_ROOT)/graphics2d
 
 STB_DIR := $(SQUARED_ROOT)/third_party/stb
 
-INCLUDES := -I$(STB_DIR) -I$(SQUARED_ROOT)/files/include -I$(SQUARED_ROOT)/graphics2d/include \
+INCLUDES := -I$(STB_DIR) -I$(SQUARED_ROOT)/graphics2d/include \
             -I$(SQUARED_ROOT)/graphics/include \
             -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/detail/image_decode.cpp \
-    src/common/atlas_region.cpp \
-    src/common/texture_common.cpp \
-    src/$(SQUARED_GRAPHICS_BACKEND)/texture.cpp \
     src/bitmap_font.cpp \
     src/glyph_layout.cpp \
     src/orthographic_camera.cpp
@@ -55,23 +46,6 @@ $(TEST_BINARY): $(MODULE_DIR)/test/image_decode_test.cpp \
                 $(STB_OBJECT)
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src $^ -o $@
-
-# Texture against the headless backend. Recovery runs once per context loss on
-# a device; here every branch of it runs in microseconds.
-TEXTURE_TEST := $(BUILD_DIR)/texture_test
-
-test: $(TEXTURE_TEST)
-
-$(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
-                 $(MODULE_DIR)/src/common/atlas_region.cpp \
-                 $(MODULE_DIR)/src/common/texture_common.cpp \
-                 $(MODULE_DIR)/src/null/texture.cpp \
-                 $(MODULE_DIR)/src/detail/image_decode.cpp \
-                 $(STB_OBJECT)
-	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
-	@$(TEXTURE_TEST)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

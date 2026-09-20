@@ -21,7 +21,6 @@ INCLUDES := -I$(STB_DIR) -I$(SQUARED_ROOT)/files/include -I$(SQUARED_ROOT)/graph
             -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/detail/image_decode.cpp \
-    src/common/atlas_region.cpp \
     src/common/texture_common.cpp \
     src/$(SQUARED_GRAPHICS_BACKEND)/texture.cpp \
     src/bitmap_font.cpp \
@@ -63,7 +62,6 @@ TEXTURE_TEST := $(BUILD_DIR)/texture_test
 test: $(TEXTURE_TEST)
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
-                 $(MODULE_DIR)/src/common/atlas_region.cpp \
                  $(MODULE_DIR)/src/common/texture_common.cpp \
                  $(MODULE_DIR)/src/null/texture.cpp \
                  $(MODULE_DIR)/src/detail/image_decode.cpp \

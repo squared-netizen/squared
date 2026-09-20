@@ -1,0 +1,50 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+
+  "kind": "kit",
+  "id": "kit.imgui",
+  "version": "0.1.0",
+  "tree": "tree/",
+
+  "title": "Dear ImGui immediate-mode UI for SFML",
+  "description": "Dear ImGui 1.93 with its OpenGL3 backend, bridged to SFML's window, input and GLES 3.0 context. A single touch is treated as a mouse; enough for touch UI.",
+  "license": "MIT",
+
+  "consumers": {
+    "squared_pg": {
+      "external": {
+        "id": "imgui",
+        "version": "1.93.0 WIP",
+        "acquisition": "vendored"
+      },
+
+      "runtime": { "model": "none" },
+
+      "platforms": ["android"],
+      "compatible_templates": ["template.android.sfml"],
+
+      "integration_areas": ["app.include", "build.make.fragments"],
+
+      "conflicts_with": [],
+      "provides": ["ui.immediate"],
+
+      "requires": {
+        "engine": ">=0.1.0 <0.2.0",
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": ["kit.sfml"]
+      },
+
+      "ownership": {
+        "generated": [
+          "sq_kit/**",
+          "mk/kit_imgui.mk"
+        ],
+        "user": [],
+        "shared": [],
+        "default": "generated"
+      }
+    }
+  }
+}

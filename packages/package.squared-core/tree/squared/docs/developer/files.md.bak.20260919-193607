@@ -64,53 +64,11 @@ the caller asked for is a security problem, not a convenience.
 **A file can shrink between the size query and the read**, so `read()` resizes
 the buffer down to what `fread` actually returned rather than trusting `stat`.
 
-## AndroidAssetFileSystem
-
-The second implementation the interface was shaped for, and it arrived as one
-new `.cpp` with no existing file changed &mdash; which is the property that
-was the point.
-
-`Internal` reads through `AAssetManager`, because assets inside an APK are zip
-entries and no POSIX call can reach them. Everything writable is an ordinary
-directory and is delegated to an owned `PosixFileSystem`, whose
-`internal_root` is deliberately left empty so a delegated `Internal` call
-fails rather than silently resolving on the filesystem.
-
-**The naming trap, stated once.** Android's "internal storage" is this class's
-`Local`; this class's `Internal` is the read-only asset bundle, which Android
-does not call storage at all. `ANativeActivity::internalDataPath` maps to
-`Local`, `externalDataPath` to `External`.
-
-Three things in the implementation are not obvious:
-
-**`AAsset_read` returns short counts.** A compressed asset is decompressed in
-chunks and one call does not fill the buffer, without that being an error. The
-read loops. A single call would truncate every compressed skin atlas, and it
-would work perfectly on an uncompressed one &mdash; which is exactly the kind
-of difference that only shows up on someone else's build.
-
-**`AASSET_MODE_STREAMING`, not `BUFFER`.** The asset is read once into a vector
-the caller owns; asking the platform to buffer or mmap it as well would hold
-two copies of a texture atlas at the same moment.
-
-**A directory is not openable as an asset.** `AAssetManager_open` fails on
-one, and `AAssetManager_openDir` succeeds on any path, so neither alone
-answers "does this exist". The test is whether `openDir` yields at least one
-entry. `AAssetDir` also lists files only &mdash; subdirectories are invisible
-to it, which is a platform limitation and the reason an asset tree is best
-kept shallow enough to address by path.
-
-The header forward declares `AAssetManager` and includes no NDK header, so it
-passes the standalone self-containment check on any platform; only the `.cpp`
-needs `<android/asset_manager.h>`.
-
-Built only when `SQUARED_PLATFORM=android`. That is a separate variable from
-`SQUARED_GRAPHICS_BACKEND` on purpose: "has GLES" and "is Android" coincide
-today and are not the same question.
-
 ## Not yet written
 
-Nothing in this module.
+The Android asset backend for `FileType::Internal`, over `AAssetManager`. It is
+a second `.cpp` added to `files/Makefile` &mdash; no existing file changes,
+which is the property the interface was shaped to give.
 
 An `AssetManager` above this module is the other half: this layer answers
 "give me these bytes", and that one answers "give me this thing, as this type,
