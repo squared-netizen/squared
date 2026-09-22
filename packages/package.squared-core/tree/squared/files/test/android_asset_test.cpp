@@ -110,6 +110,77 @@ int main()
                == FileErrorCode::NotSupported);
     }
 
+    // --- nested trees, answered from the build-time index -----------------
+    {
+        assetstub::reset();
+        assetstub::add("skins/default/skin/uiskin.atlas", "atlas");
+        assetstub::add("skins/default/skin/uiskin.png", "png");
+        assetstub::add("skins/default/skin/default.fnt", "fnt");
+        assetstub::add("audio/sfx/ui/click.ogg", "ogg");
+        assetstub::add("readme.txt", "hi");
+        assetstub::add(".squared/index",
+            "skins/default/skin/uiskin.atlas\n"
+            "skins/default/skin/uiskin.png\n"
+            "skins/default/skin/default.fnt\n"
+            "audio/sfx/ui/click.ogg\n"
+            "readme.txt\n");
+
+        // the case AAssetDir gets wrong: a directory holding only a directory
+        assert(fs.internal("skins").is_directory());
+        assert(fs.internal("skins").exists());
+        assert(fs.internal("skins/default").is_directory());
+
+        // a file is not a directory, and a missing path is neither
+        assert(!fs.internal("skins/default/skin/uiskin.png").is_directory());
+        assert(fs.internal("skins/default/skin/uiskin.png").exists());
+        assert(!fs.internal("skins/nope").exists());
+
+        // listing returns subdirectories, not only files
+        std::vector<FileHandle> top;
+        assert(!fs.internal("").list(top));
+        std::vector<std::string> names;
+        for (const auto& entry : top) names.emplace_back(entry.name());
+        auto has = [&](const char* n) {
+            for (const auto& x : names) if (x == n) return true;
+            return false;
+        };
+        assert(has("skins") && has("audio") && has("readme.txt"));
+        assert(!has(".squared"));          // the framework dir is hidden
+        assert(names.size() == 3);         // no duplicates from shared prefixes
+
+        std::vector<FileHandle> skins;
+        assert(!fs.internal("skins").list(skins));
+        assert(skins.size() == 1 && skins[0].name() == "default");
+
+        std::vector<FileHandle> leaf;
+        assert(!fs.internal("skins/default/skin").list(leaf));
+        assert(leaf.size() == 3);
+
+        // deep reads are unaffected by the index
+        assert(fs.internal("audio/sfx/ui/click.ogg").read_string().text
+               == "ogg");
+
+        assert(fs.internal("nowhere").list(leaf).code
+               == FileErrorCode::NotFound);
+    }
+
+    // --- no index: degraded to files-only, never broken -------------------
+    {
+        assetstub::reset();
+        assetstub::add("skins/default/skin/uiskin.png", "png");
+        assetstub::add("icon.png", "i");
+
+        std::vector<FileHandle> root;
+        assert(!fs.internal("").list(root));
+        assert(root.size() == 1 && root[0].name() == "icon.png");
+
+        // files still read at any depth
+        assert(fs.internal("skins/default/skin/uiskin.png").read_string().text
+               == "png");
+        // and the known limitation is exactly what it was
+        assert(!fs.internal("skins").is_directory());
+    }
+
     std::printf("android assets: all assertions passed\n");
     return 0;
 }

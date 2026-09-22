@@ -111,3 +111,29 @@ A relative path containing `..`, or starting with `/`, is **refused** rather
 than normalised, with `FileErrorCode::NotSupported`. Asking for something under
 a root and quietly getting something outside it would be worse than failing.
 Use `FileType::Absolute` when you mean an absolute path.
+
+## Nested assets on Android
+
+Organise assets in as many directories as you like &mdash; reads work at any
+depth, on every platform:
+
+```cpp
+fs.internal("audio/sfx/ui/click.ogg").read_bytes();
+fs.internal("skins").list(entries);          // returns default/ on device too
+```
+
+On Android, listing and `is_directory()` are answered from an index the build
+writes into the APK at `assets/.squared/index`. You do not create or maintain
+it; `make apk` regenerates it whenever an asset changes, and an app update
+replaces it along with everything else, so it cannot go stale.
+
+Two things to know:
+
+- Keep `sq_android/assets/.squared/` in your `.gitignore`. It is a build
+  product.
+- Do not put your own files under `assets/.squared/`. That directory is
+  squared's, and it is hidden from listings.
+
+The details, and why it works this way rather than any of the obvious
+alternatives, are in
+[../developer/asset-index.md](../developer/asset-index.md).

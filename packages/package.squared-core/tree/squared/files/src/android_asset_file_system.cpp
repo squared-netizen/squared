@@ -67,6 +67,93 @@ bool escapes_root(std::string_view path) noexcept
     return false;
 }
 
+/**
+ * @brief Path of the build-time index inside the asset bundle.
+ *
+ * AAssetDir lists files only; subdirectories are invisible to it, so a nested
+ * asset tree cannot be walked through the NDK. libGDX sidesteps this by
+ * calling the Java AssetManager. squared has no Java, so packaging writes
+ * every asset path into this file instead, and directory questions are
+ * answered from it.
+ *
+ * It lives under a framework-owned directory so it cannot collide with an
+ * asset the application ships, and so the application's own top level stays
+ * the application's. See docs/developer/asset-index.md.
+ */
+constexpr const char* k_index_path = ".squared/index";
+
+/** @brief The framework-owned directory holding the index, hidden from lists. */
+constexpr const char* k_framework_directory = ".squared";
+
+/**
+ * @brief Read the index, one asset path per line.
+ * @return The paths, or an empty vector when there is no index.
+ *
+ * Read per call rather than cached, on purpose: a large game's index is tens
+ * of kilobytes that would otherwise stay resident for a question asked once
+ * at startup. Anything that lists hot should cache its own answer.
+ */
+std::vector<std::string> read_index(AAssetManager* assets)
+{
+    std::vector<std::string> paths;
+    AAsset* asset = AAssetManager_open(assets, k_index_path,
+                                       AASSET_MODE_STREAMING);
+    if (asset == nullptr) return paths;
+
+    std::string text;
+    char buffer[4096];
+    while (true) {
+        const int count = AAsset_read(asset, buffer, sizeof(buffer));
+        if (count <= 0) break;
+        text.append(buffer, static_cast<std::size_t>(count));
+    }
+    AAsset_close(asset);
+
+    std::size_t start = 0;
+    while (start < text.size()) {
+        std::size_t end = text.find('\n', start);
+        if (end == std::string::npos) end = text.size();
+        std::string line = text.substr(start, end - start);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!line.empty()) paths.push_back(std::move(line));
+        start = end + 1;
+    }
+    return paths;
+}
+
+/** @brief The directory prefix a path is tested against, with a trailing '/'. */
+std::string directory_prefix(std::string_view path)
+{
+    std::string prefix{path};
+    while (!prefix.empty() && prefix.back() == '/') prefix.pop_back();
+    if (!prefix.empty()) prefix.push_back('/');
+    return prefix;
+}
+
+/** @brief Whether a path names the root of the bundle. */
+bool prefix_is_root(std::string_view path) noexcept
+{
+    while (!path.empty() && path.back() == '/') path.remove_suffix(1);
+    return path.empty();
+}
+
+/** @brief Whether any indexed asset lives under this directory. */
+bool index_has_directory(
+    const std::vector<std::string>& index,
+    std::string_view path
+)
+{
+    const std::string prefix = directory_prefix(path);
+    if (prefix.empty()) return !index.empty();   // the root
+    for (const std::string& entry : index) {
+        if (entry.size() > prefix.size()
+            && entry.compare(0, prefix.size(), prefix) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 AndroidAssetFileSystem::AndroidAssetFileSystem(
@@ -101,14 +188,7 @@ bool AndroidAssetFileSystem::exists(
         return true;
     }
 
-    // A directory is not openable as an asset, so an unopenable path may still
-    // be a directory that exists. openDir succeeds for any path, so the test
-    // is whether it has at least one entry.
-    AAssetDir* directory = AAssetManager_openDir(assets_, name.c_str());
-    if (directory == nullptr) return false;
-    const bool populated = AAssetDir_getNextFileName(directory) != nullptr;
-    AAssetDir_close(directory);
-    return populated;
+    return is_directory(type, path);
 }
 
 bool AndroidAssetFileSystem::is_directory(
@@ -127,6 +207,14 @@ bool AndroidAssetFileSystem::is_directory(
         return false;   // it is a file
     }
 
+    // A directory is not an asset, so the question goes to the index. That is
+    // what makes a directory holding only subdirectories - skins/ holding
+    // default/ - report correctly. AAssetDir cannot see it at all.
+    const std::vector<std::string> index = read_index(assets_);
+    if (!index.empty()) return index_has_directory(index, path);
+
+    // No index: an APK built without one. Fall back to AAssetDir, which gets
+    // directories of files right and directories of directories wrong.
     AAssetDir* directory = AAssetManager_openDir(assets_, name.c_str());
     if (directory == nullptr) return false;
     const bool populated = AAssetDir_getNextFileName(directory) != nullptr;
@@ -255,6 +343,37 @@ FileError AndroidAssetFileSystem::list(
         );
     }
 
+    const std::vector<std::string> index = read_index(assets_);
+    if (!index.empty()) {
+        if (!index_has_directory(index, path)) {
+            return make_error(
+                FileErrorCode::NotFound, "no such asset directory", path
+            );
+        }
+
+        // Immediate children only: the next path segment after the prefix,
+        // whether that is a file or the first component of a deeper path.
+        const std::string prefix = directory_prefix(path);
+        for (const std::string& entry : index) {
+            if (entry.compare(0, prefix.size(), prefix) != 0) continue;
+            const std::string_view rest =
+                std::string_view{entry}.substr(prefix.size());
+            if (rest.empty()) continue;
+            const std::string child{rest.substr(0, rest.find('/'))};
+            // The framework's own directory is not an application asset.
+            if (prefix.empty() && child == k_framework_directory) continue;
+            bool seen = false;
+            for (const std::string& existing : names) {
+                if (existing == child) { seen = true; break; }
+            }
+            if (!seen) names.push_back(child);
+        }
+        return {};
+    }
+
+    // No index: list files through AAssetDir, which cannot see
+    // subdirectories. Degraded rather than broken, and exactly what this
+    // backend did before the index existed.
     const std::string name{path};
     AAssetDir* directory = AAssetManager_openDir(assets_, name.c_str());
     if (directory == nullptr) {
@@ -262,11 +381,11 @@ FileError AndroidAssetFileSystem::list(
             FileErrorCode::NotFound, "no such asset directory", path
         );
     }
-
-    // AAssetDir lists files only; subdirectories are invisible to it. That is
-    // a platform limitation rather than a choice here, and it is why an asset
-    // tree is best kept flat enough to address by path.
     while (const char* entry = AAssetDir_getNextFileName(directory)) {
+        if (prefix_is_root(path)
+            && std::string_view{entry} == k_framework_directory) {
+            continue;
+        }
         names.emplace_back(entry);
     }
     AAssetDir_close(directory);

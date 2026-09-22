@@ -32,6 +32,7 @@ endif
 ifneq ($(strip $(SQ_GLES_AVAILABLE)),)
 
 SQUARED_GRAPHICS_BACKEND := gles
+SQUARED_PLATFORM := android
 
 # -idirafter, not -I.
 #

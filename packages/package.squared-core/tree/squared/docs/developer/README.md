@@ -25,6 +25,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [assets](assets.md)
 - [data](data.md)
 - [files](files.md)
+  - [asset-index](asset-index.md) &mdash; how nested APK assets are listed
 - [gles](gles.md)
 - [graphics](graphics.md)
 - [graphics2d](graphics2d.md)
