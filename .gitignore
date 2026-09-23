@@ -12,3 +12,5 @@
 packages/*/tree/squared/build/release/
 packages/*/tree/squared/build/debug/
 packages/*/tree/squared/local.mk
+
+*.bak.[0-9]*-[0-9]*
