@@ -1,5 +1,7 @@
 #include <squared/gui/font_resource.hpp>
 
+#include <squared/graphics2d/bitmap_glyph.hpp>
+
 #include "detail/gui_detail.hpp"
 #include <squared/graphics2d/bitmap_font.hpp>
 #include <squared/graphics2d/glyph_placement.hpp>
@@ -39,15 +41,21 @@ FontResource::FontResource(
         pages_.size() != font_->pages().size()) {
         throw std::invalid_argument("FontResource metrics or pages are invalid");
     }
-    const bool valid_pages = std::all_of(
-        pages_.begin(), pages_.end(), [this](const auto& page) {
-            return page.width() >= font_->page_width() &&
-                   page.height() >= font_->page_height();
-        }
-    );
-    if (!valid_pages) {
-        throw std::invalid_argument("FontResource page is smaller than BMFont metrics");
-    }
+    // Deliberately no check that glyphs fit their page region.
+    //
+    // The obvious one - region at least as large as the descriptor's
+    // scaleW/scaleH - rejects the normal case: a font page packed into an
+    // atlas has its empty margin trimmed, so the region is smaller than the
+    // nominal page. The stock libGDX skin is a 256x128 page packed as 254x77.
+    //
+    // The careful one - every glyph inside the region - rejects that same skin
+    // too: its glyphs reach 255 pixels across a 254-pixel region, one pixel of
+    // overhang that libGDX neither checks nor notices. Refusing to construct a
+    // font over one pixel would make squared unable to load the skin its own
+    // widget set is designed against.
+    //
+    // glyph_region() clamps instead, so an overhanging glyph loses a pixel
+    // rather than sampling whatever the atlas packed next to it.
 }
 
 graphics2d::TextureRegion FontResource::glyph_region(
@@ -55,11 +63,18 @@ graphics2d::TextureRegion FontResource::glyph_region(
 ) const noexcept
 {
     if (!resolved() || glyph.page >= pages_.size()) return {};
-    return pages_[glyph.page].subregion(
-        glyph.source_x,
-        glyph.source_y,
-        glyph.source_width,
-        glyph.source_height
+    const graphics2d::TextureRegion& page = pages_[glyph.page];
+
+    // Clamp to the page: a glyph may overhang its region by a pixel when the
+    // page was packed into an atlas, and sampling past the edge would pull in
+    // whatever the packer placed beside it.
+    const int source_x = std::clamp(glyph.source_x, 0, page.width());
+    const int source_y = std::clamp(glyph.source_y, 0, page.height());
+    return page.subregion(
+        source_x,
+        source_y,
+        std::min(glyph.source_width, page.width() - source_x),
+        std::min(glyph.source_height, page.height() - source_y)
     );
 }
 

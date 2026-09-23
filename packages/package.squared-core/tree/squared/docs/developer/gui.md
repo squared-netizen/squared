@@ -105,3 +105,41 @@ g++ main.cpp -Wl,--whole-archive build/release/lib/*.a -Wl,--no-whole-archive
 
 which forces every object of every archive into one binary. It is worth
 re-running after adding anything to a `detail/` header.
+
+## libGDX skin JSON is not JSON
+
+`load_libgdx_skin` normalizes before parsing, in two passes, because the
+format the stock skin ships in is rejected by any strict parser.
+
+**Bare tokens.** Keys and values are unquoted:
+`com.badlogic.gdx.graphics.g2d.BitmapFont: { default-font: { file: default.fnt } }`.
+The normalizer quotes anything that is not a number, `true`, `false` or
+`null`. It also strips line and block comments.
+
+**Trailing commas.** Nearly every block in the stock skin ends with one. That
+pass is string-aware: a comma inside a string literal is content.
+
+Together they turn the reference skin into 18 top-level sections of valid
+JSON. The first was written from the format; the second was found by loading
+the real file, which had not been done before.
+
+## A test binary must depend on what it links
+
+Three rounds of debugging a skin-loading failure went to stale binaries, not
+to the bug. The fix was correct the first time; the test kept running a
+previous build.
+
+The rules listed only the sources they compiled, and named the archives in the
+recipe alone. Make has no way to know a recipe mentions a file: an archive that
+is not a prerequisite is not a reason to relink, so rebuilding the framework
+left every test binary untouched and apparently unchanged behaviour.
+
+This is the same shape as `make apk` linking whatever archives happened to
+exist. It is worth stating as a rule, because it fails silently in exactly the
+situation where a test matters most - after a change:
+
+**Anything a recipe links belongs in the prerequisites.**
+
+All four `graphics2d` tests, the `gui` painter test and the skin spike now
+list their archives. Verified by touching a `files` source and a `gui` source
+and confirming both binaries relink.

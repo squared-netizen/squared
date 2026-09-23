@@ -81,8 +81,37 @@ test: $(PAINTER_TEST)
 $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(MODULE_DIR)/src/batch_painter.cpp \
                  $(MODULE_DIR)/src/painter.cpp \
-                 $(MODULE_DIR)/src/font_resource.cpp
+                 $(MODULE_DIR)/src/font_resource.cpp \
+                 $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ \
 	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_math.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
+
+# The spike: load a real skin and paint a Label and a Button.
+#
+#   make -C gui spike SKIN=/path/to/a/skin/directory
+#
+# Not part of `test`: it needs skin files, which the framework does not ship.
+# It is how a skin is proved loadable end to end - atlas, .fnt, font pages,
+# the JSON, the painter and the widgets - without a device.
+SKIN_SPIKE := $(BUILD_DIR)/skin_spike
+SKIN ?=
+
+.PHONY: spike
+spike: $(SKIN_SPIKE)
+	@if [ -z "$(SKIN)" ]; then \
+	  echo "usage: make -C gui spike SKIN=/path/to/skin"; exit 2; \
+	fi
+	@$(SKIN_SPIKE) $(SKIN)
+
+$(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
+               $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_scene2d.a $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
+              $(LIB_DIR)/libsquared_time.a \
+              $(LIB_DIR)/libsquared_math.a
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< \
+	    $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_scene2d.a \
+	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
+	    $(LIB_DIR)/libsquared_time.a $(LIB_DIR)/libsquared_math.a -o $@

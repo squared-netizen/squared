@@ -69,6 +69,83 @@ void append_quoted(std::string& output, std::string_view token)
     output.push_back('"');
 }
 
+/**
+ * @brief Remove commas that libGDX allows and JSON does not.
+ *
+ * A libGDX skin may end an object or array with a comma - the stock skin does,
+ * on nearly every block - and strict JSON rejects it. The normalizer above
+ * handles unquoted keys and comments; this handles the other relaxation.
+ *
+ * String-aware: a comma inside a string literal is content, not punctuation.
+ * By this point every string is quoted and escaped, so tracking quotes is
+ * enough.
+ */
+/**
+ * @brief Return one line of the normalized JSON, for an error message.
+ *
+ * The position a parser reports refers to the text it was given, not to the
+ * file on disk - normalization has quoted bare tokens and removed comments by
+ * then. Quoting the line back is the difference between "line 8 is wrong" and
+ * knowing what line 8 became.
+ */
+[[nodiscard]] std::string line_of(const std::string& text, std::size_t line)
+{
+    if (line == 0) return {};
+    std::size_t start = 0;
+    for (std::size_t seen = 1; seen < line; ++seen) {
+        start = text.find('\n', start);
+        if (start == std::string::npos) return {};
+        ++start;
+    }
+    const std::size_t end = text.find('\n', start);
+    std::string excerpt =
+        text.substr(start, end == std::string::npos ? end : end - start);
+    // Long lines help nobody in a log.
+    if (excerpt.size() > 120U) excerpt = excerpt.substr(0, 117U) + "...";
+    return excerpt;
+}
+
+[[nodiscard]] std::string strip_trailing_commas(const std::string& input)
+{
+    std::string output;
+    output.reserve(input.size());
+
+    bool in_string = false;
+    bool escaped = false;
+    for (std::size_t index = 0; index < input.size(); ++index) {
+        const char value = input[index];
+
+        if (in_string) {
+            output.push_back(value);
+            if (escaped) escaped = false;
+            else if (value == '\\') escaped = true;
+            else if (value == '"') in_string = false;
+            continue;
+        }
+        if (value == '"') {
+            in_string = true;
+            output.push_back(value);
+            continue;
+        }
+        if (value == ',') {
+            // Look past whitespace for the closing brace or bracket that would
+            // make this comma trailing.
+            std::size_t next = index + 1U;
+            while (next < input.size() &&
+                   (input[next] == ' ' || input[next] == '\t' ||
+                    input[next] == '\n' || input[next] == '\r')) {
+                ++next;
+            }
+            if (next < input.size() &&
+                (input[next] == '}' || input[next] == ']')) {
+                continue;   // drop it
+            }
+        }
+        output.push_back(value);
+    }
+    return output;
+}
+
 bool normalize_libgdx_json(
     std::string_view input,
     std::string& output,
@@ -831,6 +908,8 @@ bool load_libgdx_skin(
             });
             return false;
         }
+        strict = strip_trailing_commas(strict);
+
         data::JsonParseOptions options;
         options.maximum_bytes = strict.size();
         options.maximum_depth = limits.maximum_depth;
@@ -843,7 +922,8 @@ bool load_libgdx_skin(
                 "invalid libGDX skin JSON at line " +
                     std::to_string(parsed.error.line) + ":" +
                     std::to_string(parsed.error.column) + ": " +
-                    parsed.error.message
+                    parsed.error.message + "\n      " +
+                    line_of(strict, parsed.error.line)
             });
             return false;
         }
