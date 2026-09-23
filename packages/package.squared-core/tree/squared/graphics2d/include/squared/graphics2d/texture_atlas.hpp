@@ -1,5 +1,6 @@
 #pragma once
 
+#include <squared/files/file_handle.hpp>
 #include <squared/graphics2d/atlas_region.hpp>
 #include <squared/graphics2d/texture.hpp>
 #include <squared/graphics2d/texture_recovery_policy.hpp>
@@ -38,7 +39,7 @@ public:
      * Page image paths are resolved relative to it.
      * @return true when every page and region loaded successfully.
      */
-    [[nodiscard]] bool load(const char* atlas_path) noexcept;
+    [[nodiscard]] bool load(const files::FileHandle& atlas) noexcept;
 
     /**
      * @brief Load an atlas using one recovery policy for every page.
@@ -50,7 +51,7 @@ public:
      * @return true when every page and region loaded successfully.
      */
     [[nodiscard]] bool load(
-        const char* atlas_path,
+        const files::FileHandle& atlas,
         TextureRecoveryPolicy page_recovery
     ) noexcept;
 

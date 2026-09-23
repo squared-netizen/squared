@@ -97,6 +97,51 @@ than storing a second copy. The region already carries it because its UV
 arithmetic depends on it, and a duplicate could disagree with the coordinates
 it is meant to describe.
 
+## TextureAtlas
+
+One pass over the libGDX `.atlas` text. The whole grammar is indentation: an
+unindented line names a page or a region, an indented one is a property of the
+region above it, and a blank line means the next unindented line names a page.
+
+`load()` takes a `files::FileHandle`, and pages are resolved with
+`sibling()` - the handle carries its file system, so an atlas works against
+the APK and a directory alike with no path juggling.
+
+**The parse is staged.** A region's properties arrive after its name, and its
+`TextureRegion` cannot exist until its page is loaded, so the parse collects
+plain numbers into a local vector and builds the real regions once at the end.
+
+`textures_` is `vector<unique_ptr<Texture>>` and the class is non-movable, both
+load-bearing: every region holds a `const Texture*`, and a plain vector would
+dangle all of them on reallocation.
+
+**The filter comes from the file and nothing can override it.** `filter:
+Nearest,Nearest` is what the packer intended; commodore64 is unreadable at
+Linear. Every MipMap variant maps to Linear, because squared uploads no
+mipmaps and a mipmapped minification filter without them samples black.
+`repeat:` maps to wrap the same way.
+
+`size:` is passed to `TextureRegion` unchanged even when `rotate: true`. The
+region swaps its own storage extents; swapping here as well would undo it.
+
+**Recovery.** The one-argument `load()` uses `ReloadFromAsset`: a page always
+has an asset behind it and it costs nothing resident. `Regenerate` is refused,
+because it needs a callback and the parameter is a bare policy - accepting it
+would produce an atlas that silently fails to come back after a phone call.
+
+`restore()` refreshes every region after restoring the pages. The pixels come
+back from the same file in the same layout, so the coordinates still describe
+them, and only the recorded generation is stale. This is the case
+`TextureRegion::refresh()` exists for: the atlas asserting the layout matches
+on its regions' behalf. A page that fails leaves its regions invalid, which is
+correct.
+
+Under `Discard`, regions stay listed and report themselves invalid rather than
+being dropped, so `region_count()` does not change under the caller.
+
+`k_max_pages` and `k_max_regions` bound what a corrupt file can make this
+allocate before anything notices.
+
 ## Notes
 
 `graphics2d/src/detail/bitmap_font_detail.hpp` holds the

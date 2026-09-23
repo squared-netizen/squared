@@ -37,3 +37,42 @@ Developer counterpart: [../developer/graphics2d.md](../developer/graphics2d.md)
 | `TextureRecoveryTarget` | `squared/graphics2d/texture_recovery_target.hpp` | Synchronous destination supplied to a regeneration callback |
 | `TextureRegion` | `squared/graphics2d/texture_region.hpp` | Non-owning rectangular view into a Texture |
 | `TextureWrap` | `squared/graphics2d/texture_wrap.hpp` | Texture coordinate wrapping mode |
+
+## Loading an atlas
+
+```cpp
+sq::graphics2d::TextureAtlas atlas;
+if (!atlas.load(runtime.files.internal("skins/default/skin/uiskin.atlas"))) {
+    return false;
+}
+
+const sq::graphics2d::AtlasRegion* button = atlas.find_region("default-round");
+if (button != nullptr && button->region().valid()) {
+    // draw with button->region()
+}
+```
+
+Pages are resolved next to the atlas file, so the `.png` the atlas names is
+found wherever the atlas came from - inside the APK or on disk.
+
+`find_region(name)` returns the first region with that name;
+`find_region(name, index)` selects among regions packed under the same name.
+It returns `nullptr` when there is none.
+
+Filtering is taken from the atlas file. A pixel-art skin that asks for
+`Nearest` gets it, and nothing you pass can override that.
+
+After context loss:
+
+```cpp
+void App::surface_created(sq::graphics::Context& graphics) {
+    if (!graphics.resources_preserved()) {
+        atlas_.invalidate();          // not release(): the old context is gone
+        if (!atlas_.restore()) { /* the atlas could not be rebuilt */ }
+    }
+}
+```
+
+`restore()` reloads every page and re-validates every region for you. Any
+`AtlasRegion` you are holding is usable again afterwards, without being
+re-fetched.
