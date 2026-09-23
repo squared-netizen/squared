@@ -142,6 +142,54 @@ being dropped, so `region_count()` does not change under the caller.
 `k_max_pages` and `k_max_regions` bound what a corrupt file can make this
 allocate before anything notices.
 
+## SpriteBatch
+
+Split like `Texture`: `src/common/sprite_batch_common.cpp` holds the vertex
+building, the flush decisions and the begin/draw/end state; the GPU half -
+buffers, the shader, the draw call - is per backend. It does not build on
+`sq::gles`, because the header stores raw handles and `graphics2d` depending
+on `gles` would invert the layering.
+
+**80 bytes**, plus one vertex buffer allocated at `initialize()` and never
+grown. A frame loop must not allocate, and a vector that reallocated mid-frame
+would be exactly that: capacity is the budget and `flush()` enforces it.
+
+**Two reasons to flush, and they are the same reason** - what is queued can no
+longer go in one draw call. A different texture cannot share the call; a full
+buffer has nowhere to put the next quad.
+
+Texture identity is compared **by address**, not by GL name. That is what a
+flush decision actually asks, the name is private to `Texture` anyway, and the
+backend binds through the public `bind()`.
+
+**A region that fails `valid()` is skipped**, not drawn. Its texture may have
+been discarded or reloaded underneath it, and drawing would sample whatever
+now occupies that unit. This is the payoff for the generation counter.
+
+`invalidate()` and `release()` **abandon whatever was queued**. Leaving
+`drawing_` set would make the next `begin()` look like a nested one - a
+programmer error - when the real cause was the context going away. `begin()`
+asserts on a genuine nested call, because that means two pieces of code
+believe they own the batch.
+
+Capacity is capped at 16384 sprites: six indices per sprite must stay
+addressable by the 16-bit index buffer.
+
+Indices are uploaded once as `GL_STATIC_DRAW` - quad N is always the same six
+values - so a flush uploads vertices only, as `GL_STREAM_DRAW`.
+
+### The null backend counts draw calls
+
+Batching is invisible from outside: the same pixels appear whether they took
+one draw call or a thousand, and only the frame time tells you which. The
+headless backend counts them, so `make -C graphics2d test` asserts the
+decisions directly - one call for ten sprites sharing a texture, two when the
+texture switches once, six when two textures interleave six times, and a flush
+exactly at the capacity boundary.
+
+That last number is the argument for sorting by texture, made in a test rather
+than in a comment.
+
 ## Notes
 
 `graphics2d/src/detail/bitmap_font_detail.hpp` holds the

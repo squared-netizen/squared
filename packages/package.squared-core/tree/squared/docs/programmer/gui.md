@@ -144,3 +144,30 @@ public:
 
 Without the override the widget still takes keyboard focus and still receives
 `text_input()`, but the on-screen keyboard is not raised for it on Android.
+
+## Drawing the interface
+
+Widgets draw through a `Painter`. `BatchPainter` is the one that puts them on
+screen:
+
+```cpp
+sq::gui::BatchPainter painter{batch, &default_font};
+painter.set_fill_source(skin.region("white"));      // see below
+painter.set_viewport(640.0F, 480.0F, graphics.pixel_width(),
+                     graphics.pixel_height());
+
+if (batch.begin(camera)) {
+    ui.paint(painter, skin);
+    batch.end();
+}
+```
+
+Call `set_viewport()` again on resize. Only clipping needs it.
+
+**Pass the skin's `white` region.** Solid fills are drawn from it, so they
+share an atlas page with every other widget graphic and the interface costs
+one draw call instead of one per fill. Both stock skins ship a `white` region
+for exactly this. Passing `nullptr` works and costs a draw call per fill.
+
+Clipping is handled for you: a scroll pane pushes a clip, and anything drawn
+inside it is scissored to that rectangle. Nested clips intersect.

@@ -76,3 +76,40 @@ void App::surface_created(sq::graphics::Context& graphics) {
 `restore()` reloads every page and re-validates every region for you. Any
 `AtlasRegion` you are holding is usable again afterwards, without being
 re-fetched.
+
+## Drawing
+
+```cpp
+sq::graphics2d::SpriteBatch batch;
+if (!batch.initialize()) { return false; }          // 2048 sprites by default
+
+// each frame
+if (batch.begin(camera)) {
+    batch.draw(*atlas.find_region("default-round"), 10, 10, 64, 64);
+    batch.draw(sprite);
+    batch.end();
+}
+```
+
+`begin()` returns false if the batch has no GPU objects - after context loss,
+before `restore()`. `end()` draws whatever is left queued.
+
+**Draw sprites sharing a texture together.** The batch issues one draw call per
+run of sprites from the same texture, so ten sprites from one atlas cost one
+call, while alternating between two textures six times costs six. Regions from
+the same atlas page share a texture, which is most of why atlases exist.
+
+A region whose texture was discarded or reloaded is skipped rather than drawn,
+so a stale region leaves a gap instead of showing the wrong pixels.
+
+After context loss:
+
+```cpp
+if (!graphics.resources_preserved()) {
+    batch_.invalidate();
+    if (!batch_.restore()) { /* the batch could not be rebuilt */ }
+}
+```
+
+`invalidate()` abandons anything queued, so you do not need to call `end()`
+first.

@@ -18,6 +18,7 @@ INCLUDES := -I$(SQUARED_ROOT)/gui/include \
             -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/button.cpp \
+    src/batch_painter.cpp \
     src/button_group.cpp \
     src/cell.cpp \
     src/check_box.cpp \
@@ -52,6 +53,7 @@ OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/gui/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
 TARGET := $(LIB_DIR)/libsquared_gui.a
 
+
 .PHONY: all clean
 all: $(TARGET)
 
@@ -67,3 +69,20 @@ clean:
 	rm -rf $(OBJ_DIR)/gui $(TARGET)
 
 -include $(DEPENDS)
+
+# BatchPainter against the headless backend: draw-call counts and the scissor
+# conversion, neither of which can be seen by looking at the screen.
+PAINTER_TEST := $(BUILD_DIR)/batch_painter_test
+
+.PHONY: test
+test: $(PAINTER_TEST)
+	@$(PAINTER_TEST)
+
+$(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
+                 $(MODULE_DIR)/src/batch_painter.cpp \
+                 $(MODULE_DIR)/src/painter.cpp \
+                 $(MODULE_DIR)/src/font_resource.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ \
+	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_math.a \
+	    $(LIB_DIR)/libsquared_files.a -o $@

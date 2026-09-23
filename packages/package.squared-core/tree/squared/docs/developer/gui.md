@@ -45,3 +45,63 @@ platform soft keyboard. `TextField` returns true; everything else returns
 false. `Ui` reads it in three places and no longer names `TextField` at all,
 which is why `ui.cpp` does not include `text_field.hpp`. Any custom text-entry
 widget can opt in by overriding it.
+
+## BatchPainter
+
+The concrete end of the widget set: every `Painter` call becomes a quad in a
+`SpriteBatch`. It owns neither the batch nor the font.
+
+**Fills come from the skin's `white` region, not a texture of the painter's
+own.** That is the whole reason `set_fill_source()` exists. A painter with its
+own 1x1 white texture forces a texture switch at every fill, and therefore a
+draw call; taking white from the atlas means fills share a page with every
+other widget graphic and a whole interface can be one call. The test measures
+both: four sprites, one draw call with the skin's white, four draw calls
+without.
+
+Passing null is supported and creates an owned 1x1. It is the fallback, not
+the intent.
+
+### Clipping
+
+`push_clip`/`pop_clip` map onto `SpriteBatch::set_clip`, which takes a scissor
+rectangle in framebuffer pixels.
+
+The conversion lives here rather than in the batch because only the caller
+knows its own camera and drawable size; `set_viewport()` supplies both. The
+GUI measures y downwards from the top and a scissor measures upwards from the
+bottom, so `bottom = pixel_height - top - height`. Getting that wrong clips
+the mirror image of what was asked for, which is why the test asserts the
+exact scissor values rather than that clipping "happened".
+
+Nested clips intersect: a child may narrow what its parent allowed, never
+widen it.
+
+The stack is a fixed `std::array` of 16, not a vector: push and pop run per
+frame, and a container that could allocate in the frame loop is what the
+memory rules exist to prevent. Past 16 the parent's clip stays in force -
+overdrawing is wrong in a way you can see, clipping to the wrong rectangle is
+wrong in a way you cannot.
+
+**Why the batch owns the scissor.** Changing it requires flushing, because it
+cannot change part-way through a draw call. Anywhere else the flush and the
+change could be desynchronised, and forgetting the flush does not fail loudly:
+it tears, intermittently, depending on what was queued. `end()` clears any
+clip, so one frame cannot restrict the next.
+
+## An ODR violation the first link exposed
+
+`detail::parse_record` and its siblings were defined in
+`graphics2d/src/detail/bitmap_font_detail.hpp` without `inline`, so
+`bitmap_font.o` and `glyph_layout.o` both emitted them. Archiving never
+noticed; the first executable to link both objects failed.
+
+That had been latent since the font code was written, and would have surfaced
+in an application rather than here. The whole tree is now checked with
+
+```sh
+g++ main.cpp -Wl,--whole-archive build/release/lib/*.a -Wl,--no-whole-archive
+```
+
+which forces every object of every archive into one binary. It is worth
+re-running after adding anything to a `detail/` header.

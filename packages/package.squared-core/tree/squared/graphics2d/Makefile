@@ -22,8 +22,10 @@ INCLUDES := -I$(STB_DIR) -I$(SQUARED_ROOT)/files/include -I$(SQUARED_ROOT)/graph
 
 SOURCES := src/detail/image_decode.cpp \
     src/common/atlas_region.cpp \
+    src/common/sprite_batch_common.cpp \
     src/common/texture_atlas.cpp \
     src/common/texture_common.cpp \
+    src/$(SQUARED_GRAPHICS_BACKEND)/sprite_batch.cpp \
     src/$(SQUARED_GRAPHICS_BACKEND)/texture.cpp \
     src/bitmap_font.cpp \
     src/glyph_layout.cpp \
@@ -64,10 +66,26 @@ ATLAS_TEST := $(BUILD_DIR)/texture_atlas_test
 
 # Every test runs on every `make test`, not only when it was rebuilt: a suite
 # that quietly skips what is up to date reports green without having run.
-test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST)
+BATCH_TEST := $(BUILD_DIR)/sprite_batch_test
+
+test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST)
 	@$(TEST_BINARY)
 	@$(TEXTURE_TEST)
 	@$(ATLAS_TEST)
+	@$(BATCH_TEST)
+
+$(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
+               $(MODULE_DIR)/src/common/sprite_batch_common.cpp \
+               $(MODULE_DIR)/src/null/sprite_batch.cpp \
+               $(MODULE_DIR)/src/common/texture_common.cpp \
+               $(MODULE_DIR)/src/null/texture.cpp \
+               $(MODULE_DIR)/src/orthographic_camera.cpp \
+               $(MODULE_DIR)/src/detail/image_decode.cpp \
+               $(STB_OBJECT)
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_math.a \
+	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
                $(MODULE_DIR)/src/common/atlas_region.cpp \
@@ -79,10 +97,10 @@ $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
 	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(MODULE_DIR)/src/common/atlas_region.cpp \
-    src/common/texture_atlas.cpp \
                  $(MODULE_DIR)/src/common/texture_common.cpp \
                  $(MODULE_DIR)/src/null/texture.cpp \
                  $(MODULE_DIR)/src/detail/image_decode.cpp \

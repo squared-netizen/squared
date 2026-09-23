@@ -20,12 +20,12 @@ namespace sq::graphics2d::detail {
 
 using Fields = std::unordered_map<std::string_view, std::string_view>;
 
-[[nodiscard]] bool is_space(char value) noexcept
+[[nodiscard]] inline bool is_space(char value) noexcept
 {
     return value == ' ' || value == '\t';
 }
 
-[[nodiscard]] bool valid_scalar(char32_t value) noexcept
+[[nodiscard]] inline bool valid_scalar(char32_t value) noexcept
 {
     return value <= 0x10FFFF && !(value >= 0xD800 && value <= 0xDFFF);
 }
@@ -40,7 +40,7 @@ inline void fail(
     error = BitmapFontError{code, line, std::move(message)};
 }
 
-[[nodiscard]] bool parse_record(
+[[nodiscard]] inline bool parse_record(
     std::string_view line,
     std::string_view& tag,
     Fields& fields,
@@ -124,7 +124,7 @@ inline void fail(
 }
 
 template <typename Integer>
-[[nodiscard]] bool integer_field(
+[[nodiscard]] inline bool integer_field(
     const Fields& fields,
     std::string_view name,
     Integer& result,
@@ -153,7 +153,7 @@ template <typename Integer>
     return true;
 }
 
-[[nodiscard]] bool safe_page_path(std::string_view path) noexcept
+[[nodiscard]] inline bool safe_page_path(std::string_view path) noexcept
 {
     if (path.empty() || path.front() == '/' || path.find('\\') != path.npos ||
         path.find(':') != path.npos) {
@@ -176,7 +176,7 @@ template <typename Integer>
     return true;
 }
 
-[[nodiscard]] std::optional<char32_t> decode_utf8(
+[[nodiscard]] inline std::optional<char32_t> decode_utf8(
     std::string_view text,
     std::size_t& cursor
 ) noexcept

@@ -9,6 +9,7 @@ namespace sq::graphics2d {
 
 class OrthographicCamera;
 class Sprite;
+class Texture;
 class TextureRegion;
 
 /**
@@ -100,13 +101,62 @@ public:
     void flush() noexcept;
 
     /**
+     * @brief Restrict drawing to a rectangle of the framebuffer.
+     * @param x Left edge in framebuffer pixels.
+     * @param y Bottom edge in framebuffer pixels, measured from the bottom.
+     * @param width Width in pixels; zero or negative clips everything away.
+     * @param height Height in pixels.
+     *
+     * @note Pixels, not logical units, and bottom-left origin - this is the
+     * scissor rectangle as the graphics API means it. Converting from whatever
+     * coordinate system the caller uses is the caller's job, because only the
+     * caller knows its own camera and drawable size.
+     *
+     * @note Flushes first. The scissor cannot change part-way through a draw
+     * call, so everything already queued must be drawn under the old one. That
+     * is why this lives on the batch: the flush and the change are inseparable,
+     * and anywhere else they could be desynchronised.
+     */
+    void set_clip(int x, int y, int width, int height) noexcept;
+
+    /** @brief Stop restricting drawing. Flushes first, for the same reason. */
+    void clear_clip() noexcept;
+
+    /**
      * @brief Check initialization state.
      * @return true when initialization succeeded.
      */
     [[nodiscard]] bool valid() const noexcept;
 
+    /**
+     * @brief Read how many sprites one batch may hold before it must flush.
+     * @return The capacity given to initialize().
+     */
+    [[nodiscard]] std::size_t sprite_capacity() const noexcept;
+
+    /**
+     * @brief Read how many sprites are queued and not yet drawn.
+     * @return Zero outside begin()/end(), or straight after a flush.
+     */
+    [[nodiscard]] std::size_t queued_sprites() const noexcept;
+
+    /** @brief Report whether begin() has been called without a matching end(). */
+    [[nodiscard]] bool drawing() const noexcept;
+
 private:
+    // Implemented per backend; everything else is backend-independent.
     [[nodiscard]] bool allocate_gpu_objects() noexcept;
+    [[nodiscard]] bool set_projection(
+        const OrthographicCamera& camera
+    ) noexcept;
+    void destroy_gpu_objects() noexcept;
+
+    // Backend-independent: abandons whatever a lost or released context left
+    // queued. Called by each backend's invalidate() and release().
+    void discard_queue() noexcept;
+
+    // Per backend. A negative width means "no clip".
+    void apply_clip(int x, int y, int width, int height) noexcept;
     void append_quad(
         const TextureRegion& region,
         const float* positions,
@@ -121,7 +171,11 @@ private:
     unsigned int program_{0};
     int projection_uniform_{-1};
     int texture_uniform_{-1};
-    unsigned int active_texture_{0};
+    // The texture the current batch is drawing from, by address rather than
+    // by GL name. Identity is what a flush decision actually asks about, and
+    // the name is private to Texture anyway - the backend binds through its
+    // public bind().
+    const Texture* active_texture_{nullptr};
     bool drawing_{false};
     bool invalidated_{false};
 };
