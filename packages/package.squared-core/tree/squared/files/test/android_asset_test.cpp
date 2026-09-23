@@ -118,7 +118,7 @@ int main()
         assetstub::add("skins/default/skin/default.fnt", "fnt");
         assetstub::add("audio/sfx/ui/click.ogg", "ogg");
         assetstub::add("readme.txt", "hi");
-        assetstub::add(".squared/index",
+        assetstub::add("SQ-INF/index",
             "skins/default/skin/uiskin.atlas\n"
             "skins/default/skin/uiskin.png\n"
             "skins/default/skin/default.fnt\n"
@@ -145,7 +145,7 @@ int main()
             return false;
         };
         assert(has("skins") && has("audio") && has("readme.txt"));
-        assert(!has(".squared"));          // the framework dir is hidden
+        assert(!has("SQ-INF"));            // bundle metadata is hidden
         assert(names.size() == 3);         // no duplicates from shared prefixes
 
         std::vector<FileHandle> skins;

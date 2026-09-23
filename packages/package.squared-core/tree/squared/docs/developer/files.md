@@ -98,7 +98,7 @@ including every alternative that was rejected and why, is in
 [asset-index.md](asset-index.md). `AAssetDir` &mdash; the NDK's
 only way to walk assets &mdash; lists files and never subdirectories. libGDX
 sidesteps this by calling the Java `AssetManager.list()`; squared has no Java.
-So packaging writes every asset path into `assets/.squared/index`,
+So packaging writes every asset path into `assets/SQ-INF/index`,
 and `list()`, `is_directory()` and `exists()` answer directory questions from
 it.
 

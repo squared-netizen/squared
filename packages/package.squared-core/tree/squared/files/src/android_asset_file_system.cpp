@@ -76,14 +76,21 @@ bool escapes_root(std::string_view path) noexcept
  * every asset path into this file instead, and directory questions are
  * answered from it.
  *
- * It lives under a framework-owned directory so it cannot collide with an
- * asset the application ships, and so the application's own top level stays
- * the application's. See docs/developer/asset-index.md.
+ * It lives under SQ-INF/, the metadata directory every squared bundle carries -
+ * the same convention sqcart uses for SQ-INF/manifest.json, after Java's
+ * META-INF. SQ-INF holds data *about* the bundle, never content, so it is
+ * excluded from the index and hidden from listings, and it cannot collide with
+ * an asset the application ships.
+ *
+ * Not a dot-directory, and not one beginning with an underscore: aapt2 skips
+ * both when packaging assets, without a warning. An index at .squared/index
+ * was generated, passed to -A, and never reached the APK. See
+ * docs/developer/asset-index.md.
  */
-constexpr const char* k_index_path = ".squared/index";
+constexpr const char* k_index_path = "SQ-INF/index";
 
-/** @brief The framework-owned directory holding the index, hidden from lists. */
-constexpr const char* k_framework_directory = ".squared";
+/** @brief The bundle-metadata directory, hidden from root listings. */
+constexpr const char* k_framework_directory = "SQ-INF";
 
 /**
  * @brief Read the index, one asset path per line.

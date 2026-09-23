@@ -123,16 +123,16 @@ fs.internal("skins").list(entries);          // returns default/ on device too
 ```
 
 On Android, listing and `is_directory()` are answered from an index the build
-writes into the APK at `assets/.squared/index`. You do not create or maintain
+writes into the APK at `assets/SQ-INF/index`. You do not create or maintain
 it; `make apk` regenerates it whenever an asset changes, and an app update
 replaces it along with everything else, so it cannot go stale.
 
 Two things to know:
 
-- Keep `sq_android/assets/.squared/` in your `.gitignore`. It is a build
-  product.
-- Do not put your own files under `assets/.squared/`. That directory is
-  squared's, and it is hidden from listings.
+- Keep `sq_android/assets/SQ-INF/index` in your `.gitignore`. It is a
+  build product.
+- Do not put assets under `assets/SQ-INF/`. It is the bundle's metadata
+  directory, excluded from the index and hidden from listings.
 
 The details, and why it works this way rather than any of the obvious
 alternatives, are in

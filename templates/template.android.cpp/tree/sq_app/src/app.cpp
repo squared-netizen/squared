@@ -11,6 +11,9 @@
 #include "app.hpp"
 
 #include <squared/app/event.hpp>
+#include <squared/app/runtime.hpp>
+#include <squared/files/file_handle.hpp>
+#include <squared/files/file_system.hpp>
 #include <squared/graphics/color.hpp>
 #include <squared/graphics/context.hpp>
 
@@ -29,6 +32,7 @@ struct App::State {
     int width{0};
     int height{0};
     bool quit{false};
+    bool skin_found{false};
 };
 
 App::App()
@@ -38,10 +42,25 @@ App::App()
 
 App::~App() = default;
 
-bool App::create(sq::graphics::Context& graphics)
+bool App::create(sq::app::Runtime& runtime)
 {
-    state_->width = graphics.pixel_width();
-    state_->height = graphics.pixel_height();
+    state_->width = runtime.graphics.pixel_width();
+    state_->height = runtime.graphics.pixel_height();
+
+    // The default skin ships in the APK. Reading it here proves the whole
+    // chain - packaging, the asset index, AndroidAssetFileSystem - before
+    // anything is built on top of it. Missing is not fatal: the app still
+    // runs, it just has no skin yet.
+    state_->skin_found =
+        runtime.files.internal("skins/default/skin/uiskin.atlas").exists();
+
+    // Visible without logcat: a dark green start means the bundled skin was
+    // found, dark red means it was not. Touching still changes the colour.
+    state_->background = state_->skin_found
+        ? sq::graphics::Color{.red = 0.08F, .green = 0.22F, .blue = 0.12F,
+                              .alpha = 1.0F}
+        : sq::graphics::Color{.red = 0.30F, .green = 0.06F, .blue = 0.06F,
+                              .alpha = 1.0F};
     return true;
 }
 

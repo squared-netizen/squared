@@ -5,7 +5,7 @@ Programmer counterpart: [../programmer/files.md](../programmer/files.md)
 ## In one line
 
 An APK's asset tree is described by a file inside the APK,
-`assets/.squared/index`, written by the build, replaced wholesale on every
+`assets/SQ-INF/index`, written by the build, replaced wholesale on every
 update, and therefore never stale.
 
 ## Why it exists
@@ -57,17 +57,39 @@ identical APK.
 
 ## Where it lives, and why there
 
-`assets/.squared/index` &mdash; inside the APK, under a directory squared
-owns.
+`assets/SQ-INF/index` &mdash; inside the APK, in the bundle's metadata
+directory.
 
 **Inside the APK** because the index describes the APK. The information only
 exists at build time, when the full tree is on disk. On the device, generating
 it would require exactly the directory walk `AAssetDir` cannot do, so it must
 be carried in rather than computed.
 
-**Under `.squared/`** so it cannot collide with an asset the application ships,
-and so the application's own top level stays the application's. `.squared/` is
-hidden from every listing of the root.
+**In `SQ-INF/`** because the index is metadata *about* the asset bundle, not
+content in it. `SQ-INF` is the same convention sqcart uses for
+`SQ-INF/manifest.json`, after Java's `META-INF`: one directory per bundle that
+describes the bundle. Everything in it is excluded from the index and hidden
+from listings of the root, and an uppercase hyphenated name is very unlikely
+to collide with an application's own assets.
+
+It is unrelated to the `META-INF/` at the root of every APK, which holds the
+signatures. That sits at the zip root; `SQ-INF/` sits under `assets/`.
+
+### Why not a hidden directory
+
+The first version put the index at `assets/.squared/index`. It was generated,
+passed to `aapt2 link -A`, and **never reached the APK**: aapt2 silently skips
+hidden files and directories when packaging assets. `unzip -l` on the built
+APK showed all thirty-two skin files and no index.
+
+aapt's default ignore pattern also skips directories whose names begin with an
+underscore, so `_SQ-INF/` would fail the same way. The name must start with
+neither.
+
+Nothing broke visibly when the index was missing: opening a file by full path
+never uses it, so the launch check still passed. Only directory questions
+degraded. That is why it went unnoticed until the APK was inspected, and why
+the location is now verified by listing the APK rather than assumed.
 
 ## Why it is never stale
 
@@ -131,18 +153,23 @@ behaviour before the index existed. Degraded, not broken.
 Packaging writes it. In the template's `mk/squared_android_package.mk`:
 
 ```make
-SQ_ASSET_INDEX := $(SQ_ASSETS_DIR)/.squared/index
+SQ_ASSET_INDEX := $(SQ_ASSETS_DIR)/SQ-INF/index
 
 $(SQ_ASSET_INDEX): $(SQ_ASSET_FILES)
 	@mkdir -p $(dir $@)
-	@cd $(SQ_ASSETS_DIR) && find . -type f ! -path './.squared/*' \
-	  | sed 's|^\./||' | LC_ALL=C sort > .squared/index
+	@cd $(SQ_ASSETS_DIR) && find . -type f ! -path './SQ-INF/*' \
+	  | sed 's|^\./||' | LC_ALL=C sort > SQ-INF/index
 ```
 
 and make the APK depend on `$(SQ_ASSET_INDEX)` so it is regenerated before
 `aapt2 link -A $(SQ_ASSETS_DIR)` packages the directory.
 
-The `! -path './.squared/*'` matters: without it the index would list itself.
+The `! -path './SQ-INF/*'` matters: without it the index would list itself,
+and any other bundle metadata as though it were an asset.
+
+When there are no real assets the build removes only the index file, and
+`SQ-INF/` only if that leaves it empty. It never deletes a file it did not
+write &mdash; a hand-written manifest in `SQ-INF/` survives.
 
 ## In a generated project
 
@@ -150,7 +177,7 @@ The index is a build product that happens to sit in the source tree, so it
 belongs in the project's `.gitignore`:
 
 ```
-sq_android/assets/.squared/
+sq_android/assets/SQ-INF/
 ```
 
 It is regenerated on every packaging run; committing it would only produce
@@ -159,7 +186,7 @@ anyway. Nobody should edit it by hand.
 
 ## On the desktop
 
-`PosixFileSystem` serves `Internal` from a real directory, where `.squared/`
+`PosixFileSystem` serves `Internal` from a real directory, where `SQ-INF/`
 is an ordinary folder and will appear in a listing of the root if it has been
 generated there. That is deliberate and harmless: the desktop and Termux build
 environments are not where assets are consumed, the finished APK is. The

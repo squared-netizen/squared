@@ -38,7 +38,12 @@ public:
     App& operator=(const App&) = delete;
 
     /// Once, before the first frame. Return false to abort startup.
-    [[nodiscard]] bool create(sq::graphics::Context& graphics) override;
+    ///
+    /// The runtime carries the rendering context, the file system and the
+    /// asset manager. Keep references to what you use; they live for the whole
+    /// process. Bundled files - the default skin among them - are under
+    /// runtime.files.internal(...).
+    [[nodiscard]] bool create(sq::app::Runtime& runtime) override;
 
     /// Input, lifecycle and text. One event at a time, already translated out
     /// of whatever the platform speaks.

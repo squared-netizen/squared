@@ -1,6 +1,7 @@
 #pragma once
 
 #include <squared/app/event.hpp>
+#include <squared/app/runtime.hpp>
 #include <squared/app/text_input.hpp>
 #include <squared/app/text_input_service.hpp>
 
@@ -29,12 +30,15 @@ public:
     /**
      * @brief Initialize logical state once.
      *
-     * @param graphics The active platform rendering context.
+     * @param runtime The platform services: rendering context, file system
+     * and asset manager. Keep references to the members you use; the objects
+     * they refer to live for the whole process.
      * @return `true` when the application may enter its event loop.
+     * @note Only create() receives the whole runtime. render() still takes the
+     * context alone, because a frame should not be reaching into the file
+     * system or the asset cache sixty times a second.
      */
-    [[nodiscard]] virtual bool create(
-        graphics::Context& graphics
-    ) = 0;
+    [[nodiscard]] virtual bool create(Runtime& runtime) = 0;
 
     /**
      * @brief Receive one platform-neutral input or lifecycle event.

@@ -11,6 +11,8 @@
 //
 //   * runs the android_native_app_glue event loop
 //   * owns the sq::graphics::Context and its surface lifetime
+//   * owns the file system and asset manager, and hands the application a
+//     sq::app::Runtime referring to all three
 //   * translates NativeActivity lifecycle and input into sq::app::Event
 //   * measures frame time and drives update() separately from render()
 //
@@ -23,6 +25,9 @@
 #include "app.hpp"
 
 #include <squared/app/event.hpp>
+#include <squared/app/runtime.hpp>
+#include <squared/assets/asset_manager.hpp>
+#include <squared/files/android_asset_file_system.hpp>
 #include <squared/app/key_modifier.hpp>
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/context_config.hpp>
@@ -99,18 +104,58 @@ sq::app::KeyModifiers translate_modifiers(std::int32_t state) {
     return modifiers;
 }
 
+/// Storage roots from the activity.
+///
+/// Android's "internal storage" - internalDataPath - is squared's Local:
+/// private, writable, no permission needed, removed on uninstall. squared's
+/// Internal is the read-only asset bundle inside the APK, which the file
+/// system reaches through the asset manager instead.
+///
+/// externalDataPath is null when external storage is not mounted. An empty
+/// root makes every External path fail cleanly rather than resolve somewhere
+/// unintended.
+sq::files::AndroidStorageRoots storage_roots(const android_app* native) {
+    const ANativeActivity* activity = native->activity;
+    return sq::files::AndroidStorageRoots{
+        .local_root = activity->internalDataPath != nullptr
+                          ? activity->internalDataPath : "",
+        .external_root = activity->externalDataPath != nullptr
+                             ? activity->externalDataPath : ""};
+}
+
 /// Everything the platform layer owns for the lifetime of the process.
 ///
 /// Held in one struct rather than as globals so that the glue's userData
 /// pointer is the only piece of shared state, and so ownership is obvious when
 /// you come to change this file.
+///
+/// Member order is construction order, and it matters here: the asset manager
+/// holds a reference to the file system, and the runtime holds references to
+/// all three services, so each must be declared after what it refers to. The
+/// application comes last, so everything it is handed already exists.
 struct Platform {
-    {{project_name}}::App app;
+    explicit Platform(android_app* native)
+        : files(*native->activity->assetManager, storage_roots(native))
+        , assets(files)
+        , runtime{graphics, files, assets} {}
+
+    Platform(const Platform&) = delete;
+    Platform& operator=(const Platform&) = delete;
+
     sq::graphics::Context graphics;
+    sq::files::AndroidAssetFileSystem files;
+    sq::assets::AssetManager assets;
+    sq::app::Runtime runtime;
+    {{project_name}}::App app;
 
     bool has_focus{false};
     bool surface_ready{false};
     bool created{false};
+
+    /// Set once the application has asked to quit and ANativeActivity_finish
+    /// has been called. From then on nothing is drawn, and the loop only waits
+    /// for Android to tear the activity down.
+    bool finishing{false};
     Clock::time_point last_frame{Clock::now()};
 
     void send(const Event& event) { app.handle_event(event); }
@@ -143,7 +188,7 @@ struct Platform {
                 graphics.resources_preserved() ? "preserved" : "lost");
 
         if (!created) {
-            if (!app.create(graphics)) {
+            if (!app.create(runtime)) {
                 SQ_LOGW("app: create() failed");
                 surface_ready = false;
                 return;
@@ -363,7 +408,8 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
     }
 
     // Returning 1 for BACK stops Android closing the activity behind our back;
-    // the application decides, through quit_requested().
+    // the application decides, through quit_requested(), and android_main
+    // then finishes the activity.
     return 1;
 }
 
@@ -386,30 +432,52 @@ void android_main(android_app* app) {
     // Heap-allocated because the glue's userData is a void*, and because
     // Platform holds the graphics context, which must be destroyed before this
     // function returns.
-    auto platform = std::make_unique<Platform>();
+    auto platform = std::make_unique<Platform>(app);
     app->userData = platform.get();
     app->onAppCmd = on_command;
     app->onInputEvent = on_input;
+
+    // Releases everything the platform owns, once, on the way out. One place
+    // rather than two copies in the loop below, so they cannot drift apart.
+    const auto shut_down = [&] {
+        SQ_LOGI("shutting down");
+        platform->detach();
+        platform->app.dispose();
+        app->userData = nullptr;
+    };
 
     while (true) {
         int events = 0;
         android_poll_source* source = nullptr;
 
-        // Block only when there is nothing to draw. With a live surface we
-        // poll with a zero timeout and render continuously; without one we
-        // wait, so a backgrounded app costs no battery.
-        const int timeout = platform->surface_ready ? 0 : -1;
+        // Quitting does not happen by returning from android_main. That only
+        // ends this thread: the activity stays on screen, frozen on its last
+        // frame, and the back button appears to have done nothing.
+        //
+        // ANativeActivity_finish asks Android to close the activity. Android
+        // then runs the ordinary teardown - pause, window gone, stop, destroy -
+        // and the glue reports destroyRequested at the end of it. Only then is
+        // it safe to return. Called once; finishing guards it.
+        if (!platform->finishing && platform->app.quit_requested()) {
+            SQ_LOGI("finishing");
+            platform->finishing = true;
+            ANativeActivity_finish(app->activity);
+        }
 
-        // The shutdown check sits outside the poll loop as well as inside it.
+        // Block only when there is nothing to draw. With a live surface we
+        // poll with a zero timeout and render continuously; without one - or
+        // once finishing - we wait, so a closing or backgrounded app costs no
+        // battery.
+        const int timeout =
+            platform->surface_ready && !platform->finishing ? 0 : -1;
+
+        // The destroy check sits outside the poll loop as well as inside it.
         // Inside alone is enough while ALooper_pollOnce blocks on a -1 timeout,
         // which it does on a device - but if it ever returns immediately with
         // nothing to report, an inside-only check never runs and the outer
         // loop spins at full CPU without ever noticing a destroy request.
-        if (app->destroyRequested != 0 || platform->app.quit_requested()) {
-            SQ_LOGI("shutting down");
-            platform->detach();
-            platform->app.dispose();
-            app->userData = nullptr;
+        if (app->destroyRequested != 0) {
+            shut_down();
             return;
         }
 
@@ -417,16 +485,15 @@ void android_main(android_app* app) {
                                 reinterpret_cast<void**>(&source)) >= 0) {
             if (source != nullptr) source->process(app, source);
 
-            if (app->destroyRequested != 0 || platform->app.quit_requested()) {
-                SQ_LOGI("shutting down");
-                platform->detach();
-                platform->app.dispose();
-                app->userData = nullptr;
+            if (app->destroyRequested != 0) {
+                shut_down();
                 return;
             }
-            if (platform->surface_ready) break;
+            if (platform->surface_ready && !platform->finishing) break;
         }
 
-        platform->frame();
+        // Nothing is drawn once finishing: the application has said it is
+        // done, and its last frame should be the one it chose.
+        if (!platform->finishing) platform->frame();
     }
 }

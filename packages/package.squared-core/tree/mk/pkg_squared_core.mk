@@ -32,6 +32,13 @@ endif
 ifneq ($(strip $(SQ_GLES_AVAILABLE)),)
 
 SQUARED_GRAPHICS_BACKEND := gles
+
+# The platform decides which FileSystem is compiled. On Android that is
+# AndroidAssetFileSystem, which reads the APK's assets through AAssetManager;
+# without it FileType::Internal cannot reach a single bundled file.
+#
+# Deliberately a separate variable from the backend. "Has GLES" and "is
+# Android" coincide here, and are not the same question.
 SQUARED_PLATFORM := android
 
 # -idirafter, not -I.
@@ -58,6 +65,7 @@ else
 # is drawn, so the project builds and runs and shows a black window rather than
 # failing to link with a message naming a private member function.
 SQUARED_GRAPHICS_BACKEND := null
+SQUARED_PLATFORM := posix
 
 endif
 
@@ -95,15 +103,36 @@ SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 
 # --- targets ----------------------------------------------------------------
 
-# Build the vendored framework with the same toolchain and backend this project
-# uses. squared's own local.mk is not consulted: the project decides, and a
-# local.mk left in the vendored tree would silently override it.
+# Build the vendored framework with the same toolchain, backend and platform
+# this project uses. squared's own local.mk is not consulted: the project
+# decides, and a local.mk left in the vendored tree would silently override it.
+#
+# Every selector must be passed here. One that is set above but not passed is
+# silently ignored: the framework falls back to its own default and builds
+# without complaint. SQUARED_PLATFORM was exactly that for a while - set to
+# android, never passed, so every APK shipped a files library that could not
+# read its own assets.
 .PHONY: squared-core squared-core-clean squared-core-status
 squared-core:
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) \
 	    CXX="$(CXX)" \
 	    SQUARED_GRAPHICS_BACKEND=$(SQUARED_GRAPHICS_BACKEND) \
+	    SQUARED_PLATFORM=$(SQUARED_PLATFORM) \
 	    SQUARED_EXTERNAL_INCLUDES="$(if $(strip $(SQ_GL_LIBS)),-idirafter $(SQ_NDK_INC),)"
+
+# The archives are built by squared-core, and must say so.
+#
+# Without this rule the archives are plain files with no recipe. Anything that
+# links against them - the .so, and through it `make apk` - checks only that
+# they exist, never that they are current, so `make apk` would link whatever
+# happened to be lying in the tree and never build the framework at all. That
+# is how an APK once shipped a files library without AndroidAssetFileSystem in
+# it: the .so linked, and failed to load on the device.
+#
+# The recipe is deliberately empty (the trailing ';'). squared-core does the
+# work; make then re-examines each archive's timestamp, so an up-to-date
+# framework does not relink the application, and a changed one does.
+$(SQ_SQUARED_LIBS): squared-core ;
 
 squared-core-clean:
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) clean
@@ -112,6 +141,7 @@ squared-core-status:
 	@printf 'squared-core\n'
 	@printf '  %-14s %s\n' "tree" "$(SQ_SQUARED_DIR)"
 	@printf '  %-14s %s\n' "backend" "$(SQUARED_GRAPHICS_BACKEND)"
+	@printf '  %-14s %s\n' "platform" "$(SQUARED_PLATFORM)"
 	@printf '  %-14s %s\n' "headers" \
 	    "$(if $(strip $(SQ_GL_LIBS)),$(SQ_NDK_INC)  (via idirafter),not needed for the null backend)"
 	@printf '  %-14s %s\n' "libEGL" \

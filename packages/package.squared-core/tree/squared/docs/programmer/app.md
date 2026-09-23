@@ -67,3 +67,44 @@ void MyGame::handle_event(const sq::app::Event& event)
 
 Pass the `TextInputService*` you receive in `set_text_input_service` to the
 `Ui` so focused text fields raise the soft keyboard.
+
+## The runtime
+
+`create()` receives a `sq::app::Runtime` &mdash; the three services only the
+platform layer can build:
+
+```cpp
+bool MyGame::create(sq::app::Runtime& runtime)
+{
+    graphics_ = &runtime.graphics;
+    files_    = &runtime.files;
+    assets_   = &runtime.assets;
+
+    auto atlas = runtime.files.internal("skins/default/skin/uiskin.atlas");
+    return atlas.exists();
+}
+```
+
+| Member | What it is |
+|---|---|
+| `graphics` | the rendering context; survives surface loss |
+| `files` | storage: `internal` is the read-only APK bundle, `local` is private writable storage, `external` is shared |
+| `assets` | the typed asset cache, reading through `files` |
+
+Keep references to what you use. Every member refers to an object that lives
+for the whole process.
+
+Only `create()` gets the runtime. `render()` still takes the context alone,
+because a frame should not be reaching into the file system or the asset cache
+sixty times a second.
+
+### On Android, the storage names cross
+
+| squared | Android calls it | |
+|---|---|---|
+| `internal` | the APK's `assets/` | read-only, ships with the app |
+| `local` | **internal storage** | writable, private, no permission, gone on uninstall |
+| `external` | external storage | may be unmounted, so may be empty |
+
+Save games, settings and caches go in `local`. It needs no permission and is
+removed with the app.
