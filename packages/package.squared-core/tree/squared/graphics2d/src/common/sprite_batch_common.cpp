@@ -1,4 +1,6 @@
 // SpriteBatch: everything that is not a graphics call.
+
+#include <squared/graphics/context.hpp>
 //
 // Vertex building, the flush decisions, and the begin/draw/end state machine.
 // The GPU half - buffers, the shader, the draw call - is in
@@ -79,6 +81,7 @@ bool SpriteBatch::begin(const OrthographicCamera& camera) noexcept
 
     drawing_ = true;
     sprite_count_ = 0;
+    skipped_draws_ = 0;
     active_texture_ = nullptr;
     vertices_.clear();
     return set_projection(camera);
@@ -98,7 +101,10 @@ void SpriteBatch::draw(
     // A region whose texture was discarded or reloaded under it would sample
     // whatever now occupies that texture unit. Skipping is the only safe
     // answer, and it is why TextureRegion carries a generation at all.
-    if (!region.valid()) return;
+    if (!region.valid()) {
+        ++skipped_draws_;
+        return;
+    }
 
     const float positions[8] = {
         x,         y,
@@ -113,7 +119,10 @@ void SpriteBatch::draw(const Sprite& sprite) noexcept
 {
     if (!drawing_) return;
     const TextureRegion& region = sprite.region();
-    if (!region.valid()) return;
+    if (!region.valid()) {
+        ++skipped_draws_;
+        return;
+    }
 
     const float origin_x = sprite.origin_x();
     const float origin_y = sprite.origin_y();
@@ -226,6 +235,13 @@ void SpriteBatch::discard_queue() noexcept
     vertices_.clear();
 }
 
+bool SpriteBatch::restore(const graphics::Context& graphics) noexcept
+{
+    // The context knows whether anything was lost; asking it removes the one
+    // decision a caller could get backwards.
+    return restore(graphics.resources_preserved());
+}
+
 bool SpriteBatch::restore(bool context_preserved) noexcept
 {
     if (context_preserved && !invalidated_ && valid()) return true;
@@ -238,6 +254,11 @@ bool SpriteBatch::restore(bool context_preserved) noexcept
 std::size_t SpriteBatch::sprite_capacity() const noexcept
 {
     return maximum_sprites_;
+}
+
+std::size_t SpriteBatch::skipped_draws() const noexcept
+{
+    return skipped_draws_;
 }
 
 std::size_t SpriteBatch::queued_sprites() const noexcept

@@ -32,7 +32,10 @@ bool Context::create(const ContextConfig& config) noexcept
     native_context_ = nullptr;
     pixel_width_ = config.logical_width;
     pixel_height_ = config.logical_height;
-    resources_preserved_ = false;
+
+    // Nothing can have been lost if nothing existed. A later create() after a
+    // destroy() is a different matter: whatever the old context held is gone.
+    resources_preserved_ = generation_ == 0;
     ++generation_;
     return true;
 }

@@ -85,8 +85,8 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ \
-	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_math.a \
-	    $(LIB_DIR)/libsquared_files.a -o $@
+	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 # The spike: load a real skin and paint a Label and a Button.
 #

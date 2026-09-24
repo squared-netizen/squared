@@ -1,4 +1,6 @@
 // Backend-independent half of Texture.
+
+#include <squared/graphics/context.hpp>
 //
 // Everything here is policy, bookkeeping and validation - no graphics calls.
 // The backend half (src/<backend>/texture.cpp) supplies upload_rgba, bind,
@@ -245,6 +247,13 @@ bool Texture::restorable() const noexcept
         return false;
     }
     return false;
+}
+
+bool Texture::restore(const graphics::Context& graphics) noexcept
+{
+    // The context knows whether anything was lost; asking it removes the one
+    // decision a caller could get backwards.
+    return restore(graphics.resources_preserved());
 }
 
 bool Texture::restore(bool context_preserved) noexcept

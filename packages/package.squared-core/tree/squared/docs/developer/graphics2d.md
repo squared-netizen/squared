@@ -190,6 +190,59 @@ exactly at the capacity boundary.
 That last number is the argument for sorting by texture, made in a test rather
 than in a comment.
 
+## Four changes that came out of one bug
+
+An application drew nothing, and finding out why took several rounds. The
+cause was one stale `TextureRegion`, but four separate decisions had conspired
+to make it both easy to cause and hard to see. Each is worth naming.
+
+**`resources_preserved()` now answers the caller's question.** It meant "did a
+resume preserve anything", so a first `create()` reported `false` - nothing had
+been lost, because nothing had existed. Every application dutifully reloaded
+its assets before drawing its first frame, which moved every texture's
+generation and invalidated every region copied out of an atlas. It now means
+"are the GPU objects an application owns still valid", which is what a caller
+is actually asking, and a first context reports `true`.
+
+**`restore()` takes the Context.** `restore(bool context_preserved = false)`
+read as cheap and behaved destructively, and a bare `restore(false)` at a call
+site says nothing about which way round the flag goes. The primary overload
+now takes the `Context` and reads the answer from the object that knows it:
+
+```cpp
+atlas.restore(graphics);          // cannot be got backwards
+```
+
+The bool overload remains for tests and has no default: a caller who wants to
+state it must state it.
+
+**`SpriteBatch::skipped_draws()`.** A draw whose region is stale is skipped
+silently - correct, since drawing it would sample whatever now occupies that
+texture unit, and invisible, since an interface that draws nothing looks
+exactly like one that was never asked to. The count makes the difference one
+assertion in a test instead of an afternoon of bisecting.
+
+**`BatchPainter` keeps a pointer to its fill region.** A copy goes stale the
+moment the atlas reloads a page, and the caller would have to know to set it
+again after every restore. `Skin`'s drawables never had this problem because
+they hold pointers into the atlas. The rule is worth stating plainly: **a
+`TextureRegion` copied out of an atlas does not survive a restore.**
+
+Three of the four are about the same failure of API design - a call that reads
+as harmless and is not. The fourth is about making a silent correct behaviour
+audible.
+
+## Solid fills sample one texel
+
+A skin's white patch is a few pixels square with linear filtering. Stretching
+all of it across a widget lets the edge texels blend with whatever the packer
+placed beside them, so a solid fill comes out blurred at its borders.
+`fill_rectangle` samples the centre texel alone, which cannot reach a
+neighbour. For a 1x1 fallback it is the same texel either way.
+
+It is computed per call rather than stored, so it stays a view of the current
+region rather than a copy that would go stale.
+
 ## Notes
 
 `graphics2d/src/detail/bitmap_font_detail.hpp` holds the

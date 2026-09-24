@@ -1,4 +1,6 @@
 // TextureAtlas: the libGDX .atlas format, and the pages it names.
+
+#include <squared/graphics/context.hpp>
 //
 // Backend-independent: every graphics call it makes goes through Texture,
 // which has its own per-backend half. This file is parsing and bookkeeping.
@@ -365,6 +367,13 @@ void TextureAtlas::invalidate() noexcept
     for (const std::unique_ptr<Texture>& texture : textures_) {
         texture->invalidate();
     }
+}
+
+bool TextureAtlas::restore(const graphics::Context& graphics) noexcept
+{
+    // The context knows whether anything was lost; asking it removes the one
+    // decision a caller could get backwards.
+    return restore(graphics.resources_preserved());
 }
 
 bool TextureAtlas::restore(bool context_preserved) noexcept

@@ -60,6 +60,12 @@ public:
      * @note With null, a 1x1 white texture is created and owned here. That
      * works, and costs a draw call per fill. It is the fallback, not the
      * intent.
+     *
+     * @note The region is referenced, not copied, so it follows the atlas
+     * through a restore. A copy goes stale the moment the atlas reloads a
+     * page - every fill is then silently skipped - and the caller would have
+     * to know to set it again. Keeping the pointer removes that rule; the
+     * region must simply outlive the painter, which an atlas region does.
      */
     [[nodiscard]] bool set_fill_source(
         const graphics2d::TextureRegion* white
@@ -142,10 +148,14 @@ private:
 
     void apply_current_clip() noexcept;
 
+    /// The single texel a solid fill is stretched from. See fill_rectangle.
+    [[nodiscard]] graphics2d::TextureRegion centre_texel() const noexcept;
+
     graphics2d::SpriteBatch* batch_;
     const FontResource* default_font_;
-    graphics2d::TextureRegion fill_;
+    const graphics2d::TextureRegion* fill_{nullptr};
     graphics2d::Texture owned_white_;
+    graphics2d::TextureRegion owned_fill_;
     std::array<Rectangle, k_maximum_clip_depth> clips_{};
     std::size_t depth_{0};
     float logical_width_{0.0F};

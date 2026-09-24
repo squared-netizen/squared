@@ -109,9 +109,17 @@ public:
     [[nodiscard]] std::uint64_t generation() const noexcept;
 
     /**
-     * @brief Return whether the previous context's GPU objects survived the
-     * most recent successful `resume()`.
-     * @return `true` when native resources were reported as preserved.
+     * @brief Return whether the GPU objects an application owns are still
+     * valid.
+     *
+     * @return `false` only when objects that existed before have been lost and
+     * must be rebuilt.
+     *
+     * @note This answers the question a caller actually asks - "do I need to
+     * rebuild?" - rather than "did a resume preserve anything". The two differ
+     * exactly once, at the first `create()`: there was no previous context, so
+     * nothing was lost, and this returns `true`. Reporting `false` there made
+     * every application reload its assets before drawing its first frame.
      */
     [[nodiscard]] bool resources_preserved() const noexcept;
 

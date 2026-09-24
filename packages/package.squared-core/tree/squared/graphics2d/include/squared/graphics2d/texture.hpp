@@ -12,6 +12,10 @@
 #include <cstdint>
 #include <vector>
 
+namespace sq::graphics {
+class Context;
+}  // namespace sq::graphics
+
 namespace sq::graphics2d {
 
 /**
@@ -135,7 +139,21 @@ public:
      * skips recomputing fast-path state where possible.
      * @return true when the backend object was restored.
      */
-    [[nodiscard]] bool restore(bool context_preserved = false) noexcept;
+    [[nodiscard]] bool restore(const graphics::Context& graphics) noexcept;
+
+    /**
+     * @brief Rebuild, stating explicitly whether the context survived.
+     * @param context_preserved true when the GPU objects are still valid.
+     *
+     * @note No default. The previous one was `false`, which made `restore()`
+     * read as cheap and behave destructively: it reloaded everything, moved
+     * every texture's generation, and invalidated every TextureRegion copied
+     * out of an atlas - on the first frame, before anything had been lost.
+     *
+     * @note Prefer the overload taking a Context. It reads the answer from
+     * the object that knows it, so the polarity cannot be got backwards.
+     */
+    [[nodiscard]] bool restore(bool context_preserved) noexcept;
 
     /**
      * @brief Check whether restoration source data is available.

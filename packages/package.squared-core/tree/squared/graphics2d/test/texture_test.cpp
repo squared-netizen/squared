@@ -7,6 +7,8 @@
 
 #include <squared/files/files.hpp>
 #include <squared/graphics2d/atlas_region.hpp>
+#include <squared/graphics/context.hpp>
+#include <squared/graphics/context_config.hpp>
 #include <squared/graphics2d/texture.hpp>
 #include <squared/graphics2d/texture_region.hpp>
 #include <squared/graphics2d/texture_recovery_options.hpp>
@@ -101,7 +103,7 @@ int main()
         assert(texture.content_generation() != before);
         assert(texture.restorable());          // the handle is still there
 
-        assert(texture.restore());
+        assert(texture.restore(false));
         assert(texture.has_content());
         assert(texture.width() == 2 && texture.height() == 2);
     }
@@ -124,7 +126,7 @@ int main()
         assert(texture.restorable());
 
         texture.invalidate();
-        assert(texture.restore());
+        assert(texture.restore(false));
         assert(texture.has_content() && texture.width() == 2);
     }
 
@@ -170,7 +172,7 @@ int main()
         assert(texture.retained_recovery_bytes() == 0);
 
         texture.invalidate();
-        assert(texture.restore());
+        assert(texture.restore(false));
         assert(g_regenerate_calls == 1);
         assert(texture.width() == 1);          // the callback's own size
 
@@ -180,7 +182,7 @@ int main()
                graphics2d::TextureRecoveryOptions::regenerate(
                    regenerate_lying)));
         liar.invalidate();
-        assert(!liar.restore());
+        assert(!liar.restore(false));
     }
 
     // --- Discard: the signal that stops a crash after a phone call -------
@@ -192,7 +194,7 @@ int main()
         assert(!texture.restorable());
 
         texture.invalidate();
-        assert(!texture.restore());
+        assert(!texture.restore(false));
         assert(!texture.has_content());
         assert(texture.width() == 0 && texture.height() == 0);
         // a region built against built_against can now tell it is stale
@@ -218,6 +220,26 @@ int main()
         assert(!first.valid() && !first.restorable());
     }
 
+    // --- restore(context) asks the context, so polarity cannot be wrong ---
+    {
+        graphics::Context context;
+        graphics::ContextConfig config;
+        config.logical_width = 320;
+        config.logical_height = 240;
+        assert(context.create(config));
+
+        // A first context has lost nothing, so a restore through it is a
+        // no-op rather than a reload. This is what stopped every application
+        // reloading its assets before its first frame.
+        assert(context.resources_preserved());
+
+        graphics2d::Texture texture;
+        assert(texture.load(image));
+        const std::uint32_t before = texture.content_generation();
+        assert(texture.restore(context));
+        assert(texture.content_generation() == before);
+    }
+
     // Leave nothing behind, including the root this test created.
     // --- a region survives a restore that puts the same pixels back -------
     {
@@ -232,7 +254,7 @@ int main()
         assert(!whole.valid());
         assert(whole.stale());
 
-        assert(texture.restore());
+        assert(texture.restore(false));
         // still stale: the content came back, but it is a different upload,
         // and a region cannot know the layout matches
         assert(whole.stale());
@@ -252,7 +274,7 @@ int main()
         assert(region.valid());
 
         texture.invalidate();
-        assert(!texture.restore());
+        assert(!texture.restore(false));
         assert(!region.valid());
         assert(region.stale());
         // and refresh cannot rescue it, because there is nothing to bind to

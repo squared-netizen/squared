@@ -85,8 +85,8 @@ $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_math.a \
-	    $(LIB_DIR)/libsquared_files.a -o $@
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
                $(MODULE_DIR)/src/common/atlas_region.cpp \
@@ -95,11 +95,13 @@ $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
                $(MODULE_DIR)/src/null/texture.cpp \
                $(MODULE_DIR)/src/detail/image_decode.cpp \
                $(STB_OBJECT) \
-               $(LIB_DIR)/libsquared_files.a
+               $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_files.a -o $@
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(MODULE_DIR)/src/common/atlas_region.cpp \
@@ -107,10 +109,11 @@ $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(MODULE_DIR)/src/null/texture.cpp \
                  $(MODULE_DIR)/src/detail/image_decode.cpp \
                  $(STB_OBJECT) \
-                 $(LIB_DIR)/libsquared_files.a
+                 $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_files.a -o $@
+	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

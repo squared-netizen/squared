@@ -128,6 +128,33 @@ int main()
         assert(counters::g_null_sprites_drawn == 3);
     }
 
+    // --- a refused draw is counted, not just skipped ----------------------
+    {
+        reset();
+        graphics2d::Texture doomed = make_texture();
+        graphics2d::TextureRegion region{doomed};
+
+        graphics2d::SpriteBatch batch;
+        assert(batch.initialize(64));
+        assert(batch.begin(camera));
+        assert(batch.skipped_draws() == 0);
+
+        doomed.invalidate();
+        batch.draw(region, 0.0F, 0.0F, 8.0F, 8.0F);
+        batch.draw(region, 8.0F, 0.0F, 8.0F, 8.0F);
+
+        // The count is the difference between "drew nothing" and "was never
+        // asked to draw" - two things that look identical on a screen.
+        assert(batch.skipped_draws() == 2);
+        assert(batch.queued_sprites() == 0);
+        batch.end();
+
+        // and it resets with the next frame
+        assert(batch.begin(camera));
+        assert(batch.skipped_draws() == 0);
+        batch.end();
+    }
+
     // --- a stale region is skipped, not drawn ------------------------------
     {
         reset();
@@ -195,7 +222,7 @@ int main()
         assert(batch.queued_sprites() == 0);
         assert(!batch.begin(camera));            // refuses while invalid
 
-        assert(batch.restore());
+        assert(batch.restore(false));
         assert(batch.valid());
         // whatever was queued belonged to a context that is gone
         assert(batch.queued_sprites() == 0);
@@ -214,7 +241,7 @@ int main()
         assert(batch.initialize(64));
         batch.release();
         assert(!batch.valid());
-        assert(batch.restore());
+        assert(batch.restore(false));
         assert(batch.valid());
     }
 

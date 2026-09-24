@@ -5,6 +5,10 @@
 #include <cstddef>
 #include <vector>
 
+namespace sq::graphics {
+class Context;
+}  // namespace sq::graphics
+
 namespace sq::graphics2d {
 
 class OrthographicCamera;
@@ -57,7 +61,21 @@ public:
      * skips recomputing fast-path state where possible.
      * @return true when backend objects were restored.
      */
-    [[nodiscard]] bool restore(bool context_preserved = false) noexcept;
+    [[nodiscard]] bool restore(const graphics::Context& graphics) noexcept;
+
+    /**
+     * @brief Rebuild, stating explicitly whether the context survived.
+     * @param context_preserved true when the GPU objects are still valid.
+     *
+     * @note No default. The previous one was `false`, which made `restore()`
+     * read as cheap and behave destructively: it reloaded everything, moved
+     * every texture's generation, and invalidated every TextureRegion copied
+     * out of an atlas - on the first frame, before anything had been lost.
+     *
+     * @note Prefer the overload taking a Context. It reads the answer from
+     * the object that knows it, so the polarity cannot be got backwards.
+     */
+    [[nodiscard]] bool restore(bool context_preserved) noexcept;
 
     /**
      * @brief Begin an ordered batch using the camera projection.
@@ -140,6 +158,20 @@ public:
      */
     [[nodiscard]] std::size_t queued_sprites() const noexcept;
 
+    /**
+     * @brief Read how many draws were refused since the last begin().
+     *
+     * A draw is refused when its region is no longer valid - its texture was
+     * discarded, reloaded, or restored under it. Drawing it would sample
+     * whatever now occupies that texture unit, so it is skipped.
+     *
+     * Skipping silently is correct and invisible, which is the problem: an
+     * interface that draws nothing looks exactly like one that was never
+     * asked to draw. This is the difference, and it is one assertion in a
+     * test rather than an afternoon of bisecting.
+     */
+    [[nodiscard]] std::size_t skipped_draws() const noexcept;
+
     /** @brief Report whether begin() has been called without a matching end(). */
     [[nodiscard]] bool drawing() const noexcept;
 
@@ -166,6 +198,7 @@ private:
     std::vector<float> vertices_;
     std::size_t maximum_sprites_{0};
     std::size_t sprite_count_{0};
+    std::size_t skipped_draws_{0};
     unsigned int vertex_buffer_{0};
     unsigned int index_buffer_{0};
     unsigned int program_{0};

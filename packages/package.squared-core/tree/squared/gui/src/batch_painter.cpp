@@ -58,12 +58,19 @@ BatchPainter::BatchPainter(
 
 BatchPainter::~BatchPainter() = default;
 
+graphics2d::TextureRegion BatchPainter::centre_texel() const noexcept
+{
+    if (fill_ == nullptr) return {};
+    if (fill_->width() <= 1 || fill_->height() <= 1) return *fill_;
+    return fill_->subregion(fill_->width() / 2, fill_->height() / 2, 1, 1);
+}
+
 bool BatchPainter::set_fill_source(
     const graphics2d::TextureRegion* white
 ) noexcept
 {
     if (white != nullptr && white->valid()) {
-        fill_ = *white;
+        fill_ = white;
         owned_white_.destroy();
         return true;
     }
@@ -76,7 +83,8 @@ bool BatchPainter::set_fill_source(
             graphics2d::TextureRecoveryOptions::retain_pixels())) {
         return false;
     }
-    fill_ = graphics2d::TextureRegion{owned_white_};
+    owned_fill_ = graphics2d::TextureRegion{owned_white_};
+    fill_ = &owned_fill_;
     return true;
 }
 
@@ -113,9 +121,20 @@ void BatchPainter::fill_rectangle(
     graphics::Color color
 )
 {
-    if (!fill_.valid()) return;
+    if (fill_ == nullptr) return;
     if (rectangle.width <= 0.0F || rectangle.height <= 0.0F) return;
-    batch_->draw(fill_, rectangle.x, rectangle.y,
+
+    // One texel from the middle, not the whole region.
+    //
+    // A skin's white patch is a few pixels square with linear filtering, so
+    // stretching all of it across a widget makes the edge texels blend with
+    // whatever the packer placed beside them in the atlas - a solid fill comes
+    // out blurred at its borders. Sampling the centre alone cannot reach a
+    // neighbour, and for a 1x1 fallback it is the same texel either way.
+    //
+    // Computed here rather than stored, so it stays a view of the current
+    // region: a cached copy would go stale the next time the atlas reloads.
+    batch_->draw(centre_texel(), rectangle.x, rectangle.y,
                  rectangle.width, rectangle.height, color);
 }
 
@@ -125,7 +144,7 @@ void BatchPainter::stroke_rectangle(
     float thickness
 )
 {
-    if (!fill_.valid() || thickness <= 0.0F) return;
+    if (fill_ == nullptr || thickness <= 0.0F) return;
     if (rectangle.width <= 0.0F || rectangle.height <= 0.0F) return;
 
     // Four fills rather than a shader: the corners overlap, which only shows

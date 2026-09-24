@@ -143,7 +143,7 @@ int main()
         assert(!check->region().valid());
         assert(check->region().stale());
 
-        assert(atlas.restore());
+        assert(atlas.restore(false));
         assert(atlas.valid());
         // refreshed on the atlas's behalf: same file, same layout
         assert(check->region().valid());
@@ -156,7 +156,7 @@ int main()
         assert(atlas.load(handle));
         atlas.release();
         assert(!atlas.valid());
-        assert(atlas.restore());
+        assert(atlas.restore(false));
         assert(atlas.valid());
         assert(atlas.find_region("check-off")->region().valid());
     }
@@ -183,7 +183,7 @@ int main()
         assert(atlas.load(handle, graphics2d::TextureRecoveryPolicy::Discard));
         const std::size_t before = atlas.region_count();
         atlas.invalidate();
-        assert(!atlas.restore());
+        assert(!atlas.restore(false));
         assert(atlas.region_count() == before);
         assert(!atlas.find_region("check-off")->region().valid());
     }

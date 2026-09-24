@@ -165,7 +165,10 @@ bool Context::create(const ContextConfig& config) noexcept
 
     window_ = config.native_window;
     native_context_ = context;
-    resources_preserved_ = false;
+
+    // Nothing can have been lost if nothing existed. A later create() after a
+    // destroy() is a different matter: whatever the old context held is gone.
+    resources_preserved_ = generation_ == 0;
     ++generation_;
     refresh_viewport();
     return true;
