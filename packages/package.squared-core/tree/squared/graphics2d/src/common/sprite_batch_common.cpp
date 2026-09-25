@@ -9,6 +9,8 @@
 #include <squared/graphics2d/sprite_batch.hpp>
 
 #include <squared/graphics/color.hpp>
+#include <squared/graphics2d/coordinate_origin.hpp>
+#include <squared/graphics2d/orthographic_camera.hpp>
 #include <squared/graphics2d/sprite.hpp>
 #include <squared/graphics2d/texture.hpp>
 #include <squared/graphics2d/texture_region.hpp>
@@ -80,6 +82,7 @@ bool SpriteBatch::begin(const OrthographicCamera& camera) noexcept
     if (drawing_ || !valid()) return false;
 
     drawing_ = true;
+    y_down_ = camera.origin() == CoordinateOrigin::TopLeft;
     sprite_count_ = 0;
     skipped_draws_ = 0;
     active_texture_ = nullptr;
@@ -181,9 +184,17 @@ void SpriteBatch::append_quad(
     const float u2 = region.u2();
     const float v2 = region.v2();
 
-    // Corner order matches positions: bottom-left, top-left, top-right,
-    // bottom-right. v1 is the top edge, so the bottom corners take v2.
-    const float texture_coordinates[8] = {u1, v2, u1, v1, u2, v1, u2, v2};
+    // Corner order matches positions: (x, y), (x, y + h), (x + w, y + h),
+    // (x + w, y). v1 is the image's top edge. With y growing upwards the
+    // corners at y are the quad's bottom, so they take v2; with y growing
+    // downwards they are its top, so they take v1. Getting this backwards
+    // draws every image upside down in place - text shows it, a symmetric
+    // nine-patch or a flat fill hides it.
+    const float v_at_y = y_down_ ? v1 : v2;
+    const float v_at_y_plus_height = y_down_ ? v2 : v1;
+    const float texture_coordinates[8] = {
+        u1, v_at_y, u1, v_at_y_plus_height,
+        u2, v_at_y_plus_height, u2, v_at_y};
 
     for (std::size_t corner = 0; corner < k_vertices_per_sprite; ++corner) {
         vertices_.push_back(positions[corner * 2]);

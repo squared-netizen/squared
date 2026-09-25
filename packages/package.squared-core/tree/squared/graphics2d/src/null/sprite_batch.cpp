@@ -31,6 +31,11 @@ int g_null_clip_y = 0;
 int g_null_clip_width = -1;
 int g_null_clip_height = -1;
 
+// Texture coordinates of the first quad in the last flush, in corner order
+// (x, y), (x, y + h), (x + w, y + h), (x + w, y), as u,v pairs. Enough to
+// assert that an image's top edge lands at the top of its quad.
+float g_null_first_quad_uv[8] = {};
+
 }  // namespace detail
 
 namespace {
@@ -68,6 +73,12 @@ void SpriteBatch::flush() noexcept
 
     ++detail::g_null_draw_calls;
     detail::g_null_sprites_drawn += sprite_count_;
+
+    // Each vertex is x, y, u, v, r, g, b, a.
+    for (std::size_t corner = 0; corner < 4; ++corner) {
+        detail::g_null_first_quad_uv[corner * 2] = vertices_[corner * 8 + 2];
+        detail::g_null_first_quad_uv[corner * 2 + 1] = vertices_[corner * 8 + 3];
+    }
 
     vertices_.clear();
     sprite_count_ = 0;

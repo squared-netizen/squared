@@ -211,6 +211,11 @@ private:
     const Texture* active_texture_{nullptr};
     bool drawing_{false};
     bool invalidated_{false};
+    // Which way y points under the camera passed to begin(). A quad's corner
+    // at y is its top edge when y grows downwards and its bottom edge when it
+    // grows upwards, so the texture's top edge has to follow. Read once per
+    // begin(); sits in padding after the two flags above, so it costs no size.
+    bool y_down_{false};
 };
 
 } // namespace sq::graphics2d

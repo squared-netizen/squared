@@ -69,6 +69,15 @@ public:
      */
     [[nodiscard]] float zoom() const noexcept;
 
+    /**
+     * @brief Read which way y points in this camera's logical space.
+     * @return TopLeft when y grows downwards, BottomLeft when it grows upwards.
+     *
+     * SpriteBatch reads this in begin() so an image's top edge lands at the
+     * top of its quad under either orientation.
+     */
+    [[nodiscard]] CoordinateOrigin origin() const noexcept { return origin_; }
+
 private:
     float viewport_width_;
     float viewport_height_;

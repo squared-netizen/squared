@@ -5,6 +5,7 @@
 // null backend counts draw calls, so the decisions can be asserted directly.
 
 #include <squared/files/files.hpp>
+#include <squared/graphics2d/coordinate_origin.hpp>
 #include <squared/graphics2d/orthographic_camera.hpp>
 #include <squared/graphics2d/sprite.hpp>
 #include <squared/graphics2d/sprite_batch.hpp>
@@ -19,6 +20,7 @@
 namespace sq::graphics2d::detail {
 extern std::size_t g_null_draw_calls;
 extern std::size_t g_null_sprites_drawn;
+extern float g_null_first_quad_uv[8];
 }
 
 using namespace sq;
@@ -243,6 +245,45 @@ int main()
         assert(!batch.valid());
         assert(batch.restore(false));
         assert(batch.valid());
+    }
+
+    // --- an image's top edge lands at the top of its quad -------------------
+    //
+    // v1 is the image's top row. Corners are (x, y), (x, y + h), (x + w, y + h),
+    // (x + w, y). Under a y-down camera the corners at y are the top, so they
+    // must sample v1; under a y-up camera they are the bottom, so v2. Every
+    // other test here draws a 1x1 white texture, where a flip is invisible.
+    {
+        const unsigned char pixels[4 * 4] = {};
+        graphics2d::Texture tall;
+        assert(tall.create_rgba(1, 4, pixels,
+                                graphics2d::TextureRecoveryOptions::retain_pixels()));
+        const graphics2d::TextureRegion rows{tall, 0, 1, 1, 2};   // v 0.25 .. 0.75
+        assert(rows.v1() < rows.v2());
+
+        const auto uv_at = [](std::size_t corner) {
+            return counters::g_null_first_quad_uv[corner * 2 + 1];
+        };
+
+        graphics2d::SpriteBatch batch;
+        assert(batch.initialize(8));
+
+        graphics2d::OrthographicCamera y_down{
+            64.0F, 64.0F, graphics2d::CoordinateOrigin::TopLeft};
+        assert(y_down.origin() == graphics2d::CoordinateOrigin::TopLeft);
+        assert(batch.begin(y_down));
+        batch.draw(rows, 0.0F, 0.0F, 8.0F, 8.0F);
+        batch.end();
+        assert(uv_at(0) == rows.v1() && uv_at(3) == rows.v1());  // corners at y
+        assert(uv_at(1) == rows.v2() && uv_at(2) == rows.v2());  // at y + h
+
+        graphics2d::OrthographicCamera y_up{
+            64.0F, 64.0F, graphics2d::CoordinateOrigin::BottomLeft};
+        assert(batch.begin(y_up));
+        batch.draw(rows, 0.0F, 0.0F, 8.0F, 8.0F);
+        batch.end();
+        assert(uv_at(0) == rows.v2() && uv_at(3) == rows.v2());
+        assert(uv_at(1) == rows.v1() && uv_at(2) == rows.v1());
     }
 
     std::printf("sprite batch: all assertions passed  sizeof(SpriteBatch)=%zu\n",

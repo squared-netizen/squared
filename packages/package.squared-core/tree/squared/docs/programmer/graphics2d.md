@@ -94,6 +94,24 @@ if (batch.begin(camera)) {
 `begin()` returns false if the batch has no GPU objects - after context loss,
 before `restore()`. `end()` draws whatever is left queued.
 
+**Which way is up comes from the camera.** `draw(region, x, y, w, h)` places
+the image's top edge at the top of the quad under either orientation:
+
+| `camera.origin()` | `(x, y)` is the quad's | y grows |
+|---|---|---|
+| `CoordinateOrigin::TopLeft` (default) | top-left corner | downwards |
+| `CoordinateOrigin::BottomLeft` | bottom-left corner | upwards |
+
+```cpp
+sq::graphics2d::OrthographicCamera ui_camera{720, 1280};    // TopLeft
+sq::graphics2d::OrthographicCamera world_camera{
+    720, 1280, sq::graphics2d::CoordinateOrigin::BottomLeft};
+```
+
+The GUI, glyph layout and `GlyphPlacement` all measure from the top, so use a
+`TopLeft` camera for them. A `Sprite`'s rotation is counter-clockwise under a
+`BottomLeft` camera and therefore appears clockwise under a `TopLeft` one.
+
 **Draw sprites sharing a texture together.** The batch issues one draw call per
 run of sprites from the same texture, so ten sprites from one atlas cost one
 call, while alternating between two textures six times costs six. Regions from

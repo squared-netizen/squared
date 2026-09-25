@@ -150,8 +150,9 @@ buffers, the shader, the draw call - is per backend. It does not build on
 `sq::gles`, because the header stores raw handles and `graphics2d` depending
 on `gles` would invert the layering.
 
-**80 bytes**, plus one vertex buffer allocated at `initialize()` and never
-grown. A frame loop must not allocate, and a vector that reallocated mid-frame
+**88 bytes** (the size the test prints; it was 80 before `skipped_draws_`
+and `active_texture_` arrived), plus one vertex buffer allocated at
+`initialize()` and never grown. A frame loop must not allocate, and a vector that reallocated mid-frame
 would be exactly that: capacity is the budget and `flush()` enforces it.
 
 **Two reasons to flush, and they are the same reason** - what is queued can no
@@ -178,6 +179,31 @@ addressable by the 16-bit index buffer.
 Indices are uploaded once as `GL_STATIC_DRAW` - quad N is always the same six
 values - so a flush uploads vertices only, as `GL_STREAM_DRAW`.
 
+### Orientation follows the camera
+
+`draw()` builds corners at `(x, y)`, `(x, y + h)`, `(x + w, y + h)`,
+`(x + w, y)`. Which of those is the quad's top depends on which way y points,
+and only the camera knows that. `begin()` reads `camera.origin()` once into
+`y_down_`; `append_quad()` then gives the corners at `y` the image's top edge
+(`v1`) under a `TopLeft` camera and its bottom edge (`v2`) under `BottomLeft`.
+
+This used to be fixed at y-up while the camera defaulted to `TopLeft` and the
+GUI and glyph layout measure from the top, so every textured quad on a device
+was drawn upside down in place. Text showed it immediately; a symmetric
+nine-patch or a flat fill cannot, and the null backend draws nothing, so no
+test noticed. The test now draws a region whose top and bottom rows differ
+under both cameras and checks the texture coordinates of each corner.
+
+Cost: `y_down_` is one `bool` in the padding after `drawing_` and
+`invalidated_`, so `sizeof(SpriteBatch)` is unchanged; per quad it is two
+selects. No allocation.
+
+Known limitation: `draw(const Sprite&)` names its corners `bottom`/`top` in
+y-up terms. The texture follows the camera correctly, but positive rotation is
+counter-clockwise only under `BottomLeft`; under `TopLeft` it appears
+clockwise. Documented in the programmer page rather than changed, since
+nothing rotates sprites yet.
+
 ### The null backend counts draw calls
 
 Batching is invisible from outside: the same pixels appear whether they took
@@ -189,6 +215,10 @@ exactly at the capacity boundary.
 
 That last number is the argument for sorting by texture, made in a test rather
 than in a comment.
+
+It also records the texture coordinates of the first quad in each flush
+(`detail::g_null_first_quad_uv`), which is what lets the orientation test
+above run without a driver.
 
 ## Four changes that came out of one bug
 
