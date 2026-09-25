@@ -100,8 +100,6 @@ $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
 	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
-	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(MODULE_DIR)/src/common/atlas_region.cpp \
