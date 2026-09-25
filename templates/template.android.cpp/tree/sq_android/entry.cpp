@@ -158,7 +158,40 @@ struct Platform {
     bool finishing{false};
     Clock::time_point last_frame{Clock::now()};
 
+    /// The drawable size the application was last told about.
+    int reported_width{0};
+    int reported_height{0};
+
     void send(const Event& event) { app.handle_event(event); }
+
+    /// Re-measure the surface, and tell the application if its size changed.
+    ///
+    /// Called on every frame, not only when Android says the window changed.
+    /// On rotation Android sends WINDOW_RESIZED and CONFIG_CHANGED before the
+    /// surface has its new size - EGL still reports the old one until a
+    /// buffer has been swapped at the new size. Measuring only on those
+    /// commands caught the stale size and kept it: the viewport stayed at the
+    /// previous orientation and the picture landed in part of the screen.
+    ///
+    /// Cost per frame: two eglQuerySurface calls and a glViewport. Nothing is
+    /// allocated, and the application hears about a size only when it changes.
+    void sync_size(bool always) {
+        graphics.refresh_viewport();
+        const int width = graphics.pixel_width();
+        const int height = graphics.pixel_height();
+        if (!always && width == reported_width && height == reported_height) {
+            return;
+        }
+        reported_width = width;
+        reported_height = height;
+        app.resize(width, height);
+
+        Event resized;
+        resized.type = Event::Type::Resize;
+        resized.width = width;
+        resized.height = height;
+        send(resized);
+    }
 
     /// Bring the rendering surface up. Called when Android hands us a window,
     /// which happens more than once in a process — on rotation, and after the
@@ -198,13 +231,10 @@ struct Platform {
         }
 
         app.surface_created(graphics);
-        app.resize(graphics.pixel_width(), graphics.pixel_height());
 
-        Event resized;
-        resized.type = Event::Type::Resize;
-        resized.width = graphics.pixel_width();
-        resized.height = graphics.pixel_height();
-        send(resized);
+        // Always, even at an unchanged size: a new surface is a new
+        // application state, and the application re-lays out from here.
+        sync_size(true);
     }
 
     /// The window is going away. Suspend rather than destroy: the context and
@@ -230,6 +260,7 @@ struct Platform {
         constexpr auto maximum_delta = std::chrono::milliseconds(100);
         if (delta > maximum_delta) delta = maximum_delta;
 
+        sync_size(false);
         app.update(delta);
         app.render(graphics);
 
@@ -269,17 +300,9 @@ void on_command(android_app* app, int32_t command) {
             // Rotation changes the drawable size without destroying the
             // window, so the surface has to be re-measured even though it is
             // still valid.
-            if (platform.surface_ready) {
-                platform.graphics.refresh_viewport();
-                platform.app.resize(platform.graphics.pixel_width(),
-                                    platform.graphics.pixel_height());
-
-                Event resized;
-                resized.type = Event::Type::Resize;
-                resized.width = platform.graphics.pixel_width();
-                resized.height = platform.graphics.pixel_height();
-                platform.send(resized);
-            }
+            // The size may not have changed yet; frame() re-measures every
+            // frame and catches it when it does.
+            if (platform.surface_ready) platform.sync_size(false);
             break;
 
         case APP_CMD_GAINED_FOCUS: {
