@@ -1,7 +1,7 @@
 #include <squared/files/file_system.hpp>
 
 #include <squared/files/file_handle.hpp>
-#include <squared/files/file_type.hpp>
+#include <squared/files/src/file_type.hpp>
 
 #include <string>
 #include <string_view>

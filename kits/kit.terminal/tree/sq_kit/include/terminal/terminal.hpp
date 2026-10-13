@@ -2,11 +2,8 @@
 //
 // terminal/terminal.hpp — terminal bridge for the Squared framework.
 //
-// Contributed by kit.terminal. This is a *bridge*: it connects a Squared
-// application to the host terminal, in the same way kit.sdl3 would connect one
-// to SDL3 (Generator Architecture §2.9.1). It is header-only and depends on
-// nothing but the C++20 standard library, so a generated workspace builds with
-// a compiler and make and nothing else.
+// Contributed by kit.terminal. A simple terminal application utility toolkit.
+// It uses only the C++ standard library, so all it needs is a compiler and make.
 //
 // GENERATED FILE. The generator owns this path and will replace it on update.
 // Write your own code in the working directory instead.

@@ -23,23 +23,23 @@ constexpr std::string_view color_class =
 constexpr std::string_view font_class =
     "com.badlogic.gdx.graphics.g2d.BitmapFont";
 constexpr std::string_view tinted_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.Skin$TintedDrawable";
+    "com.badlogic.gdx.scenes.gui.ui.Skin$TintedDrawable";
 constexpr std::string_view button_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.Button$ButtonStyle";
+    "com.badlogic.gdx.scenes.gui.ui.Button$ButtonStyle";
 constexpr std::string_view text_button_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle";
+    "com.badlogic.gdx.scenes.gui.ui.TextButton$TextButtonStyle";
 constexpr std::string_view text_field_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle";
+    "com.badlogic.gdx.scenes.gui.ui.TextField$TextFieldStyle";
 constexpr std::string_view label_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle";
+    "com.badlogic.gdx.scenes.gui.ui.Label$LabelStyle";
 constexpr std::string_view check_box_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.CheckBox$CheckBoxStyle";
+    "com.badlogic.gdx.scenes.gui.ui.CheckBox$CheckBoxStyle";
 constexpr std::string_view slider_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle";
+    "com.badlogic.gdx.scenes.gui.ui.Slider$SliderStyle";
 constexpr std::string_view progress_bar_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle";
+    "com.badlogic.gdx.scenes.gui.ui.ProgressBar$ProgressBarStyle";
 constexpr std::string_view window_class =
-    "com.badlogic.gdx.scenes.scene2d.ui.Window$WindowStyle";
+    "com.badlogic.gdx.scenes.gui.ui.Window$WindowStyle";
 
 bool bare_delimiter(char value) noexcept
 {

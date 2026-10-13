@@ -23,17 +23,11 @@ if [ -z "$SQUARED_EXTERNAL_INCLUDES" ] && [ -f local.mk ]; then
   eval "SQUARED_EXTERNAL_INCLUDES=\"$SQUARED_EXTERNAL_INCLUDES\""
 fi
 
-includes=""
-for candidate in */include; do
-  if [ -d "$candidate" ]; then
-    includes="$includes -I$root/$candidate"
-  fi
-done
+includes="-I$(dirname "$root")"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 cat > "$work/sizes.cpp" <<'EOF'
 #include <squared/gui/gui.hpp>
-#include <squared/scene2d/scene2d.hpp>
-#include <squared/graphics2d/graphics2d.hpp>
+#include <squared/graphics/graphics.hpp>
 #include <cstdio>
 using namespace squared;
 #define P(T) std::printf("%-26s %4zu %4zu\n", #T, sizeof(T), alignof(T));
@@ -43,13 +37,13 @@ int main() {
   P(gui::FontResource) P(gui::ColorDrawable) P(gui::RegionDrawable)
   P(gui::NinePatchDrawable) P(gui::DrawablePtr) P(gui::FontPtr)
   P(gui::ButtonStyle) P(gui::LabelStyle) P(gui::WindowStyle) P(gui::Skin)
-  P(scene2d::Actor) P(scene2d::Group) P(gui::Widget) P(gui::Label)
+  P(gui::Actor) P(gui::Group) P(gui::Widget) P(gui::Label)
   P(gui::Button) P(gui::ToggleButton) P(gui::CheckBox) P(gui::TextField)
   P(gui::Slider) P(gui::ProgressBar) P(gui::Panel) P(gui::Cell)
   P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::Window)
   P(gui::Dialog) P(gui::Ui) P(gui::ButtonGroup)
-  P(graphics2d::TextureRegion) P(graphics2d::BitmapGlyph)
-  P(graphics2d::GlyphPlacement) P(std::string) P(std::function<void()>)
+  P(graphics::TextureRegion) P(graphics::BitmapGlyph)
+  P(graphics::GlyphPlacement) P(std::string) P(std::function<void()>)
   return 0;
 }
 EOF

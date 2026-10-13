@@ -1,7 +1,7 @@
 #include <squared/graphics/context.hpp>
 
 #include <squared/graphics/color.hpp>
-#include <squared/graphics/context_config.hpp>
+#include <squared/graphics/src/context_config.hpp>
 
 #include <cstdint>
 

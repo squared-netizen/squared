@@ -4,29 +4,29 @@
 // an interface costs, and whether a clip rectangle was converted into the
 // right scissor. The null backend records both.
 
-#include <squared/graphics2d/orthographic_camera.hpp>
-#include <squared/graphics2d/sprite_batch.hpp>
-#include <squared/graphics2d/texture.hpp>
-#include <squared/graphics2d/texture_recovery_options.hpp>
-#include <squared/graphics2d/texture_region.hpp>
+#include <squared/graphics/orthographic_camera.hpp>
+#include <squared/graphics/sprite_batch.hpp>
+#include <squared/graphics/texture.hpp>
+#include <squared/graphics/src/texture_recovery_options.hpp>
+#include <squared/graphics/texture_region.hpp>
 #include <squared/gui/batch_painter.hpp>
-#include <squared/gui/rectangle.hpp>
+#include <squared/gui/src/rectangle.hpp>
 
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
 
-namespace sq::graphics2d::detail {
+namespace sq::graphics::detail {
 extern std::size_t g_null_draw_calls;
 extern std::size_t g_null_sprites_drawn;
 extern int g_null_clip_x;
 extern int g_null_clip_y;
 extern int g_null_clip_width;
 extern int g_null_clip_height;
-}  // namespace sq::graphics2d::detail
+}  // namespace sq::graphics::detail
 
 using namespace sq;
-namespace counters = sq::graphics2d::detail;
+namespace counters = sq::graphics::detail;
 
 namespace {
 
@@ -37,12 +37,12 @@ void reset()
     counters::g_null_clip_width = -1;
 }
 
-graphics2d::Texture make_texture()
+graphics::Texture make_texture()
 {
     const unsigned char pixels[4] = {255, 255, 255, 255};
-    graphics2d::Texture texture;
+    graphics::Texture texture;
     const bool created = texture.create_rgba(
-        1, 1, pixels, graphics2d::TextureRecoveryOptions::retain_pixels());
+        1, 1, pixels, graphics::TextureRecoveryOptions::retain_pixels());
     assert(created);
     return texture;
 }
@@ -51,16 +51,16 @@ graphics2d::Texture make_texture()
 
 int main()
 {
-    graphics2d::OrthographicCamera camera{640.0F, 480.0F};
+    graphics::OrthographicCamera camera{640.0F, 480.0F};
     camera.update();
 
     // One "atlas page" holding both the widget graphics and the white texel,
     // which is how a real skin is packed.
-    graphics2d::Texture atlas_page = make_texture();
-    const graphics2d::TextureRegion skin_region{atlas_page};
-    const graphics2d::TextureRegion skin_white{atlas_page};
+    graphics::Texture atlas_page = make_texture();
+    const graphics::TextureRegion skin_region{atlas_page};
+    const graphics::TextureRegion skin_white{atlas_page};
 
-    graphics2d::SpriteBatch batch;
+    graphics::SpriteBatch batch;
     assert(batch.initialize(256));
 
     // --- the whole point of taking white from the skin --------------------

@@ -8,16 +8,10 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := gui
 MODULE_DIR := $(SQUARED_ROOT)/gui
 
-INCLUDES := -I$(SQUARED_ROOT)/gui/include \
-            -I$(SQUARED_ROOT)/app/include \
-            -I$(SQUARED_ROOT)/data/include \
-            -I$(SQUARED_ROOT)/graphics/include \
-            -I$(SQUARED_ROOT)/graphics2d/include \
-            -I$(SQUARED_ROOT)/files/include \
-            -I$(SQUARED_ROOT)/scene2d/include \
-            -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/button.cpp \
+SOURCES := src/actor.cpp \
+    src/button.cpp \
     src/batch_painter.cpp \
     src/button_group.cpp \
     src/cell.cpp \
@@ -25,7 +19,9 @@ SOURCES := src/button.cpp \
     src/color_drawable.cpp \
     src/dialog.cpp \
     src/font_resource.cpp \
+    src/group.cpp \
     src/image.cpp \
+    src/input_event.cpp \
     src/label.cpp \
     src/linear_layout.cpp \
     src/margin_container.cpp \
@@ -42,6 +38,7 @@ SOURCES := src/button.cpp \
     src/skin_loader.cpp \
     src/slider.cpp \
     src/stack.cpp \
+    src/stage.cpp \
     src/table.cpp \
     src/text_field.cpp \
     src/toggle_button.cpp \
@@ -82,10 +79,10 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(MODULE_DIR)/src/batch_painter.cpp \
                  $(MODULE_DIR)/src/painter.cpp \
                  $(MODULE_DIR)/src/font_resource.cpp \
-                 $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
+                 $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ \
-	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 # The spike: load a real skin and paint a Label and a Button.
@@ -106,12 +103,12 @@ spike: $(SKIN_SPIKE)
 	@$(SKIN_SPIKE) $(SKIN)
 
 $(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
-               $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_scene2d.a $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
+               $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
               $(LIB_DIR)/libsquared_time.a \
               $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< \
-	    $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_scene2d.a \
-	    $(LIB_DIR)/libsquared_graphics2d.a $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_gui.a \
+	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
 	    $(LIB_DIR)/libsquared_time.a $(LIB_DIR)/libsquared_math.a -o $@

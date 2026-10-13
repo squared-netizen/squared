@@ -3,10 +3,10 @@
   "format_version": 2,
   "kind": "kit",
   "id": "kit.terminal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tree": "tree/",
   "title": "Terminal Kit",
-  "description": "Header-only terminal bridge: console I/O, a small regex facade, and a libGDX-style FileHandle.",
+  "description": "A single header of simple terminal utilities: console I/O, a small regex facade, and a libGDX-style FileHandle. Standard library only.",
   "requires_features": [],
   "license": "MIT",
   "authors": [
@@ -16,37 +16,15 @@
   ],
   "consumers": {
     "squared_pg": {
-      "external": {
-        "id": "posix-terminal",
-        "version": ">=0.0.0",
-        "acquisition": "vendored"
-      },
-      "runtime": {
-        "model": "none"
-      },
       "provides": [
         "console.io",
         "text.regex",
         "files.handle"
       ],
-      "platforms": [
-        "termux",
-        "linux",
-        "macos",
-        "desktop"
-      ],
       "compatible_templates": [
-        "template.terminal.cpp"
+        "template.terminal.cpp",
+        "template.term.edu.cpp"
       ],
-      "requires": {
-        "framework": ">=1.0.0 <2.0.0",
-        "packages": [],
-        "kits": [],
-        "engine": ">=0.1.0 <0.2.0",
-        "capabilities": [
-          "capability.template.substitute@^1.0"
-        ]
-      },
       "integration_areas": [
         "app.include",
         "build.make.fragments"
@@ -54,6 +32,10 @@
       "conflicts_with": [
         "kit.ncurses"
       ],
+      "requires": {
+        "engine": ">=0.1.0 <0.2.0",
+        "packages": []
+      },
       "ownership": {
         "generated": [
           "sq_kit/**",

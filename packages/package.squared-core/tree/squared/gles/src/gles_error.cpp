@@ -1,6 +1,6 @@
-#include <squared/gles/gles_error.hpp>
+#include <squared/gles/src/gles_error.hpp>
 
-#include <squared/gles/gles_error_code.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
 
 #include <string>
 

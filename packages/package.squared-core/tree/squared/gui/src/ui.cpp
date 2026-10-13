@@ -2,24 +2,24 @@
 
 #include "detail/gui_detail.hpp"
 #include <squared/app/event.hpp>
-#include <squared/app/text_input.hpp>
+#include <squared/app/src/text_input.hpp>
 #include <squared/gui/dialog.hpp>
-#include <squared/gui/key.hpp>
-#include <squared/gui/key_modifiers.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/pointer_action.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/key.hpp>
+#include <squared/gui/src/key_modifiers.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/pointer_action.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
-#include <squared/gui/tooltip_config.hpp>
+#include <squared/gui/src/tooltip_config.hpp>
 #include <squared/gui/widget.hpp>
 #include <squared/gui/window.hpp>
-#include <squared/gui/window_style.hpp>
-#include <squared/scene2d/actor.hpp>
-#include <squared/scene2d/group.hpp>
-#include <squared/scene2d/input_event.hpp>
-#include <squared/scene2d/input_key.hpp>
-#include <squared/scene2d/input_type.hpp>
-#include <squared/scene2d/navigation_action.hpp>
+#include <squared/gui/src/window_style.hpp>
+#include <squared/gui/actor.hpp>
+#include <squared/gui/group.hpp>
+#include <squared/gui/src/input_event.hpp>
+#include <squared/gui/src/input_key.hpp>
+#include <squared/gui/src/input_type.hpp>
+#include <squared/gui/src/navigation_action.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -153,8 +153,8 @@ void Ui::update(double delta_seconds)
                         press_tooltip_pointer_id_
                     );
                     if (capture != captures_.end()) {
-                        scene2d::InputEvent cancelled;
-                        cancelled.type = scene2d::InputType::pointer_cancel;
+                        InputEvent cancelled;
+                        cancelled.type = InputType::pointer_cancel;
                         cancelled.pointer_id = press_tooltip_pointer_id_;
                         cancelled.stage_x = tooltip_anchor_x_;
                         cancelled.stage_y = tooltip_anchor_y_;
@@ -219,7 +219,7 @@ void Ui::layout(Painter& painter)
         focused_ && focused_->wants_text_input()) {
         float stage_x = 0.0F;
         float stage_y = 0.0F;
-        for (const scene2d::Actor* current = focused_; current;
+        for (const Actor* current = focused_; current;
              current = current->parent()) {
             stage_x += current->x();
             stage_y += current->y();
@@ -235,7 +235,7 @@ void Ui::paint(Painter& painter) const
 {
     const Window* modal = top_modal();
     for (std::size_t index = 0; index < stage_.root().child_count(); ++index) {
-        const scene2d::Actor* child = stage_.root().child_at(index);
+        const Actor* child = stage_.root().child_at(index);
         if (child == modal) {
             const WindowStyle& style = skin_.window_style(modal->style_);
             painter.fill_rectangle(
@@ -345,14 +345,14 @@ bool Ui::pointer(
     const bool tooltip_was_visible = tooltip_widget_ != nullptr;
     if (tooltip_widget_) hide_tooltip();
 
-    scene2d::Actor* tooltip_hit = stage_.hit(x, y, false);
+    Actor* tooltip_hit = stage_.hit(x, y, false);
     if (Window* modal = top_modal();
         modal && !is_descendant_of(tooltip_hit, modal)) {
         tooltip_hit = modal;
     }
     Widget* tooltip_target = nullptr;
-    for (scene2d::Actor* actor = tooltip_hit; actor; actor = actor->parent()) {
-        if (auto* widget = scene2d::actor_cast<Widget>(actor)) {
+    for (Actor* actor = tooltip_hit; actor; actor = actor->parent()) {
+        if (auto* widget = actor_cast<Widget>(actor)) {
             tooltip_target = widget;
             break;
         }
@@ -406,25 +406,25 @@ bool Ui::pointer(
     if (action == PointerAction::down) {
         Widget* focus = target;
         while (focus && !focus->focusable()) {
-            focus = scene2d::actor_cast<Widget>(focus->parent());
+            focus = actor_cast<Widget>(focus->parent());
         }
         if (focus || !top_modal()) set_focus(focus);
     }
 
-    scene2d::InputEvent routed;
+    InputEvent routed;
     routed.type = action == PointerAction::down
-        ? scene2d::InputType::pointer_down
+        ? InputType::pointer_down
         : action == PointerAction::up
-            ? scene2d::InputType::pointer_up
+            ? InputType::pointer_up
             : action == PointerAction::cancel
-                ? scene2d::InputType::pointer_cancel
-                : scene2d::InputType::pointer_move;
+                ? InputType::pointer_cancel
+                : InputType::pointer_move;
     routed.pointer_id = pointer_id;
     routed.stage_x = x;
     routed.stage_y = y;
     routed.button = button;
     const bool handled = stage_.dispatch_input(routed, target);
-    auto* handler = scene2d::actor_cast<Widget>(routed.handled_by());
+    auto* handler = actor_cast<Widget>(routed.handled_by());
     if (action == PointerAction::down && handler) captures_[pointer_id] = handler;
     if (action == PointerAction::up || action == PointerAction::cancel) {
         captures_.erase(pointer_id);
@@ -438,22 +438,22 @@ bool Ui::key_down(Key key, KeyModifiers modifiers)
     hide_tooltip();
     focus_tooltip_owner_ = nullptr;
     focus_tooltip_elapsed_ = 0.0;
-    scene2d::InputEvent routed;
-    routed.type = scene2d::InputType::key_down;
+    InputEvent routed;
+    routed.type = InputType::key_down;
     routed.modifiers = modifiers;
     switch (key) {
-    case Key::left: routed.key = scene2d::InputKey::left; break;
-    case Key::right: routed.key = scene2d::InputKey::right; break;
-    case Key::up: routed.key = scene2d::InputKey::up; break;
-    case Key::down: routed.key = scene2d::InputKey::down; break;
-    case Key::home: routed.key = scene2d::InputKey::home; break;
-    case Key::end: routed.key = scene2d::InputKey::end; break;
-    case Key::backspace: routed.key = scene2d::InputKey::backspace; break;
-    case Key::delete_key: routed.key = scene2d::InputKey::delete_key; break;
-    case Key::enter: routed.key = scene2d::InputKey::enter; break;
-    case Key::space: routed.key = scene2d::InputKey::space; break;
-    case Key::tab: routed.key = scene2d::InputKey::tab; break;
-    case Key::escape: routed.key = scene2d::InputKey::escape; break;
+    case Key::left: routed.key = InputKey::left; break;
+    case Key::right: routed.key = InputKey::right; break;
+    case Key::up: routed.key = InputKey::up; break;
+    case Key::down: routed.key = InputKey::down; break;
+    case Key::home: routed.key = InputKey::home; break;
+    case Key::end: routed.key = InputKey::end; break;
+    case Key::backspace: routed.key = InputKey::backspace; break;
+    case Key::delete_key: routed.key = InputKey::delete_key; break;
+    case Key::enter: routed.key = InputKey::enter; break;
+    case Key::space: routed.key = InputKey::space; break;
+    case Key::tab: routed.key = InputKey::tab; break;
+    case Key::escape: routed.key = InputKey::escape; break;
     }
     bool handled = focused_ && stage_.dispatch_input(routed, focused_);
     if (!handled && key == Key::tab) handled = focus_next(modifiers.shift);
@@ -475,22 +475,22 @@ bool Ui::key_down(Key key, KeyModifiers modifiers)
 bool Ui::key_up(Key key, KeyModifiers modifiers)
 {
     if (!focused_) return false;
-    scene2d::InputEvent routed;
-    routed.type = scene2d::InputType::key_up;
+    InputEvent routed;
+    routed.type = InputType::key_up;
     routed.modifiers = modifiers;
     switch (key) {
-    case Key::left: routed.key = scene2d::InputKey::left; break;
-    case Key::right: routed.key = scene2d::InputKey::right; break;
-    case Key::up: routed.key = scene2d::InputKey::up; break;
-    case Key::down: routed.key = scene2d::InputKey::down; break;
-    case Key::home: routed.key = scene2d::InputKey::home; break;
-    case Key::end: routed.key = scene2d::InputKey::end; break;
-    case Key::backspace: routed.key = scene2d::InputKey::backspace; break;
-    case Key::delete_key: routed.key = scene2d::InputKey::delete_key; break;
-    case Key::enter: routed.key = scene2d::InputKey::enter; break;
-    case Key::space: routed.key = scene2d::InputKey::space; break;
-    case Key::tab: routed.key = scene2d::InputKey::tab; break;
-    case Key::escape: routed.key = scene2d::InputKey::escape; break;
+    case Key::left: routed.key = InputKey::left; break;
+    case Key::right: routed.key = InputKey::right; break;
+    case Key::up: routed.key = InputKey::up; break;
+    case Key::down: routed.key = InputKey::down; break;
+    case Key::home: routed.key = InputKey::home; break;
+    case Key::end: routed.key = InputKey::end; break;
+    case Key::backspace: routed.key = InputKey::backspace; break;
+    case Key::delete_key: routed.key = InputKey::delete_key; break;
+    case Key::enter: routed.key = InputKey::enter; break;
+    case Key::space: routed.key = InputKey::space; break;
+    case Key::tab: routed.key = InputKey::tab; break;
+    case Key::escape: routed.key = InputKey::escape; break;
     }
     return stage_.dispatch_input(routed, focused_);
 }
@@ -504,33 +504,33 @@ bool Ui::navigation(
     focus_tooltip_owner_ = nullptr;
     focus_tooltip_elapsed_ = 0.0;
     using Navigation = app::Event::Navigation;
-    scene2d::InputEvent routed;
-    routed.type = scene2d::InputType::navigation;
+    InputEvent routed;
+    routed.type = InputType::navigation;
     routed.input_device_id = input_device_id;
     switch (navigation_value) {
     case Navigation::left:
-        routed.navigation = scene2d::NavigationAction::left;
+        routed.navigation = NavigationAction::left;
         break;
     case Navigation::right:
-        routed.navigation = scene2d::NavigationAction::right;
+        routed.navigation = NavigationAction::right;
         break;
     case Navigation::up:
-        routed.navigation = scene2d::NavigationAction::up;
+        routed.navigation = NavigationAction::up;
         break;
     case Navigation::down:
-        routed.navigation = scene2d::NavigationAction::down;
+        routed.navigation = NavigationAction::down;
         break;
     case Navigation::next:
-        routed.navigation = scene2d::NavigationAction::next;
+        routed.navigation = NavigationAction::next;
         break;
     case Navigation::previous:
-        routed.navigation = scene2d::NavigationAction::previous;
+        routed.navigation = NavigationAction::previous;
         break;
     case Navigation::activate:
-        routed.navigation = scene2d::NavigationAction::activate;
+        routed.navigation = NavigationAction::activate;
         break;
     case Navigation::cancel:
-        routed.navigation = scene2d::NavigationAction::cancel;
+        routed.navigation = NavigationAction::cancel;
         break;
     case Navigation::unknown:
         return false;
@@ -595,19 +595,19 @@ void Ui::set_tooltip_config(TooltipConfig config)
 
 Widget* Ui::widget_at(float x, float y) noexcept
 {
-    scene2d::Actor* actor = stage_.hit(x, y, true);
+    Actor* actor = stage_.hit(x, y, true);
     if (Window* modal = top_modal(); modal && !is_descendant_of(actor, modal)) {
         return modal;
     }
     while (actor) {
-        if (auto* widget = scene2d::actor_cast<Widget>(actor)) return widget;
+        if (auto* widget = actor_cast<Widget>(actor)) return widget;
         actor = actor->parent();
     }
     return nullptr;
 }
 
 void Ui::paint_tree(
-    const scene2d::Actor& actor,
+    const Actor& actor,
     Painter& painter,
     const Skin& skin,
     float parent_x,
@@ -617,12 +617,12 @@ void Ui::paint_tree(
     if (!actor.visible()) return;
     const float x = parent_x + actor.x();
     const float y = parent_y + actor.y();
-    const auto* widget = scene2d::actor_cast<Widget>(&actor);
+    const auto* widget = actor_cast<Widget>(&actor);
     if (widget) {
         painter.push_clip({x, y, widget->width(), widget->height()});
         widget->paint(painter, skin, x, y);
     }
-    if (const auto* group = scene2d::actor_cast<scene2d::Group>(&actor)) {
+    if (const auto* group = actor_cast<Group>(&actor)) {
         for (std::size_t index = 0; index < group->child_count(); ++index) {
             paint_tree(*group->child_at(index), painter, skin, x, y);
         }
@@ -641,7 +641,7 @@ void Ui::set_focus(Widget* widget)
             focused_ && focused_->wants_text_input()) {
             float stage_x = 0.0F;
             float stage_y = 0.0F;
-            for (const scene2d::Actor* current = focused_; current;
+            for (const Actor* current = focused_; current;
                  current = current->parent()) {
                 stage_x += current->x();
                 stage_y += current->y();
@@ -662,7 +662,7 @@ void Ui::set_focus(Widget* widget)
     if (focused_ && focused_->wants_text_input()) {
         float stage_x = 0.0F;
         float stage_y = 0.0F;
-        for (const scene2d::Actor* current = focused_; current;
+        for (const Actor* current = focused_; current;
              current = current->parent()) {
             stage_x += current->x();
             stage_y += current->y();
@@ -756,23 +756,23 @@ bool Ui::focus_direction(Key direction)
 std::vector<Widget*> Ui::focusable_widgets()
 {
     std::vector<Widget*> result;
-    scene2d::Actor* scope = top_modal();
+    Actor* scope = top_modal();
     if (!scope) scope = &stage_.root();
     collect_focusable(*scope, result);
     return result;
 }
 
 void Ui::collect_focusable(
-    scene2d::Actor& actor,
+    Actor& actor,
     std::vector<Widget*>& result
 )
 {
     if (!actor.visible()) return;
-    if (auto* widget = scene2d::actor_cast<Widget>(&actor);
+    if (auto* widget = actor_cast<Widget>(&actor);
         widget && widget->focusable()) {
         result.push_back(widget);
     }
-    if (auto* group = scene2d::actor_cast<scene2d::Group>(&actor)) {
+    if (auto* group = actor_cast<Group>(&actor)) {
         for (std::size_t index = 0; index < group->child_count(); ++index) {
             collect_focusable(*group->child_at(index), result);
         }
@@ -780,14 +780,14 @@ void Ui::collect_focusable(
 }
 
 void Ui::stage_position(
-    const scene2d::Actor& actor,
+    const Actor& actor,
     float& x,
     float& y
 ) noexcept
 {
     x = 0.0F;
     y = 0.0F;
-    for (const scene2d::Actor* current = &actor; current;
+    for (const Actor* current = &actor; current;
          current = current->parent()) {
         x += current->x();
         y += current->y();
@@ -797,7 +797,7 @@ void Ui::stage_position(
 Widget* Ui::tooltip_owner_for(Widget* target) const noexcept
 {
     for (Widget* current = target; current;
-         current = scene2d::actor_cast<Widget>(current->parent())) {
+         current = actor_cast<Widget>(current->parent())) {
         if (current->has_tooltip() && tooltip_owner_allowed(current)) {
             return current;
         }
@@ -811,7 +811,7 @@ bool Ui::tooltip_owner_allowed(const Widget* owner) const noexcept
         !is_descendant_of(owner, &stage_.root())) {
         return false;
     }
-    for (const scene2d::Actor* current = owner; current;
+    for (const Actor* current = owner; current;
          current = current->parent()) {
         if (!current->visible()) return false;
     }
@@ -921,10 +921,10 @@ void Ui::layout_tooltip(Painter& painter)
     tooltip_widget_->validate_layout(painter, skin_);
 }
 
-void Ui::make_subtree_untouchable(scene2d::Actor& actor) noexcept
+void Ui::make_subtree_untouchable(Actor& actor) noexcept
 {
     actor.set_touchable(false);
-    if (auto* group = scene2d::actor_cast<scene2d::Group>(&actor)) {
+    if (auto* group = actor_cast<Group>(&actor)) {
         for (std::size_t index = 0; index < group->child_count(); ++index) {
             make_subtree_untouchable(*group->child_at(index));
         }
@@ -956,11 +956,11 @@ const Window* Ui::top_modal() const noexcept
 }
 
 bool Ui::is_descendant_of(
-    const scene2d::Actor* actor,
-    const scene2d::Actor* ancestor
+    const Actor* actor,
+    const Actor* ancestor
 ) noexcept
 {
-    for (const scene2d::Actor* current = actor; current; current = current->parent()) {
+    for (const Actor* current = actor; current; current = current->parent()) {
         if (current == ancestor) return true;
     }
     return false;

@@ -71,26 +71,25 @@ endif
 
 # --- the framework ----------------------------------------------------------
 
-# Modules that publish headers. A module with no sources still has an include
-# directory, which is why this is a list rather than the archive list.
-SQ_SQUARED_MODULES := app assets data files gles graphics graphics2d gui \
-                      math messaging scene2d time
+# Modules that publish headers. A module with no sources still publishes
+# headers, which is why this is a list rather than the archive list.
+SQ_SQUARED_MODULES := app assets data files gles graphics gui \
+                      math messaging time
 
-SQ_SQUARED_INC := $(foreach m,$(SQ_SQUARED_MODULES),\
-                    -I$(SQ_SQUARED_DIR)/$(m)/include)
+# One include root for every header, workhorse or supporting: the directory
+# that holds squared/. Headers are written <squared/<module>/...>.
+SQ_SQUARED_INC := -I$(SQ_SQUARED_DIR)/..
 
 # Link order matters for static archives: a dependent must precede what it
 # depends on, because the linker resolves left to right and does not go back.
-# gui needs graphics2d and scene2d; those need graphics and math; assets needs
-# files; everything that parses needs data.
+# gui needs graphics; graphics needs math and files; assets needs files;
+# everything that parses needs data. gles stands alone.
 SQ_SQUARED_LIB_DIR := $(SQ_SQUARED_DIR)/build/release/lib
 SQ_SQUARED_LIBS := \
   $(SQ_SQUARED_LIB_DIR)/libsquared_gui.a \
-  $(SQ_SQUARED_LIB_DIR)/libsquared_scene2d.a \
-  $(SQ_SQUARED_LIB_DIR)/libsquared_graphics2d.a \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_graphics.a \
   $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),\
      $(SQ_SQUARED_LIB_DIR)/libsquared_gles.a,) \
-  $(SQ_SQUARED_LIB_DIR)/libsquared_graphics.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_assets.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_files.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_messaging.a \

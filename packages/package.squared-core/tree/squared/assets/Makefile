@@ -8,8 +8,7 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := assets
 MODULE_DIR := $(SQUARED_ROOT)/assets
 
-INCLUDES := -I$(SQUARED_ROOT)/assets/include \
-            -I$(SQUARED_ROOT)/files/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/asset_manager.cpp
 

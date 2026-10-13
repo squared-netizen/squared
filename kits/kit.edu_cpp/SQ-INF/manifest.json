@@ -1,0 +1,39 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 2,
+  "kind": "kit",
+  "id": "kit.edu_cpp",
+  "version": "0.1.0",
+  "tree": "tree/",
+  "title": "C++ lessons for teaching workspaces",
+  "description": "Four short C++ lessons (output, variables and input, decisions and loops, functions) that land in lessons/cpp/ of a teaching workspace. Text only: no code, no build changes.",
+  "requires_features": [],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "squared-pg maintainers"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "compatible_templates": [
+        "template.term.edu.cpp"
+      ],
+      "integration_areas": [
+        "edu.lessons"
+      ],
+      "requires": {
+        "engine": ">=0.1.0 <0.2.0",
+        "packages": []
+      },
+      "ownership": {
+        "generated": [],
+        "user": [
+          "lessons/**"
+        ],
+        "shared": [],
+        "default": "user"
+      }
+    }
+  }
+}

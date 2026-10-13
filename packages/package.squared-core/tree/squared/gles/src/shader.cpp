@@ -1,8 +1,8 @@
 #include <squared/gles/shader.hpp>
 
-#include <squared/gles/gles_error.hpp>
-#include <squared/gles/gles_error_code.hpp>
-#include <squared/gles/shader_stage.hpp>
+#include <squared/gles/src/gles_error.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
+#include <squared/gles/src/shader_stage.hpp>
 
 #include <string>
 #include <string_view>

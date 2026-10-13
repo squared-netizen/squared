@@ -66,7 +66,7 @@ check_stb() {
     return 0
   fi
   echo "third_party: third_party/stb/stb_image.h is missing" >&2
-  echo "third_party: graphics2d cannot decode images without it" >&2
+  echo "third_party: graphics cannot decode images without it" >&2
   return 1
 }
 

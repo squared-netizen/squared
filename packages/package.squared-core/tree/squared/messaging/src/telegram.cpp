@@ -1,9 +1,9 @@
 #include <squared/messaging/telegram.hpp>
 
 #include <squared/data/json.hpp>
-#include <squared/messaging/correlation_id.hpp>
-#include <squared/messaging/endpoint_id.hpp>
-#include <squared/messaging/message_id.hpp>
+#include <squared/messaging/src/correlation_id.hpp>
+#include <squared/messaging/src/endpoint_id.hpp>
+#include <squared/messaging/src/message_id.hpp>
 
 #include <optional>
 #include <utility>

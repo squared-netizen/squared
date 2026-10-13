@@ -14,8 +14,7 @@ MODULE := data
 MODULE_DIR := $(SQUARED_ROOT)/data
 YYJSON_DIR := $(SQUARED_ROOT)/third_party/yyjson
 
-INCLUDES := -I$(SQUARED_ROOT)/data/include \
-            -I$(YYJSON_DIR) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) -I$(YYJSON_DIR) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/json.cpp \
     src/json_value.cpp

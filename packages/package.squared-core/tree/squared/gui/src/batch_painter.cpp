@@ -1,16 +1,16 @@
 #include <squared/gui/batch_painter.hpp>
 
 #include <squared/graphics/color.hpp>
-#include <squared/graphics2d/bitmap_font.hpp>
-#include <squared/graphics2d/bitmap_font_error.hpp>
-#include <squared/graphics2d/glyph_layout.hpp>
-#include <squared/graphics2d/glyph_placement.hpp>
-#include <squared/graphics2d/sprite_batch.hpp>
-#include <squared/graphics2d/texture_recovery_options.hpp>
-#include <squared/graphics2d/texture_region.hpp>
-#include <squared/gui/font_resource.hpp>
-#include <squared/gui/rectangle.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/graphics/bitmap_font.hpp>
+#include <squared/graphics/src/bitmap_font_error.hpp>
+#include <squared/graphics/glyph_layout.hpp>
+#include <squared/graphics/src/glyph_placement.hpp>
+#include <squared/graphics/sprite_batch.hpp>
+#include <squared/graphics/src/texture_recovery_options.hpp>
+#include <squared/graphics/texture_region.hpp>
+#include <squared/gui/src/font_resource.hpp>
+#include <squared/gui/src/rectangle.hpp>
+#include <squared/gui/src/size.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -32,23 +32,23 @@ namespace {
 bool layout_text(
     const FontResource* font,
     std::string_view text,
-    graphics2d::GlyphLayout& layout
+    graphics::GlyphLayout& layout
 ) noexcept
 {
     layout.clear();
     if (font == nullptr || !font->resolved()) return false;
 
-    const graphics2d::BitmapFont* bitmap = font->bitmap_font();
+    const graphics::BitmapFont* bitmap = font->bitmap_font();
     if (bitmap == nullptr || !bitmap->valid()) return false;
 
-    graphics2d::BitmapFontError error;
+    graphics::BitmapFontError error;
     return layout.set_text(*bitmap, text, error);
 }
 
 }  // namespace
 
 BatchPainter::BatchPainter(
-    graphics2d::SpriteBatch& batch,
+    graphics::SpriteBatch& batch,
     const FontResource* default_font
 ) noexcept
     : batch_(&batch)
@@ -58,7 +58,7 @@ BatchPainter::BatchPainter(
 
 BatchPainter::~BatchPainter() = default;
 
-graphics2d::TextureRegion BatchPainter::centre_texel() const noexcept
+graphics::TextureRegion BatchPainter::centre_texel() const noexcept
 {
     if (fill_ == nullptr) return {};
     if (fill_->width() <= 1 || fill_->height() <= 1) return *fill_;
@@ -66,7 +66,7 @@ graphics2d::TextureRegion BatchPainter::centre_texel() const noexcept
 }
 
 bool BatchPainter::set_fill_source(
-    const graphics2d::TextureRegion* white
+    const graphics::TextureRegion* white
 ) noexcept
 {
     if (white != nullptr && white->valid()) {
@@ -80,10 +80,10 @@ bool BatchPainter::set_fill_source(
     const std::uint8_t texel[4] = {255, 255, 255, 255};
     if (!owned_white_.create_rgba(
             1, 1, texel,
-            graphics2d::TextureRecoveryOptions::retain_pixels())) {
+            graphics::TextureRecoveryOptions::retain_pixels())) {
         return false;
     }
-    owned_fill_ = graphics2d::TextureRegion{owned_white_};
+    owned_fill_ = graphics::TextureRegion{owned_white_};
     fill_ = &owned_fill_;
     return true;
 }
@@ -111,7 +111,7 @@ Size BatchPainter::measure_text(
     const FontResource* font
 )
 {
-    graphics2d::GlyphLayout layout;
+    graphics::GlyphLayout layout;
     if (!layout_text(font, text, layout)) return Size{0.0F, 0.0F};
     return Size{layout.width(), layout.height()};
 }
@@ -163,7 +163,7 @@ void BatchPainter::stroke_rectangle(
 }
 
 void BatchPainter::draw_region(
-    const graphics2d::TextureRegion& region,
+    const graphics::TextureRegion& region,
     const Rectangle& rectangle,
     graphics::Color color
 )
@@ -190,11 +190,11 @@ void BatchPainter::draw_text(
     graphics::Color color
 )
 {
-    graphics2d::GlyphLayout layout;
+    graphics::GlyphLayout layout;
     if (!layout_text(font, text, layout)) return;
 
-    for (const graphics2d::GlyphPlacement& glyph : layout.glyphs()) {
-        const graphics2d::TextureRegion region = font->glyph_region(glyph);
+    for (const graphics::GlyphPlacement& glyph : layout.glyphs()) {
+        const graphics::TextureRegion region = font->glyph_region(glyph);
         if (!region.valid()) continue;
         batch_->draw(region, x + glyph.x, y + glyph.y,
                      glyph.width, glyph.height, color);

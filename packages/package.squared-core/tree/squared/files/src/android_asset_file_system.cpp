@@ -1,9 +1,9 @@
 #include <squared/files/android_asset_file_system.hpp>
 
-#include <squared/files/file_error.hpp>
-#include <squared/files/file_error_code.hpp>
-#include <squared/files/file_read_result.hpp>
-#include <squared/files/file_type.hpp>
+#include <squared/files/src/file_error.hpp>
+#include <squared/files/src/file_error_code.hpp>
+#include <squared/files/src/file_read_result.hpp>
+#include <squared/files/src/file_type.hpp>
 #include <squared/files/posix_file_system.hpp>
 
 #include <cstddef>

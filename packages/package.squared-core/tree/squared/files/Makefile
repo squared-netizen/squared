@@ -19,7 +19,7 @@ SQUARED_PLATFORM ?= posix
 MODULE := files
 MODULE_DIR := $(SQUARED_ROOT)/files
 
-INCLUDES := -I$(SQUARED_ROOT)/files/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/file_handle.cpp \
     src/file_system.cpp \
@@ -48,7 +48,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/src/file_handle.cpp \
                 $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g -I$(SQUARED_ROOT)/files/include \
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) \
 	    -I$(MODULE_DIR)/test $^ -o $@
 
 $(TARGET): $(OBJECTS)

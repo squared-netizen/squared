@@ -1,8 +1,8 @@
 #include <squared/gui/cell.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/alignment.hpp>
-#include <squared/gui/insets.hpp>
+#include <squared/gui/src/alignment.hpp>
+#include <squared/gui/src/insets.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/widget.hpp>
 

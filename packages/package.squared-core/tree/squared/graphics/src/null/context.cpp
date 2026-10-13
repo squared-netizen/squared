@@ -1,7 +1,7 @@
 #include <squared/graphics/context.hpp>
 
 #include <squared/graphics/color.hpp>
-#include <squared/graphics/context_config.hpp>
+#include <squared/graphics/src/context_config.hpp>
 
 #include <cstdint>
 
@@ -13,7 +13,7 @@ namespace sq::graphics {
  * Every Context symbol resolves and nothing is drawn. It exists so that a
  * project with no rendering backend selected fails as a black screen rather
  * than as a link error naming a private member function, and so that
- * graphics2d, gui and scene2d can be built and tested on a machine with no
+ * graphics, gui and gui can be built and tested on a machine with no
  * GPU and no EGL.
  *
  * It answers the same contract as a real backend: create succeeds, valid()

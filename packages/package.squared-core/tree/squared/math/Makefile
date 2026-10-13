@@ -8,7 +8,7 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := math
 MODULE_DIR := $(SQUARED_ROOT)/math
 
-INCLUDES := -I$(SQUARED_ROOT)/math/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/matrix4.cpp
 

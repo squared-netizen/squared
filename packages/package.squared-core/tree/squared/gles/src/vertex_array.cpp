@@ -1,10 +1,10 @@
 #include <squared/gles/vertex_array.hpp>
 
 #include <squared/gles/buffer.hpp>
-#include <squared/gles/buffer_target.hpp>
-#include <squared/gles/gles_error.hpp>
-#include <squared/gles/gles_error_code.hpp>
-#include <squared/gles/vertex_attribute.hpp>
+#include <squared/gles/src/buffer_target.hpp>
+#include <squared/gles/src/gles_error.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
+#include <squared/gles/src/vertex_attribute.hpp>
 
 #include <cstddef>
 #include <span>

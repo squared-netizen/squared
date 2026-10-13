@@ -1,22 +1,22 @@
 #include <squared/gui/widget.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/insets.hpp>
-#include <squared/gui/key.hpp>
-#include <squared/gui/key_modifiers.hpp>
+#include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/key.hpp>
+#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/margin_container.hpp>
-#include <squared/gui/painter.hpp>
+#include <squared/gui/src/painter.hpp>
 #include <squared/gui/panel.hpp>
-#include <squared/gui/pointer_action.hpp>
-#include <squared/gui/pointer_event.hpp>
-#include <squared/gui/size.hpp>
-#include <squared/gui/size_hints.hpp>
+#include <squared/gui/src/pointer_action.hpp>
+#include <squared/gui/src/pointer_event.hpp>
+#include <squared/gui/src/size.hpp>
+#include <squared/gui/src/size_hints.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/stack.hpp>
-#include <squared/scene2d/input_event.hpp>
-#include <squared/scene2d/input_key.hpp>
-#include <squared/scene2d/input_type.hpp>
+#include <squared/gui/src/input_event.hpp>
+#include <squared/gui/src/input_key.hpp>
+#include <squared/gui/src/input_type.hpp>
 
 #include <cstddef>
 #include <limits>
@@ -63,7 +63,7 @@ SizeHints Widget::size_hints(Painter& painter, const Skin& skin) const
 void Widget::invalidate_layout() noexcept
 {
     layout_valid_ = false;
-    if (auto* widget = scene2d::actor_cast<Widget>(parent())) {
+    if (auto* widget = actor_cast<Widget>(parent())) {
         widget->invalidate_layout();
     }
 }
@@ -78,7 +78,7 @@ void Widget::validate_layout(Painter& painter, const Skin& skin)
 void Widget::layout(Painter& painter, const Skin& skin)
 {
     for (std::size_t index = 0; index < child_count(); ++index) {
-        if (auto* child = scene2d::actor_cast<Widget>(child_at(index))) {
+        if (auto* child = actor_cast<Widget>(child_at(index))) {
             child->validate_layout(painter, skin);
         }
     }
@@ -127,20 +127,20 @@ void Widget::clear_tooltip() noexcept
     tooltip_factory_ = {};
 }
 
-void Widget::input_event(scene2d::InputEvent& event)
+void Widget::input_event(InputEvent& event)
 {
     bool handled = false;
     switch (event.type) {
-    case scene2d::InputType::pointer_move:
-    case scene2d::InputType::pointer_down:
-    case scene2d::InputType::pointer_up:
-    case scene2d::InputType::pointer_cancel: {
+    case InputType::pointer_move:
+    case InputType::pointer_down:
+    case InputType::pointer_up:
+    case InputType::pointer_cancel: {
         PointerAction action = PointerAction::move;
-        if (event.type == scene2d::InputType::pointer_down) {
+        if (event.type == InputType::pointer_down) {
             action = PointerAction::down;
-        } else if (event.type == scene2d::InputType::pointer_up) {
+        } else if (event.type == InputType::pointer_up) {
             action = PointerAction::up;
-        } else if (event.type == scene2d::InputType::pointer_cancel) {
+        } else if (event.type == InputType::pointer_cancel) {
             action = PointerAction::cancel;
         }
         handled = pointer_event({
@@ -152,22 +152,22 @@ void Widget::input_event(scene2d::InputEvent& event)
         });
         break;
     }
-    case scene2d::InputType::key_down: {
+    case InputType::key_down: {
         Key key = Key::escape;
         switch (event.key) {
-        case scene2d::InputKey::left: key = Key::left; break;
-        case scene2d::InputKey::right: key = Key::right; break;
-        case scene2d::InputKey::up: key = Key::up; break;
-        case scene2d::InputKey::down: key = Key::down; break;
-        case scene2d::InputKey::home: key = Key::home; break;
-        case scene2d::InputKey::end: key = Key::end; break;
-        case scene2d::InputKey::backspace: key = Key::backspace; break;
-        case scene2d::InputKey::delete_key: key = Key::delete_key; break;
-        case scene2d::InputKey::enter: key = Key::enter; break;
-        case scene2d::InputKey::space: key = Key::space; break;
-        case scene2d::InputKey::tab: key = Key::tab; break;
-        case scene2d::InputKey::escape: key = Key::escape; break;
-        case scene2d::InputKey::unknown: return;
+        case InputKey::left: key = Key::left; break;
+        case InputKey::right: key = Key::right; break;
+        case InputKey::up: key = Key::up; break;
+        case InputKey::down: key = Key::down; break;
+        case InputKey::home: key = Key::home; break;
+        case InputKey::end: key = Key::end; break;
+        case InputKey::backspace: key = Key::backspace; break;
+        case InputKey::delete_key: key = Key::delete_key; break;
+        case InputKey::enter: key = Key::enter; break;
+        case InputKey::space: key = Key::space; break;
+        case InputKey::tab: key = Key::tab; break;
+        case InputKey::escape: key = Key::escape; break;
+        case InputKey::unknown: return;
         }
         handled = key_down(key, event.modifiers);
         break;

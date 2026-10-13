@@ -1,9 +1,9 @@
 #include <squared/gui/margin_container.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/insets.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/widget.hpp>
 

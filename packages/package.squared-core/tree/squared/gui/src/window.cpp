@@ -1,16 +1,16 @@
 #include <squared/gui/window.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/drawable_ptr.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/pointer_action.hpp>
-#include <squared/gui/pointer_event.hpp>
-#include <squared/gui/rectangle.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/drawable_ptr.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/pointer_action.hpp>
+#include <squared/gui/src/pointer_event.hpp>
+#include <squared/gui/src/rectangle.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/table.hpp>
-#include <squared/gui/window_style.hpp>
-#include <squared/scene2d/group.hpp>
+#include <squared/gui/src/window_style.hpp>
+#include <squared/gui/group.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -265,7 +265,7 @@ unsigned int Window::resize_edges(float local_x, float local_y) const noexcept
 
 void Window::constrain_to_parent() noexcept
 {
-    const scene2d::Group* owner = parent();
+    const Group* owner = parent();
     if (!owner) return;
     const float minimum_width = std::max(
         requested_minimum_.width, measured_minimum_.width
@@ -315,7 +315,7 @@ void Window::resize_from_pointer(float stage_x, float stage_y) noexcept
         else bottom = top + minimum_height;
     }
 
-    if (const scene2d::Group* owner = parent()) {
+    if (const Group* owner = parent()) {
         if ((resize_edges_ & resize_left) != 0U && left < 0.0F) left = 0.0F;
         if ((resize_edges_ & resize_top) != 0U && top < 0.0F) top = 0.0F;
         if ((resize_edges_ & resize_right) != 0U && right > owner->width()) {

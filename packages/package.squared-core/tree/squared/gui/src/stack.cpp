@@ -1,8 +1,8 @@
 #include <squared/gui/stack.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/painter.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/widget.hpp>
 
@@ -31,7 +31,7 @@ Size Stack::preferred_size(Painter& painter, const Skin& skin) const
     Size result{};
     for (std::size_t index = 0; index < child_count(); ++index) {
         if (const auto* child =
-                scene2d::actor_cast<Widget>(child_at(index))) {
+                actor_cast<Widget>(child_at(index))) {
             const Size size = child->preferred_size(painter, skin);
             result.width = std::max(result.width, size.width);
             result.height = std::max(result.height, size.height);
@@ -43,7 +43,7 @@ Size Stack::preferred_size(Painter& painter, const Skin& skin) const
 void Stack::layout(Painter& painter, const Skin& skin)
 {
     for (std::size_t index = 0; index < child_count(); ++index) {
-        if (auto* child = scene2d::actor_cast<Widget>(child_at(index))) {
+        if (auto* child = actor_cast<Widget>(child_at(index))) {
             child->set_bounds(0.0F, 0.0F, width(), height());
             child->invalidate_layout();
             child->validate_layout(painter, skin);

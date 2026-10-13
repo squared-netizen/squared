@@ -15,7 +15,7 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := gles
 MODULE_DIR := $(SQUARED_ROOT)/gles
 
-INCLUDES := -I$(SQUARED_ROOT)/gles/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/buffer.cpp \
     src/gles_error.cpp \

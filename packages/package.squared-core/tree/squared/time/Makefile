@@ -8,7 +8,7 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := time
 MODULE_DIR := $(SQUARED_ROOT)/time
 
-INCLUDES := -I$(SQUARED_ROOT)/time/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/manual_timepiece.cpp \
     src/timepiece.cpp

@@ -1,7 +1,7 @@
 #include <squared/gui/dialog.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/alignment.hpp>
+#include <squared/gui/src/alignment.hpp>
 #include <squared/gui/button.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/table.hpp>

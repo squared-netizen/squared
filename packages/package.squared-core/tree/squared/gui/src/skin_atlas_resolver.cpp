@@ -7,7 +7,7 @@
 namespace sq::gui {
 
 DrawablePtr resolve_atlas_drawable(
-    const graphics2d::TextureAtlas& atlas,
+    const graphics::TextureAtlas& atlas,
     std::string_view resource_name
 )
 {

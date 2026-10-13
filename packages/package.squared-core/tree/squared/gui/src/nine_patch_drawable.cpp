@@ -1,13 +1,13 @@
-#include <squared/gui/nine_patch_drawable.hpp>
+#include <squared/gui/src/nine_patch_drawable.hpp>
 
 #include "detail/gui_detail.hpp"
 #include <squared/graphics/color.hpp>
-#include <squared/graphics2d/texture_region.hpp>
-#include <squared/gui/insets.hpp>
-#include <squared/gui/nine_patch_splits.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/rectangle.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/graphics/texture_region.hpp>
+#include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/nine_patch_splits.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/rectangle.hpp>
+#include <squared/gui/src/size.hpp>
 
 #include <algorithm>
 #include <array>
@@ -22,7 +22,7 @@ namespace sq::gui {
 using namespace detail;
 
 NinePatchDrawable::NinePatchDrawable(
-    const graphics2d::TextureRegion& region,
+    const graphics::TextureRegion& region,
     NinePatchSplits splits,
     std::optional<Insets> content_insets
 )

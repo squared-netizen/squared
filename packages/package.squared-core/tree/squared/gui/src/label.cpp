@@ -1,8 +1,8 @@
 #include <squared/gui/label.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/painter.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 
 #include <string>

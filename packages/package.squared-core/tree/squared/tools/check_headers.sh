@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Compile every public header on its own.
+# Compile every header a user can include on its own: the workhorse headers at
+# a module root and the supporting headers in its src/. src/detail/ is private
+# and is not checked.
+#
 #
 #   ./tools/check_headers.sh          all modules
 #   ./tools/check_headers.sh gui      one module
@@ -16,6 +19,13 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
+
+# Headers are included as <squared/...>, found through the directory that holds
+# this one, so this one has to be called squared.
+if [ "$(basename "$root")" != "squared" ]; then
+  echo "this directory must be named squared, not $(basename "$root")" >&2
+  exit 2
+fi
 
 : "${CXX:=g++}"
 : "${SQUARED_EXTERNAL_INCLUDES:=}"
@@ -38,22 +48,16 @@ if [ -z "$SQUARED_EXTERNAL_INCLUDES" ] && [ -f local.mk ]; then
   eval "SQUARED_EXTERNAL_INCLUDES=\"$SQUARED_EXTERNAL_INCLUDES\""
 fi
 
-# Discover modules rather than listing them, so a new module is covered the
-# moment it exists.
-includes=""
-for candidate in */include; do
-  if [ -d "$candidate" ]; then
-    includes="$includes -I$root/$candidate"
-  fi
-done
+# One public include root: the directory that holds squared/.
+includes="-I$(dirname "$root")"
 
 scope="${1:-}"
 if [ -n "$scope" ]; then
-  if [ ! -d "$scope/include" ]; then
+  if [ ! -d "$scope" ]; then
     echo "no such module: $scope" >&2
     exit 2
   fi
-  search="$scope/include"
+  search="$scope"
 else
   search="."
 fi
@@ -62,7 +66,13 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 headers="$work/headers"
-find "$search" -path '*/include/squared/*' -name '*.hpp' | sort > "$headers"
+# A module's headers are its root and src/. Modules are discovered rather than
+# listed, so a new one is covered the moment it exists. Depth 3 reaches
+# ./module/src/name.hpp and no further.
+find "$search" -maxdepth 3 -name '*.hpp' \
+  -not -path '*/detail/*' -not -path '*/test/*' \
+  -not -path './third_party/*' -not -path './build/*' \
+  -not -path './docs/*' -not -path './tools/*' | sort > "$headers"
 total="$(wc -l < "$headers" | tr -d ' ')"
 
 if [ "$total" -eq 0 ]; then
@@ -76,7 +86,7 @@ echo "checking $total headers with $CXX (JOBS=$JOBS)"
 # parent can count them without sharing a variable across subshells.
 check_one() {
   header="$1"
-  relative="${header#*/include/}"
+  relative="squared/${header#./}"
   probe="$work/probe.$$.cpp"
   printf '#include <%s>\nint main() { return 0; }\n' "$relative" > "$probe"
   # shellcheck disable=SC2086

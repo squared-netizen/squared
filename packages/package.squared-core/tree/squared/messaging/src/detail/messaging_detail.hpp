@@ -5,10 +5,10 @@
 // own its own translation unit. Not installed and not part of
 // the public API.
 
-#include <squared/messaging/endpoint_id.hpp>
-#include <squared/messaging/message_id.hpp>
+#include <squared/messaging/src/endpoint_id.hpp>
+#include <squared/messaging/src/message_id.hpp>
 #include <squared/messaging/subscription.hpp>
-#include <squared/messaging/telegram_provider.hpp>
+#include <squared/messaging/src/telegram_provider.hpp>
 #include <squared/messaging/telegraph.hpp>
 
 #include <algorithm>

@@ -10,6 +10,16 @@ BUILD ?= release
 
 SQUARED_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))..)
 
+# The public include root is the directory that holds squared/. Every header,
+# workhorse or supporting, is reached as <squared/<module>/...> through it, so a
+# module no longer lists the include directories of the modules it uses. That
+# only works while this directory is named squared.
+ifneq ($(notdir $(SQUARED_ROOT)),squared)
+$(error squared: this directory must be named squared, not $(notdir $(SQUARED_ROOT)), because headers are included as <squared/...>)
+endif
+PUBLIC_ROOT := $(abspath $(SQUARED_ROOT)/..)
+SQUARED_INCLUDE := -I$(PUBLIC_ROOT)
+
 BUILD_DIR ?= $(SQUARED_ROOT)/build/$(BUILD)
 LIB_DIR := $(BUILD_DIR)/lib
 OBJ_DIR := $(BUILD_DIR)/obj

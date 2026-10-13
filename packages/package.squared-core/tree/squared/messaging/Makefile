@@ -8,9 +8,7 @@ include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 MODULE := messaging
 MODULE_DIR := $(SQUARED_ROOT)/messaging
 
-INCLUDES := -I$(SQUARED_ROOT)/messaging/include \
-            -I$(SQUARED_ROOT)/time/include \
-            -I$(SQUARED_ROOT)/data/include $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
+INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/endpoint_id.cpp \
     src/message_dispatcher.cpp \

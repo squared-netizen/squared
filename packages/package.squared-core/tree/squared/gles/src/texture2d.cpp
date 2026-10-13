@@ -1,10 +1,10 @@
 #include <squared/gles/texture2d.hpp>
 
-#include <squared/gles/gles_error.hpp>
-#include <squared/gles/gles_error_code.hpp>
-#include <squared/gles/texture_filter.hpp>
-#include <squared/gles/texture_format.hpp>
-#include <squared/gles/texture_wrap.hpp>
+#include <squared/gles/src/gles_error.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
+#include <squared/gles/src/texture_filter.hpp>
+#include <squared/gles/src/texture_format.hpp>
+#include <squared/gles/src/texture_wrap.hpp>
 
 #include <cstddef>
 #include <span>

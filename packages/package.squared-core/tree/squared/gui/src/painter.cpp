@@ -1,14 +1,14 @@
-#include <squared/gui/painter.hpp>
+#include <squared/gui/src/painter.hpp>
 
 #include "detail/gui_detail.hpp"
 #include <squared/graphics/color.hpp>
-#include <squared/graphics2d/bitmap_font_error.hpp>
-#include <squared/graphics2d/glyph_layout.hpp>
-#include <squared/graphics2d/glyph_layout_options.hpp>
-#include <squared/graphics2d/texture_region.hpp>
-#include <squared/gui/font_resource.hpp>
-#include <squared/gui/rectangle.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/graphics/src/bitmap_font_error.hpp>
+#include <squared/graphics/glyph_layout.hpp>
+#include <squared/graphics/src/glyph_layout_options.hpp>
+#include <squared/graphics/texture_region.hpp>
+#include <squared/gui/src/font_resource.hpp>
+#include <squared/gui/src/rectangle.hpp>
+#include <squared/gui/src/size.hpp>
 
 #include <string_view>
 
@@ -24,10 +24,10 @@ Size Painter::measure_text(
 )
 {
     if (font == nullptr || !font->resolved()) return measure_text(text);
-    graphics2d::GlyphLayout layout;
-    graphics2d::GlyphLayoutOptions options;
+    graphics::GlyphLayout layout;
+    graphics::GlyphLayoutOptions options;
     options.scale = font->scale();
-    graphics2d::BitmapFontError error;
+    graphics::BitmapFontError error;
     if (!layout.set_text(*font->bitmap_font(), text, options, error)) return {};
     return {layout.width(), layout.height()};
 }

@@ -1,4 +1,4 @@
-#include <squared/messaging/message_id.hpp>
+#include <squared/messaging/src/message_id.hpp>
 
 #include "detail/messaging_detail.hpp"
 

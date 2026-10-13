@@ -1,7 +1,7 @@
-#include <squared/messaging/receipt.hpp>
+#include <squared/messaging/src/receipt.hpp>
 
-#include <squared/messaging/message_id.hpp>
-#include <squared/messaging/receipt_status.hpp>
+#include <squared/messaging/src/message_id.hpp>
+#include <squared/messaging/src/receipt_status.hpp>
 
 #include <string_view>
 

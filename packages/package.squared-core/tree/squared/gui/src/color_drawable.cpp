@@ -1,11 +1,11 @@
-#include <squared/gui/color_drawable.hpp>
+#include <squared/gui/src/color_drawable.hpp>
 
 #include "detail/gui_detail.hpp"
 #include <squared/graphics/color.hpp>
-#include <squared/gui/insets.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/rectangle.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/rectangle.hpp>
+#include <squared/gui/src/size.hpp>
 
 namespace sq::gui {
 

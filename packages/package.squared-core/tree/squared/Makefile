@@ -19,15 +19,14 @@ SQUARED_GRAPHICS_BACKEND ?= null
 
 MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
-           graphics2d scene2d gui messaging time
+           gui messaging time
 
 .PHONY: all clean headers $(MODULES)
 
 all: $(MODULES)
 
-graphics2d: graphics math files
-scene2d: graphics2d math files
-gui: graphics graphics2d scene2d math data files
+graphics: math files
+gui: graphics math data files
 messaging: time data
 assets: files
 gles: graphics

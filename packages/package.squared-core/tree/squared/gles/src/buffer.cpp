@@ -1,9 +1,9 @@
 #include <squared/gles/buffer.hpp>
 
-#include <squared/gles/buffer_target.hpp>
-#include <squared/gles/buffer_usage.hpp>
-#include <squared/gles/gles_error.hpp>
-#include <squared/gles/gles_error_code.hpp>
+#include <squared/gles/src/buffer_target.hpp>
+#include <squared/gles/src/buffer_usage.hpp>
+#include <squared/gles/src/gles_error.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
 
 #include <cstddef>
 #include <utility>

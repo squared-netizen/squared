@@ -1,10 +1,10 @@
 #include <squared/gui/scroll_pane.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/painter.hpp>
-#include <squared/gui/pointer_action.hpp>
-#include <squared/gui/pointer_event.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/pointer_action.hpp>
+#include <squared/gui/src/pointer_event.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/widget.hpp>
 

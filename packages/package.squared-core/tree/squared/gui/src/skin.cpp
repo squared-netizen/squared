@@ -2,24 +2,24 @@
 
 #include "detail/gui_detail.hpp"
 #include <squared/graphics/color.hpp>
-#include <squared/graphics2d/atlas_region.hpp>
-#include <squared/graphics2d/texture_region.hpp>
-#include <squared/gui/button_style.hpp>
-#include <squared/gui/check_box_style.hpp>
-#include <squared/gui/color_drawable.hpp>
-#include <squared/gui/drawable_ptr.hpp>
-#include <squared/gui/font_ptr.hpp>
-#include <squared/gui/insets.hpp>
-#include <squared/gui/label_style.hpp>
-#include <squared/gui/nine_patch_drawable.hpp>
-#include <squared/gui/nine_patch_splits.hpp>
-#include <squared/gui/panel_style.hpp>
-#include <squared/gui/progress_bar_style.hpp>
-#include <squared/gui/region_drawable.hpp>
-#include <squared/gui/size.hpp>
-#include <squared/gui/slider_style.hpp>
-#include <squared/gui/text_field_style.hpp>
-#include <squared/gui/window_style.hpp>
+#include <squared/graphics/atlas_region.hpp>
+#include <squared/graphics/texture_region.hpp>
+#include <squared/gui/src/button_style.hpp>
+#include <squared/gui/src/check_box_style.hpp>
+#include <squared/gui/src/color_drawable.hpp>
+#include <squared/gui/src/drawable_ptr.hpp>
+#include <squared/gui/src/font_ptr.hpp>
+#include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/label_style.hpp>
+#include <squared/gui/src/nine_patch_drawable.hpp>
+#include <squared/gui/src/nine_patch_splits.hpp>
+#include <squared/gui/src/panel_style.hpp>
+#include <squared/gui/src/progress_bar_style.hpp>
+#include <squared/gui/src/region_drawable.hpp>
+#include <squared/gui/src/size.hpp>
+#include <squared/gui/src/slider_style.hpp>
+#include <squared/gui/src/text_field_style.hpp>
+#include <squared/gui/src/window_style.hpp>
 
 #include <memory>
 #include <optional>
@@ -97,7 +97,7 @@ void Skin::add_drawable(std::string name, DrawablePtr drawable)
 
 void Skin::add_region_drawable(
     std::string name,
-    const graphics2d::TextureRegion& region,
+    const graphics::TextureRegion& region,
     Insets insets
 )
 {
@@ -109,7 +109,7 @@ void Skin::add_region_drawable(
 
 void Skin::add_nine_patch_drawable(
     std::string name,
-    const graphics2d::TextureRegion& region,
+    const graphics::TextureRegion& region,
     NinePatchSplits splits,
     std::optional<Insets> content_insets
 )
@@ -124,7 +124,7 @@ void Skin::add_nine_patch_drawable(
 
 void Skin::add_nine_patch_drawable(
     std::string name,
-    const graphics2d::AtlasRegion& region
+    const graphics::AtlasRegion& region
 )
 {
     if (!region.splits()) {

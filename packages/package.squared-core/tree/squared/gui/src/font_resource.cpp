@@ -1,11 +1,11 @@
-#include <squared/gui/font_resource.hpp>
+#include <squared/gui/src/font_resource.hpp>
 
-#include <squared/graphics2d/bitmap_glyph.hpp>
+#include <squared/graphics/src/bitmap_glyph.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/graphics2d/bitmap_font.hpp>
-#include <squared/graphics2d/glyph_placement.hpp>
-#include <squared/graphics2d/texture_region.hpp>
+#include <squared/graphics/bitmap_font.hpp>
+#include <squared/graphics/src/glyph_placement.hpp>
+#include <squared/graphics/texture_region.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -30,8 +30,8 @@ FontResource::FontResource(std::string descriptor_path)
 
 FontResource::FontResource(
     std::string descriptor_path,
-    graphics2d::BitmapFont font,
-    std::vector<graphics2d::TextureRegion> pages,
+    graphics::BitmapFont font,
+    std::vector<graphics::TextureRegion> pages,
     float scale
 ) : descriptor_path_(std::move(descriptor_path)), font_(std::move(font)),
     pages_(std::move(pages)), scale_(scale)
@@ -58,12 +58,12 @@ FontResource::FontResource(
     // rather than sampling whatever the atlas packed next to it.
 }
 
-graphics2d::TextureRegion FontResource::glyph_region(
-    const graphics2d::GlyphPlacement& glyph
+graphics::TextureRegion FontResource::glyph_region(
+    const graphics::GlyphPlacement& glyph
 ) const noexcept
 {
     if (!resolved() || glyph.page >= pages_.size()) return {};
-    const graphics2d::TextureRegion& page = pages_[glyph.page];
+    const graphics::TextureRegion& page = pages_[glyph.page];
 
     // Clamp to the page: a glyph may overhang its region by a pixel when the
     // page was packed into an atlas, and sampling past the edge would pull in

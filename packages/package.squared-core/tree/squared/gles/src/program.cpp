@@ -1,11 +1,11 @@
 #include <squared/gles/program.hpp>
 
-#include <squared/gles/attribute_info.hpp>
-#include <squared/gles/gles_error.hpp>
-#include <squared/gles/gles_error_code.hpp>
+#include <squared/gles/src/attribute_info.hpp>
+#include <squared/gles/src/gles_error.hpp>
+#include <squared/gles/src/gles_error_code.hpp>
 #include <squared/gles/shader.hpp>
-#include <squared/gles/shader_stage.hpp>
-#include <squared/gles/uniform_info.hpp>
+#include <squared/gles/src/shader_stage.hpp>
+#include <squared/gles/src/uniform_info.hpp>
 
 #include <string>
 #include <string_view>

@@ -7,24 +7,24 @@
 // of them plus the painter, and it says which of them is wrong.
 
 #include <squared/files/files.hpp>
-#include <squared/graphics2d/atlas_region.hpp>
-#include <squared/graphics2d/bitmap_font.hpp>
-#include <squared/graphics2d/bitmap_font_error.hpp>
-#include <squared/graphics2d/bitmap_font_page.hpp>
-#include <squared/graphics2d/orthographic_camera.hpp>
-#include <squared/graphics2d/sprite_batch.hpp>
-#include <squared/graphics2d/texture.hpp>
-#include <squared/graphics2d/texture_atlas.hpp>
-#include <squared/graphics2d/texture_region.hpp>
+#include <squared/graphics/atlas_region.hpp>
+#include <squared/graphics/bitmap_font.hpp>
+#include <squared/graphics/src/bitmap_font_error.hpp>
+#include <squared/graphics/src/bitmap_font_page.hpp>
+#include <squared/graphics/orthographic_camera.hpp>
+#include <squared/graphics/sprite_batch.hpp>
+#include <squared/graphics/texture.hpp>
+#include <squared/graphics/texture_atlas.hpp>
+#include <squared/graphics/texture_region.hpp>
 #include <squared/gui/batch_painter.hpp>
 #include <squared/gui/button.hpp>
-#include <squared/gui/font_resource.hpp>
+#include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/linear_layout.hpp>
 #include <squared/gui/skin.hpp>
-#include <squared/gui/skin_load_issue.hpp>
-#include <squared/gui/skin_load_report.hpp>
-#include <squared/gui/skin_load_severity.hpp>
+#include <squared/gui/src/skin_load_issue.hpp>
+#include <squared/gui/src/skin_load_report.hpp>
+#include <squared/gui/src/skin_load_severity.hpp>
 #include <squared/gui/skin_loader.hpp>
 #include <squared/gui/ui.hpp>
 
@@ -35,13 +35,13 @@
 #include <string_view>
 #include <vector>
 
-namespace sq::graphics2d::detail {
+namespace sq::graphics::detail {
 extern std::size_t g_null_draw_calls;
 extern std::size_t g_null_sprites_drawn;
-}  // namespace sq::graphics2d::detail
+}  // namespace sq::graphics::detail
 
 using namespace sq;
-namespace counters = sq::graphics2d::detail;
+namespace counters = sq::graphics::detail;
 
 namespace {
 
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
     std::printf("skin at %s\n", argv[1]);
 
     // --- the atlas --------------------------------------------------------
-    graphics2d::TextureAtlas atlas;
+    graphics::TextureAtlas atlas;
     check(atlas.load(fs.internal("uiskin.atlas")), "atlas loads");
     if (g_failures != 0) return 1;
     std::printf("  %zu page(s), %zu region(s)\n",
@@ -88,8 +88,8 @@ int main(int argc, char** argv)
     files::FileTextResult descriptor = fs.internal("default.fnt").read_string();
     check(static_cast<bool>(descriptor), "default.fnt reads");
 
-    graphics2d::BitmapFont font;
-    graphics2d::BitmapFontError font_error;
+    graphics::BitmapFont font;
+    graphics::BitmapFontError font_error;
     const bool font_parsed = font.load(descriptor.text, font_error);
     check(font_parsed, "default.fnt parses");
     if (!font_parsed) {
@@ -104,11 +104,11 @@ int main(int argc, char** argv)
     // A .fnt names its page as a file. This skin ships no such file: the page
     // is packed into the atlas under the file's stem. Try the atlas first, and
     // fall back to a file for a font that does ship one.
-    std::vector<graphics2d::TextureRegion> font_pages;
-    std::vector<std::unique_ptr<graphics2d::Texture>> owned;
-    for (const graphics2d::BitmapFontPage& page : font.pages()) {
+    std::vector<graphics::TextureRegion> font_pages;
+    std::vector<std::unique_ptr<graphics::Texture>> owned;
+    for (const graphics::BitmapFontPage& page : font.pages()) {
         const std::string name = region_name_of(page.file);
-        const graphics2d::AtlasRegion* packed = atlas.find_region(name);
+        const graphics::AtlasRegion* packed = atlas.find_region(name);
         if (packed != nullptr) {
             std::printf("  font page \"%s\" came from the atlas\n",
                         page.file.c_str());
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
             continue;
         }
 
-        auto texture = std::make_unique<graphics2d::Texture>();
+        auto texture = std::make_unique<graphics::Texture>();
         const bool loaded = texture->load(fs.internal(page.file));
         check(loaded, "font page image loads");
         if (!loaded) {
@@ -215,11 +215,11 @@ int main(int argc, char** argv)
         "press me", [&clicks]() { ++clicks; }));
 
     // --- paint ------------------------------------------------------------
-    graphics2d::SpriteBatch batch;
+    graphics::SpriteBatch batch;
     check(batch.initialize(), "batch initialises");
 
     gui::BatchPainter painter{batch, font_resource.get()};
-    const graphics2d::AtlasRegion* white = atlas.find_region("white");
+    const graphics::AtlasRegion* white = atlas.find_region("white");
     check(painter.set_fill_source(white != nullptr ? &white->region()
                                                    : nullptr),
           "painter has a fill source");
@@ -231,7 +231,7 @@ int main(int argc, char** argv)
                 static_cast<double>(text.width),
                 static_cast<double>(text.height));
 
-    graphics2d::OrthographicCamera camera{640.0F, 480.0F};
+    graphics::OrthographicCamera camera{640.0F, 480.0F};
     camera.update();
 
     ui.layout(painter);

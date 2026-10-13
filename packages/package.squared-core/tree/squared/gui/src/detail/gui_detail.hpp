@@ -6,7 +6,7 @@
 // not part of the public API.
 
 #include <squared/graphics/color.hpp>
-#include <squared/gui/rectangle.hpp>
+#include <squared/gui/src/rectangle.hpp>
 #include <squared/gui/widget.hpp>
 
 #include <algorithm>

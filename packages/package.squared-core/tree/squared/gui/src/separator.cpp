@@ -1,9 +1,9 @@
 #include <squared/gui/separator.hpp>
 
 #include "detail/gui_detail.hpp"
-#include <squared/gui/direction.hpp>
-#include <squared/gui/painter.hpp>
-#include <squared/gui/size.hpp>
+#include <squared/gui/src/direction.hpp>
+#include <squared/gui/src/painter.hpp>
+#include <squared/gui/src/size.hpp>
 #include <squared/gui/skin.hpp>
 
 namespace sq::gui {
