@@ -12,6 +12,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [app](app.md) &mdash; the platform-neutral lifecycle, event and text-input boundary
 - [assets](assets.md) &mdash; typed asset cache with dependency tracking
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
+- [dev](dev.md) &mdash; development aids: a loopback log sink and crash reporter (not in release builds)
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; Backend-neutral colour and context types.
@@ -27,6 +28,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `app` | 8 | `squared/app/application.hpp` |
 | `assets` | 9 | `squared/assets/assets.hpp` |
 | `data` | 7 | `squared/data/json.hpp` |
+| `dev` | 2 | `squared/dev/dev_log.hpp` |
 | `files` | 9 | `squared/files/files.hpp` |
 | `gles` | 16 | `squared/gles/gles.hpp` |
 | `graphics` | 2 | `squared/graphics/graphics.hpp` |

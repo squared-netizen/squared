@@ -19,7 +19,7 @@ SQUARED_GRAPHICS_BACKEND ?= null
 
 MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
-           gui messaging time
+           gui messaging time dev
 
 .PHONY: all clean headers $(MODULES)
 

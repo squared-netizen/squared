@@ -40,12 +40,57 @@
 #include <cstdint>
 #include <memory>
 
+// Development builds only (`make DEV_LOG=1`): every log line below is also sent
+// to a UDP port on this device, and a fatal signal sends a backtrace. The value
+// of SQUARED_DEV_LOG is the port. Nothing of this exists in a normal build.
+#ifdef SQUARED_DEV_LOG
+#include <squared/dev/dev_log.hpp>
+
+#include <cstdarg>
+#include <cstdio>
+#endif
+
 namespace {
 
 constexpr const char* kTag = "{{project_name}}";
 
-#define SQ_LOGI(...) __android_log_print(ANDROID_LOG_INFO, kTag, __VA_ARGS__)
-#define SQ_LOGW(...) __android_log_print(ANDROID_LOG_WARN, kTag, __VA_ARGS__)
+#ifdef SQUARED_DEV_LOG
+__attribute__((format(printf, 1, 2))) void dev_mirror(const char* format, ...) {
+    char line[512];
+    va_list arguments;
+    va_start(arguments, format);
+    const int length = std::vsnprintf(line, sizeof(line), format, arguments);
+    va_end(arguments);
+    if (length > 0) {
+        sq::dev::log_line({line, static_cast<std::size_t>(length) < sizeof(line)
+                                     ? static_cast<std::size_t>(length)
+                                     : sizeof(line) - 1});
+    }
+}
+#define SQ_DEV_MIRROR(...) dev_mirror(__VA_ARGS__)
+#else
+#define SQ_DEV_MIRROR(...) ((void)0)
+#endif
+
+#define SQ_LOGI(...) \
+    (__android_log_print(ANDROID_LOG_INFO, kTag, __VA_ARGS__), SQ_DEV_MIRROR(__VA_ARGS__))
+#define SQ_LOGW(...) \
+    (__android_log_print(ANDROID_LOG_WARN, kTag, __VA_ARGS__), SQ_DEV_MIRROR(__VA_ARGS__))
+
+#ifdef SQUARED_DEV_LOG
+// Runs when the library loads, before any static initializer of ours, so a
+// crash while the framework is starting up is still reported. Priority 101 is
+// the earliest user-level slot.
+__attribute__((constructor(101))) void open_dev_log() {
+    const auto status = sq::dev::open_log_sink({.port = SQUARED_DEV_LOG});
+    if (status == sq::dev::LogSinkStatus::Opened) {
+        SQ_LOGI("dev log: sending to 127.0.0.1:%d", static_cast<int>(SQUARED_DEV_LOG));
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, kTag,
+                            "dev log: socket refused; is INTERNET in the manifest?");
+    }
+}
+#endif
 
 using Event = sq::app::Event;
 using Clock = std::chrono::steady_clock;

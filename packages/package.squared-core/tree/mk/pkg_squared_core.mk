@@ -73,7 +73,7 @@ endif
 
 # Modules that publish headers. A module with no sources still publishes
 # headers, which is why this is a list rather than the archive list.
-SQ_SQUARED_MODULES := app assets data files gles graphics gui \
+SQ_SQUARED_MODULES := app assets data dev files gles graphics gui \
                       math messaging time
 
 # One include root for every header, workhorse or supporting: the directory
@@ -95,7 +95,8 @@ SQ_SQUARED_LIBS := \
   $(SQ_SQUARED_LIB_DIR)/libsquared_messaging.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_data.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_time.a \
-  $(SQ_SQUARED_LIB_DIR)/libsquared_math.a
+  $(SQ_SQUARED_LIB_DIR)/libsquared_math.a \
+  $(if $(DEV_LOG),$(SQ_SQUARED_LIB_DIR)/libsquared_dev.a,)
 
 SQ_CPPFLAGS += $(SQ_SQUARED_INC)
 SQ_LDLIBS   += $(SQ_SQUARED_LIBS)

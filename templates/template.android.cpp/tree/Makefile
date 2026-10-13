@@ -16,6 +16,9 @@
 #   make android-help    every target and override
 #   make clean
 #
+#   make DEV_LOG=1 apk   a development build that sends its log lines, and a
+#                        crash report, to UDP port 5555 on this device
+#
 # Overridable, e.g. `make SQ_MIN_SDK=21 OPT=-O3 apk`.
 
 CXX      ?= clang++
@@ -34,6 +37,31 @@ BUILD    ?= build
 include mk/squared_generated.mk
 -include $(wildcard mk/pkg_*.mk)
 -include $(wildcard mk/kit_*.mk)
+
+# Development log sink. Off unless asked for: `make DEV_LOG=1 apk`.
+#
+# The app sends each log line, and a backtrace if it crashes, to
+# 127.0.0.1:$(DEV_LOG_PORT). Read them on the same device, in Termux:
+#
+#   nc -klu 5555
+#
+# Android refuses sockets without the INTERNET permission, so a DEV_LOG build
+# uses a copy of the manifest with that one line added. Your manifest is not
+# edited, and a normal build never carries the permission. Resolve a crash
+# address with: addr2line -f -C -e build/lib$(SQ_PROJECT).so <offset>
+ifdef DEV_LOG
+DEV_LOG_PORT ?= 5555
+SQ_CPPFLAGS  += -DSQUARED_DEV_LOG=$(DEV_LOG_PORT)
+SQ_MANIFEST  := $(BUILD)/dev/AndroidManifest.xml
+
+$(SQ_MANIFEST): sq_android/AndroidManifest.xml
+	@mkdir -p $(dir $@)
+	@sed 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.INTERNET" />\n\1<application\2|' \
+	    $< > $@
+	@grep -q 'permission.INTERNET' $@ || { \
+	  echo "DEV_LOG: could not add the INTERNET permission: no '<application' line" >&2; \
+	  rm -f $@; exit 1; }
+endif
 
 SQ_SO := $(BUILD)/lib$(SQ_PROJECT).so
 
