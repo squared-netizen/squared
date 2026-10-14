@@ -160,7 +160,8 @@ bool Window::pointer_event( const PointerEvent &event )
             close_hovered_ = true;
             return true;
         }
-        const unsigned int edges = resizable_ ? resize_edges( event.x, event.y ) : resize_none;
+        const unsigned int edges = resizable_ ? resize_edges( event.x, event.y )
+                                              : static_cast<unsigned int>( resize_none );
         if( inside && edges != resize_none ) {
             interaction_pointer_ = event.pointer_id;
             resize_edges_ = edges;

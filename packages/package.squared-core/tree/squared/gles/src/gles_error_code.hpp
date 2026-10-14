@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
 /** @brief Stable error categories produced by the GL object layer. */
-enum class GlesErrorCode {
+enum class GlesErrorCode : std::uint8_t {
     None,
     NoContext,
     OutOfMemory,

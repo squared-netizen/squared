@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gui
 {
 
 /** @brief Portable hardware-independent key names for key events. */
-enum class InputKey {
+enum class InputKey : std::uint8_t {
     unknown,
     left,
     right,

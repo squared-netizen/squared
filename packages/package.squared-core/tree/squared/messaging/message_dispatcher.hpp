@@ -153,7 +153,9 @@ class MessageDispatcher final
      * thread.
      * @note No Lua binding exists.
      */
+        // The visitor is called through its address, once per delivery; never forwarded.
         template<typename Visitor>
+        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
         void inspect_pending( Visitor &&visitor ) const
         {
             using VisitorType = std::remove_reference_t<Visitor>;

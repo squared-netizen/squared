@@ -14,13 +14,14 @@ DrawablePtr resolve_atlas_drawable( const graphics::TextureAtlas &atlas,
     if( !region ) {
         return {};
     }
-    if( !region->splits() ) {
+    const auto &splits = region->splits();
+    if( !splits ) {
         return std::make_shared<RegionDrawable>( region->region() );
     }
-    const auto &split = *region->splits();
+    const auto &split = *splits;
     std::optional<Insets> insets;
-    if( region->pads() ) {
-        const auto &pad = *region->pads();
+    if( const auto &pads = region->pads() ) {
+        const auto &pad = *pads;
         insets = Insets{ static_cast<float>( pad[0] ), static_cast<float>( pad[2] ),
                          static_cast<float>( pad[1] ), static_cast<float>( pad[3] ) };
     }

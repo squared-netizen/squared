@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::assets
 {
 
 /** @brief Stable error categories produced by asset loading. */
-enum class AssetErrorCode {
+enum class AssetErrorCode : std::uint8_t {
     None,
     NoLoader,
     LoaderAlreadyRegistered,

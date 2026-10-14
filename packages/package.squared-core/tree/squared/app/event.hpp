@@ -17,7 +17,7 @@ namespace sq::app
 struct Event final
 {
         /** @brief Portable hardware-independent key names for key events. */
-        enum class Key {
+        enum class Key : std::uint8_t {
             unknown,
             left,
             right,
@@ -33,9 +33,19 @@ struct Event final
             escape
         };
         /** @brief Semantic focus/navigation action from any supported device. */
-        enum class Navigation { unknown, left, right, up, down, next, previous, activate, cancel };
+        enum class Navigation : std::uint8_t {
+            unknown,
+            left,
+            right,
+            up,
+            down,
+            next,
+            previous,
+            activate,
+            cancel
+        };
         /** @brief Supported event categories for the Phase 5 boundary. */
-        enum class Type {
+        enum class Type : std::uint8_t {
             QuitRequested,
             PointerDown,
             PointerMove,

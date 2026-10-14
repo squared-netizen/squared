@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
 /** @brief Which programmable stage a shader belongs to. */
-enum class ShaderStage {
+enum class ShaderStage : std::uint8_t {
     /** @brief Runs once per vertex; GL_VERTEX_SHADER. */
     Vertex,
 

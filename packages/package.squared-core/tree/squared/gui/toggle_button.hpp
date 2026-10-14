@@ -25,6 +25,12 @@ class ToggleButton : public Button
         explicit ToggleButton( std::string text = {}, bool checked = false );
         ~ToggleButton() override;
 
+        // A ButtonGroup holds members by address, so a button is never copied or moved.
+        ToggleButton( const ToggleButton & ) = delete;
+        ToggleButton &operator=( const ToggleButton & ) = delete;
+        ToggleButton( ToggleButton && ) = delete;
+        ToggleButton &operator=( ToggleButton && ) = delete;
+
         /**
      * @brief Set the checked state.
      * @param checked New boolean state; invokes the change callback.

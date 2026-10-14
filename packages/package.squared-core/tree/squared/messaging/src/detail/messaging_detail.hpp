@@ -34,7 +34,8 @@ inline bool valid_stable_id( std::string_view value ) noexcept
         return false;
     }
     bool namespaced = false;
-    for( const unsigned char byte : value ) {
+    for( const char character : value ) {
+        const auto byte = static_cast<unsigned char>( character );
         const bool separator = byte == '.' || byte == '/' || byte == ':';
         if( !alphanumeric( byte ) && !separator && byte != '-' && byte != '_' ) {
             return false;
@@ -51,7 +52,7 @@ namespace sq::messaging
 
 struct Subscription::Registry
 {
-        enum class Kind { Endpoint, Broadcast, Provider };
+        enum class Kind : std::uint8_t { Endpoint, Broadcast, Provider };
 
         struct Binding
         {

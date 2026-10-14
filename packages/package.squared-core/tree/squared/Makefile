@@ -3,6 +3,8 @@
 #   make                 build every module (release)
 #   make BUILD=debug     unoptimised with symbols
 #   make headers         compile every public header on its own
+#   make lint            format, source-rule and clang-tidy checks
+#   make lint LINT_ARGS=--changed   options for tools/lint.sh (also --only tidy)
 #   make <module>        build one module
 #   make clean
 #
@@ -21,7 +23,7 @@ MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
            gui messaging time dev
 
-.PHONY: all clean headers $(MODULES)
+.PHONY: all clean headers lint $(MODULES)
 
 all: $(MODULES)
 
@@ -36,6 +38,13 @@ $(MODULES):
 
 headers:
 	./tools/check_headers.sh
+
+# Everything about linting lives outside this file: the engine is
+# tools/lint.sh, and what it checks is in tools/lint-rules.txt and .clang-tidy
+# (docs/developer/lint.md). LINT_ARGS, not LINT: make predefines LINT as a
+# program name. Run through bash: a vendored copy can lose its executable bit.
+lint:
+	bash tools/lint.sh $(LINT_ARGS)
 
 clean:
 	@for module in $(MODULES); do $(MAKE) -C $$module clean; done

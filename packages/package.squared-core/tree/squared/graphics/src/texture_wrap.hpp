@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::graphics
 {
 
 /**
  * @brief Texture coordinate wrapping mode.
  */
-enum class TextureWrap { ClampToEdge, Repeat, MirroredRepeat };
+enum class TextureWrap : std::uint8_t { ClampToEdge, Repeat, MirroredRepeat };
 
 } // namespace sq::graphics

@@ -181,7 +181,7 @@ class Window : public Widget
 
     private:
         friend class Ui;
-        enum ResizeEdge : unsigned int {
+        enum ResizeEdge : std::uint8_t {
             resize_none = 0,
             resize_left = 1,
             resize_top = 2,

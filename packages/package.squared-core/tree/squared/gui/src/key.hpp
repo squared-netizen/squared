@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gui
 {
 
 /** @brief Portable key name used by the GUI input boundary. */
-enum class Key {
+enum class Key : std::uint8_t {
     left,
     right,
     up,

@@ -68,9 +68,12 @@ GlesError VertexArray::set_vertices( const Buffer &vertices,
 
         const auto location = static_cast<GLuint>( attribute.location );
         glEnableVertexAttribArray( location );
+        // GL takes a buffer offset in a pointer parameter; there is no other spelling.
+        // NOLINTBEGIN(performance-no-int-to-ptr)
         glVertexAttribPointer( location, attribute.components, GL_FLOAT, GL_FALSE,
                                static_cast<GLsizei>( attribute.stride ),
                                reinterpret_cast<const void *>( attribute.offset ) );
+        // NOLINTEND(performance-no-int-to-ptr)
         if( attribute.instance_divisor != 0 ) {
             glVertexAttribDivisor( location, attribute.instance_divisor );
         }

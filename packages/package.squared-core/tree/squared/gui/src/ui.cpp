@@ -1013,7 +1013,6 @@ void Ui::layout_tooltip( Painter &painter )
 
     float anchor_left = tooltip_anchor_x_;
     float anchor_top = tooltip_anchor_y_;
-    float anchor_bottom = tooltip_anchor_y_;
     float x = 0.0F;
     float y = 0.0F;
     float gap = tooltip_config_.pointer_offset;
@@ -1022,7 +1021,7 @@ void Ui::layout_tooltip( Painter &painter )
         y = tooltip_anchor_y_ + gap;
     } else {
         stage_position( *tooltip_owner_, anchor_left, anchor_top );
-        anchor_bottom = anchor_top + tooltip_owner_->height();
+        const float anchor_bottom = anchor_top + tooltip_owner_->height();
         gap = tooltip_config_.owner_gap;
         x = anchor_left + ( tooltip_owner_->width() - width ) * 0.5F;
         y = anchor_bottom + gap;

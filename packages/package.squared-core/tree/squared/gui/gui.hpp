@@ -21,6 +21,10 @@
 #include <squared/gui/scroll_pane.hpp>
 #include <squared/gui/separator.hpp>
 #include <squared/gui/skin.hpp>
+// skin_loader.hpp includes this file back: it is an aggregate kept for source
+// compatibility. #pragma once makes the cycle harmless; Sprint 3 settles the
+// aggregates (docs/developer/lint.md).
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include <squared/gui/skin_loader.hpp>
 #include <squared/gui/slider.hpp>
 #include <squared/gui/src/actor_interface_id.hpp>

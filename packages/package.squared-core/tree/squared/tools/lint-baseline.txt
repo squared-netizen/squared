@@ -1,0 +1,31 @@
+# tools/lint-baseline.txt — accepted rule matches: rule, file, count.
+# Written by tools/lint.sh --record-baseline; counts may only go down.
+# Add a reason after '#' on an entry's line; re-recording keeps it.
+exceptions data/src/json.cpp 6
+exceptions graphics/src/bitmap_font.cpp 3
+exceptions graphics/src/glyph_layout.cpp 3
+exceptions gui/src/actor.cpp 1
+exceptions gui/src/button_group.cpp 3
+exceptions gui/src/font_resource.cpp 2
+exceptions gui/src/group.cpp 5
+exceptions gui/src/linear_layout.cpp 4
+exceptions gui/src/margin_container.cpp 1
+exceptions gui/src/nine_patch_drawable.cpp 1
+exceptions gui/src/scroll_pane.cpp 1
+exceptions gui/src/skin.cpp 3
+exceptions gui/src/skin_loader.cpp 3
+exceptions gui/src/stack.cpp 1
+exceptions gui/src/table.cpp 4
+exceptions gui/src/toggle_button.cpp 2
+exceptions gui/src/ui.cpp 11
+std-function assets/asset_manager.hpp 1
+std-function assets/src/asset_loader.hpp 1
+std-function gui/button.hpp 1
+std-function gui/dialog.hpp 1
+std-function gui/slider.hpp 1
+std-function gui/src/input_listener.hpp 1
+std-function gui/src/skin_drawable_resolver.hpp 1
+std-function gui/src/skin_font_resolver.hpp 1
+std-function gui/src/skin_loader.cpp 1
+std-function gui/toggle_button.hpp 1
+std-function gui/widget.hpp 1

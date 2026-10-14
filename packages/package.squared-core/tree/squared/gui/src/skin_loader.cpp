@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <memory>
@@ -305,7 +306,6 @@ class Importer final
                     limits_.maximum_resources -
                         std::min( declared_resources, limits_.maximum_resources ) ) {
                     error( class_name, "skin exceeds the resource limit" );
-                    declared_resources = limits_.maximum_resources;
                     break;
                 }
                 declared_resources += values->size();
@@ -313,8 +313,10 @@ class Importer final
                     static_cast<void>( resource_value );
                     if( resource_name.empty() ||
                         resource_name.size() > limits_.maximum_name_bytes ) {
-                        error( class_name + "." + resource_name,
-                               "resource name is empty or too long" );
+                        std::string where = class_name;
+                        where += '.';
+                        where += resource_name;
+                        error( where, "resource name is empty or too long" );
                     }
                 }
             }
@@ -576,7 +578,7 @@ class Importer final
             }
         }
 
-        enum class StyleVisit { visiting, complete };
+        enum class StyleVisit : std::uint8_t { visiting, complete };
 
         template<typename Style, typename Apply, typename Commit>
         void load_typed_styles( const JsonValue::Object &classes, std::string_view class_name,

@@ -24,6 +24,9 @@ ToggleButton::~ToggleButton()
     if( group_ != nullptr ) {
         try {
             static_cast<void>( group_->remove( *this ) );
+            // Rebalancing runs change callbacks, which may throw; a destructor may not.
+            // Goes with -fno-exceptions (docs/developer/priority-audit.md item 3).
+            // NOLINTNEXTLINE(bugprone-empty-catch)
         } catch( ... ) {
             // Destruction has already detached this button before rebalance.
         }

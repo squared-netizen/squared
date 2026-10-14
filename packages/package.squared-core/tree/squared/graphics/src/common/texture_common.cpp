@@ -41,6 +41,8 @@ std::uint8_t to_byte( float value ) noexcept
     if( value >= 1.0F ) {
         return 255;
     }
+    // value is in (0, 1) here, so adding 0.5 and truncating rounds half up exactly.
+    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
     return static_cast<std::uint8_t>( ( value * 255.0F ) + 0.5F );
 }
 

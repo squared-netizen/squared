@@ -1,0 +1,38 @@
+# tools/lint-rules.txt — source rules tools/lint.sh checks, for what clang-tidy
+# cannot see. Data only: any engine that reads this format can apply them.
+#
+# Format: blocks separated by a blank line; in each block, one "key value" per
+# line, the key ending at the first space.
+#   rule   name, used in reports and in tools/lint-baseline.txt
+#   why    the reason, printed with every finding
+#   match  an extended regular expression (POSIX ERE, plus \b), matched against
+#          each line of code with comments removed and string contents blanked
+#   files  optional: space-separated shell globs relative to squared/; default
+#          every .hpp and .cpp outside third_party/, build/, docs/ and any
+#          test/ directory (tests may do what the framework may not)
+#
+# Existing matches are recorded per file in tools/lint-baseline.txt. A file may
+# match a rule no more times than its baseline says; a file with no baseline
+# entry may not match at all. Lowering a count is always allowed: rerun
+# tools/lint.sh --record-baseline after fixing, and commit the smaller baseline.
+# A reason written after '#' on a baseline entry survives re-recording.
+
+rule  std-function
+why   std::function heap-allocates captures and calls through type erasure: keep it off per-frame paths (priorities 1 and 3). Existing uses are input and callback paths (priority-audit.md item 5).
+match \bstd::function\b
+
+rule  exceptions
+why   squared is moving to -fno-exceptions (priority-audit.md items 1 and 3): no new throw, try or catch. Return a result, or assert for a programmer error.
+match \b(throw|try|catch)\b
+
+rule  rtti
+why   squared builds clean with -fno-rtti (priority-audit.md item 2) and must stay that way: use actor_cast (gui) or asset_type_id (assets).
+match \b(dynamic_cast|typeid)\b
+
+rule  raw-new
+why   no hand-written new: use std::make_unique, a container, or the owning pool (priority 1). clang-tidy catches owning raw pointers; this catches new expressions anywhere, placement new included. A pool's own placement new belongs in the baseline, with its reason after '#' on that entry's line.
+match (^|[^_[:alnum:]])new\b[[:space:]]*[(_[:alpha:]:]
+
+rule  raw-delete
+why   no hand-written delete; ownership types free their memory (priority 1). "= delete" on a function is fine and is not matched.
+match (^|[^=[:space:]])[[:space:]]*\bdelete\b[[:space:]]*(\[[[:space:]]*\])?[[:space:]]*[_[:alpha:]*(]

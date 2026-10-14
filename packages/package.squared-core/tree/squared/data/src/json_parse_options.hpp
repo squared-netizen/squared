@@ -9,7 +9,7 @@ namespace sq::data
 struct JsonParseOptions
 {
         /** @brief Maximum accepted document size in bytes (default 8 MiB). */
-        std::size_t maximum_bytes{ 8U * 1024U * 1024U };
+        std::size_t maximum_bytes{ std::size_t{ 8 } * 1024U * 1024U };
 
         /** @brief Maximum nesting depth of arrays and objects (default 128). */
         std::size_t maximum_depth{ 128 };

@@ -96,13 +96,14 @@ void Skin::add_nine_patch_drawable( std::string name, const graphics::TextureReg
 
 void Skin::add_nine_patch_drawable( std::string name, const graphics::AtlasRegion &region )
 {
-    if( !region.splits() ) {
+    const auto &splits = region.splits();
+    if( !splits ) {
         throw std::invalid_argument( "Atlas region has no nine-patch splits" );
     }
-    const auto &split = *region.splits();
+    const auto &split = *splits;
     std::optional<Insets> insets;
-    if( region.pads() ) {
-        const auto &pad = *region.pads();
+    if( const auto &pads = region.pads() ) {
+        const auto &pad = *pads;
         insets = Insets{ static_cast<float>( pad[0] ), static_cast<float>( pad[2] ),
                          static_cast<float>( pad[1] ), static_cast<float>( pad[3] ) };
     }

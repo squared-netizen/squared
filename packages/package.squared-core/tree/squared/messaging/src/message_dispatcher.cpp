@@ -249,7 +249,7 @@ std::size_t MessageDispatcher::update()
 {
     const auto captured_now = clock_.now();
     return pending_.poll_due( captured_now, config_.maximum_deliveries_per_update,
-                              [this, captured_now]( PendingDelivery delivery ) {
+                              [this, captured_now]( const PendingDelivery &delivery ) {
                                   static_cast<void>( deliver( delivery.telegram, captured_now,
                                                               delivery.subscription_target ) );
                               } );
@@ -457,10 +457,10 @@ DeliveryReport MessageDispatcher::deliver( const Telegram &telegram,
                 break;
             }
         }
-    } else if( telegram.receiver() ) {
+    } else if( const auto &receiver = telegram.receiver() ) {
         for( const auto &binding : registry_->bindings ) {
             if( binding.kind == Subscription::Registry::Kind::Endpoint &&
-                binding.endpoint == *telegram.receiver() ) {
+                binding.endpoint == *receiver ) {
                 receivers.push_back( binding.telegraph );
                 break;
             }
@@ -504,13 +504,12 @@ bool MessageDispatcher::queue_receipt( const Telegram &original, ReceiptStatus s
     payload.emplace( "message", sq::data::JsonValue( std::string( original.message().value() ) ) );
     payload.emplace( "status",
                      sq::data::JsonValue( std::string( receipt_status_name( status ) ) ) );
-    if( original.receiver() ) {
-        payload.emplace( "receiver",
-                         sq::data::JsonValue( std::string( original.receiver()->value() ) ) );
+    if( const auto &receiver = original.receiver() ) {
+        payload.emplace( "receiver", sq::data::JsonValue( std::string( receiver->value() ) ) );
     }
 
     Telegram receipt( receipt_message_id(), sq::data::JsonValue( std::move( payload ) ),
-                      dispatcher_endpoint_id(), *original.sender() );
+                      dispatcher_endpoint_id(), original.sender() );
     return enqueue_at( captured_now, std::move( receipt ) ).status == DispatchStatus::Queued;
 }
 

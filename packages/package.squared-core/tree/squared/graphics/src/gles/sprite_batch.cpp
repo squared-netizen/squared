@@ -201,12 +201,15 @@ void SpriteBatch::flush() noexcept
     constexpr GLsizei stride = static_cast<GLsizei>( k_floats_per_vertex * sizeof( float ) );
     glEnableVertexAttribArray( 0 );
     glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, stride, nullptr );
+    // GL takes a buffer offset in a pointer parameter; there is no other spelling.
+    // NOLINTBEGIN(performance-no-int-to-ptr)
     glEnableVertexAttribArray( 1 );
     glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, stride,
                            reinterpret_cast<const void *>( 2 * sizeof( float ) ) );
     glEnableVertexAttribArray( 2 );
     glVertexAttribPointer( 2, 4, GL_FLOAT, GL_FALSE, stride,
                            reinterpret_cast<const void *>( 4 * sizeof( float ) ) );
+    // NOLINTEND(performance-no-int-to-ptr)
 
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, index_buffer_ );
     glDrawElements( GL_TRIANGLES, static_cast<GLsizei>( sprite_count_ * k_indices_per_sprite ),

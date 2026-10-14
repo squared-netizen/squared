@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
@@ -12,7 +14,7 @@ namespace sq::gles
  * frame, which lets it hand you fresh memory instead of stalling until the GPU
  * has finished reading the old contents.
  */
-enum class BufferUsage {
+enum class BufferUsage : std::uint8_t {
     /** @brief Written once, drawn many times; GL_STATIC_DRAW. */
     Static,
 

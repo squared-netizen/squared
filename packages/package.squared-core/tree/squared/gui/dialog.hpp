@@ -75,7 +75,7 @@ class Dialog final : public Window
         [[nodiscard]] bool escape_closes() const noexcept override;
 
     private:
-        void choose( std::string result );
+        void choose( std::string_view result );
         Table *dialog_content_{ nullptr };
         Table *buttons_{ nullptr };
         ResultCallback result_;

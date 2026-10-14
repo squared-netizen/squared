@@ -19,6 +19,12 @@ class Group : public Actor
         Group() = default;
         ~Group() override;
 
+        // Children point back at their parent, so a group is never copied or moved.
+        Group( const Group & ) = delete;
+        Group &operator=( const Group & ) = delete;
+        Group( Group && ) = delete;
+        Group &operator=( Group && ) = delete;
+
         /**
      * @brief Publish the Group interface to actor_cast().
      * @param id Identifier of the requested interface.

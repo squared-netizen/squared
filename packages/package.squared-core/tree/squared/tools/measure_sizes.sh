@@ -26,10 +26,17 @@ fi
 includes="-I$(dirname "$root")"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 cat > "$work/sizes.cpp" <<'EOF'
-#include <squared/gui/gui.hpp>
+#include <squared/app/event.hpp>
+#include <squared/assets/assets.hpp>
+#include <squared/data/json.hpp>
+#include <squared/files/files.hpp>
 #include <squared/graphics/graphics.hpp>
+#include <squared/gui/gui.hpp>
+#include <squared/messaging/messaging.hpp>
 #include <cstdio>
-using namespace squared;
+#include <functional>
+#include <string>
+using namespace sq;
 #define P(T) std::printf("%-26s %4zu %4zu\n", #T, sizeof(T), alignof(T));
 int main() {
   P(gui::Size) P(gui::Rectangle) P(gui::Insets) P(gui::SizeHints)
@@ -42,8 +49,13 @@ int main() {
   P(gui::Slider) P(gui::ProgressBar) P(gui::Panel) P(gui::Cell)
   P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::Window)
   P(gui::Dialog) P(gui::Ui) P(gui::ButtonGroup)
+  P(gui::InputEvent) P(gui::SkinLoadIssue)
   P(graphics::TextureRegion) P(graphics::BitmapGlyph)
-  P(graphics::GlyphPlacement) P(std::string) P(std::function<void()>)
+  P(graphics::GlyphPlacement) P(graphics::BitmapFontError)
+  P(app::Event) P(files::FileHandle) P(files::FileError)
+  P(data::JsonValue) P(data::JsonError) P(assets::AssetError)
+  P(messaging::Telegram) P(messaging::DispatchResult)
+  P(std::string) P(std::function<void()>)
   return 0;
 }
 EOF

@@ -21,7 +21,7 @@ namespace
 // Resident cost, all static storage and all present only in a build that links
 // this module: the alternate stack dominates.
 constexpr std::size_t kLineMax = 1000;
-constexpr std::size_t kAltStackBytes = 16 * 1024;
+constexpr std::size_t kAltStackBytes = std::size_t{ 16 } * 1024U;
 constexpr int kSignals[] = { SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGTRAP };
 constexpr std::size_t kSignalCount = sizeof( kSignals ) / sizeof( kSignals[0] );
 
@@ -123,6 +123,8 @@ void send_frame( int index, std::uintptr_t pc ) noexcept
     line.add_decimal( static_cast<std::uint64_t>( index ) );
     line.add( " pc " );
     Dl_info info{};
+    // A program counter from the unwinder is an address held as an integer.
+    // NOLINTNEXTLINE(performance-no-int-to-ptr)
     if( pc != 0 && ::dladdr( reinterpret_cast<void *>( pc ), &info ) != 0 &&
         info.dli_fbase != nullptr && info.dli_fname != nullptr ) {
         line.add_hex( pc - reinterpret_cast<std::uintptr_t>( info.dli_fbase ) );

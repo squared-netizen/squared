@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::files
 {
 
@@ -12,7 +14,7 @@ namespace sq::files
  * Termux it is a directory beside the executable. Code above the file system
  * names a type and a relative path and never learns which it got.
  */
-enum class FileType {
+enum class FileType : std::uint8_t {
     /** @brief Read-only files shipped with the application. */
     Internal,
 

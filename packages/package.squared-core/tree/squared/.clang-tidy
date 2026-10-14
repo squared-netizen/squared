@@ -1,0 +1,88 @@
+# squared — clang-tidy checks.
+#
+# Chosen against the project's priorities, in order: RAM, ergonomics, speed,
+# extensibility. Each group says which priority it serves. What clang-tidy
+# cannot see (allocation inside the frame loop, std::function on hot paths,
+# exception sites while -fno-exceptions does not build yet) is checked by
+# tools/lint-rules.txt instead. Rationale: docs/developer/lint.md.
+#
+# Checked with clang-tidy 18 and 21; uses no option either rejects.
+---
+# The checks, by group (the YAML block below cannot hold comments; a '#' line
+# inside it becomes part of a check name and silently drops the next check):
+#
+#   ownership (priority 1)     owning-memory, no-malloc, make-unique, make-shared:
+#                              no raw owning pointers or hand-written new/delete;
+#                              heap through unique_ptr, make_unique, containers is fine
+#   class hygiene (1)          special members, slicing, virtual destructors, moves
+#   size and copies (1, 3)     performance-*, including enum-size
+#   bugs                       bugprone-*, minus easily-swappable-parameters (every
+#                              two-float function) and narrowing-conversions
+#                              (the build's -Wconversion already says it)
+#   ODR and includes           definitions-in-headers, header-include-cycle, and
+#                              unused declarations
+#   modern spelling (2)        nullptr, override, using, = default / = delete
+#   readability                only where it prevents a bug or a slow path
+#   static analysis            clang-analyzer core, cplusplus, deadcode, unix
+Checks: >
+  -*,
+  cppcoreguidelines-owning-memory,
+  cppcoreguidelines-no-malloc,
+  modernize-make-unique,
+  modernize-make-shared,
+  cppcoreguidelines-special-member-functions,
+  cppcoreguidelines-slicing,
+  cppcoreguidelines-virtual-class-destructor,
+  cppcoreguidelines-rvalue-reference-param-not-moved,
+  cppcoreguidelines-missing-std-forward,
+  performance-*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  misc-definitions-in-headers,
+  misc-header-include-cycle,
+  misc-redundant-expression,
+  misc-misplaced-const,
+  misc-unused-using-decls,
+  misc-unused-alias-decls,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-using,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+  modernize-redundant-void-arg,
+  readability-container-size-empty,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-misleading-indentation,
+  clang-analyzer-core.*,
+  clang-analyzer-cplusplus.*,
+  clang-analyzer-deadcode.*,
+  clang-analyzer-unix.*
+
+# Report problems in squared's own headers, never in third_party/ or system
+# headers. [a-z]+ cannot match third_party: the underscore stops it.
+HeaderFilterRegex: '/squared/[a-z]+/'
+
+# Findings are reported, not fatal, until Sprint 2 task 2.3 triages the
+# baseline; tools/lint.sh still exits 1 while any remain.
+WarningsAsErrors: ''
+
+CheckOptions:
+  # Rule of five: a destructor that only exists to be virtual does not force
+  # the other four.
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: true
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted
+    value: true
+  # A noexcept function that reaches a standard-library throw terminates, which
+  # is what the same throw does under -fno-exceptions, where squared is going.
+  # Allocation failure (bad_alloc is already ignored by default), size overflow
+  # and substr past the end are those throws; every substr flagged at
+  # introduction was checked to be in range. squared's own exception types stay
+  # checked. Names are unqualified and comma-separated (clang-tidy 18 and 21).
+  - key: bugprone-exception-escape.IgnoredExceptions
+    value: 'bad_array_new_length,length_error,out_of_range'
+  # performance-enum-size suggests the smallest underlying type that fits;
+  # Android RAM is the constraint, so it stays on.
+...

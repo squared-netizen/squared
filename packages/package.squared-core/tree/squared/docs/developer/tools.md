@@ -39,14 +39,17 @@ The archive is staged in `$TMPDIR`, then moved into place, so an interrupted run
 
 Memory: none of this runs in the application, so priority 1 doesn't apply. The script holds one list of tree paths and streams everything else through `find` and `zip`.
 
+The squared-pg repo keeps its own `tools/docs-archive.sh` for squared-pg's docs. The two are separate files on purpose. squared-pg's version reads `VERSION` from the squared-pg root, which a vendored framework doesn't have.
+
 ## format.sh
 
 Runs clang-format over every `.hpp` and `.cpp` under `squared/`, skipping
 `third_party/`, `build/` and `docs/`, with `squared/.clang-format`. The rules
 and their source are in [code-style.md](code-style.md).
 
-- `--check` lists the files that would change and exits 1 if there are any,
-  which is what a lint target will call.
+- `--check` lists the files that would change and exits 1 if there are any.
+  `make lint` checks the same thing in its first step, without calling this
+  script.
 - Without it, files are formatted in place, but only on a tree with no
   uncommitted changes under `squared/` (`--force` overrides), so the result can
   be committed as formatting alone.
@@ -55,4 +58,31 @@ and their source are in [code-style.md](code-style.md).
 It has no workspace wrapper: it formats the framework, and a project's own code
 follows the project's style.
 
-The squared-pg repo keeps its own `tools/docs-archive.sh` for squared-pg's docs. The two are separate files on purpose. squared-pg's version reads `VERSION` from the squared-pg root, which a vendored framework doesn't have.
+## lint.sh
+
+The engine behind `make lint`; the root `Makefile` calls it in one line and
+holds nothing else about linting. Three steps, each skipped with a message if
+its tool is missing: format (clang-format), rules (`tools/lint-rules.txt`
+against `tools/lint-baseline.txt`), tidy (clang-tidy on what the build
+compiles, with the build's flags). What each checks and why is in
+[lint.md](lint.md).
+
+| option | effect |
+|---|---|
+| `--changed` | only files changed since the last commit, untracked ones included |
+| `--only format\|rules\|tidy` | one step |
+| `--jobs N` | clang-tidy processes at once (default: CPUs, at most 4) |
+| `--record-baseline` | write today's rule matches to the baseline; whole tree only |
+| file paths | only those files, relative to `squared/` |
+
+Progress prints throughout; the report goes to `build/release/lint/report.txt`
+and clang-tidy's full output to `build/release/lint/tidy/`. Exit status: 0
+clean, 1 findings, 2 usage or environment error.
+
+The checks live in data files, not in the script, so the engine can be
+rewritten (in Lua, say) without touching the Makefile or the rules;
+[lint.md](lint.md#engine-and-data) lists what a replacement has to keep. Unlike
+`docs-archive.sh`, it needs bash 4.3 (`wait -n` for `--jobs`); Termux and the
+Linux targets have bash 5.
+
+No workspace wrapper, for the same reason as `format.sh`.

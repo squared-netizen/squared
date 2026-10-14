@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
 /** @brief What a buffer's contents are bound as. */
-enum class BufferTarget {
+enum class BufferTarget : std::uint8_t {
     /** @brief Per-vertex attribute data; GL_ARRAY_BUFFER. */
     Vertex,
 

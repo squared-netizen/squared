@@ -15,6 +15,7 @@ make                 # every module, release
 make BUILD=debug     # -O0 -g
 make gui             # one module
 make headers         # compile every public header standalone
+make lint            # format, source-rule and clang-tidy checks
 make clean
 ```
 
@@ -76,11 +77,12 @@ SQUARED_EXTERNAL_INCLUDES="-I../application/include -I../data/include" make
 
 ## clang-format and clang-tidy
 
-The project rules call for clang-format and clang-tidy on every C++ change.
-Neither was available in the environment this refactor was performed in, so
-**no C++ in this tree has been run through either tool.** The code is
-unchanged from its input, so it carries whatever formatting it already had;
-run both before merging.
+Both run through `make lint` ([lint.md](lint.md)). The tree was formatted in
+one commit with clang-format 21 (`244cc13`, listed in the repo's
+`.git-blame-ignore-revs`); the rules are in [code-style.md](code-style.md).
+`tools/format.sh` reformats. clang-tidy analyses what this build compiles, with
+the flags above minus the warnings, read from the Makefiles, so a flag changed
+here changes what it analyses too.
 
 ## Checking self-containment
 

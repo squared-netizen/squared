@@ -11,6 +11,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -21,6 +22,29 @@ namespace sq::files
 
 namespace
 {
+
+/** @brief Closes a C stream; the one place a stream's ownership ends. */
+struct StreamCloser
+{
+        void operator()( std::FILE *stream ) const noexcept
+        {
+            // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): this deleter is the owner
+            static_cast<void>( std::fclose( stream ) );
+        }
+};
+
+/** @brief An open C stream, closed on every path out of the scope. */
+using Stream = std::unique_ptr<std::FILE, StreamCloser>;
+
+/**
+ * @brief Close a stream now, reporting what fclose reports.
+ * @return true when the stream flushed and closed cleanly.
+ */
+bool close_stream( Stream &stream ) noexcept
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): ownership is released into fclose
+    return std::fclose( stream.release() ) == 0;
+}
 
 FileError make_error( FileErrorCode code, std::string message, std::string path )
 {
@@ -185,7 +209,7 @@ FileReadResult PosixFileSystem::read( FileType type, std::string_view path ) con
                                    std::string{ path } ) };
     }
 
-    std::FILE *stream = std::fopen( resolved.c_str(), "rb" );
+    const Stream stream{ std::fopen( resolved.c_str(), "rb" ) };
     if( stream == nullptr ) {
         return FileReadResult{ .bytes = {}, .error = from_errno( errno, resolved ) };
     }
@@ -193,10 +217,10 @@ FileReadResult PosixFileSystem::read( FileType type, std::string_view path ) con
     FileReadResult result;
     result.bytes.resize( static_cast<std::size_t>( length( type, path ) ) );
     const std::size_t read_count =
-        result.bytes.empty() ? 0U
-                             : std::fread( result.bytes.data(), 1, result.bytes.size(), stream );
-    const bool failed = std::ferror( stream ) != 0;
-    static_cast<void>( std::fclose( stream ) );
+        result.bytes.empty()
+            ? 0U
+            : std::fread( result.bytes.data(), 1, result.bytes.size(), stream.get() );
+    const bool failed = std::ferror( stream.get() ) != 0;
 
     if( failed ) {
         return FileReadResult{
@@ -224,16 +248,17 @@ FileError PosixFileSystem::write( FileType type, std::string_view path,
                            std::string{ path } );
     }
 
-    std::FILE *stream = std::fopen( resolved.c_str(), append ? "ab" : "wb" );
+    Stream stream{ std::fopen( resolved.c_str(), append ? "ab" : "wb" ) };
     if( stream == nullptr ) {
         return from_errno( errno, resolved );
     }
 
     bool failed = false;
     if( !bytes.empty() ) {
-        failed = std::fwrite( bytes.data(), 1, bytes.size(), stream ) != bytes.size();
+        failed = std::fwrite( bytes.data(), 1, bytes.size(), stream.get() ) != bytes.size();
     }
-    if( std::fclose( stream ) != 0 ) {
+    // Closing flushes, so its failure is a write failure.
+    if( !close_stream( stream ) ) {
         failed = true;
     }
 

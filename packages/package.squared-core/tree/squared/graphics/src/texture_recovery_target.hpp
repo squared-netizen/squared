@@ -15,6 +15,7 @@ class Texture;
 class TextureRecoveryTarget final
 {
     public:
+        ~TextureRecoveryTarget() = default;
         TextureRecoveryTarget( const TextureRecoveryTarget & ) = delete;
         TextureRecoveryTarget &operator=( const TextureRecoveryTarget & ) = delete;
 

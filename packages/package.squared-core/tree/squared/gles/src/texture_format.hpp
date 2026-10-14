@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
 /** @brief Pixel format of a texture's storage. */
-enum class TextureFormat {
+enum class TextureFormat : std::uint8_t {
     /** @brief Eight bits each of red, green, blue and alpha. */
     Rgba8,
 

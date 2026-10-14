@@ -43,8 +43,7 @@ Dialog &Dialog::text( std::string text_value )
 Dialog &Dialog::button( std::string text_value, std::string result_value )
 {
     auto action = std::make_unique<Button>( std::move( text_value ) );
-    action->set_on_click(
-        [this, result = std::move( result_value )]() mutable { choose( std::move( result ) ); } );
+    action->set_on_click( [this, result = std::move( result_value )]() { choose( result ); } );
     buttons_->add( std::move( action ) ).grow_x().fill_x();
     return *this;
 }
@@ -59,7 +58,7 @@ bool Dialog::escape_closes() const noexcept
     return cancel_on_escape_;
 }
 
-void Dialog::choose( std::string result )
+void Dialog::choose( std::string_view result )
 {
     request_close();
     if( result_ ) {

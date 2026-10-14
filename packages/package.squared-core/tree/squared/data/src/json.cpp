@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <memory>
 #include <new>
 #include <string>
 #include <unordered_set>
@@ -14,6 +15,16 @@ namespace sq::data
 
 namespace
 {
+
+/** @brief Frees what yyjson allocated with malloc. */
+struct MallocFree
+{
+        void operator()( char *text ) const noexcept
+        {
+            // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory): yyjson's allocator is malloc; this deleter is the owner
+            std::free( text );
+        }
+};
 
 JsonError make_error( JsonErrorCode code, std::string message )
 {
@@ -263,8 +274,9 @@ JsonWriteResult write_json( const JsonValue &value, const JsonWriteOptions &opti
                                            : JsonErrorCode::InvalidValue,
                                        write_error.msg ? write_error.msg : "cannot write JSON" );
         } else {
-            result.text.assign( output, length );
-            std::free( output );
+            // Owned before the copy, so a failed assign cannot leak it.
+            const std::unique_ptr<char, MallocFree> owned{ output };
+            result.text.assign( owned.get(), length );
         }
     } catch( const std::bad_alloc & ) {
         result.error = make_error( JsonErrorCode::AllocationFailure,

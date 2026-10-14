@@ -19,7 +19,7 @@ struct AssetManagerOptions final
         std::size_t maximum_cached_assets{ 1024 };
 
         /** @brief Maximum bytes read for one source file; must be positive. */
-        std::uint64_t maximum_asset_bytes{ 64U * 1024U * 1024U };
+        std::uint64_t maximum_asset_bytes{ std::uint64_t{ 64 } * 1024U * 1024U };
 
         /** @brief Maximum nested dependency depth; must be positive. */
         std::size_t maximum_dependency_depth{ 64 };

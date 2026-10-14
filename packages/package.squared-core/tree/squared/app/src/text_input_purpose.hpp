@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::app
 {
 
@@ -8,6 +10,6 @@ namespace sq::app
  *
  * @sa TextInputRequest::purpose
  */
-enum class TextInputPurpose { normal, number, email, password };
+enum class TextInputPurpose : std::uint8_t { normal, number, email, password };
 
 } // namespace sq::app

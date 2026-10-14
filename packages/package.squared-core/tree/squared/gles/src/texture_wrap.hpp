@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::gles
 {
 
 /** @brief How sampling outside the zero-to-one range behaves. */
-enum class TextureWrap {
+enum class TextureWrap : std::uint8_t {
     /**
      * @brief Clamp to the edge texel.
      * @note The right choice for any region inside an atlas: Repeat would pull

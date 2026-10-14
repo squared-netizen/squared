@@ -36,17 +36,28 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::Slider` | 240 | 8 |
 | `gui::ProgressBar` | 184 | 8 |
 | `gui::Panel` | 168 | 8 |
-| `gui::Cell` | 80 | 8 |
+| `gui::Cell` | 72 | 8 |
 | `gui::Table` | 240 | 8 |
 | `gui::LinearLayout` | 176 | 8 |
 | `gui::ScrollPane` | 168 | 8 |
 | `gui::Window` | 304 | 8 |
 | `gui::Dialog` | 360 | 8 |
-| `gui::Ui` | 1032 | 8 |
+| `gui::Ui` | 1048 | 8 |
 | `gui::ButtonGroup` | 40 | 8 |
+| `gui::InputEvent` | 88 | 8 |
+| `gui::SkinLoadIssue` | 72 | 8 |
 | `graphics::TextureRegion` | 40 | 8 |
 | `graphics::BitmapGlyph` | 48 | 8 |
 | `graphics::GlyphPlacement` | 56 | 8 |
+| `graphics::BitmapFontError` | 48 | 8 |
+| `app::Event` | 88 | 8 |
+| `files::FileHandle` | 48 | 8 |
+| `files::FileError` | 72 | 8 |
+| `data::JsonValue` | 56 | 8 |
+| `data::JsonError` | 64 | 8 |
+| `assets::AssetError` | 72 | 8 |
+| `messaging::Telegram` | 208 | 8 |
+| `messaging::DispatchResult` | 16 | 8 |
 | `std::string` | 32 | 8 |
 | `std::function<void()>` | 32 | 8 |
 
@@ -71,10 +82,21 @@ is: a large fraction is short strings and empty `std::function`s.
 bucket array on first insert and one node per entry, each node carrying a
 32-byte `std::string` key. This is the first thing priority 1 points at.
 
-**`Ui` is 1,032 bytes**, one instance per application. Not a concern.
+**`Ui` is 1,048 bytes**, one instance per application. Not a concern.
 
 **`NinePatchDrawable` is 400 bytes**, nine precomputed `TextureRegion`s that
 are derivable from 56 bytes of source data.
+
+## Enum underlying types
+
+The 41 enums clang-tidy found wider than their values need are
+`: std::uint8_t` since Sprint 2, task 2.3, and `performance-enum-size` keeps
+new ones that way. Measured at the change: `gui::Cell` went from 80 to 72
+bytes and `app::Event` from 96 to 88. Every other measured type kept its
+size: the bytes the enums gave up became padding next to wider members.
+Getting them back means ordering members by size, type by type, with the
+table above as the check. `gui::InputEvent` (88), `gui::PointerEvent` (32) and
+`gui::Window` (304) are the first candidates, because they hold several.
 
 ## What allocates, when
 

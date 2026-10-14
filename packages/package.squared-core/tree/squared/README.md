@@ -6,28 +6,25 @@ for games, simulation software and tooling.
 ## Layout
 
 ```
-<module>/include/squared/<module>/<type>.hpp   one public type per header
-<module>/src/<type>.cpp                        its definitions
-<module>/src/detail/                           private, not installed
+<module>/<name>.hpp          workhorse headers: the ones users include
+<module>/src/<name>.hpp      supporting headers: includable, rarely needed
+<module>/src/<name>.cpp      implementation
+<module>/src/detail/         private headers
+<module>/test/
 <module>/Makefile
-build/common.mk                                shared build settings
-tools/build.sh                               build wrapper
-tools/check_headers.sh                       header self-containment check
-tools/measure_sizes.sh                         sizeof report for the docs
-docs/programmer/                               using squared
-docs/developer/                                maintaining squared
+build/common.mk              shared build settings
+third_party/                 vendored sources (yyjson, stb)
+tools/                       build, check, format, lint and docs scripts
+docs/programmer/             using squared
+docs/developer/              maintaining squared
 ```
 
-Modules: `app`, `assets`, `data`, `files`, `gles`, `graphics`, `graphics2d`, `scene2d`, `gui`,
-`math`, `messaging`, `time`.
+Modules: `app`, `assets`, `data`, `dev`, `files`, `gles`, `graphics`, `gui`,
+`math`, `messaging`, `time`. Headers are included as
+`<squared/<module>/<name>.hpp>` through one include path, the directory that
+holds `squared/` ([docs/developer/file-layout.md](docs/developer/file-layout.md)).
 
 ## Build
-
-```sh
-./tools/build.sh                 # release
-./tools/build.sh debug
-make headers                       # every header, compiled alone
-```
 
 Unpack the vendored third-party sources once after checkout:
 
@@ -35,11 +32,18 @@ Unpack the vendored third-party sources once after checkout:
 ./tools/vendor_third_party.sh
 ```
 
-That is the whole setup. yyjson is compiled into `libsquared_data.a` by the
-build; there is nothing external to install and `local.mk` is optional.
+Then:
 
-`local.mk` is optional, per-checkout, and picked up automatically by
-`build/common.mk`.
+```sh
+./tools/build.sh                 # release
+./tools/build.sh debug
+make headers                     # every header, compiled alone
+make lint                        # format, source-rule and clang-tidy checks
+```
+
+That is the whole setup. yyjson is compiled into `libsquared_data.a` by the
+build; there is nothing external to install. `local.mk` is optional,
+per-checkout, and picked up automatically by `build/common.mk`.
 
 ## Documentation
 
@@ -47,9 +51,6 @@ build; there is nothing external to install and `local.mk` is optional.
   with squared
 - [docs/developer/README.md](docs/developer/README.md) — internals, memory
   profile, and the standing priority-order findings
-
-The topic documents at the root of `docs/` are carried over unchanged from
-before the split.
 
 ## One type, one header
 

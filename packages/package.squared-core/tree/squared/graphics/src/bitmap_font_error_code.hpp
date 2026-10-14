@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace sq::graphics
 {
 
 /** @brief Stable failure categories for BMFont parsing and glyph layout. */
-enum class BitmapFontErrorCode {
+enum class BitmapFontErrorCode : std::uint8_t {
     none,
     invalid_argument,
     limit_exceeded,

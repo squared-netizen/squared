@@ -11,7 +11,7 @@ namespace sq::gui
 struct SkinLoadLimits final
 {
         /** @brief Maximum accepted JSON document size in bytes. */
-        std::size_t maximum_json_bytes{ 1024U * 1024U };
+        std::size_t maximum_json_bytes{ std::size_t{ 1024 } * 1024U };
 
         /** @brief Maximum accepted JSON nesting depth. */
         std::size_t maximum_depth{ 64 };

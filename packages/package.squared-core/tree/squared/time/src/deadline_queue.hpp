@@ -48,7 +48,12 @@ class DeadlineQueue
         };
 
         /** @brief Result of attempting to schedule or restore an entry. */
-        enum class ScheduleResult { Scheduled, QueueFull, InvalidTime, TicketExhausted };
+        enum class ScheduleResult : std::uint8_t {
+            Scheduled,
+            QueueFull,
+            InvalidTime,
+            TicketExhausted
+        };
 
         /**
      * @brief Construct a queue with fixed logical capacity.
@@ -169,7 +174,7 @@ class DeadlineQueue
                     Value cancelled = std::move( iterator->value );
                     entries_.erase( iterator );
                     std::make_heap( entries_.begin(), entries_.end(), Later{} );
-                    visitor( cancelled );
+                    std::forward<Visitor>( visitor )( cancelled );
                     return true;
                 }
             }
@@ -186,7 +191,9 @@ class DeadlineQueue
      * @param visitor Called with each due value in delivery order.
      * @return The number of values delivered.
      */
+        // Called once per due entry: forwarding would let the first call move it away.
         template<typename Visitor>
+        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
         std::size_t poll_due( TimePoint captured_now, std::size_t limit, Visitor &&visitor )
         {
             std::size_t delivered = 0;
@@ -218,7 +225,9 @@ class DeadlineQueue
      *
      * @param visitor Called with (due time, ticket, value) for every entry.
      */
+        // Called once per entry: forwarding would let the first call move it away.
         template<typename Visitor>
+        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
         void visit_ordered( Visitor &&visitor ) const
         {
             std::vector<const Entry *> ordered;

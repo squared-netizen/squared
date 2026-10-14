@@ -28,7 +28,7 @@ class JsonValue final
         using Object = std::map<std::string, JsonValue, std::less<>>;
 
         /** @brief Exact stored JSON type. */
-        enum class Type {
+        enum class Type : std::uint8_t {
             Null,
             Boolean,
             SignedInteger,
