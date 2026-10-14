@@ -39,4 +39,20 @@ The archive is staged in `$TMPDIR`, then moved into place, so an interrupted run
 
 Memory: none of this runs in the application, so priority 1 doesn't apply. The script holds one list of tree paths and streams everything else through `find` and `zip`.
 
+## format.sh
+
+Runs clang-format over every `.hpp` and `.cpp` under `squared/`, skipping
+`third_party/`, `build/` and `docs/`, with `squared/.clang-format`. The rules
+and their source are in [code-style.md](code-style.md).
+
+- `--check` lists the files that would change and exits 1 if there are any,
+  which is what a lint target will call.
+- Without it, files are formatted in place, but only on a tree with no
+  uncommitted changes under `squared/` (`--force` overrides), so the result can
+  be committed as formatting alone.
+- Needs clang-format 18 or newer, and says which it found.
+
+It has no workspace wrapper: it formats the framework, and a project's own code
+follows the project's style.
+
 The squared-pg repo keeps its own `tools/docs-archive.sh` for squared-pg's docs. The two are separate files on purpose. squared-pg's version reads `VERSION` from the squared-pg root, which a vendored framework doesn't have.

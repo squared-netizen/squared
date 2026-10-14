@@ -1,0 +1,120 @@
+# squared — C++ formatting.
+#
+# Cataclysm: Dark Ahead of Days' style (its .astylerc), expressed for
+# clang-format. Each CDDA rule is named beside the option that carries it;
+# where clang-format cannot say the same thing, or squared deliberately does
+# something else, the line says so. Rationale: docs/developer/code-style.md.
+#
+# Checked with clang-format 18 and 21; uses no option either rejects.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+
+# --indent=spaces=4, --convert-tabs
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# --max-code-length=100
+ColumnLimit: 100
+
+# --style=1tbs: braces on their own line for namespaces, classes and functions,
+# attached for everything else.
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterNamespace: true
+  AfterClass: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterFunction: true
+  AfterEnum: false
+  AfterControlStatement: Never
+  AfterCaseLabel: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# --attach-inlines has no clang-format equivalent: a multi-line function body
+# inside a class gets its brace on its own line, like any function. A body
+# short enough for one line stays on one line, inside a class only.
+AllowShortFunctionsOnASingleLine: InlineOnly
+
+# --add-brackets
+InsertBraces: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortLambdasOnASingleLine: All
+
+# --indent-classes: access specifiers one level in, members two.
+IndentAccessModifiers: true
+
+# --indent-switches
+IndentCaseLabels: true
+
+# --align-pointer=name: 'char *foo', and references the same way.
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+
+# --break-after-logical, --pad-oper
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+
+# --unpad-paren, --pad-paren-in: 'if( x )', 'f( a, b )', 'f()'.
+SpaceBeforeParens: Never
+SpacesInParens: Custom
+SpacesInParensOptions:
+  InConditionalStatements: true
+  InCStyleCasts: true
+  InEmptyParentheses: false
+  Other: true
+SpacesInSquareBrackets: false
+SpacesInAngles: Never
+SpaceAfterTemplateKeyword: false
+SpaceAfterCStyleCast: false
+
+# Braced lists read like padded parentheses: '{ a, b }'.
+Cpp11BracedListStyle: false
+
+# --min-conditional-indent=0: a wrapped condition aligns with the open paren.
+AlignAfterOpenBracket: Align
+
+# Not in CDDA's astylerc, because astyle cannot do them; consistent with it.
+NamespaceIndentation: None
+FixNamespaceComments: true
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+MaxEmptyLinesToKeep: 1
+InsertNewlineAtEOF: true
+ReflowComments: false
+
+# Include order. astyle never reorders includes; squared does, because every
+# header is self-contained (tools/check_headers.sh), so order cannot change
+# meaning. A source file's own header first, then squared, then platform and
+# third-party C headers, then the standard library.
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeIsMainRegex: '$'
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<squared/'
+    Priority: 2
+  - Regex: '^<(android|jni|EGL|GLES|android_native_app_glue|stb_|yyjson)'
+    Priority: 3
+  - Regex: '^<.*\.h>'
+    Priority: 4
+  - Regex: '^<'
+    Priority: 5
+...

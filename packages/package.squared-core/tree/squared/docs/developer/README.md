@@ -16,6 +16,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
   extension points than a linked library would, and what that obliges
 - [Design patterns](design-patterns.md)
 - [Build and toolchain](build-and-toolchain.md)
+- [Code style](code-style.md) &mdash; CDDA's formatting rules, as
+  `squared/.clang-format`, and where squared differs
 - [Refactor notes](refactor-notes.md) &mdash; how the split was done and how it
   was verified (history: written before the Sprint 1 layout move)
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/` and the workspace
