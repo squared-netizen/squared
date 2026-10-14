@@ -1,23 +1,31 @@
 # gui &mdash; internals
 
-The libGDX-flavoured widget set, skinning, and the Ui host.
+The libGDX-flavoured widget set, skinning and the `Ui` host, and the scene
+graph under them: `Actor`, `Group`, `Stage` and input routing. Until Sprint 1
+the scene graph was its own module, `scene2d`. It merged here because `gui`
+was its only user, `Widget` derives from its `Group`, and the seam had bred
+duplicate key and modifier types (deduplicated in Sprint 3).
 
 Programmer counterpart: [../programmer/gui.md](../programmer/gui.md)
 
-- Public types: 57
-- Translation units: 30
+- Public types: 70
 
 ## Layout
 
 ```
 gui/
-  include/squared/gui/   one header per public type, plus gui.hpp
-  src/                        one translation unit per type with definitions
+  *.hpp          29 headers: the widgets, Ui, Skin, the scene graph, and
+                 input.hpp (the input-routing types together); gui.hpp
+                 includes the whole module
+  src/           43 supporting headers, and the module's sources
+    detail/      private: gui_detail.hpp
+  test/
   Makefile
 ```
 
 Types with no out-of-line definitions have no `.cpp`. Adding one means adding
-its file to `SOURCES` in the module's `Makefile`.
+its file to `SOURCES` in the module's `Makefile`. See
+[file-layout.md](file-layout.md).
 
 ## Notes
 
@@ -26,7 +34,7 @@ its file to `SOURCES` in the module's `Makefile`.
 node per entry. See [standard-library-deviations.md](
 standard-library-deviations.md).
 
-`Ui` owns the `scene2d::Stage`, the content widget, and the overlay stack. It
+`Ui` owns the `Stage`, the content widget, and the overlay stack. It
 is the only type that knows about `sq::app`, which keeps the
 widget set free of any platform dependency.
 
@@ -36,15 +44,72 @@ UTF-8 cursor stepping, font-path validation, and the `style_or_default`
 template. They are `inline` in `sq::gui::detail` because several
 translation units now need them. The header is not installed.
 
-`Widget` publishes `actor_interface_id` so `scene2d::actor_cast<Widget>()`
-recovers it from an `Actor&` during tree traversal. `Ui`, `Widget` and `Stack`
-all walk Scene2D trees this way; none of them uses RTTI.
+`Widget` publishes `actor_interface_id` so `actor_cast<Widget>()` recovers it
+from an `Actor&` during tree traversal. `Ui`, `Widget` and `Stack` all walk
+actor trees this way; none of them uses RTTI. See
+[Downcasting without RTTI](#downcasting-without-rtti).
 
 `Widget::wants_text_input()` decides whether focusing a widget raises the
 platform soft keyboard. `TextField` returns true; everything else returns
 false. `Ui` reads it in three places and no longer names `TextField` at all,
 which is why `ui.cpp` does not include `text_field.hpp`. Any custom text-entry
 widget can opt in by overriding it.
+
+## Downcasting without RTTI
+
+`Actor::actor_interface(ActorInterfaceId)` is the framework's replacement for
+`dynamic_cast`. Each Actor-derived interface publishes a
+`static constexpr ActorInterfaceId actor_interface_id` and overrides the query
+to answer its own identifier, delegating to its direct base otherwise:
+
+```cpp
+[[nodiscard]] void* actor_interface(ActorInterfaceId id) noexcept override
+{
+    return id == actor_interface_id ? this : Actor::actor_interface(id);
+}
+```
+
+Delegating up the chain is what keeps an interface published anywhere in the
+chain reachable: `actor_cast<Group>` on a `Widget` still resolves, because
+`Widget` hands the unknown identifier to `Group`.
+
+`actor_cast<Interface>(actor)` supplies the identifier and restores
+the pointer type. It accepts null and has a `const` overload.
+
+Cost: one virtual call, no storage. `Actor` already had a vtable, so the two
+extra slots are free, and the call is cheaper than the `dynamic_cast` it
+replaced. Identifiers are four-character constants owned by the layer that
+publishes the interface; the framework reserves values whose high byte is
+`0x00`. `Group` uses `0x47'52'50'01`, `Widget` uses `0x57'44'47'54`.
+
+**Adding a layer:** derive from `Actor` or `Group`, publish an identifier,
+override both overloads, and delegate to your direct base. Nothing in the scene
+graph needs to know your type exists.
+
+## Scene graph notes
+
+`Actor` and `Group` are mutually recursive: `Actor` forward
+declares `Group` for its parent pointer, `Group` includes `Actor` because it
+derives from it. `InputEvent` forward declares `Actor` for the same reason,
+which is what lets `input_listener.hpp` stay a two-line header.
+
+## Safe area
+
+`Ui` keeps one `Insets` (16 bytes, no allocation) and applies it in a single
+private function, `place_content()`, which `set_content()`, `resize()` and
+`set_safe_area()` all call. Before it existed each of the first two set the
+content's bounds to the full viewport on its own; routing them through one
+place is what makes the insets survive both. The content rectangle is the
+viewport minus the insets, clamped at zero so oversized insets give an empty
+rectangle rather than a negative size. Pointer coordinates are untouched: a
+point is still in viewport space, and widgets outside the content rectangle
+simply are not hit.
+
+Overlays are deliberately not inset. A dialog centred on the viewport is
+centred on the screen, not on the part of it between the bars.
+
+Cost: one call to `place_content()` per resize or content change; nothing per
+frame.
 
 ## BatchPainter
 
@@ -92,7 +157,7 @@ clip, so one frame cannot restrict the next.
 ## An ODR violation the first link exposed
 
 `detail::parse_record` and its siblings were defined in
-`graphics2d/src/detail/bitmap_font_detail.hpp` without `inline`, so
+`graphics/src/detail/bitmap_font_detail.hpp` without `inline`, so
 `bitmap_font.o` and `glyph_layout.o` both emitted them. Archiving never
 noticed; the first executable to link both objects failed.
 
@@ -105,6 +170,31 @@ g++ main.cpp -Wl,--whole-archive build/release/lib/*.a -Wl,--no-whole-archive
 
 which forces every object of every archive into one binary. It is worth
 re-running after adding anything to a `detail/` header.
+
+## Style classes are matched on their last name
+
+A skin file keys each style table by a Java class name:
+`com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle`. The loader compares only
+what follows the last dot (`Label$LabelStyle`), through `short_class_name()`
+and `section()`, and no package name appears in its code. Two things follow.
+A skin written for squared may use the short form; and a rename of squared's
+own modules can no longer reach a libGDX name, which is how it went wrong once:
+the package part used to be spelled out in the loader, a blanket rename
+(`scene2d` &rarr; `gui`) rewrote it, no key matched, every style in a real
+`uiskin.json` was reported as unused and a device showed backgrounds with no
+text. The tests of the time built their skins in code and passed throughout.
+
+The same class under two names in one file (`Color` and
+`com.badlogic.gdx.graphics.Color`) is an error rather than a silent pick of one.
+Two different libGDX packages that happen to end in the same name would be
+confused; none of the supported classes has such a twin.
+
+Cost: a scan of the file's class keys per supported class, at load time only
+(about a dozen keys, eleven lookups). Nothing is retained.
+
+`gui/test/skin_loader_test.cpp` loads a skin in both forms through the real
+parser and fails unless the label, button and check-box styles come out with
+their font and colour.
 
 ## libGDX skin JSON is not JSON
 
@@ -140,6 +230,6 @@ situation where a test matters most - after a change:
 
 **Anything a recipe links belongs in the prerequisites.**
 
-All four `graphics2d` tests, the `gui` painter test and the skin spike now
+All four `graphics` tests (then `graphics2d`'s), the `gui` painter test and the skin spike now
 list their archives. Verified by touching a `files` source and a `gui` source
 and confirming both binaries relink.

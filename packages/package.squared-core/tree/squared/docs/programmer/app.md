@@ -8,13 +8,13 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `KeyModifier` | `squared/app/key_modifier.hpp` | Platform-neutral modifier keys carried by keyboard events |
-| `KeyModifiers` | `squared/app/key_modifiers.hpp` | Compact value object containing zero or more modifier keys |
+| `KeyModifier` | `squared/app/src/key_modifier.hpp` | Platform-neutral modifier keys carried by keyboard events |
+| `KeyModifiers` | `squared/app/src/key_modifiers.hpp` | Compact value object containing zero or more modifier keys |
 | `Event` | `squared/app/event.hpp` | Platform-neutral application event |
-| `TextInputPurpose` | `squared/app/text_input_purpose.hpp` | Desired soft-keyboard content mode |
-| `TextInputArea` | `squared/app/text_input_area.hpp` | Soft-keyboard target rectangle in stage/logical coordinates |
-| `TextInputRequest` | `squared/app/text_input_request.hpp` | Request sent when platform text input starts |
-| `TextInputService` | `squared/app/text_input_service.hpp` | Portable application-to-platform soft-keyboard boundary |
+| `TextInputPurpose` | `squared/app/src/text_input_purpose.hpp` | Desired soft-keyboard content mode |
+| `TextInputArea` | `squared/app/src/text_input_area.hpp` | Soft-keyboard target rectangle in stage/logical coordinates |
+| `TextInputRequest` | `squared/app/src/text_input_request.hpp` | Request sent when platform text input starts |
+| `TextInputService` | `squared/app/src/text_input_service.hpp` | Portable application-to-platform soft-keyboard boundary |
 | `Application` | `squared/app/application.hpp` | Developer-owned application behind a platform-neutral lifecycle |
 
 ## Aggregate headers
@@ -22,7 +22,7 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 `squared/app/application.hpp` is both the `Application` interface and
 the module's aggregate header: it pulls in `Event` and the text-input types,
 because implementing `Application` needs all of them.
-`squared/app/text_input.hpp` aggregates the four text-input types.
+`squared/app/src/text_input.hpp` aggregates the four text-input types.
 
 ## Implementing an Application
 
@@ -67,6 +67,35 @@ void MyGame::handle_event(const sq::app::Event& event)
 
 Pass the `TextInputService*` you receive in `set_text_input_service` to the
 `Ui` so focused text fields raise the soft keyboard.
+
+## The safe area
+
+Android draws the application edge to edge, so the status bar, the navigation
+bar and a camera cut-out sit on top of it. The platform layer measures how far
+they reach and tells you:
+
+```cpp
+void MyGame::safe_area_changed(const sq::app::SafeArea& area)
+{
+    // pixels: area.left, area.top, area.right, area.bottom
+    ui_.set_safe_area(to_logical(area));
+}
+```
+
+| Type | Header | Purpose |
+|---|---|---|
+| `SafeArea` | `squared/app/safe_area.hpp` | Four 16-bit pixel counts: how far something covers each edge of the drawable |
+
+`safe_area_changed()` is optional (the default ignores it) and is called after
+`create()` once the bars are known, then whenever they change &mdash; rotation,
+or a hidden navigation bar. The first call can come a fraction of a second
+after the first frame, because Android has not laid the window out before
+then. A platform with nothing covering the window never calls it.
+
+Values are in drawable pixels, like `resize()`. Convert to your logical unit
+the same way you convert pointer positions.
+
+Lua: not bound.
 
 ## The runtime
 
