@@ -46,10 +46,12 @@
 #include <memory>
 
 // Development builds only (`make DEV_LOG=1`): every log line below is also sent
-// to a UDP port on this device, and a fatal signal sends a backtrace. The value
-// of SQUARED_DEV_LOG is the port. Nothing of this exists in a normal build.
+// to a UDP port on this device, a fatal signal sends a backtrace, and frames
+// whose update() or render() allocate are reported. The value of
+// SQUARED_DEV_LOG is the port. Nothing of this exists in a normal build.
 #ifdef SQUARED_DEV_LOG
 #include <squared/dev/dev_log.hpp>
+#include <squared/dev/frame_allocations.hpp>
 
 #include <cstdarg>
 #include <cstdio>
@@ -471,8 +473,17 @@ struct Platform {
         } else if (++frames_since_measure >= measure_interval_frames) {
             sync_safe_area();
         }
+#ifdef SQUARED_DEV_LOG
+        // Count the heap allocations update() and render() make. Frames that
+        // allocate are reported over the log sink: the first at once, then a
+        // summary every 120 frames. A frame should allocate nothing.
+        sq::dev::frame_begin();
+#endif
         app.update(delta);
         app.render(graphics);
+#ifdef SQUARED_DEV_LOG
+        sq::dev::frame_end();
+#endif
 
         // present() returns false when the surface has been lost, which is
         // normal rather than exceptional: it happens every time the app is

@@ -30,7 +30,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [app](app.md)
 - [assets](assets.md)
 - [data](data.md)
-- [dev](dev.md) &mdash; loopback log sink and crash reporter (development only)
+- [dev](dev.md) &mdash; loopback log sink, crash reporter and frame-allocation counter (development only)
 - [files](files.md)
   - [asset-index](asset-index.md) &mdash; how nested APK assets are listed
 - [gles](gles.md)

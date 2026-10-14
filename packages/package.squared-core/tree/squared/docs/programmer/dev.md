@@ -4,7 +4,8 @@ Not part of a release build. Linked only when a project asks for it.
 
 Developer counterpart: [../developer/dev.md](../developer/dev.md)
 
-Header: `squared/dev/dev_log.hpp`
+Headers: `squared/dev/dev_log.hpp` (the log sink),
+`squared/dev/frame_allocations.hpp` (the frame-allocation counter)
 
 ## Why it exists
 
@@ -92,9 +93,78 @@ void close_log_sink() noexcept;
 
 Closes the socket and restores the signal handlers it replaced.
 
+## Frame allocations
+
+A frame should not touch the heap: squared allocates at load time and reuses
+during frames. Static checks cannot tell a load-time `push_back` from a
+frame-time one, so a development build counts them.
+
+The Android template does it for you in `DEV_LOG` builds: every frame's
+`update()` and `render()` are counted, and frames that allocate are reported
+over the log sink.
+
+```
+alloc: frame 3 allocated 2 times, 96 bytes (the first frame that allocated)
+alloc: 41 of the last 120 frames allocated: 82 times, 3936 bytes; most in one frame: 2
+```
+
+The first line arrives the first time any frame allocates. After that, at most
+one summary every 120 frames (two seconds at 60 frames a second), and only
+when a frame in that window allocated. A program whose frames never allocate
+prints nothing.
+
+To count something else, bracket it yourself:
+
+```cpp
+sq::dev::frame_begin();
+level.update(delta);
+const sq::dev::FrameAllocations used = sq::dev::frame_end();
+// used.count, used.bytes
+```
+
+### FrameAllocations
+
+```cpp
+struct FrameAllocations {
+    std::uint64_t count = 0;  // calls to operator new, every form
+    std::uint64_t bytes = 0;  // bytes those calls asked for
+};
+```
+
+### frame_begin
+
+```cpp
+void frame_begin() noexcept;
+```
+
+Starts counting allocations made by the calling thread. Calling it again before
+`frame_end()` restarts the count.
+
+### frame_end
+
+```cpp
+FrameAllocations frame_end() noexcept;
+```
+
+Stops counting and returns the count. Reports through the log sink as above
+when one is open. Returns zeros when `frame_begin()` was not called on this
+thread.
+
+### What it counts
+
+- Every `operator new` the counted thread makes, including the ones inside the
+  C++ library (a `std::string` growing, a `std::vector` reallocating).
+- Not other threads: a loader or audio thread allocating meanwhile is not a
+  frame allocation.
+- Not `malloc` called directly, and not the GPU driver.
+
+Linking this part of the module replaces the global `operator new` and
+`operator delete` for the whole process. That is why it exists only in a
+development build.
+
 ## Lua
 
-Not bound. This is a native debugging aid.
+Not bound. These are native debugging aids.
 
 ## Notes
 

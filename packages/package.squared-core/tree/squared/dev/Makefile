@@ -14,7 +14,8 @@ MODULE_DIR := $(SQUARED_ROOT)/dev
 
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/dev_log.cpp
+SOURCES := src/dev_log.cpp \
+    src/frame_allocations.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/dev/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -27,12 +28,24 @@ all: $(TARGET)
 # the crash path is exercised and not just compiled.
 TEST_BINARY := $(BUILD_DIR)/dev_log_test
 
-test: $(TEST_BINARY)
+# Counts allocations inline, inside the shared C++ library, over-aligned and on
+# another thread, and reads the report lines back over loopback. Built at -O1,
+# where the optimiser could elide an unobserved new/delete pair; the test keeps
+# each one observable.
+FRAME_TEST := $(BUILD_DIR)/frame_allocations_test
+
+test: $(TEST_BINARY) $(FRAME_TEST)
 	@$(TEST_BINARY)
+	@$(FRAME_TEST)
 
 $(TEST_BINARY): $(MODULE_DIR)/test/dev_log_test.cpp $(MODULE_DIR)/src/dev_log.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -o $@
+
+$(FRAME_TEST): $(MODULE_DIR)/test/frame_allocations_test.cpp \
+               $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

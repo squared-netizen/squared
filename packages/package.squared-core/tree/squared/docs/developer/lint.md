@@ -13,7 +13,7 @@ script), [priority-audit.md](priority-audit.md) (the findings the rules track).
 |---|---|---|---|
 | 1. clang-tidy | owning raw pointers, missing special members, copies, oversized enums, bugs | `squared/.clang-tidy` | in `make lint` |
 | 2. source rules | what clang-tidy has no check for: `std::function`, exceptions, RTTI, any `new`/`delete` | `tools/lint-rules.txt` and `tools/lint-baseline.txt` | in `make lint` |
-| 3. frame-allocation counter | a heap allocation inside the frame loop | the `dev` build | planned (Sprint 2, task 2.2b) |
+| 3. frame-allocation counter | a heap allocation inside the frame loop | the `dev` module, in `DEV_LOG` builds | reports on the device |
 
 No static check can prove the frame loop does not allocate: a
 `std::vector::push_back` is fine at load time and a bug at frame time, and the
@@ -228,13 +228,23 @@ A pool that constructs objects in its own storage needs placement `new`. That
 is the one legitimate `raw-new` match: accept it in the baseline with a reason
 on the entry's line.
 
-## Layer 3: the frame-allocation counter (planned)
+## Layer 3: the frame-allocation counter
 
-The `dev` build will count heap allocations between the start and end of a
-frame, through a replaced `operator new` that only counts, and report the
-first frame that allocates, with the count, over the loopback log. Off in
-release builds: zero bytes, zero instructions. It needs frame hooks from the
-template's `sq_android/entry.cpp`, so it is a separate task (2.2b).
+A development build (`make DEV_LOG=1 apk` in the Android template) replaces
+the global `operator new` with one that counts, and the template brackets each
+frame's `update()` and `render()` with `sq::dev::frame_begin()` and
+`frame_end()`. Frames that allocate are reported over the log sink:
+
+```
+alloc: frame 3 allocated 2 times, 96 bytes (the first frame that allocated)
+alloc: 41 of the last 120 frames allocated: 82 times, 3936 bytes; most in one frame: 2
+```
+
+Only the frame thread is counted, and a release build contains none of it.
+Unlike layers 1 and 2 it does not fail `make lint`: it runs on the device, so
+its result is read from `nc -klu 5555`. How it works:
+[dev.md](dev.md#the-frame-allocation-counter); how to use it:
+[../programmer/dev.md](../programmer/dev.md#frame-allocations).
 
 ## Memory and cost
 

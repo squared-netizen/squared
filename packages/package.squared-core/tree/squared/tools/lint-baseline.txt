@@ -2,6 +2,7 @@
 # Written by tools/lint.sh --record-baseline; counts may only go down.
 # Add a reason after '#' on an entry's line; re-recording keeps it.
 exceptions data/src/json.cpp 6
+exceptions dev/src/frame_allocations.cpp 1  # replacement operator new: throws bad_alloc as the standard requires; abort under -fno-exceptions
 exceptions graphics/src/bitmap_font.cpp 3
 exceptions graphics/src/glyph_layout.cpp 3
 exceptions gui/src/actor.cpp 1
@@ -18,6 +19,8 @@ exceptions gui/src/stack.cpp 1
 exceptions gui/src/table.cpp 4
 exceptions gui/src/toggle_button.cpp 2
 exceptions gui/src/ui.cpp 11
+raw-delete dev/src/frame_allocations.cpp 12  # the replacement operator delete definitions (dev builds only)
+raw-new dev/src/frame_allocations.cpp 4  # the replacement operator new definitions (dev builds only)
 std-function assets/asset_manager.hpp 1
 std-function assets/src/asset_loader.hpp 1
 std-function gui/button.hpp 1

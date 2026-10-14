@@ -13,7 +13,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [app](app.md) &mdash; the platform-neutral lifecycle, event and text-input boundary
 - [assets](assets.md) &mdash; typed asset cache with dependency tracking
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
-- [dev](dev.md) &mdash; development aids: a loopback log sink and crash reporter (not in release builds)
+- [dev](dev.md) &mdash; development aids: a loopback log sink, crash reporter and frame-allocation counter (not in release builds)
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
@@ -27,7 +27,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `app` | 4 | 7 | `squared/app/application.hpp` |
 | `assets` | 1 | 8 | `squared/assets/assets.hpp` |
 | `data` | 2 | 6 | `squared/data/json.hpp` |
-| `dev` | 1 | 0 | `squared/dev/dev_log.hpp` |
+| `dev` | 2 | 0 | none: `dev_log.hpp` and `frame_allocations.hpp` are independent |
 | `files` | 4 | 5 | `squared/files/files.hpp` |
 | `gles` | 5 | 11 | `squared/gles/gles.hpp` |
 | `graphics` | 11 | 19 | `squared/graphics/graphics.hpp` |
