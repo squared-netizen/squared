@@ -8,11 +8,13 @@
 
 #include <chrono>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 class Context;
-}  // namespace sq::graphics
+} // namespace sq::graphics
 
-namespace sq::app {
+namespace sq::app
+{
 
 /**
  * @brief Developer-owned application behind a platform-neutral lifecycle.
@@ -21,14 +23,15 @@ namespace sq::app {
  * implements this interface and uses Squared framework services for ordinary
  * application behavior.
  */
-class Application {
-public:
-    virtual ~Application() = default;
+class Application
+{
+    public:
+        virtual ~Application() = default;
 
-    /** Supply the portable application-to-platform text-input service. */
-    virtual void set_text_input_service(TextInputService*) noexcept {}
+        /** Supply the portable application-to-platform text-input service. */
+        virtual void set_text_input_service( TextInputService * ) noexcept {}
 
-    /**
+        /**
      * @brief Initialize logical state once.
      *
      * @param runtime The platform services: rendering context, file system
@@ -39,37 +42,37 @@ public:
      * context alone, because a frame should not be reaching into the file
      * system or the asset cache sixty times a second.
      */
-    [[nodiscard]] virtual bool create(Runtime& runtime) = 0;
+        [[nodiscard]] virtual bool create( Runtime &runtime ) = 0;
 
-    /**
+        /**
      * @brief Receive one platform-neutral input or lifecycle event.
      * @param event Portable event produced by the platform adapter.
      */
-    virtual void handle_event(const Event& event) = 0;
+        virtual void handle_event( const Event &event ) = 0;
 
-    /**
+        /**
      * @brief Advance logical state once for the current frame.
      * @param delta Elapsed domain time since the previous update, in
      * nanoseconds.
      */
-    virtual void update(std::chrono::nanoseconds delta) = 0;
+        virtual void update( std::chrono::nanoseconds delta ) = 0;
 
-    /**
+        /**
      * @brief Render one frame using the active graphics context.
      * @param graphics The active platform rendering context.
      */
-    virtual void render(graphics::Context& graphics) = 0;
+        virtual void render( graphics::Context &graphics ) = 0;
 
-    /** @brief Notify the application that frame updates are pausing. */
-    virtual void pause() {}
+        /** @brief Notify the application that frame updates are pausing. */
+        virtual void pause() {}
 
-    /** @brief Notify the application that frame updates are resuming. */
-    virtual void resume() {}
+        /** @brief Notify the application that frame updates are resuming. */
+        virtual void resume() {}
 
-    /** @brief Notify the application of current drawable dimensions. */
-    virtual void resize(int, int) {}
+        /** @brief Notify the application of current drawable dimensions. */
+        virtual void resize( int, int ) {}
 
-    /**
+        /**
      * @brief Tell the application which edges of the drawable are covered.
      *
      * Called when the platform first measures the bars and again whenever they
@@ -79,26 +82,26 @@ public:
      *
      * @param area Pixels covered along each edge of the drawable.
      */
-    virtual void safe_area_changed(const SafeArea& area) { static_cast<void>(area); }
+        virtual void safe_area_changed( const SafeArea &area ) { static_cast<void>( area ); }
 
-    /** @brief Restore or validate GPU resources after a surface becomes usable. */
-    virtual void surface_created(graphics::Context&) {}
+        /** @brief Restore or validate GPU resources after a surface becomes usable. */
+        virtual void surface_created( graphics::Context & ) {}
 
-    /**
+        /**
      * @brief Mark GPU resources stale after rendering becomes unavailable.
      *
      * Implementations must not assume graphics commands are legal here.
      */
-    virtual void surface_destroyed() {}
+        virtual void surface_destroyed() {}
 
-    /** @brief Release logical and framework resources before destruction. */
-    virtual void dispose() = 0;
+        /** @brief Release logical and framework resources before destruction. */
+        virtual void dispose() = 0;
 
-    /**
+        /**
      * @brief Report whether application logic requested shutdown.
      * @return `true` when the platform should end the event loop.
      */
-    [[nodiscard]] virtual bool quit_requested() const noexcept = 0;
+        [[nodiscard]] virtual bool quit_requested() const noexcept = 0;
 };
 
-}  // namespace sq::app
+} // namespace sq::app

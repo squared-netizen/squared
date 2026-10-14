@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Portable key name used by the GUI input boundary. */
 enum class Key {

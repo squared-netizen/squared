@@ -5,7 +5,8 @@
 #include <functional>
 #include <string_view>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Resolves one atlas/resource name without exposing storage or backend APIs.
@@ -15,7 +16,6 @@ namespace sq::gui {
  * @return Drawable for the requested name, or an empty pointer when
  * resolution failed.
  */
-using SkinDrawableResolver =
-    std::function<DrawablePtr(std::string_view resource_name)>;
+using SkinDrawableResolver = std::function<DrawablePtr( std::string_view resource_name )>;
 
 } // namespace sq::gui

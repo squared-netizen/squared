@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 class Texture;
 
@@ -11,12 +12,13 @@ class Texture;
  *
  * Pixel memory only needs to remain valid for the duration of upload_rgba().
  */
-class TextureRecoveryTarget final {
-public:
-    TextureRecoveryTarget(const TextureRecoveryTarget&) = delete;
-    TextureRecoveryTarget& operator=(const TextureRecoveryTarget&) = delete;
+class TextureRecoveryTarget final
+{
+    public:
+        TextureRecoveryTarget( const TextureRecoveryTarget & ) = delete;
+        TextureRecoveryTarget &operator=( const TextureRecoveryTarget & ) = delete;
 
-    /**
+        /**
      * @brief Upload one tightly packed RGBA8888 image synchronously.
      * @param width Image width in pixels; must be greater than zero.
      * @param height Image height in pixels; must be greater than zero.
@@ -24,18 +26,15 @@ public:
      * hold width * height * 4 bytes, valid for the duration of the call.
      * @return true when the upload replaced the recovered texture.
      */
-    [[nodiscard]] bool upload_rgba(
-        int width,
-        int height,
-        const std::uint8_t* pixels
-    ) noexcept;
+        [[nodiscard]] bool upload_rgba( int width, int height,
+                                        const std::uint8_t *pixels ) noexcept;
 
-private:
-    friend class Texture;
-    explicit TextureRecoveryTarget(Texture& texture) noexcept;
+    private:
+        friend class Texture;
+        explicit TextureRecoveryTarget( Texture &texture ) noexcept;
 
-    Texture* texture_{nullptr};
-    bool uploaded_{false};
+        Texture *texture_{ nullptr };
+        bool uploaded_{ false };
 };
 
 } // namespace sq::graphics

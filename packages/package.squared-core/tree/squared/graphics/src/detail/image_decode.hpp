@@ -6,27 +6,26 @@
 #include <string>
 #include <vector>
 
-namespace sq::graphics::detail {
+namespace sq::graphics::detail
+{
 
 /** @brief A decoded image in tightly packed RGBA8888. */
-struct DecodedImage final {
-    /** @brief Pixels, width * height * 4 bytes, top row first. */
-    std::vector<std::uint8_t> pixels;
+struct DecodedImage final
+{
+        /** @brief Pixels, width * height * 4 bytes, top row first. */
+        std::vector<std::uint8_t> pixels;
 
-    /** @brief Width in pixels; zero on failure. */
-    int width{0};
+        /** @brief Width in pixels; zero on failure. */
+        int width{ 0 };
 
-    /** @brief Height in pixels; zero on failure. */
-    int height{0};
+        /** @brief Height in pixels; zero on failure. */
+        int height{ 0 };
 
-    /** @brief Decoder message; empty on success. */
-    std::string message;
+        /** @brief Decoder message; empty on success. */
+        std::string message;
 
-    /** @brief Return whether the image decoded. */
-    [[nodiscard]] explicit operator bool() const noexcept
-    {
-        return width > 0 && height > 0;
-    }
+        /** @brief Return whether the image decoded. */
+        [[nodiscard]] explicit operator bool() const noexcept { return width > 0 && height > 0; }
 };
 
 /**
@@ -48,9 +47,7 @@ struct DecodedImage final {
  * one consumer today, and the extension policy says a second concrete use
  * comes before a public interface.
  */
-[[nodiscard]] DecodedImage decode_image(
-    std::span<const std::byte> bytes,
-    std::size_t maximum_pixels = 0
-);
+[[nodiscard]] DecodedImage decode_image( std::span<const std::byte> bytes,
+                                         std::size_t maximum_pixels = 0 );
 
-}  // namespace sq::graphics::detail
+} // namespace sq::graphics::detail

@@ -6,8 +6,8 @@
 
 #include <squared/files/files.hpp>
 #include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/texture_atlas.hpp>
 #include <squared/graphics/src/texture_filter.hpp>
+#include <squared/graphics/texture_atlas.hpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
@@ -22,17 +22,18 @@
 
 using namespace sq;
 
-namespace {
+namespace
+{
 
 std::vector<unsigned char> g_png;
 
-void collect(void*, void* data, int size)
+void collect( void *, void *data, int size )
 {
-    const auto* bytes = static_cast<const unsigned char*>(data);
-    g_png.insert(g_png.end(), bytes, bytes + size);
+    const auto *bytes = static_cast<const unsigned char *>( data );
+    g_png.insert( g_png.end(), bytes, bytes + size );
 }
 
-constexpr const char* k_atlas = R"(
+constexpr const char *k_atlas = R"(
 uiskin.png
 size: 256,128
 format: RGBA8888
@@ -63,62 +64,59 @@ font-page
   index: 3
 )";
 
-}  // namespace
+} // namespace
 
 int main()
 {
-    const char* tmpdir = std::getenv("TMPDIR");
-    const std::string base =
-        std::string{tmpdir != nullptr ? tmpdir : "."} + "/sq_atlas_test";
-    files::PosixFileSystem fs{files::PosixFileSystemRoots{
-        .internal_root = base, .local_root = base, .external_root = {}}};
+    const char *tmpdir = std::getenv( "TMPDIR" );
+    const std::string base = std::string{ tmpdir != nullptr ? tmpdir : "." } + "/sq_atlas_test";
+    files::PosixFileSystem fs{ files::PosixFileSystemRoots{
+        .internal_root = base, .local_root = base, .external_root = {} } };
 
     // a 256x128 page, so the region coordinates above are inside it
-    std::vector<unsigned char> pixels(256U * 128U * 4U, 200);
-    assert(stbi_write_png_to_func(collect, nullptr, 256, 128, 4,
-                                  pixels.data(), 256 * 4));
-    assert(!fs.local("skin/uiskin.png")
-                .write_bytes(std::as_bytes(std::span{g_png})));
-    assert(!fs.local("skin/uiskin.atlas").write_string(k_atlas));
+    std::vector<unsigned char> pixels( 256U * 128U * 4U, 200 );
+    assert( stbi_write_png_to_func( collect, nullptr, 256, 128, 4, pixels.data(), 256 * 4 ) );
+    assert( !fs.local( "skin/uiskin.png" ).write_bytes( std::as_bytes( std::span{ g_png } ) ) );
+    assert( !fs.local( "skin/uiskin.atlas" ).write_string( k_atlas ) );
 
-    files::FileHandle handle = fs.local("skin/uiskin.atlas");
+    files::FileHandle handle = fs.local( "skin/uiskin.atlas" );
 
     // --- parse ------------------------------------------------------------
     {
         graphics::TextureAtlas atlas;
-        assert(atlas.load(handle));
-        assert(atlas.valid());
-        assert(atlas.page_count() == 1);
-        assert(atlas.region_count() == 3);
+        assert( atlas.load( handle ) );
+        assert( atlas.valid() );
+        assert( atlas.page_count() == 1 );
+        assert( atlas.region_count() == 3 );
 
-        const graphics::AtlasRegion* check = atlas.find_region("check-off");
-        assert(check != nullptr);
-        assert(check->index() == -1);
-        assert(check->region().valid());
-        assert(check->region().width() == 13);
-        assert(check->packed_width() == 13 && check->original_height() == 13);
-        assert(!check->splits() && !check->pads());
-        assert(!check->rotated_clockwise());
+        const graphics::AtlasRegion *check = atlas.find_region( "check-off" );
+        assert( check != nullptr );
+        assert( check->index() == -1 );
+        assert( check->region().valid() );
+        assert( check->region().width() == 13 );
+        assert( check->packed_width() == 13 && check->original_height() == 13 );
+        assert( !check->splits() && !check->pads() );
+        assert( !check->rotated_clockwise() );
 
         // the nine-patch: splits and pads are what the GUI draws borders from
-        const graphics::AtlasRegion* rect = atlas.find_region("default-rect");
-        assert(rect != nullptr);
-        assert(rect->splits());
-        assert((*rect->splits())[0] == 1 && (*rect->splits())[3] == 1);
-        assert(rect->pads());
-        assert((*rect->pads())[1] == 2);
+        const graphics::AtlasRegion *rect = atlas.find_region( "default-rect" );
+        assert( rect != nullptr );
+        assert( rect->splits() );
+        assert( ( *rect->splits() )[0] == 1 && ( *rect->splits() )[3] == 1 );
+        assert( rect->pads() );
+        assert( ( *rect->pads() )[1] == 2 );
 
         // a rotated region keeps its logical size; the storage is swapped
-        const graphics::AtlasRegion* page = atlas.find_region("font-page");
-        assert(page != nullptr);
-        assert(page->rotated_clockwise());
-        assert(page->region().width() == 20 && page->region().height() == 10);
-        assert(page->index() == 3);
+        const graphics::AtlasRegion *page = atlas.find_region( "font-page" );
+        assert( page != nullptr );
+        assert( page->rotated_clockwise() );
+        assert( page->region().width() == 20 && page->region().height() == 10 );
+        assert( page->index() == 3 );
 
         // index selects between same-named regions; -1 means any
-        assert(atlas.find_region("font-page", 3) == page);
-        assert(atlas.find_region("font-page", 9) == nullptr);
-        assert(atlas.find_region("missing") == nullptr);
+        assert( atlas.find_region( "font-page", 3 ) == page );
+        assert( atlas.find_region( "font-page", 9 ) == nullptr );
+        assert( atlas.find_region( "missing" ) == nullptr );
     }
 
     // --- the page's filter comes from the file ----------------------------
@@ -126,76 +124,76 @@ int main()
         // Nearest,Nearest above: a pixel-art skin is ruined by anything else,
         // and nothing in the API lets a caller override it.
         graphics::TextureAtlas atlas;
-        assert(atlas.load(handle));
+        assert( atlas.load( handle ) );
         // the region is usable, which is what the filter affects at draw time
-        assert(atlas.find_region("check-off")->region().valid());
+        assert( atlas.find_region( "check-off" )->region().valid() );
     }
 
     // --- context loss: regions go invalid, then come back ------------------
     {
         graphics::TextureAtlas atlas;
-        assert(atlas.load(handle));
-        const graphics::AtlasRegion* check = atlas.find_region("check-off");
-        assert(check->region().valid());
+        assert( atlas.load( handle ) );
+        const graphics::AtlasRegion *check = atlas.find_region( "check-off" );
+        assert( check->region().valid() );
 
         atlas.invalidate();
-        assert(!atlas.valid());
-        assert(!check->region().valid());
-        assert(check->region().stale());
+        assert( !atlas.valid() );
+        assert( !check->region().valid() );
+        assert( check->region().stale() );
 
-        assert(atlas.restore(false));
-        assert(atlas.valid());
+        assert( atlas.restore( false ) );
+        assert( atlas.valid() );
         // refreshed on the atlas's behalf: same file, same layout
-        assert(check->region().valid());
-        assert(!check->region().stale());
+        assert( check->region().valid() );
+        assert( !check->region().stale() );
     }
 
     // --- release keeps the recipe -----------------------------------------
     {
         graphics::TextureAtlas atlas;
-        assert(atlas.load(handle));
+        assert( atlas.load( handle ) );
         atlas.release();
-        assert(!atlas.valid());
-        assert(atlas.restore(false));
-        assert(atlas.valid());
-        assert(atlas.find_region("check-off")->region().valid());
+        assert( !atlas.valid() );
+        assert( atlas.restore( false ) );
+        assert( atlas.valid() );
+        assert( atlas.find_region( "check-off" )->region().valid() );
     }
 
     // --- refusals ---------------------------------------------------------
     {
         graphics::TextureAtlas atlas;
         // Regenerate needs a callback there is nowhere to pass
-        assert(!atlas.load(handle, graphics::TextureRecoveryPolicy::Regenerate));
-        assert(!atlas.load(fs.local("skin/missing.atlas")));
-        assert(!atlas.load(files::FileHandle{}));
-        assert(atlas.page_count() == 0);
+        assert( !atlas.load( handle, graphics::TextureRecoveryPolicy::Regenerate ) );
+        assert( !atlas.load( fs.local( "skin/missing.atlas" ) ) );
+        assert( !atlas.load( files::FileHandle{} ) );
+        assert( atlas.page_count() == 0 );
 
         // a page the atlas names but the filesystem lacks
-        assert(!fs.local("broken/broken.atlas")
-                    .write_string("\nnope.png\nsize: 4,4\nfilter: Linear,Linear\n"
-                                  "repeat: none\nthing\n  xy: 0, 0\n  size: 2, 2\n"));
-        assert(!atlas.load(fs.local("broken/broken.atlas")));
+        assert( !fs.local( "broken/broken.atlas" )
+                     .write_string( "\nnope.png\nsize: 4,4\nfilter: Linear,Linear\n"
+                                    "repeat: none\nthing\n  xy: 0, 0\n  size: 2, 2\n" ) );
+        assert( !atlas.load( fs.local( "broken/broken.atlas" ) ) );
     }
 
     // --- Discard: regions stay listed and report themselves invalid --------
     {
         graphics::TextureAtlas atlas;
-        assert(atlas.load(handle, graphics::TextureRecoveryPolicy::Discard));
+        assert( atlas.load( handle, graphics::TextureRecoveryPolicy::Discard ) );
         const std::size_t before = atlas.region_count();
         atlas.invalidate();
-        assert(!atlas.restore(false));
-        assert(atlas.region_count() == before);
-        assert(!atlas.find_region("check-off")->region().valid());
+        assert( !atlas.restore( false ) );
+        assert( atlas.region_count() == before );
+        assert( !atlas.find_region( "check-off" )->region().valid() );
     }
 
-    assert(!fs.local("skin/uiskin.atlas").remove());
-    assert(!fs.local("skin/uiskin.png").remove());
-    assert(!fs.local("skin").remove());
-    assert(!fs.local("broken/broken.atlas").remove());
-    assert(!fs.local("broken").remove());
-    assert(!fs.local("").remove());
+    assert( !fs.local( "skin/uiskin.atlas" ).remove() );
+    assert( !fs.local( "skin/uiskin.png" ).remove() );
+    assert( !fs.local( "skin" ).remove() );
+    assert( !fs.local( "broken/broken.atlas" ).remove() );
+    assert( !fs.local( "broken" ).remove() );
+    assert( !fs.local( "" ).remove() );
 
-    std::printf("texture atlas: all assertions passed  sizeof(AtlasRegion)=%zu\n",
-                sizeof(graphics::AtlasRegion));
+    std::printf( "texture atlas: all assertions passed  sizeof(AtlasRegion)=%zu\n",
+                 sizeof( graphics::AtlasRegion ) );
     return 0;
 }

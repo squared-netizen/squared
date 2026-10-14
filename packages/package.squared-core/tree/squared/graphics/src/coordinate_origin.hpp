@@ -1,13 +1,11 @@
 #pragma once
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /**
  * @brief Coordinate orientation used by an orthographic camera.
  */
-enum class CoordinateOrigin {
-    BottomLeft,
-    TopLeft
-};
+enum class CoordinateOrigin { BottomLeft, TopLeft };
 
 } // namespace sq::graphics

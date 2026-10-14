@@ -5,19 +5,21 @@
 #include <cstddef>
 #include <string>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /** @brief One owned BMFont parsing or glyph-layout failure. */
-struct BitmapFontError final {
-    BitmapFontErrorCode code{BitmapFontErrorCode::none};
-    /** @brief One-based descriptor line, or zero for non-line failures. */
-    std::size_t line{0};
-    std::string message;
+struct BitmapFontError final
+{
+        BitmapFontErrorCode code{ BitmapFontErrorCode::none };
+        /** @brief One-based descriptor line, or zero for non-line failures. */
+        std::size_t line{ 0 };
+        std::string message;
 
-    [[nodiscard]] explicit operator bool() const noexcept
-    {
-        return code != BitmapFontErrorCode::none;
-    }
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return code != BitmapFontErrorCode::none;
+        }
 };
 
 } // namespace sq::graphics

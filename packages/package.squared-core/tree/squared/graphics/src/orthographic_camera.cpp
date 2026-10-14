@@ -1,43 +1,37 @@
 #include <squared/graphics/orthographic_camera.hpp>
-
 #include <squared/graphics/src/coordinate_origin.hpp>
 #include <squared/math/matrix4.hpp>
 #include <squared/math/vector2.hpp>
 
 #include <algorithm>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
-OrthographicCamera::OrthographicCamera(
-    float viewport_width,
-    float viewport_height,
-    CoordinateOrigin origin
-) noexcept
-    : viewport_width_(viewport_width),
-      viewport_height_(viewport_height),
-      position_{viewport_width * 0.5F, viewport_height * 0.5F},
-      origin_(origin)
+OrthographicCamera::OrthographicCamera( float viewport_width, float viewport_height,
+                                        CoordinateOrigin origin ) noexcept
+    : viewport_width_( viewport_width )
+    , viewport_height_( viewport_height )
+    , position_{ viewport_width * 0.5F, viewport_height * 0.5F }
+    , origin_( origin )
 {
     update();
 }
 
-void OrthographicCamera::set_viewport(
-    float width,
-    float height
-) noexcept
+void OrthographicCamera::set_viewport( float width, float height ) noexcept
 {
-    viewport_width_ = std::max(width, 1.0F);
-    viewport_height_ = std::max(height, 1.0F);
+    viewport_width_ = std::max( width, 1.0F );
+    viewport_height_ = std::max( height, 1.0F );
 }
 
-void OrthographicCamera::set_position(float x, float y) noexcept
+void OrthographicCamera::set_position( float x, float y ) noexcept
 {
-    position_ = {x, y};
+    position_ = { x, y };
 }
 
-void OrthographicCamera::set_zoom(float zoom) noexcept
+void OrthographicCamera::set_zoom( float zoom ) noexcept
 {
-    zoom_ = std::max(zoom, 0.0001F);
+    zoom_ = std::max( zoom, 0.0001F );
 }
 
 void OrthographicCamera::update() noexcept
@@ -47,25 +41,16 @@ void OrthographicCamera::update() noexcept
     const float left = position_.x - half_width;
     const float right = position_.x + half_width;
 
-    if (origin_ == CoordinateOrigin::TopLeft) {
-        combined_ = sq::math::Matrix4::orthographic(
-            left,
-            right,
-            position_.y + half_height,
-            position_.y - half_height
-        );
+    if( origin_ == CoordinateOrigin::TopLeft ) {
+        combined_ = sq::math::Matrix4::orthographic( left, right, position_.y + half_height,
+                                                     position_.y - half_height );
     } else {
-        combined_ = sq::math::Matrix4::orthographic(
-            left,
-            right,
-            position_.y - half_height,
-            position_.y + half_height
-        );
+        combined_ = sq::math::Matrix4::orthographic( left, right, position_.y - half_height,
+                                                     position_.y + half_height );
     }
 }
 
-const sq::math::Matrix4&
-OrthographicCamera::combined() const noexcept
+const sq::math::Matrix4 &OrthographicCamera::combined() const noexcept
 {
     return combined_;
 }

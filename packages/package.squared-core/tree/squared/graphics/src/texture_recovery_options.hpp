@@ -3,11 +3,13 @@
 #include <squared/graphics/src/texture_recovery_callback.hpp>
 #include <squared/graphics/src/texture_recovery_policy.hpp>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /** @brief Recovery selection supplied when a texture is created. */
-struct TextureRecoveryOptions final {
-    /**
+struct TextureRecoveryOptions final
+{
+        /**
      * @brief Selected portable recovery policy.
      *
      * Defaults to ReloadFromAsset: the cheapest policy is the one you get by
@@ -21,57 +23,53 @@ struct TextureRecoveryOptions final {
      * from, and the creating call reports that rather than producing something
      * that will silently fail to come back after a phone call.
      */
-    TextureRecoveryPolicy policy{TextureRecoveryPolicy::ReloadFromAsset};
+        TextureRecoveryPolicy policy{ TextureRecoveryPolicy::ReloadFromAsset };
 
-    /** @brief Callback invoked to regenerate pixels after context loss. */
-    TextureRecoveryCallback callback{nullptr};
+        /** @brief Callback invoked to regenerate pixels after context loss. */
+        TextureRecoveryCallback callback{ nullptr };
 
-    /** @brief Opaque value forwarded to callback; non-owning. */
-    void* user_data{nullptr};
+        /** @brief Opaque value forwarded to callback; non-owning. */
+        void *user_data{ nullptr };
 
-    /**
+        /**
      * @brief Build options that reload from the asset path.
      * @return Options with the ReloadFromAsset policy.
      */
-    [[nodiscard]] static constexpr TextureRecoveryOptions
-    reload_from_asset() noexcept
-    {
-        return {TextureRecoveryPolicy::ReloadFromAsset, nullptr, nullptr};
-    }
+        [[nodiscard]] static constexpr TextureRecoveryOptions reload_from_asset() noexcept
+        {
+            return { TextureRecoveryPolicy::ReloadFromAsset, nullptr, nullptr };
+        }
 
-    /**
+        /**
      * @brief Build options that retain CPU pixels for GPU re-upload.
      * @return Options with the RetainPixels policy.
      */
-    [[nodiscard]] static constexpr TextureRecoveryOptions
-    retain_pixels() noexcept
-    {
-        return {TextureRecoveryPolicy::RetainPixels, nullptr, nullptr};
-    }
+        [[nodiscard]] static constexpr TextureRecoveryOptions retain_pixels() noexcept
+        {
+            return { TextureRecoveryPolicy::RetainPixels, nullptr, nullptr };
+        }
 
-    /**
+        /**
      * @brief Build options that regenerate pixels through a callback.
      * @param callback Callback restoring pixel content; must remain valid
      * for the life of the texture. Non-owning.
      * @param user_data Opaque value forwarded to callback; non-owning.
      * @return Options with the Regenerate policy.
      */
-    [[nodiscard]] static constexpr TextureRecoveryOptions regenerate(
-        TextureRecoveryCallback callback,
-        void* user_data = nullptr
-    ) noexcept
-    {
-        return {TextureRecoveryPolicy::Regenerate, callback, user_data};
-    }
+        [[nodiscard]] static constexpr TextureRecoveryOptions
+        regenerate( TextureRecoveryCallback callback, void *user_data = nullptr ) noexcept
+        {
+            return { TextureRecoveryPolicy::Regenerate, callback, user_data };
+        }
 
-    /**
+        /**
      * @brief Build options that discard the texture after context loss.
      * @return Options with the Discard policy.
      */
-    [[nodiscard]] static constexpr TextureRecoveryOptions discard() noexcept
-    {
-        return {TextureRecoveryPolicy::Discard, nullptr, nullptr};
-    }
+        [[nodiscard]] static constexpr TextureRecoveryOptions discard() noexcept
+        {
+            return { TextureRecoveryPolicy::Discard, nullptr, nullptr };
+        }
 };
 
 } // namespace sq::graphics

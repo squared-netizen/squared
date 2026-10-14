@@ -1,48 +1,42 @@
-#include <squared/messaging/telegram.hpp>
-
 #include <squared/data/json.hpp>
 #include <squared/messaging/src/correlation_id.hpp>
 #include <squared/messaging/src/endpoint_id.hpp>
 #include <squared/messaging/src/message_id.hpp>
+#include <squared/messaging/telegram.hpp>
 
 #include <optional>
 #include <utility>
 
-namespace sq::messaging {
-
-Telegram::Telegram(
-    MessageId message,
-    sq::data::JsonValue payload,
-    std::optional<EndpointId> sender,
-    std::optional<EndpointId> receiver,
-    CorrelationId correlation,
-    bool receipt_requested
-)
-    : message_(std::move(message)),
-      payload_(std::move(payload)),
-      sender_(std::move(sender)),
-      receiver_(std::move(receiver)),
-      correlation_(correlation),
-      receipt_requested_(receipt_requested)
+namespace sq::messaging
 {
-}
 
-const MessageId& Telegram::message() const noexcept
+Telegram::Telegram( MessageId message, sq::data::JsonValue payload,
+                    std::optional<EndpointId> sender, std::optional<EndpointId> receiver,
+                    CorrelationId correlation, bool receipt_requested )
+    : message_( std::move( message ) )
+    , payload_( std::move( payload ) )
+    , sender_( std::move( sender ) )
+    , receiver_( std::move( receiver ) )
+    , correlation_( correlation )
+    , receipt_requested_( receipt_requested )
+{}
+
+const MessageId &Telegram::message() const noexcept
 {
     return message_;
 }
 
-const sq::data::JsonValue& Telegram::payload() const noexcept
+const sq::data::JsonValue &Telegram::payload() const noexcept
 {
     return payload_;
 }
 
-const std::optional<EndpointId>& Telegram::sender() const noexcept
+const std::optional<EndpointId> &Telegram::sender() const noexcept
 {
     return sender_;
 }
 
-const std::optional<EndpointId>& Telegram::receiver() const noexcept
+const std::optional<EndpointId> &Telegram::receiver() const noexcept
 {
     return receiver_;
 }
@@ -64,14 +58,19 @@ bool Telegram::directed() const noexcept
 
 bool Telegram::valid() const noexcept
 {
-    if (!message_.valid()) return false;
-    if (sender_ && !sender_->valid()) return false;
-    if (receiver_ && !receiver_->valid()) return false;
-    if (receipt_requested_ &&
-        (!sender_ || correlation_ == 0)) {
+    if( !message_.valid() ) {
+        return false;
+    }
+    if( sender_ && !sender_->valid() ) {
+        return false;
+    }
+    if( receiver_ && !receiver_->valid() ) {
+        return false;
+    }
+    if( receipt_requested_ && ( !sender_ || correlation_ == 0 ) ) {
         return false;
     }
     return true;
 }
 
-}  // namespace sq::messaging
+} // namespace sq::messaging

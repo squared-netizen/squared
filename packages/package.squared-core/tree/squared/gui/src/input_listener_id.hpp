@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Stable actor-local listener identifier; insertions increase it. */
 using InputListenerId = std::uint64_t;

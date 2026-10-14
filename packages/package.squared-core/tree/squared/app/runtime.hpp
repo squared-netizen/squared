@@ -1,18 +1,22 @@
 #pragma once
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 class Context;
-}  // namespace sq::graphics
+} // namespace sq::graphics
 
-namespace sq::files {
+namespace sq::files
+{
 class FileSystem;
-}  // namespace sq::files
+} // namespace sq::files
 
-namespace sq::assets {
+namespace sq::assets
+{
 class AssetManager;
-}  // namespace sq::assets
+} // namespace sq::assets
 
-namespace sq::app {
+namespace sq::app
+{
 
 /**
  * @brief The services only the platform layer can construct.
@@ -39,18 +43,19 @@ namespace sq::app {
  *
  * Not global. Nothing reaches in by type. It is passed explicitly, once.
  */
-struct Runtime final {
-    /** @brief The rendering context. Survives surface loss; see Context. */
-    graphics::Context& graphics;
+struct Runtime final
+{
+        /** @brief The rendering context. Survives surface loss; see Context. */
+        graphics::Context &graphics;
 
-    /**
+        /**
      * @brief Storage. Internal is the read-only asset bundle, Local is the
      * app's private writable storage, External is shared storage.
      */
-    files::FileSystem& files;
+        files::FileSystem &files;
 
-    /** @brief The typed asset cache, reading through `files`. */
-    assets::AssetManager& assets;
+        /** @brief The typed asset cache, reading through `files`. */
+        assets::AssetManager &assets;
 };
 
-}  // namespace sq::app
+} // namespace sq::app

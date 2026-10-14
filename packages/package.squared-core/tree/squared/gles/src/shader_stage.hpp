@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief Which programmable stage a shader belongs to. */
 enum class ShaderStage {
@@ -11,4 +12,4 @@ enum class ShaderStage {
     Fragment
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

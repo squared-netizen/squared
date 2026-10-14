@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /**
  * @brief CPU-side recipe used to recover a texture after context loss.
@@ -9,11 +10,6 @@ namespace sq::graphics {
  * or asks the application to regenerate; they do not expose the selected
  * windowing or graphics API.
  */
-enum class TextureRecoveryPolicy {
-    ReloadFromAsset,
-    RetainPixels,
-    Regenerate,
-    Discard
-};
+enum class TextureRecoveryPolicy { ReloadFromAsset, RetainPixels, Regenerate, Discard };
 
 } // namespace sq::graphics

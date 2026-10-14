@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Portable hardware-independent key names for key events. */
 enum class InputKey {

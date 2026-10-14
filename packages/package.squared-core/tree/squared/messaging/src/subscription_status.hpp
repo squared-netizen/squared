@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::messaging {
+namespace sq::messaging
+{
 
 /** @brief Outcome category of one registration operation. */
 enum class SubscriptionStatus {
@@ -13,4 +14,4 @@ enum class SubscriptionStatus {
     HandleExhausted
 };
 
-}  // namespace sq::messaging
+} // namespace sq::messaging

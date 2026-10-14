@@ -1,15 +1,17 @@
 #pragma once
 
-namespace sq::messaging {
+namespace sq::messaging
+{
 
 class Telegram;
 
 /** @brief Receiver of Telegram values on the dispatcher's calling thread. */
-class Telegraph {
-public:
-    virtual ~Telegraph() = default;
+class Telegraph
+{
+    public:
+        virtual ~Telegraph() = default;
 
-    /**
+        /**
      * @brief Handle one Telegram.
      * @param telegram Immutable-access envelope to handle; valid for the
      * duration of the call.
@@ -19,8 +21,8 @@ public:
      * @note Invoked synchronously on the dispatcher's calling thread. Must
      * not invoke dispatcher methods recursively.
      */
-    [[nodiscard]]
-    virtual bool handle_message(const Telegram& telegram) = 0;
+        [[nodiscard]]
+        virtual bool handle_message( const Telegram &telegram ) = 0;
 };
 
-}  // namespace sq::messaging
+} // namespace sq::messaging

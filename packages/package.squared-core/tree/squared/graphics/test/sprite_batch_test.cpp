@@ -5,155 +5,161 @@
 // null backend counts draw calls, so the decisions can be asserted directly.
 
 #include <squared/files/files.hpp>
-#include <squared/graphics/src/coordinate_origin.hpp>
 #include <squared/graphics/orthographic_camera.hpp>
 #include <squared/graphics/sprite.hpp>
 #include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/texture.hpp>
+#include <squared/graphics/src/coordinate_origin.hpp>
 #include <squared/graphics/src/texture_recovery_options.hpp>
+#include <squared/graphics/texture.hpp>
 #include <squared/graphics/texture_region.hpp>
 
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
 
-namespace sq::graphics::detail {
+namespace sq::graphics::detail
+{
 extern std::size_t g_null_draw_calls;
 extern std::size_t g_null_sprites_drawn;
 extern float g_null_first_quad_uv[8];
-}
+} // namespace sq::graphics::detail
 
 using namespace sq;
 namespace counters = sq::graphics::detail;
 
-namespace {
+namespace
+{
 
-void reset() { counters::g_null_draw_calls = 0; counters::g_null_sprites_drawn = 0; }
+void reset()
+{
+    counters::g_null_draw_calls = 0;
+    counters::g_null_sprites_drawn = 0;
+}
 
 graphics::Texture make_texture()
 {
-    const unsigned char pixels[4] = {255, 255, 255, 255};
+    const unsigned char pixels[4] = { 255, 255, 255, 255 };
     graphics::Texture texture;
-    const bool created = texture.create_rgba(
-        1, 1, pixels, graphics::TextureRecoveryOptions::retain_pixels());
-    assert(created);
+    const bool created =
+        texture.create_rgba( 1, 1, pixels, graphics::TextureRecoveryOptions::retain_pixels() );
+    assert( created );
     return texture;
 }
 
-}  // namespace
+} // namespace
 
 int main()
 {
-    graphics::OrthographicCamera camera{640.0F, 480.0F};
+    graphics::OrthographicCamera camera{ 640.0F, 480.0F };
     camera.update();
 
     graphics::Texture first = make_texture();
     graphics::Texture second = make_texture();
-    const graphics::TextureRegion region_a{first};
-    const graphics::TextureRegion region_b{second};
+    const graphics::TextureRegion region_a{ first };
+    const graphics::TextureRegion region_b{ second };
 
     // --- setup refusals ---------------------------------------------------
     {
         graphics::SpriteBatch batch;
-        assert(!batch.valid());
-        assert(!batch.initialize(0));          // a batch of nothing
-        assert(!batch.initialize(1000000));    // past the 16-bit index limit
-        assert(batch.initialize(64));
-        assert(batch.valid());
-        assert(batch.sprite_capacity() == 64);
-        assert(!batch.drawing());
+        assert( !batch.valid() );
+        assert( !batch.initialize( 0 ) );       // a batch of nothing
+        assert( !batch.initialize( 1000000 ) ); // past the 16-bit index limit
+        assert( batch.initialize( 64 ) );
+        assert( batch.valid() );
+        assert( batch.sprite_capacity() == 64 );
+        assert( !batch.drawing() );
     }
 
     // --- one texture, one draw call ---------------------------------------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        assert(batch.drawing());
-        for (int i = 0; i < 10; ++i) {
-            batch.draw(region_a, static_cast<float>(i), 0.0F, 8.0F, 8.0F);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        assert( batch.drawing() );
+        for( int i = 0; i < 10; ++i ) {
+            batch.draw( region_a, static_cast<float>( i ), 0.0F, 8.0F, 8.0F );
         }
-        assert(batch.queued_sprites() == 10);
-        assert(counters::g_null_draw_calls == 0);   // nothing drawn until flush
+        assert( batch.queued_sprites() == 10 );
+        assert( counters::g_null_draw_calls == 0 ); // nothing drawn until flush
         batch.end();
-        assert(counters::g_null_draw_calls == 1);
-        assert(counters::g_null_sprites_drawn == 10);
-        assert(!batch.drawing());
-        assert(batch.queued_sprites() == 0);
+        assert( counters::g_null_draw_calls == 1 );
+        assert( counters::g_null_sprites_drawn == 10 );
+        assert( !batch.drawing() );
+        assert( batch.queued_sprites() == 0 );
     }
 
     // --- a texture switch costs exactly one extra call ---------------------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        batch.draw(region_a, 0.0F, 0.0F, 8.0F, 8.0F);
-        batch.draw(region_a, 8.0F, 0.0F, 8.0F, 8.0F);
-        batch.draw(region_b, 16.0F, 0.0F, 8.0F, 8.0F);   // flushes the first two
-        assert(counters::g_null_draw_calls == 1);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        batch.draw( region_a, 0.0F, 0.0F, 8.0F, 8.0F );
+        batch.draw( region_a, 8.0F, 0.0F, 8.0F, 8.0F );
+        batch.draw( region_b, 16.0F, 0.0F, 8.0F, 8.0F ); // flushes the first two
+        assert( counters::g_null_draw_calls == 1 );
         batch.end();
-        assert(counters::g_null_draw_calls == 2);
-        assert(counters::g_null_sprites_drawn == 3);
+        assert( counters::g_null_draw_calls == 2 );
+        assert( counters::g_null_sprites_drawn == 3 );
     }
 
     // --- interleaving textures is the pathological case, and shows it ------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        for (int i = 0; i < 6; ++i) {
-            batch.draw(i % 2 == 0 ? region_a : region_b, 0.0F, 0.0F, 8.0F, 8.0F);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        for( int i = 0; i < 6; ++i ) {
+            batch.draw( i % 2 == 0 ? region_a : region_b, 0.0F, 0.0F, 8.0F, 8.0F );
         }
         batch.end();
         // six sprites, six draw calls: sorting by texture is worth it, and
         // this is the number that says so
-        assert(counters::g_null_draw_calls == 6);
+        assert( counters::g_null_draw_calls == 6 );
     }
 
     // --- a full batch flushes at the boundary ------------------------------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(2));
-        assert(batch.begin(camera));
-        batch.draw(region_a, 0.0F, 0.0F, 8.0F, 8.0F);
-        batch.draw(region_a, 8.0F, 0.0F, 8.0F, 8.0F);
-        assert(counters::g_null_draw_calls == 0);
-        batch.draw(region_a, 16.0F, 0.0F, 8.0F, 8.0F);   // does not fit
-        assert(counters::g_null_draw_calls == 1);
-        assert(batch.queued_sprites() == 1);
+        assert( batch.initialize( 2 ) );
+        assert( batch.begin( camera ) );
+        batch.draw( region_a, 0.0F, 0.0F, 8.0F, 8.0F );
+        batch.draw( region_a, 8.0F, 0.0F, 8.0F, 8.0F );
+        assert( counters::g_null_draw_calls == 0 );
+        batch.draw( region_a, 16.0F, 0.0F, 8.0F, 8.0F ); // does not fit
+        assert( counters::g_null_draw_calls == 1 );
+        assert( batch.queued_sprites() == 1 );
         batch.end();
-        assert(counters::g_null_draw_calls == 2);
-        assert(counters::g_null_sprites_drawn == 3);
+        assert( counters::g_null_draw_calls == 2 );
+        assert( counters::g_null_sprites_drawn == 3 );
     }
 
     // --- a refused draw is counted, not just skipped ----------------------
     {
         reset();
         graphics::Texture doomed = make_texture();
-        graphics::TextureRegion region{doomed};
+        graphics::TextureRegion region{ doomed };
 
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        assert(batch.skipped_draws() == 0);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        assert( batch.skipped_draws() == 0 );
 
         doomed.invalidate();
-        batch.draw(region, 0.0F, 0.0F, 8.0F, 8.0F);
-        batch.draw(region, 8.0F, 0.0F, 8.0F, 8.0F);
+        batch.draw( region, 0.0F, 0.0F, 8.0F, 8.0F );
+        batch.draw( region, 8.0F, 0.0F, 8.0F, 8.0F );
 
         // The count is the difference between "drew nothing" and "was never
         // asked to draw" - two things that look identical on a screen.
-        assert(batch.skipped_draws() == 2);
-        assert(batch.queued_sprites() == 0);
+        assert( batch.skipped_draws() == 2 );
+        assert( batch.queued_sprites() == 0 );
         batch.end();
 
         // and it resets with the next frame
-        assert(batch.begin(camera));
-        assert(batch.skipped_draws() == 0);
+        assert( batch.begin( camera ) );
+        assert( batch.skipped_draws() == 0 );
         batch.end();
     }
 
@@ -161,90 +167,90 @@ int main()
     {
         reset();
         graphics::Texture doomed = make_texture();
-        graphics::TextureRegion region{doomed};
+        graphics::TextureRegion region{ doomed };
 
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        batch.draw(region, 0.0F, 0.0F, 8.0F, 8.0F);
-        assert(batch.queued_sprites() == 1);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        batch.draw( region, 0.0F, 0.0F, 8.0F, 8.0F );
+        assert( batch.queued_sprites() == 1 );
 
         doomed.invalidate();
-        assert(!region.valid());
-        batch.draw(region, 8.0F, 0.0F, 8.0F, 8.0F);
+        assert( !region.valid() );
+        batch.draw( region, 8.0F, 0.0F, 8.0F, 8.0F );
         // still one: drawing it would sample whatever now holds that unit
-        assert(batch.queued_sprites() == 1);
+        assert( batch.queued_sprites() == 1 );
         batch.end();
-        assert(counters::g_null_sprites_drawn == 1);
+        assert( counters::g_null_sprites_drawn == 1 );
     }
 
     // --- draw outside begin does nothing -----------------------------------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        batch.draw(region_a, 0.0F, 0.0F, 8.0F, 8.0F);
-        assert(batch.queued_sprites() == 0);
-        assert(counters::g_null_draw_calls == 0);
+        assert( batch.initialize( 64 ) );
+        batch.draw( region_a, 0.0F, 0.0F, 8.0F, 8.0F );
+        assert( batch.queued_sprites() == 0 );
+        assert( counters::g_null_draw_calls == 0 );
     }
 
     // --- a Sprite draws, rotated and scaled --------------------------------
     {
         reset();
-        graphics::Sprite sprite{region_a};
-        sprite.set_position(10.0F, 20.0F);
-        sprite.set_size(16.0F, 16.0F);
-        sprite.set_origin(8.0F, 8.0F);
-        sprite.set_rotation(45.0F);
-        sprite.set_scale(2.0F, 2.0F);
+        graphics::Sprite sprite{ region_a };
+        sprite.set_position( 10.0F, 20.0F );
+        sprite.set_size( 16.0F, 16.0F );
+        sprite.set_origin( 8.0F, 8.0F );
+        sprite.set_rotation( 45.0F );
+        sprite.set_scale( 2.0F, 2.0F );
 
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        batch.draw(sprite);
-        assert(batch.queued_sprites() == 1);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        batch.draw( sprite );
+        assert( batch.queued_sprites() == 1 );
         batch.end();
-        assert(counters::g_null_draw_calls == 1);
-        assert(counters::g_null_sprites_drawn == 1);
+        assert( counters::g_null_draw_calls == 1 );
+        assert( counters::g_null_sprites_drawn == 1 );
     }
 
     // --- context loss ------------------------------------------------------
     {
         reset();
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
-        assert(batch.begin(camera));
-        batch.draw(region_a, 0.0F, 0.0F, 8.0F, 8.0F);
+        assert( batch.initialize( 64 ) );
+        assert( batch.begin( camera ) );
+        batch.draw( region_a, 0.0F, 0.0F, 8.0F, 8.0F );
 
         batch.invalidate();
-        assert(!batch.valid());
+        assert( !batch.valid() );
         // the in-flight batch is abandoned: a lost context is not a nested
         // begin, and the next one must not look like a programmer error
-        assert(!batch.drawing());
-        assert(batch.queued_sprites() == 0);
-        assert(!batch.begin(camera));            // refuses while invalid
+        assert( !batch.drawing() );
+        assert( batch.queued_sprites() == 0 );
+        assert( !batch.begin( camera ) ); // refuses while invalid
 
-        assert(batch.restore(false));
-        assert(batch.valid());
+        assert( batch.restore( false ) );
+        assert( batch.valid() );
         // whatever was queued belonged to a context that is gone
-        assert(batch.queued_sprites() == 0);
-        assert(!batch.drawing());
-        assert(counters::g_null_draw_calls == 0);
+        assert( batch.queued_sprites() == 0 );
+        assert( !batch.drawing() );
+        assert( counters::g_null_draw_calls == 0 );
 
-        assert(batch.begin(camera));
-        batch.draw(region_a, 0.0F, 0.0F, 8.0F, 8.0F);
+        assert( batch.begin( camera ) );
+        batch.draw( region_a, 0.0F, 0.0F, 8.0F, 8.0F );
         batch.end();
-        assert(counters::g_null_draw_calls == 1);
+        assert( counters::g_null_draw_calls == 1 );
     }
 
     // --- release keeps the batch usable after restore ----------------------
     {
         graphics::SpriteBatch batch;
-        assert(batch.initialize(64));
+        assert( batch.initialize( 64 ) );
         batch.release();
-        assert(!batch.valid());
-        assert(batch.restore(false));
-        assert(batch.valid());
+        assert( !batch.valid() );
+        assert( batch.restore( false ) );
+        assert( batch.valid() );
     }
 
     // --- an image's top edge lands at the top of its quad -------------------
@@ -256,37 +262,35 @@ int main()
     {
         const unsigned char pixels[4 * 4] = {};
         graphics::Texture tall;
-        assert(tall.create_rgba(1, 4, pixels,
-                                graphics::TextureRecoveryOptions::retain_pixels()));
-        const graphics::TextureRegion rows{tall, 0, 1, 1, 2};   // v 0.25 .. 0.75
-        assert(rows.v1() < rows.v2());
+        assert(
+            tall.create_rgba( 1, 4, pixels, graphics::TextureRecoveryOptions::retain_pixels() ) );
+        const graphics::TextureRegion rows{ tall, 0, 1, 1, 2 }; // v 0.25 .. 0.75
+        assert( rows.v1() < rows.v2() );
 
-        const auto uv_at = [](std::size_t corner) {
+        const auto uv_at = []( std::size_t corner ) {
             return counters::g_null_first_quad_uv[corner * 2 + 1];
         };
 
         graphics::SpriteBatch batch;
-        assert(batch.initialize(8));
+        assert( batch.initialize( 8 ) );
 
-        graphics::OrthographicCamera y_down{
-            64.0F, 64.0F, graphics::CoordinateOrigin::TopLeft};
-        assert(y_down.origin() == graphics::CoordinateOrigin::TopLeft);
-        assert(batch.begin(y_down));
-        batch.draw(rows, 0.0F, 0.0F, 8.0F, 8.0F);
+        graphics::OrthographicCamera y_down{ 64.0F, 64.0F, graphics::CoordinateOrigin::TopLeft };
+        assert( y_down.origin() == graphics::CoordinateOrigin::TopLeft );
+        assert( batch.begin( y_down ) );
+        batch.draw( rows, 0.0F, 0.0F, 8.0F, 8.0F );
         batch.end();
-        assert(uv_at(0) == rows.v1() && uv_at(3) == rows.v1());  // corners at y
-        assert(uv_at(1) == rows.v2() && uv_at(2) == rows.v2());  // at y + h
+        assert( uv_at( 0 ) == rows.v1() && uv_at( 3 ) == rows.v1() ); // corners at y
+        assert( uv_at( 1 ) == rows.v2() && uv_at( 2 ) == rows.v2() ); // at y + h
 
-        graphics::OrthographicCamera y_up{
-            64.0F, 64.0F, graphics::CoordinateOrigin::BottomLeft};
-        assert(batch.begin(y_up));
-        batch.draw(rows, 0.0F, 0.0F, 8.0F, 8.0F);
+        graphics::OrthographicCamera y_up{ 64.0F, 64.0F, graphics::CoordinateOrigin::BottomLeft };
+        assert( batch.begin( y_up ) );
+        batch.draw( rows, 0.0F, 0.0F, 8.0F, 8.0F );
         batch.end();
-        assert(uv_at(0) == rows.v2() && uv_at(3) == rows.v2());
-        assert(uv_at(1) == rows.v1() && uv_at(2) == rows.v1());
+        assert( uv_at( 0 ) == rows.v2() && uv_at( 3 ) == rows.v2() );
+        assert( uv_at( 1 ) == rows.v1() && uv_at( 2 ) == rows.v1() );
     }
 
-    std::printf("sprite batch: all assertions passed  sizeof(SpriteBatch)=%zu\n",
-                sizeof(graphics::SpriteBatch));
+    std::printf( "sprite batch: all assertions passed  sizeof(SpriteBatch)=%zu\n",
+                 sizeof( graphics::SpriteBatch ) );
     return 0;
 }

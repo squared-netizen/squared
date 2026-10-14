@@ -6,14 +6,14 @@
 // underneath the whole skin system.
 
 #include <squared/graphics/atlas_region.hpp>
-
 #include <squared/graphics/texture_region.hpp>
 
 #include <string>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
-const std::string& AtlasRegion::name() const noexcept
+const std::string &AtlasRegion::name() const noexcept
 {
     return name_;
 }
@@ -61,4 +61,4 @@ int AtlasRegion::offset_y() const noexcept
     return offset_y_;
 }
 
-}  // namespace sq::graphics
+} // namespace sq::graphics

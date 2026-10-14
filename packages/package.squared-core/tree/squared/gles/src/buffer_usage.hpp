@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /**
  * @brief How often a buffer's contents are expected to change.
@@ -22,4 +23,4 @@ enum class BufferUsage {
     Stream
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

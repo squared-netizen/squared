@@ -2,7 +2,8 @@
 
 #include <memory>
 
-namespace sq::assets {
+namespace sq::assets
+{
 
 /**
  * @brief Shared immutable reference to one loaded asset.
@@ -15,7 +16,7 @@ namespace sq::assets {
  * per frame and not per draw, so the cost is bounded by the number of distinct
  * assets. See docs/developer/standard-library-deviations.md.
  */
-template <typename T>
+template<typename T>
 using AssetHandle = std::shared_ptr<const T>;
 
-}  // namespace sq::assets
+} // namespace sq::assets

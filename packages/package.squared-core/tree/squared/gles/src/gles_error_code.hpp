@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief Stable error categories produced by the GL object layer. */
 enum class GlesErrorCode {
@@ -21,6 +22,6 @@ enum class GlesErrorCode {
  * @note For logs and teaching output. The text is the enumerator name, not a
  * sentence, so it is stable enough to grep for.
  */
-[[nodiscard]] const char* name_of(GlesErrorCode code) noexcept;
+[[nodiscard]] const char *name_of( GlesErrorCode code ) noexcept;
 
-}  // namespace sq::gles
+} // namespace sq::gles

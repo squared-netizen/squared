@@ -4,20 +4,21 @@
 // sq::gui. Include a single type's header
 // directly to keep a translation unit narrow.
 
+#include <squared/graphics/texture_atlas.hpp>
 #include <squared/gui/gui.hpp>
+#include <squared/gui/skin.hpp>
+#include <squared/gui/src/drawable_ptr.hpp>
 #include <squared/gui/src/skin_drawable_resolver.hpp>
 #include <squared/gui/src/skin_font_resolver.hpp>
 #include <squared/gui/src/skin_load_issue.hpp>
 #include <squared/gui/src/skin_load_limits.hpp>
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
-#include <squared/graphics/texture_atlas.hpp>
-#include <squared/gui/src/drawable_ptr.hpp>
-#include <squared/gui/skin.hpp>
 
 #include <string_view>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Create a region or nine-patch drawable for one loaded atlas region.
@@ -26,10 +27,8 @@ namespace sq::gui {
  * @return Drawable referencing the atlas region, or an empty pointer when
  * the region is absent or cannot be converted.
  */
-[[nodiscard]] DrawablePtr resolve_atlas_drawable(
-    const graphics::TextureAtlas& atlas,
-    std::string_view resource_name
-);
+[[nodiscard]] DrawablePtr resolve_atlas_drawable( const graphics::TextureAtlas &atlas,
+                                                  std::string_view resource_name );
 
 /**
  * @brief Load the supported libGDX skin subset transactionally from memory.
@@ -47,14 +46,10 @@ namespace sq::gui {
  * @return true when the load committed; false when any error occurred.
  * @note Threading: caller must own both the Skin and the resolver.
  */
-[[nodiscard]] bool load_libgdx_skin(
-    Skin& destination,
-    std::string_view json,
-    const SkinDrawableResolver& resolver,
-    const SkinFontResolver& font_resolver,
-    SkinLoadReport& report,
-    const SkinLoadLimits& limits = {}
-) noexcept;
+[[nodiscard]] bool load_libgdx_skin( Skin &destination, std::string_view json,
+                                     const SkinDrawableResolver &resolver,
+                                     const SkinFontResolver &font_resolver, SkinLoadReport &report,
+                                     const SkinLoadLimits &limits = {} ) noexcept;
 
 /**
  * @brief Load a skin while retaining fonts as descriptor-only resources.
@@ -69,12 +64,8 @@ namespace sq::gui {
  * @param limits Explicit byte, depth, resource, and name bounds.
  * @return true when the skin committed; false with destination unchanged.
  */
-[[nodiscard]] bool load_libgdx_skin(
-    Skin& destination,
-    std::string_view json,
-    const SkinDrawableResolver& resolver,
-    SkinLoadReport& report,
-    const SkinLoadLimits& limits = {}
-) noexcept;
+[[nodiscard]] bool load_libgdx_skin( Skin &destination, std::string_view json,
+                                     const SkinDrawableResolver &resolver, SkinLoadReport &report,
+                                     const SkinLoadLimits &limits = {} ) noexcept;
 
 } // namespace sq::gui

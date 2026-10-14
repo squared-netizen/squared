@@ -4,27 +4,29 @@
 
 #include <string>
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief Structured GL failure information. */
-struct GlesError {
-    /** @brief Failure category; None means no error. */
-    GlesErrorCode code{GlesErrorCode::None};
+struct GlesError
+{
+        /** @brief Failure category; None means no error. */
+        GlesErrorCode code{ GlesErrorCode::None };
 
-    /**
+        /**
      * @brief Diagnostic message.
      *
      * For CompileFailed and LinkFailed this is the driver's own log, verbatim
      * and unfiltered. Drivers say useful things there and squared does not
      * paraphrase them.
      */
-    std::string message;
+        std::string message;
 
-    /** @brief Return whether this structure represents a failure. */
-    [[nodiscard]] explicit operator bool() const noexcept
-    {
-        return code != GlesErrorCode::None;
-    }
+        /** @brief Return whether this structure represents a failure. */
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return code != GlesErrorCode::None;
+        }
 };
 
 /**
@@ -41,7 +43,7 @@ struct GlesError {
  * @param value Any GL enum, such as a type from Program::attributes().
  * @return A static string such as "GL_FLOAT_VEC4", or "GL_?" when unknown.
  */
-[[nodiscard]] const char* gl_enum_name(unsigned int value) noexcept;
+[[nodiscard]] const char *gl_enum_name( unsigned int value ) noexcept;
 
 /**
  * @brief Return the GLSL spelling of a GL type enum.
@@ -51,6 +53,6 @@ struct GlesError {
  * @note This is the name you would write in the shader source, which is the
  * useful form when reading what the linker actually produced.
  */
-[[nodiscard]] const char* glsl_type_name(unsigned int type) noexcept;
+[[nodiscard]] const char *glsl_type_name( unsigned int type ) noexcept;
 
-}  // namespace sq::gles
+} // namespace sq::gles

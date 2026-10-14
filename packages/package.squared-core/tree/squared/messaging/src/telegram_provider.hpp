@@ -2,7 +2,8 @@
 
 #include <squared/messaging/src/provider_result.hpp>
 
-namespace sq::messaging {
+namespace sq::messaging
+{
 
 class MessageId;
 
@@ -13,11 +14,12 @@ class MessageId;
  * historical envelopes. The dispatcher queues a fresh result only for the
  * newly registered subscriber.
  */
-class TelegramProvider {
-public:
-    virtual ~TelegramProvider() = default;
+class TelegramProvider
+{
+    public:
+        virtual ~TelegramProvider() = default;
 
-    /**
+        /**
      * @brief Produce the authoritative current state for one message kind.
      * @param message Kind for which current state is requested.
      * @return Owned result carrying the current state, no state, or a failure;
@@ -25,10 +27,8 @@ public:
      * @note Called synchronously on the dispatcher's calling thread during
      * subscriber registration. Must not invoke dispatcher methods.
      */
-    [[nodiscard]]
-    virtual ProviderResult provide(
-        const MessageId& message
-    ) = 0;
+        [[nodiscard]]
+        virtual ProviderResult provide( const MessageId &message ) = 0;
 };
 
-}  // namespace sq::messaging
+} // namespace sq::messaging

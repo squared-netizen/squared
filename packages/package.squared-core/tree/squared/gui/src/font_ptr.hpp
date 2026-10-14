@@ -4,7 +4,8 @@
 
 #include <memory>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Immutable shared ownership of one GUI font resource. */
 using FontPtr = std::shared_ptr<const FontResource>;

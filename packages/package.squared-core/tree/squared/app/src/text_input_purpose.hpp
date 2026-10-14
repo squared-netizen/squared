@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::app {
+namespace sq::app
+{
 
 /**
  * @brief Desired soft-keyboard content mode.
@@ -9,4 +10,4 @@ namespace sq::app {
  */
 enum class TextInputPurpose { normal, number, email, password };
 
-}  // namespace sq::app
+} // namespace sq::app

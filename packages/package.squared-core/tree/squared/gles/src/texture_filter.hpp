@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief How a texture is sampled between texels. */
 enum class TextureFilter {
@@ -11,4 +12,4 @@ enum class TextureFilter {
     Linear
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

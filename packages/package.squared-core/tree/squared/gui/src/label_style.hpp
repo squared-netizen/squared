@@ -5,16 +5,18 @@
 
 #include <optional>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Style data for a Label widget. */
-struct LabelStyle {
-    /** @brief Font resource, or empty to use the painter default. */
-    FontPtr font;
-    /** @brief Primary label color. */
-    std::optional<graphics::Color> text;
-    /** @brief Muted label color. */
-    std::optional<graphics::Color> muted_text;
+struct LabelStyle
+{
+        /** @brief Font resource, or empty to use the painter default. */
+        FontPtr font;
+        /** @brief Primary label color. */
+        std::optional<graphics::Color> text;
+        /** @brief Muted label color. */
+        std::optional<graphics::Color> muted_text;
 };
 
 } // namespace sq::gui

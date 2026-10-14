@@ -9,23 +9,23 @@
 #include <squared/files/files.hpp>
 #include <squared/graphics/atlas_region.hpp>
 #include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
-#include <squared/graphics/src/bitmap_font_page.hpp>
 #include <squared/graphics/orthographic_camera.hpp>
 #include <squared/graphics/sprite_batch.hpp>
+#include <squared/graphics/src/bitmap_font_error.hpp>
+#include <squared/graphics/src/bitmap_font_page.hpp>
 #include <squared/graphics/texture.hpp>
 #include <squared/graphics/texture_atlas.hpp>
 #include <squared/graphics/texture_region.hpp>
 #include <squared/gui/batch_painter.hpp>
 #include <squared/gui/button.hpp>
-#include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/linear_layout.hpp>
 #include <squared/gui/skin.hpp>
+#include <squared/gui/skin_loader.hpp>
+#include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/skin_load_issue.hpp>
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
-#include <squared/gui/skin_loader.hpp>
 #include <squared/gui/ui.hpp>
 
 #include <cstddef>
@@ -35,104 +35,104 @@
 #include <string_view>
 #include <vector>
 
-namespace sq::graphics::detail {
+namespace sq::graphics::detail
+{
 extern std::size_t g_null_draw_calls;
 extern std::size_t g_null_sprites_drawn;
-}  // namespace sq::graphics::detail
+} // namespace sq::graphics::detail
 
 using namespace sq;
 namespace counters = sq::graphics::detail;
 
-namespace {
+namespace
+{
 
 int g_failures = 0;
 
-void check(bool condition, const char* what)
+void check( bool condition, const char *what )
 {
-    std::printf("  %-50s %s\n", what, condition ? "ok" : "FAILED");
-    if (!condition) ++g_failures;
+    std::printf( "  %-50s %s\n", what, condition ? "ok" : "FAILED" );
+    if( !condition ) {
+        ++g_failures;
+    }
 }
 
 /** @brief "default.png" -> "default", which is how an atlas names it. */
-std::string region_name_of(std::string_view file)
+std::string region_name_of( std::string_view file )
 {
-    const std::size_t dot = file.rfind('.');
-    return std::string{dot == std::string_view::npos ? file
-                                                     : file.substr(0, dot)};
+    const std::size_t dot = file.rfind( '.' );
+    return std::string{ dot == std::string_view::npos ? file : file.substr( 0, dot ) };
 }
 
-}  // namespace
+} // namespace
 
-int main(int argc, char** argv)
+int main( int argc, char **argv )
 {
-    if (argc < 2) {
-        std::printf("usage: %s <directory holding the skin>\n", argv[0]);
+    if( argc < 2 ) {
+        std::printf( "usage: %s <directory holding the skin>\n", argv[0] );
         return 2;
     }
 
-    files::PosixFileSystem fs{files::PosixFileSystemRoots{
-        .internal_root = argv[1], .local_root = argv[1], .external_root = {}}};
+    files::PosixFileSystem fs{ files::PosixFileSystemRoots{
+        .internal_root = argv[1], .local_root = argv[1], .external_root = {} } };
 
-    std::printf("skin at %s\n", argv[1]);
+    std::printf( "skin at %s\n", argv[1] );
 
     // --- the atlas --------------------------------------------------------
     graphics::TextureAtlas atlas;
-    check(atlas.load(fs.internal("uiskin.atlas")), "atlas loads");
-    if (g_failures != 0) return 1;
-    std::printf("  %zu page(s), %zu region(s)\n",
-                atlas.page_count(), atlas.region_count());
-    check(atlas.find_region("white") != nullptr,
-          "the skin has a white region for fills");
+    check( atlas.load( fs.internal( "uiskin.atlas" ) ), "atlas loads" );
+    if( g_failures != 0 ) {
+        return 1;
+    }
+    std::printf( "  %zu page(s), %zu region(s)\n", atlas.page_count(), atlas.region_count() );
+    check( atlas.find_region( "white" ) != nullptr, "the skin has a white region for fills" );
 
     // --- the font ---------------------------------------------------------
-    files::FileTextResult descriptor = fs.internal("default.fnt").read_string();
-    check(static_cast<bool>(descriptor), "default.fnt reads");
+    files::FileTextResult descriptor = fs.internal( "default.fnt" ).read_string();
+    check( static_cast<bool>( descriptor ), "default.fnt reads" );
 
     graphics::BitmapFont font;
     graphics::BitmapFontError font_error;
-    const bool font_parsed = font.load(descriptor.text, font_error);
-    check(font_parsed, "default.fnt parses");
-    if (!font_parsed) {
-        std::printf("    %s\n", font_error.message.c_str());
+    const bool font_parsed = font.load( descriptor.text, font_error );
+    check( font_parsed, "default.fnt parses" );
+    if( !font_parsed ) {
+        std::printf( "    %s\n", font_error.message.c_str() );
         return 1;
     }
-    std::printf("  %zu glyph(s), line height %d, %zu page(s)\n",
-                font.glyphs().size(),
-                font.line_height(),
-                font.pages().size());
+    std::printf( "  %zu glyph(s), line height %d, %zu page(s)\n", font.glyphs().size(),
+                 font.line_height(), font.pages().size() );
 
     // A .fnt names its page as a file. This skin ships no such file: the page
     // is packed into the atlas under the file's stem. Try the atlas first, and
     // fall back to a file for a font that does ship one.
     std::vector<graphics::TextureRegion> font_pages;
     std::vector<std::unique_ptr<graphics::Texture>> owned;
-    for (const graphics::BitmapFontPage& page : font.pages()) {
-        const std::string name = region_name_of(page.file);
-        const graphics::AtlasRegion* packed = atlas.find_region(name);
-        if (packed != nullptr) {
-            std::printf("  font page \"%s\" came from the atlas\n",
-                        page.file.c_str());
-            font_pages.push_back(packed->region());
+    for( const graphics::BitmapFontPage &page : font.pages() ) {
+        const std::string name = region_name_of( page.file );
+        const graphics::AtlasRegion *packed = atlas.find_region( name );
+        if( packed != nullptr ) {
+            std::printf( "  font page \"%s\" came from the atlas\n", page.file.c_str() );
+            font_pages.push_back( packed->region() );
             continue;
         }
 
         auto texture = std::make_unique<graphics::Texture>();
-        const bool loaded = texture->load(fs.internal(page.file));
-        check(loaded, "font page image loads");
-        if (!loaded) {
-            std::printf("    no atlas region \"%s\" and no file \"%s\"\n",
-                        name.c_str(), page.file.c_str());
+        const bool loaded = texture->load( fs.internal( page.file ) );
+        check( loaded, "font page image loads" );
+        if( !loaded ) {
+            std::printf( "    no atlas region \"%s\" and no file \"%s\"\n", name.c_str(),
+                         page.file.c_str() );
             return 1;
         }
-        std::printf("  font page \"%s\" came from a file\n", page.file.c_str());
-        font_pages.emplace_back(*texture);
-        owned.push_back(std::move(texture));
+        std::printf( "  font page \"%s\" came from a file\n", page.file.c_str() );
+        font_pages.emplace_back( *texture );
+        owned.push_back( std::move( texture ) );
     }
-    check(!font_pages.empty(), "every font page resolved");
+    check( !font_pages.empty(), "every font page resolved" );
 
-    auto font_resource = std::make_shared<gui::FontResource>(
-        "default.fnt", std::move(font), std::move(font_pages));
-    check(font_resource->resolved(), "font resource resolves");
+    auto font_resource = std::make_shared<gui::FontResource>( "default.fnt", std::move( font ),
+                                                              std::move( font_pages ) );
+    check( font_resource->resolved(), "font resource resolves" );
 
     // --- the skin ---------------------------------------------------------
     //
@@ -144,113 +144,100 @@ int main(int argc, char** argv)
 
     gui::LabelStyle label_style;
     label_style.font = font_resource;
-    skin.add_label_style("default", label_style);
+    skin.add_label_style( "default", label_style );
 
     gui::ButtonStyle button_style;
-    button_style.normal = gui::resolve_atlas_drawable(atlas, "default-round");
-    button_style.pressed =
-        gui::resolve_atlas_drawable(atlas, "default-round-down");
+    button_style.normal = gui::resolve_atlas_drawable( atlas, "default-round" );
+    button_style.pressed = gui::resolve_atlas_drawable( atlas, "default-round-down" );
     button_style.hovered = button_style.normal;
     button_style.disabled = button_style.normal;
     button_style.font = font_resource;
-    check(button_style.normal != nullptr,
-          "atlas resolves the button drawable");
-    check(button_style.pressed != nullptr,
-          "atlas resolves the pressed drawable");
-    skin.add_button_style("default", button_style);
+    check( button_style.normal != nullptr, "atlas resolves the button drawable" );
+    check( button_style.pressed != nullptr, "atlas resolves the pressed drawable" );
+    skin.add_button_style( "default", button_style );
 
-    check(skin.font("default") == nullptr || true, "skin built");
+    check( skin.font( "default" ) == nullptr || true, "skin built" );
 
     // --- the same skin, parsed from JSON ----------------------------------
     //
     // This is the one step that needs yyjson, and therefore the one step that
     // only runs in a real tree.
-    files::FileTextResult json = fs.internal("uiskin.json").read_string();
-    check(static_cast<bool>(json), "uiskin.json reads");
+    files::FileTextResult json = fs.internal( "uiskin.json" ).read_string();
+    check( static_cast<bool>( json ), "uiskin.json reads" );
 
     gui::Skin parsed;
     gui::SkinLoadReport report;
-    const gui::SkinDrawableResolver drawables =
-        [&atlas](std::string_view name) {
-            return gui::resolve_atlas_drawable(atlas, name);
-        };
-    const gui::SkinFontResolver fonts =
-        [&font_resource](std::string_view, std::string_view) {
-            return font_resource;
-        };
+    const gui::SkinDrawableResolver drawables = [&atlas]( std::string_view name ) {
+        return gui::resolve_atlas_drawable( atlas, name );
+    };
+    const gui::SkinFontResolver fonts = [&font_resource]( std::string_view, std::string_view ) {
+        return font_resource;
+    };
 
-    const bool skin_loaded =
-        gui::load_libgdx_skin(parsed, json.text, drawables, fonts, report);
-    check(skin_loaded, "uiskin.json parses into a Skin");
-    for (const gui::SkinLoadIssue& issue : report.issues) {
+    const bool skin_loaded = gui::load_libgdx_skin( parsed, json.text, drawables, fonts, report );
+    check( skin_loaded, "uiskin.json parses into a Skin" );
+    for( const gui::SkinLoadIssue &issue : report.issues ) {
         // The path matters as much as the message: seven identical
         // "not used by this GUI slice" lines say nothing without it.
-        std::printf("    [%s] %s: %s\n",
-                    issue.severity == gui::SkinLoadSeverity::error ? "error"
-                                                                  : "warn",
-                    issue.path.c_str(),
-                    issue.message.c_str());
+        std::printf( "    [%s] %s: %s\n",
+                     issue.severity == gui::SkinLoadSeverity::error ? "error" : "warn",
+                     issue.path.c_str(), issue.message.c_str() );
     }
-    if (skin_loaded) {
+    if( skin_loaded ) {
         // The stock skin names its font "default-font", not "default".
-        check(parsed.font("default-font") != nullptr,
-              "parsed skin resolves its font");
-        check(parsed.drawable("default-round") != nullptr,
-              "parsed skin resolves a drawable");
+        check( parsed.font( "default-font" ) != nullptr, "parsed skin resolves its font" );
+        check( parsed.drawable( "default-round" ) != nullptr, "parsed skin resolves a drawable" );
         // Prefer the parsed skin when it worked: that is what a real
         // application uses.
-        skin = std::move(parsed);
+        skin = std::move( parsed );
     }
 
     // --- widgets ----------------------------------------------------------
-    gui::Ui ui{640.0F, 480.0F, std::move(skin)};
+    gui::Ui ui{ 640.0F, 480.0F, std::move( skin ) };
 
     auto column = std::make_unique<gui::LinearLayout>();
-    auto* layout = column.get();
-    ui.set_content(std::move(column));
+    auto *layout = column.get();
+    ui.set_content( std::move( column ) );
 
-    layout->add(std::make_unique<gui::Label>("squared"));
+    layout->add( std::make_unique<gui::Label>( "squared" ) );
     int clicks = 0;
-    layout->add(std::make_unique<gui::Button>(
-        "press me", [&clicks]() { ++clicks; }));
+    layout->add( std::make_unique<gui::Button>( "press me", [&clicks]() { ++clicks; } ) );
 
     // --- paint ------------------------------------------------------------
     graphics::SpriteBatch batch;
-    check(batch.initialize(), "batch initialises");
+    check( batch.initialize(), "batch initialises" );
 
-    gui::BatchPainter painter{batch, font_resource.get()};
-    const graphics::AtlasRegion* white = atlas.find_region("white");
-    check(painter.set_fill_source(white != nullptr ? &white->region()
-                                                   : nullptr),
-          "painter has a fill source");
-    painter.set_viewport(640.0F, 480.0F, 640, 480);
+    gui::BatchPainter painter{ batch, font_resource.get() };
+    const graphics::AtlasRegion *white = atlas.find_region( "white" );
+    check( painter.set_fill_source( white != nullptr ? &white->region() : nullptr ),
+           "painter has a fill source" );
+    painter.set_viewport( 640.0F, 480.0F, 640, 480 );
 
-    const gui::Size text = painter.measure_text("squared");
-    check(text.width > 0.0F && text.height > 0.0F, "text measures non-zero");
-    std::printf("  \"squared\" measures %.1f x %.1f\n",
-                static_cast<double>(text.width),
-                static_cast<double>(text.height));
+    const gui::Size text = painter.measure_text( "squared" );
+    check( text.width > 0.0F && text.height > 0.0F, "text measures non-zero" );
+    std::printf( "  \"squared\" measures %.1f x %.1f\n", static_cast<double>( text.width ),
+                 static_cast<double>( text.height ) );
 
-    graphics::OrthographicCamera camera{640.0F, 480.0F};
+    graphics::OrthographicCamera camera{ 640.0F, 480.0F };
     camera.update();
 
-    ui.layout(painter);
+    ui.layout( painter );
     counters::g_null_draw_calls = 0;
     counters::g_null_sprites_drawn = 0;
 
-    check(batch.begin(camera), "batch begins");
-    ui.paint(painter);
+    check( batch.begin( camera ), "batch begins" );
+    ui.paint( painter );
     batch.end();
 
-    std::printf("  %zu draw call(s), %zu sprite(s)\n",
-                counters::g_null_draw_calls, counters::g_null_sprites_drawn);
-    check(counters::g_null_sprites_drawn > 0, "the interface drew something");
-    check(counters::g_null_draw_calls <= 2, "it batched into few calls");
+    std::printf( "  %zu draw call(s), %zu sprite(s)\n", counters::g_null_draw_calls,
+                 counters::g_null_sprites_drawn );
+    check( counters::g_null_sprites_drawn > 0, "the interface drew something" );
+    check( counters::g_null_draw_calls <= 2, "it batched into few calls" );
 
-    if (g_failures == 0) {
-        std::printf("\nspike: everything ran\n");
+    if( g_failures == 0 ) {
+        std::printf( "\nspike: everything ran\n" );
     } else {
-        std::printf("\nspike: %d check(s) failed\n", g_failures);
+        std::printf( "\nspike: %d check(s) failed\n", g_failures );
     }
     return g_failures == 0 ? 0 : 1;
 }

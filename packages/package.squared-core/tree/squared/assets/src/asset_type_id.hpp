@@ -1,15 +1,17 @@
 #pragma once
 
-namespace sq::assets {
+namespace sq::assets
+{
 
 /** @brief Stable per-type identifier used to key the loader and cache tables. */
-using AssetTypeId = const void*;
+using AssetTypeId = const void *;
 
-namespace detail {
+namespace detail
+{
 /** @brief One byte per type, whose address is that type's identifier. */
-template <typename T>
+template<typename T>
 inline constexpr char asset_type_tag = 0;
-}  // namespace detail
+} // namespace detail
 
 /**
  * @brief Return the identifier for one asset type.
@@ -21,10 +23,10 @@ inline constexpr char asset_type_tag = 0;
  * variable has one address across every translation unit, so this is unique,
  * stable, and costs nothing at run time.
  */
-template <typename T>
+template<typename T>
 [[nodiscard]] constexpr AssetTypeId asset_type_id() noexcept
 {
     return &detail::asset_type_tag<T>;
 }
 
-}  // namespace sq::assets
+} // namespace sq::assets

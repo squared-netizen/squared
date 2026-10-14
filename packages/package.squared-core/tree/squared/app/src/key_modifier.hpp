@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace sq::app {
+namespace sq::app
+{
 
 /** @brief Platform-neutral modifier keys carried by keyboard events. */
 enum class KeyModifier : std::uint8_t {
@@ -12,4 +13,4 @@ enum class KeyModifier : std::uint8_t {
     meta = 1U << 3U
 };
 
-}  // namespace sq::app
+} // namespace sq::app

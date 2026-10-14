@@ -2,7 +2,8 @@
 
 #include <chrono>
 
-namespace sq::time {
+namespace sq::time
+{
 
 using Duration = std::chrono::nanoseconds;
 

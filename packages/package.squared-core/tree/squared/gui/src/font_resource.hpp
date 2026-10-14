@@ -8,11 +8,13 @@
 #include <string>
 #include <vector>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 struct GlyphPlacement;
 } // namespace sq::graphics
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Immutable portable bitmap-font resource selected by GUI styles.
@@ -23,17 +25,18 @@ namespace sq::gui {
  * must outlive the resource. FontResource performs no I/O and has no HoloDisk
  * or rendering-backend dependency.
  */
-class FontResource final {
-public:
-    /**
+class FontResource final
+{
+    public:
+        /**
      * @brief Construct a descriptor-only resource.
      * @param descriptor_path Contained relative BMFont descriptor path.
      * @throws std::invalid_argument when the path is empty, absolute, contains
      * a backslash, or contains an empty, `.` or `..` component.
      */
-    explicit FontResource(std::string descriptor_path);
+        explicit FontResource( std::string descriptor_path );
 
-    /**
+        /**
      * @brief Construct a resolved bitmap-font resource.
      * @param descriptor_path Contained relative descriptor identity.
      * @param font Valid parsed BMFont value transferred into the resource.
@@ -43,52 +46,47 @@ public:
      * @param scale Uniform logical-unit scale; finite and greater than zero.
      * @throws std::invalid_argument when any invariant is not satisfied.
      */
-    FontResource(
-        std::string descriptor_path,
-        graphics::BitmapFont font,
-        std::vector<graphics::TextureRegion> pages,
-        float scale = 1.0F
-    );
+        FontResource( std::string descriptor_path, graphics::BitmapFont font,
+                      std::vector<graphics::TextureRegion> pages, float scale = 1.0F );
 
-    /** @brief Return the descriptor asset path owned by this resource. */
-    [[nodiscard]] const std::string& descriptor_path() const noexcept
-    {
-        return descriptor_path_;
-    }
+        /** @brief Return the descriptor asset path owned by this resource. */
+        [[nodiscard]] const std::string &descriptor_path() const noexcept
+        {
+            return descriptor_path_;
+        }
 
-    /** @brief Return true when parsed metrics and matching pages are present. */
-    [[nodiscard]] bool resolved() const noexcept { return font_.has_value(); }
+        /** @brief Return true when parsed metrics and matching pages are present. */
+        [[nodiscard]] bool resolved() const noexcept { return font_.has_value(); }
 
-    /** @brief Return parsed metrics, or null for a descriptor-only resource. */
-    [[nodiscard]] const graphics::BitmapFont* bitmap_font() const noexcept
-    {
-        return font_ ? &*font_ : nullptr;
-    }
+        /** @brief Return parsed metrics, or null for a descriptor-only resource. */
+        [[nodiscard]] const graphics::BitmapFont *bitmap_font() const noexcept
+        {
+            return font_ ? &*font_ : nullptr;
+        }
 
-    /** @brief Return page regions in BMFont page-id order. */
-    [[nodiscard]] std::span<const graphics::TextureRegion> pages() const noexcept
-    {
-        return pages_;
-    }
+        /** @brief Return page regions in BMFont page-id order. */
+        [[nodiscard]] std::span<const graphics::TextureRegion> pages() const noexcept
+        {
+            return pages_;
+        }
 
-    /**
+        /**
      * @brief Derive the texture view for one placement from this font.
      * @param glyph Placement produced from this resource's BitmapFont.
      * @return Non-owning page subregion, or an empty region when unresolved
      * or when the placement does not fit its declared page.
      */
-    [[nodiscard]] graphics::TextureRegion glyph_region(
-        const graphics::GlyphPlacement& glyph
-    ) const noexcept;
+        [[nodiscard]] graphics::TextureRegion
+        glyph_region( const graphics::GlyphPlacement &glyph ) const noexcept;
 
-    /** @brief Return the uniform conversion from source pixels to GUI units. */
-    [[nodiscard]] float scale() const noexcept { return scale_; }
+        /** @brief Return the uniform conversion from source pixels to GUI units. */
+        [[nodiscard]] float scale() const noexcept { return scale_; }
 
-private:
-    std::string descriptor_path_;
-    std::optional<graphics::BitmapFont> font_;
-    std::vector<graphics::TextureRegion> pages_;
-    float scale_{1.0F};
+    private:
+        std::string descriptor_path_;
+        std::optional<graphics::BitmapFont> font_;
+        std::vector<graphics::TextureRegion> pages_;
+        float scale_{ 1.0F };
 };
 
 } // namespace sq::gui

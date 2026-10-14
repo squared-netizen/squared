@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::files {
+namespace sq::files
+{
 
 /**
  * @brief Where a path is rooted.
@@ -25,4 +26,4 @@ enum class FileType {
     Absolute
 };
 
-}  // namespace sq::files
+} // namespace sq::files

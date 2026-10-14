@@ -4,7 +4,8 @@
 
 #include <memory>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Shared ownership of an immutable drawable.

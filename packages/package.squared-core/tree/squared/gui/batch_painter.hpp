@@ -11,11 +11,13 @@
 #include <cstddef>
 #include <string_view>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 class SpriteBatch;
-}  // namespace sq::graphics
+} // namespace sq::graphics
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 class FontResource;
 
@@ -29,25 +31,23 @@ class FontResource;
  * needs both sizes: the GUI works in logical units with a top-left origin, and
  * a scissor rectangle is framebuffer pixels measured from the bottom.
  */
-class BatchPainter final : public Painter {
-public:
-    /**
+class BatchPainter final : public Painter
+{
+    public:
+        /**
      * @brief Bind to a batch and a default font.
      * @param batch Batch to draw into; must outlive this painter.
      * @param default_font Font used by the text calls that take none; may be
      * null, in which case those calls draw nothing and measure to zero.
      */
-    BatchPainter(
-        graphics::SpriteBatch& batch,
-        const FontResource* default_font
-    ) noexcept;
+        BatchPainter( graphics::SpriteBatch &batch, const FontResource *default_font ) noexcept;
 
-    ~BatchPainter() override;
+        ~BatchPainter() override;
 
-    BatchPainter(const BatchPainter&) = delete;
-    BatchPainter& operator=(const BatchPainter&) = delete;
+        BatchPainter( const BatchPainter & ) = delete;
+        BatchPainter &operator=( const BatchPainter & ) = delete;
 
-    /**
+        /**
      * @brief Supply the texel that solid fills are drawn from.
      * @param white A fully white, fully opaque region, or null.
      * @return true when a fill source is available.
@@ -67,11 +67,9 @@ public:
      * to know to set it again. Keeping the pointer removes that rule; the
      * region must simply outlive the painter, which an atlas region does.
      */
-    [[nodiscard]] bool set_fill_source(
-        const graphics::TextureRegion* white
-    ) noexcept;
+        [[nodiscard]] bool set_fill_source( const graphics::TextureRegion *white ) noexcept;
 
-    /**
+        /**
      * @brief Tell the painter how logical units map to pixels.
      * @param logical_width Width the GUI lays out in.
      * @param logical_height Height the GUI lays out in.
@@ -81,61 +79,35 @@ public:
      * @note Only clipping needs this. Everything else is in logical units and
      * the camera handles it.
      */
-    void set_viewport(
-        float logical_width,
-        float logical_height,
-        int pixel_width,
-        int pixel_height
-    ) noexcept;
+        void set_viewport( float logical_width, float logical_height, int pixel_width,
+                           int pixel_height ) noexcept;
 
-    [[nodiscard]] Size measure_text(std::string_view text) override;
+        [[nodiscard]] Size measure_text( std::string_view text ) override;
 
-    [[nodiscard]] Size measure_text(
-        std::string_view text,
-        const FontResource* font
-    ) override;
+        [[nodiscard]] Size measure_text( std::string_view text, const FontResource *font ) override;
 
-    void fill_rectangle(
-        const Rectangle& rectangle,
-        graphics::Color color
-    ) override;
+        void fill_rectangle( const Rectangle &rectangle, graphics::Color color ) override;
 
-    void stroke_rectangle(
-        const Rectangle& rectangle,
-        graphics::Color color,
-        float thickness
-    ) override;
+        void stroke_rectangle( const Rectangle &rectangle, graphics::Color color,
+                               float thickness ) override;
 
-    void draw_region(
-        const graphics::TextureRegion& region,
-        const Rectangle& rectangle,
-        graphics::Color color = graphics::Color::white()
-    ) override;
+        void draw_region( const graphics::TextureRegion &region, const Rectangle &rectangle,
+                          graphics::Color color = graphics::Color::white() ) override;
 
-    void draw_text(
-        std::string_view text,
-        float x,
-        float y,
-        graphics::Color color
-    ) override;
+        void draw_text( std::string_view text, float x, float y, graphics::Color color ) override;
 
-    void draw_text(
-        std::string_view text,
-        float x,
-        float y,
-        const FontResource* font,
-        graphics::Color color
-    ) override;
+        void draw_text( std::string_view text, float x, float y, const FontResource *font,
+                        graphics::Color color ) override;
 
-    void push_clip(const Rectangle& rectangle) override;
+        void push_clip( const Rectangle &rectangle ) override;
 
-    void pop_clip() override;
+        void pop_clip() override;
 
-    /** @brief Report how deeply clips are currently nested. */
-    [[nodiscard]] std::size_t clip_depth() const noexcept { return depth_; }
+        /** @brief Report how deeply clips are currently nested. */
+        [[nodiscard]] std::size_t clip_depth() const noexcept { return depth_; }
 
-private:
-    /**
+    private:
+        /**
      * @brief Deepest clip nesting that is tracked exactly.
      *
      * A fixed array rather than a vector: push_clip and pop_clip run per frame,
@@ -144,24 +116,24 @@ private:
      * beyond it the parent's clip stays in force, which overdraws rather than
      * clipping wrongly.
      */
-    static constexpr std::size_t k_maximum_clip_depth = 16;
+        static constexpr std::size_t k_maximum_clip_depth = 16;
 
-    void apply_current_clip() noexcept;
+        void apply_current_clip() noexcept;
 
-    /// The single texel a solid fill is stretched from. See fill_rectangle.
-    [[nodiscard]] graphics::TextureRegion centre_texel() const noexcept;
+        /// The single texel a solid fill is stretched from. See fill_rectangle.
+        [[nodiscard]] graphics::TextureRegion centre_texel() const noexcept;
 
-    graphics::SpriteBatch* batch_;
-    const FontResource* default_font_;
-    const graphics::TextureRegion* fill_{nullptr};
-    graphics::Texture owned_white_;
-    graphics::TextureRegion owned_fill_;
-    std::array<Rectangle, k_maximum_clip_depth> clips_{};
-    std::size_t depth_{0};
-    float logical_width_{0.0F};
-    float logical_height_{0.0F};
-    int pixel_width_{0};
-    int pixel_height_{0};
+        graphics::SpriteBatch *batch_;
+        const FontResource *default_font_;
+        const graphics::TextureRegion *fill_{ nullptr };
+        graphics::Texture owned_white_;
+        graphics::TextureRegion owned_fill_;
+        std::array<Rectangle, k_maximum_clip_depth> clips_{};
+        std::size_t depth_{ 0 };
+        float logical_width_{ 0.0F };
+        float logical_height_{ 0.0F };
+        int pixel_width_{ 0 };
+        int pixel_height_{ 0 };
 };
 
-}  // namespace sq::gui
+} // namespace sq::gui

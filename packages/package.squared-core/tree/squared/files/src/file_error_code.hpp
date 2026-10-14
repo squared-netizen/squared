@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::files {
+namespace sq::files
+{
 
 /** @brief Stable error categories produced by file system operations. */
 enum class FileErrorCode {
@@ -17,4 +18,4 @@ enum class FileErrorCode {
     IoFailure
 };
 
-}  // namespace sq::files
+} // namespace sq::files

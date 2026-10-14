@@ -1,11 +1,11 @@
-#include <squared/graphics/context.hpp>
-
 #include <squared/graphics/color.hpp>
+#include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
 
 #include <cstdint>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /*
  * Headless backend.
@@ -26,7 +26,7 @@ Context::~Context()
     destroy();
 }
 
-bool Context::create(const ContextConfig& config) noexcept
+bool Context::create( const ContextConfig &config ) noexcept
 {
     window_ = config.native_window;
     native_context_ = nullptr;
@@ -65,18 +65,17 @@ bool Context::resume() noexcept
     return true;
 }
 
-void Context::set_native_window(void* native_window) noexcept
+void Context::set_native_window( void *native_window ) noexcept
 {
     window_ = native_window;
 }
 
 void Context::refresh_viewport() noexcept
-{
-}
+{}
 
-void Context::clear(Color color) noexcept
+void Context::clear( Color color ) noexcept
 {
-    static_cast<void>(color);
+    static_cast<void>( color );
 }
 
 bool Context::present() noexcept
@@ -109,4 +108,4 @@ bool Context::resources_preserved() const noexcept
     return resources_preserved_;
 }
 
-}  // namespace sq::graphics
+} // namespace sq::graphics

@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief Pixel format of a texture's storage. */
 enum class TextureFormat {
@@ -21,4 +22,4 @@ enum class TextureFormat {
     R8
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

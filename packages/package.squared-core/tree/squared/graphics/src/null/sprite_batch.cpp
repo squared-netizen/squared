@@ -8,16 +8,17 @@
 // It also counts what it would have drawn. A draw call count is the thing a
 // batching bug shows up in, and it is invisible in a real driver.
 
-#include <squared/graphics/sprite_batch.hpp>
-
 #include <squared/graphics/orthographic_camera.hpp>
+#include <squared/graphics/sprite_batch.hpp>
 #include <squared/graphics/texture.hpp>
 
 #include <cstddef>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
-namespace detail {
+namespace detail
+{
 
 // Not in the public header: a test observes these, an application has no
 // business knowing a null backend exists at all.
@@ -36,14 +37,15 @@ int g_null_clip_height = -1;
 // assert that an image's top edge lands at the top of its quad.
 float g_null_first_quad_uv[8] = {};
 
-}  // namespace detail
+} // namespace detail
 
-namespace {
+namespace
+{
 
 /// Next headless object name. Zero stays reserved for "no object".
 unsigned int g_next_name = 1;
 
-}  // namespace
+} // namespace
 
 bool SpriteBatch::allocate_gpu_objects() noexcept
 {
@@ -56,26 +58,28 @@ bool SpriteBatch::allocate_gpu_objects() noexcept
     return true;
 }
 
-bool SpriteBatch::set_projection(const OrthographicCamera& camera) noexcept
+bool SpriteBatch::set_projection( const OrthographicCamera &camera ) noexcept
 {
-    static_cast<void>(camera);
+    static_cast<void>( camera );
     return program_ != 0;
 }
 
 void SpriteBatch::flush() noexcept
 {
-    if (sprite_count_ == 0 || active_texture_ == nullptr) {
+    if( sprite_count_ == 0 || active_texture_ == nullptr ) {
         vertices_.clear();
         sprite_count_ = 0;
         return;
     }
-    if (program_ == 0 || vertex_buffer_ == 0) return;
+    if( program_ == 0 || vertex_buffer_ == 0 ) {
+        return;
+    }
 
     ++detail::g_null_draw_calls;
     detail::g_null_sprites_drawn += sprite_count_;
 
     // Each vertex is x, y, u, v, r, g, b, a.
-    for (std::size_t corner = 0; corner < 4; ++corner) {
+    for( std::size_t corner = 0; corner < 4; ++corner ) {
         detail::g_null_first_quad_uv[corner * 2] = vertices_[corner * 8 + 2];
         detail::g_null_first_quad_uv[corner * 2 + 1] = vertices_[corner * 8 + 3];
     }
@@ -84,7 +88,7 @@ void SpriteBatch::flush() noexcept
     sprite_count_ = 0;
 }
 
-void SpriteBatch::apply_clip(int x, int y, int width, int height) noexcept
+void SpriteBatch::apply_clip( int x, int y, int width, int height ) noexcept
 {
     detail::g_null_clip_x = x;
     detail::g_null_clip_y = y;
@@ -132,8 +136,7 @@ void SpriteBatch::destroy() noexcept
 
 bool SpriteBatch::valid() const noexcept
 {
-    return program_ != 0 && vertex_buffer_ != 0 && index_buffer_ != 0
-        && !invalidated_;
+    return program_ != 0 && vertex_buffer_ != 0 && index_buffer_ != 0 && !invalidated_;
 }
 
-}  // namespace sq::graphics
+} // namespace sq::graphics

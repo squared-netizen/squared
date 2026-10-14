@@ -6,38 +6,37 @@
 // behave exactly as they do against a real driver - which is what makes a test
 // written here a test of the contract.
 
-#include <squared/graphics/texture.hpp>
-
 #include <squared/graphics/src/texture_filter.hpp>
 #include <squared/graphics/src/texture_wrap.hpp>
+#include <squared/graphics/texture.hpp>
 
 #include <cstdint>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
-namespace {
+namespace
+{
 
 /** @brief Next headless texture name. Zero stays reserved for "no object". */
 unsigned int g_next_name = 1;
 
-}  // namespace
+} // namespace
 
-bool Texture::upload_rgba(
-    int width,
-    int height,
-    const std::uint8_t* pixels
-) noexcept
+bool Texture::upload_rgba( int width, int height, const std::uint8_t *pixels ) noexcept
 {
-    if (width <= 0 || height <= 0 || pixels == nullptr) return false;
+    if( width <= 0 || height <= 0 || pixels == nullptr ) {
+        return false;
+    }
 
-    if (handle_ == 0) handle_ = g_next_name++;
-
+    if( handle_ == 0 ) {
+        handle_ = g_next_name++;
+    }
 
     // GL unpacks rows on a four-byte boundary by default. RGBA is always
     // aligned, but this class uploads whatever a recovery callback hands it,
     // and a one-pixel solid texture is four bytes wide. Setting it to 1 costs
     // nothing and removes a whole class of surprise.
-
 
     width_ = width;
     height_ = height;
@@ -69,29 +68,23 @@ void Texture::destroy() noexcept
     ++content_generation_;
 }
 
-void Texture::set_filter(
-    TextureFilter minification,
-    TextureFilter magnification
-) noexcept
+void Texture::set_filter( TextureFilter minification, TextureFilter magnification ) noexcept
 {
     minification_ = minification;
     magnification_ = magnification;
     apply_sampling();
 }
 
-void Texture::set_wrap(
-    TextureWrap horizontal,
-    TextureWrap vertical
-) noexcept
+void Texture::set_wrap( TextureWrap horizontal, TextureWrap vertical ) noexcept
 {
     horizontal_wrap_ = horizontal;
     vertical_wrap_ = vertical;
     apply_sampling();
 }
 
-void Texture::bind(unsigned int unit) const noexcept
+void Texture::bind( unsigned int unit ) const noexcept
 {
-    static_cast<void>(unit);
+    static_cast<void>( unit );
 }
 
-}  // namespace sq::graphics
+} // namespace sq::graphics

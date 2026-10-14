@@ -1,11 +1,10 @@
-#include <squared/gui/src/font_resource.hpp>
-
-#include <squared/graphics/src/bitmap_glyph.hpp>
-
 #include "detail/gui_detail.hpp"
+
 #include <squared/graphics/bitmap_font.hpp>
+#include <squared/graphics/src/bitmap_glyph.hpp>
 #include <squared/graphics/src/glyph_placement.hpp>
 #include <squared/graphics/texture_region.hpp>
+#include <squared/gui/src/font_resource.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -14,32 +13,31 @@
 #include <utility>
 #include <vector>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 // The helpers below were an anonymous namespace in the
 // original single translation unit; they are shared now.
 using namespace detail;
 
-FontResource::FontResource(std::string descriptor_path)
-    : descriptor_path_(std::move(descriptor_path))
+FontResource::FontResource( std::string descriptor_path )
+    : descriptor_path_( std::move( descriptor_path ) )
 {
-    if (!valid_font_path(descriptor_path_)) {
-        throw std::invalid_argument("FontResource requires a descriptor path");
+    if( !valid_font_path( descriptor_path_ ) ) {
+        throw std::invalid_argument( "FontResource requires a descriptor path" );
     }
 }
 
-FontResource::FontResource(
-    std::string descriptor_path,
-    graphics::BitmapFont font,
-    std::vector<graphics::TextureRegion> pages,
-    float scale
-) : descriptor_path_(std::move(descriptor_path)), font_(std::move(font)),
-    pages_(std::move(pages)), scale_(scale)
+FontResource::FontResource( std::string descriptor_path, graphics::BitmapFont font,
+                            std::vector<graphics::TextureRegion> pages, float scale )
+    : descriptor_path_( std::move( descriptor_path ) )
+    , font_( std::move( font ) )
+    , pages_( std::move( pages ) )
+    , scale_( scale )
 {
-    if (!valid_font_path(descriptor_path_) || !font_->valid() ||
-        !std::isfinite(scale_) || scale_ <= 0.0F ||
-        pages_.size() != font_->pages().size()) {
-        throw std::invalid_argument("FontResource metrics or pages are invalid");
+    if( !valid_font_path( descriptor_path_ ) || !font_->valid() || !std::isfinite( scale_ ) ||
+        scale_ <= 0.0F || pages_.size() != font_->pages().size() ) {
+        throw std::invalid_argument( "FontResource metrics or pages are invalid" );
     }
     // Deliberately no check that glyphs fit their page region.
     //
@@ -58,24 +56,22 @@ FontResource::FontResource(
     // rather than sampling whatever the atlas packed next to it.
 }
 
-graphics::TextureRegion FontResource::glyph_region(
-    const graphics::GlyphPlacement& glyph
-) const noexcept
+graphics::TextureRegion
+FontResource::glyph_region( const graphics::GlyphPlacement &glyph ) const noexcept
 {
-    if (!resolved() || glyph.page >= pages_.size()) return {};
-    const graphics::TextureRegion& page = pages_[glyph.page];
+    if( !resolved() || glyph.page >= pages_.size() ) {
+        return {};
+    }
+    const graphics::TextureRegion &page = pages_[glyph.page];
 
     // Clamp to the page: a glyph may overhang its region by a pixel when the
     // page was packed into an atlas, and sampling past the edge would pull in
     // whatever the packer placed beside it.
-    const int source_x = std::clamp(glyph.source_x, 0, page.width());
-    const int source_y = std::clamp(glyph.source_y, 0, page.height());
-    return page.subregion(
-        source_x,
-        source_y,
-        std::min(glyph.source_width, page.width() - source_x),
-        std::min(glyph.source_height, page.height() - source_y)
-    );
+    const int source_x = std::clamp( glyph.source_x, 0, page.width() );
+    const int source_y = std::clamp( glyph.source_y, 0, page.height() );
+    return page.subregion( source_x, source_y,
+                           std::min( glyph.source_width, page.width() - source_x ),
+                           std::min( glyph.source_height, page.height() - source_y ) );
 }
 
 } // namespace sq::gui

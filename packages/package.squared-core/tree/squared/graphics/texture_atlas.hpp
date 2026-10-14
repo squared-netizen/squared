@@ -2,19 +2,21 @@
 
 #include <squared/files/file_handle.hpp>
 #include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/texture.hpp>
 #include <squared/graphics/src/texture_recovery_policy.hpp>
+#include <squared/graphics/texture.hpp>
 
 #include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 class Context;
-}  // namespace sq::graphics
+} // namespace sq::graphics
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /**
  * @brief Owning, transactionally loaded libGDX text texture atlas.
@@ -24,28 +26,29 @@ namespace sq::graphics {
  * splits, and padding are supported. Packing source images is a separate
  * future asset-tools concern.
  */
-class TextureAtlas final {
-public:
-    /** @brief Construct an empty atlas owning no pages or regions. */
-    TextureAtlas() noexcept = default;
-    TextureAtlas(const TextureAtlas&) = delete;
-    TextureAtlas& operator=(const TextureAtlas&) = delete;
-    TextureAtlas(TextureAtlas&&) = delete;
-    TextureAtlas& operator=(TextureAtlas&&) = delete;
+class TextureAtlas final
+{
+    public:
+        /** @brief Construct an empty atlas owning no pages or regions. */
+        TextureAtlas() noexcept = default;
+        TextureAtlas( const TextureAtlas & ) = delete;
+        TextureAtlas &operator=( const TextureAtlas & ) = delete;
+        TextureAtlas( TextureAtlas && ) = delete;
+        TextureAtlas &operator=( TextureAtlas && ) = delete;
 
-    /** @brief Destroy every owned page texture and region. */
-    ~TextureAtlas();
+        /** @brief Destroy every owned page texture and region. */
+        ~TextureAtlas();
 
-    /**
+        /**
      * @brief Load an atlas asset without disturbing a valid prior load on
      * failure.
      * @param atlas_path Null-terminated path of the libGDX text atlas asset.
      * Page image paths are resolved relative to it.
      * @return true when every page and region loaded successfully.
      */
-    [[nodiscard]] bool load(const files::FileHandle& atlas) noexcept;
+        [[nodiscard]] bool load( const files::FileHandle &atlas ) noexcept;
 
-    /**
+        /**
      * @brief Load an atlas using one recovery policy for every page.
      *
      * ReloadFromAsset, RetainPixels, and Discard are supported. Regenerate is
@@ -54,33 +57,31 @@ public:
      * @param page_recovery Policy applied to every loaded page.
      * @return true when every page and region loaded successfully.
      */
-    [[nodiscard]] bool load(
-        const files::FileHandle& atlas,
-        TextureRecoveryPolicy page_recovery
-    ) noexcept;
+        [[nodiscard]] bool load( const files::FileHandle &atlas,
+                                 TextureRecoveryPolicy page_recovery ) noexcept;
 
-    /** @brief Destroy every atlas page texture and region. */
-    void destroy() noexcept;
+        /** @brief Destroy every atlas page texture and region. */
+        void destroy() noexcept;
 
-    /**
+        /**
      * @brief Release page GPU objects while preserving regions and load recipes.
      */
-    void release() noexcept;
+        void release() noexcept;
 
-    /**
+        /**
      * @brief Mark page GPU objects stale without issuing graphics calls.
      */
-    void invalidate() noexcept;
+        void invalidate() noexcept;
 
-    /**
+        /**
      * @brief Restore every released page texture without invalidating regions.
      * @param context_preserved Whether the GPU context survived loss; true
      * skips recomputing fast-path state where possible.
      * @return true when every page texture was restored.
      */
-    [[nodiscard]] bool restore(const graphics::Context& graphics) noexcept;
+        [[nodiscard]] bool restore( const graphics::Context &graphics ) noexcept;
 
-    /**
+        /**
      * @brief Rebuild, stating explicitly whether the context survived.
      * @param context_preserved true when the GPU objects are still valid.
      *
@@ -92,40 +93,38 @@ public:
      * @note Prefer the overload taking a Context. It reads the answer from
      * the object that knows it, so the polarity cannot be got backwards.
      */
-    [[nodiscard]] bool restore(bool context_preserved) noexcept;
+        [[nodiscard]] bool restore( bool context_preserved ) noexcept;
 
-    /**
+        /**
      * @brief Check whether any page and region is loaded.
      * @return true when the atlas owns at least one page and region.
      */
-    [[nodiscard]] bool valid() const noexcept;
+        [[nodiscard]] bool valid() const noexcept;
 
-    /**
+        /**
      * @brief Count loaded page textures.
      * @return Number of loaded page textures.
      */
-    [[nodiscard]] std::size_t page_count() const noexcept;
+        [[nodiscard]] std::size_t page_count() const noexcept;
 
-    /**
+        /**
      * @brief Count loaded regions.
      * @return Number of loaded regions.
      */
-    [[nodiscard]] std::size_t region_count() const noexcept;
+        [[nodiscard]] std::size_t region_count() const noexcept;
 
-    /**
+        /**
      * @brief Find an exact name/index pair, or return null.
      * @param name Region name to look up.
      * @param index Duplicate-region index, or -1 for the default entry.
      * @return Pointer to the matching region, or null when absent.
      */
-    [[nodiscard]] const AtlasRegion* find_region(
-        const std::string& name,
-        int index = -1
-    ) const noexcept;
+        [[nodiscard]] const AtlasRegion *find_region( const std::string &name,
+                                                      int index = -1 ) const noexcept;
 
-private:
-    std::vector<std::unique_ptr<Texture>> textures_;
-    std::vector<AtlasRegion> regions_;
+    private:
+        std::vector<std::unique_ptr<Texture>> textures_;
+        std::vector<AtlasRegion> regions_;
 };
 
 } // namespace sq::graphics

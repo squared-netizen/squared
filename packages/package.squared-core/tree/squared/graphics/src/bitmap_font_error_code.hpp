@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 /** @brief Stable failure categories for BMFont parsing and glyph layout. */
 enum class BitmapFontErrorCode {

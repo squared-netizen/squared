@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <string_view>
 
-namespace sq::dev {
+namespace sq::dev
+{
 
 /// Outcome of open_log_sink().
 enum class LogSinkStatus : std::uint8_t {
@@ -14,9 +15,10 @@ enum class LogSinkStatus : std::uint8_t {
 };
 
 /// Where the sink sends and what it watches.
-struct LogSinkOptions {
-    std::uint16_t port = 5555;  ///< UDP port on 127.0.0.1.
-    bool catch_crashes = true;  ///< Report fatal signals before the process dies.
+struct LogSinkOptions
+{
+        std::uint16_t port = 5555; ///< UDP port on 127.0.0.1.
+        bool catch_crashes = true; ///< Report fatal signals before the process dies.
 };
 
 /**
@@ -34,16 +36,16 @@ struct LogSinkOptions {
  * @return Opened on success; AlreadyOpen if called twice; SocketFailed if the
  * OS refused the socket.
  */
-[[nodiscard]] LogSinkStatus open_log_sink(const LogSinkOptions& options = {}) noexcept;
+[[nodiscard]] LogSinkStatus open_log_sink( const LogSinkOptions &options = {} ) noexcept;
 
 /**
  * @brief Send one line. Does nothing if no sink is open.
  * @param line Text without a trailing newline; longer than 1000 bytes is cut.
  * Never blocks and never fails visibly: a missing listener drops the line.
  */
-void log_line(std::string_view line) noexcept;
+void log_line( std::string_view line ) noexcept;
 
 /// Close the sink and restore the signal handlers it replaced.
 void close_log_sink() noexcept;
 
-}  // namespace sq::dev
+} // namespace sq::dev

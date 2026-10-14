@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Stable identifier for one layer's Actor-derived interface.

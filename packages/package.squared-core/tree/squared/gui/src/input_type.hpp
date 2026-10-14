@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /** @brief Event kind carried by one InputEvent. */
 enum class InputType {

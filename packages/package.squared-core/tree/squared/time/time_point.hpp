@@ -2,7 +2,8 @@
 
 #include <chrono>
 
-namespace sq::time {
+namespace sq::time
+{
 
 using TimePoint = std::chrono::nanoseconds;
 

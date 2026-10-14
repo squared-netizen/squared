@@ -5,11 +5,13 @@
 #include <squared/gui/src/insets.hpp>
 #include <squared/gui/src/size.hpp>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 class TextureRegion;
 } // namespace sq::graphics
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 class Painter;
 struct Rectangle;
@@ -19,45 +21,41 @@ struct Rectangle;
  *
  * The referenced region must outlive the drawable.
  */
-class RegionDrawable final : public Drawable {
-public:
-    /**
+class RegionDrawable final : public Drawable
+{
+    public:
+        /**
      * @brief Construct a texture-region drawable.
      * @param region Region to sample; must outlive the drawable.
      * @param insets Content insets in logical units.
      */
-    explicit RegionDrawable(
-        const graphics::TextureRegion& region,
-        Insets insets = {}
-    ) noexcept;
+        explicit RegionDrawable( const graphics::TextureRegion &region,
+                                 Insets insets = {} ) noexcept;
 
-    /**
+        /**
      * @brief Report the smallest acceptable size.
      * @return Minimum extent set from the region's pixel size.
      */
-    [[nodiscard]] Size minimum_size() const noexcept override;
+        [[nodiscard]] Size minimum_size() const noexcept override;
 
-    /**
+        /**
      * @brief Report the content insets.
      * @return Insets between the outer box and the region content.
      */
-    [[nodiscard]] Insets content_insets() const noexcept override;
+        [[nodiscard]] Insets content_insets() const noexcept override;
 
-    /**
+        /**
      * @brief Draw the region stretched to the rectangle.
      * @param painter Destination painter; valid for the call.
      * @param rectangle Target rectangle in logical units.
      * @param tint Color multiplied with the sampled texture.
      */
-    void draw(
-        Painter& painter,
-        const Rectangle& rectangle,
-        graphics::Color tint = graphics::Color::white()
-    ) const override;
+        void draw( Painter &painter, const Rectangle &rectangle,
+                   graphics::Color tint = graphics::Color::white() ) const override;
 
-private:
-    const graphics::TextureRegion* region_;
-    Insets insets_;
+    private:
+        const graphics::TextureRegion *region_;
+        Insets insets_;
 };
 
 } // namespace sq::gui

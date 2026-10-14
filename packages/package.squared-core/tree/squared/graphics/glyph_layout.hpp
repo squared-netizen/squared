@@ -8,15 +8,17 @@
 #include <string_view>
 #include <vector>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
 class BitmapFont;
 struct BitmapFontError;
 
 /** @brief Reusable value-semantic layout of UTF-8 text into glyph quads. */
-class GlyphLayout final {
-public:
-    /**
+class GlyphLayout final
+{
+    public:
+        /**
      * @brief Decode and lay out explicit newline-delimited UTF-8 text.
      * @param font Valid parsed font; borrowed for this call only.
      * @param text UTF-8 bytes; not retained.
@@ -25,42 +27,30 @@ public:
      * @return true after transactional replacement; false leaves the prior
      * layout unchanged.
      */
-    [[nodiscard]] bool set_text(
-        const BitmapFont& font,
-        std::string_view text,
-        const GlyphLayoutOptions& options,
-        BitmapFontError& error
-    ) noexcept;
+        [[nodiscard]] bool set_text( const BitmapFont &font, std::string_view text,
+                                     const GlyphLayoutOptions &options,
+                                     BitmapFontError &error ) noexcept;
 
-    /** @brief Convenience overload using default options. */
-    [[nodiscard]] bool set_text(
-        const BitmapFont& font,
-        std::string_view text,
-        BitmapFontError& error
-    ) noexcept
-    {
-        return set_text(font, text, {}, error);
-    }
+        /** @brief Convenience overload using default options. */
+        [[nodiscard]] bool set_text( const BitmapFont &font, std::string_view text,
+                                     BitmapFontError &error ) noexcept
+        {
+            return set_text( font, text, {}, error );
+        }
 
-    void clear() noexcept;
-    [[nodiscard]] float width() const noexcept { return width_; }
-    [[nodiscard]] float height() const noexcept { return height_; }
-    [[nodiscard]] float line_height() const noexcept { return line_height_; }
-    [[nodiscard]] std::span<const GlyphPlacement> glyphs() const noexcept
-    {
-        return glyphs_;
-    }
-    [[nodiscard]] std::span<const GlyphLine> lines() const noexcept
-    {
-        return lines_;
-    }
+        void clear() noexcept;
+        [[nodiscard]] float width() const noexcept { return width_; }
+        [[nodiscard]] float height() const noexcept { return height_; }
+        [[nodiscard]] float line_height() const noexcept { return line_height_; }
+        [[nodiscard]] std::span<const GlyphPlacement> glyphs() const noexcept { return glyphs_; }
+        [[nodiscard]] std::span<const GlyphLine> lines() const noexcept { return lines_; }
 
-private:
-    float width_{0.0F};
-    float height_{0.0F};
-    float line_height_{0.0F};
-    std::vector<GlyphPlacement> glyphs_;
-    std::vector<GlyphLine> lines_;
+    private:
+        float width_{ 0.0F };
+        float height_{ 0.0F };
+        float line_height_{ 0.0F };
+        std::vector<GlyphPlacement> glyphs_;
+        std::vector<GlyphLine> lines_;
 };
 
 } // namespace sq::graphics

@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief How sampling outside the zero-to-one range behaves. */
 enum class TextureWrap {
@@ -18,4 +19,4 @@ enum class TextureWrap {
     MirroredRepeat
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

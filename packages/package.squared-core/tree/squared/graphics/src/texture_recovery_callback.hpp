@@ -2,11 +2,10 @@
 
 #include <squared/graphics/src/texture_recovery_target.hpp>
 
-namespace sq::graphics {
+namespace sq::graphics
+{
 
-using TextureRecoveryCallback = bool (*)(
-    void* user_data,
-    TextureRecoveryTarget& target
-) noexcept;
+using TextureRecoveryCallback = bool ( * )( void *user_data,
+                                            TextureRecoveryTarget &target ) noexcept;
 
 } // namespace sq::graphics

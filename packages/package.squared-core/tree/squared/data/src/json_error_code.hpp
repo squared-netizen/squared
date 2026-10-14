@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::data {
+namespace sq::data
+{
 
 /** @brief Stable error categories produced by JSON parsing and writing. */
 enum class JsonErrorCode {
@@ -14,4 +15,4 @@ enum class JsonErrorCode {
     InvalidValue
 };
 
-}  // namespace sq::data
+} // namespace sq::data

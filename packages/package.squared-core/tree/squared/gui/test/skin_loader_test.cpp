@@ -9,10 +9,10 @@
 // lost their colour and nothing showed text. The tests that existed built
 // their skins in code and could not see it.
 
-#include <squared/gui/src/color_drawable.hpp>
-#include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
+#include <squared/gui/src/color_drawable.hpp>
+#include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/skin_load_issue.hpp>
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
@@ -24,14 +24,15 @@
 
 using namespace sq::gui;
 
-namespace {
+namespace
+{
 
 int g_failures = 0;
 
-void check(bool condition, const char* what, const char* skin)
+void check( bool condition, const char *what, const char *skin )
 {
-    if (!condition) {
-        std::printf("  FAILED [%s]: %s\n", skin, what);
+    if( !condition ) {
+        std::printf( "  FAILED [%s]: %s\n", skin, what );
         ++g_failures;
     }
 }
@@ -72,68 +73,68 @@ constexpr std::string_view k_twice = R"({
 
 SkinDrawableResolver drawables()
 {
-    return [](std::string_view) {
-        return DrawablePtr{std::make_shared<ColorDrawable>(
-            sq::graphics::Color{.red = 1.0F, .green = 1.0F, .blue = 1.0F, .alpha = 1.0F})};
+    return []( std::string_view ) {
+        return DrawablePtr{ std::make_shared<ColorDrawable>(
+            sq::graphics::Color{ .red = 1.0F, .green = 1.0F, .blue = 1.0F, .alpha = 1.0F } ) };
     };
 }
 
 SkinFontResolver fonts()
 {
-    return [](std::string_view, std::string_view) {
-        return std::make_shared<FontResource>("default.fnt");
+    return []( std::string_view, std::string_view ) {
+        return std::make_shared<FontResource>( "default.fnt" );
     };
 }
 
-void check_styles_load(std::string_view json, const char* which)
+void check_styles_load( std::string_view json, const char *which )
 {
     Skin skin;
     SkinLoadReport report;
     const SkinDrawableResolver resolve_drawable = drawables();
     const SkinFontResolver resolve_font = fonts();
-    check(load_libgdx_skin(skin, json, resolve_drawable, resolve_font, report),
-          "the skin loads", which);
+    check( load_libgdx_skin( skin, json, resolve_drawable, resolve_font, report ), "the skin loads",
+           which );
 
     // A style that was not recognised falls back to the built-in default,
     // which has neither a font nor a colour. Finding both is the proof that
     // the class name matched.
-    const LabelStyle& label = skin.label_style("emphasis");
-    check(label.font != nullptr, "Label$LabelStyle has its font", which);
-    check(label.text.has_value(), "Label$LabelStyle has its colour", which);
+    const LabelStyle &label = skin.label_style( "emphasis" );
+    check( label.font != nullptr, "Label$LabelStyle has its font", which );
+    check( label.text.has_value(), "Label$LabelStyle has its colour", which );
 
-    const ButtonStyle& button = skin.button_style("emphasis");
-    check(button.normal != nullptr, "TextButton$TextButtonStyle is recognised", which);
-    check(button.font != nullptr, "TextButton$TextButtonStyle keeps its font", which);
+    const ButtonStyle &button = skin.button_style( "emphasis" );
+    check( button.normal != nullptr, "TextButton$TextButtonStyle is recognised", which );
+    check( button.font != nullptr, "TextButton$TextButtonStyle keeps its font", which );
 
-    const CheckBoxStyle& check_box = skin.check_box_style("emphasis");
-    check(check_box.font != nullptr, "CheckBox$CheckBoxStyle is recognised", which);
+    const CheckBoxStyle &check_box = skin.check_box_style( "emphasis" );
+    check( check_box.font != nullptr, "CheckBox$CheckBoxStyle is recognised", which );
 
-    for (const SkinLoadIssue& issue : report.issues) {
-        check(issue.message.find("not used by this GUI slice") == std::string::npos,
-              "no supported class is reported as unused", which);
+    for( const SkinLoadIssue &issue : report.issues ) {
+        check( issue.message.find( "not used by this GUI slice" ) == std::string::npos,
+               "no supported class is reported as unused", which );
     }
 }
 
-}  // namespace
+} // namespace
 
 int main()
 {
-    check_styles_load(k_full, "full libGDX names");
-    check_styles_load(k_short, "short names");
+    check_styles_load( k_full, "full libGDX names" );
+    check_styles_load( k_short, "short names" );
 
     {
         Skin skin;
         SkinLoadReport report;
         const SkinDrawableResolver resolve_drawable = drawables();
         const SkinFontResolver resolve_font = fonts();
-        check(!load_libgdx_skin(skin, k_twice, resolve_drawable, resolve_font, report),
-              "one class under two names is refused", "named twice");
+        check( !load_libgdx_skin( skin, k_twice, resolve_drawable, resolve_font, report ),
+               "one class under two names is refused", "named twice" );
     }
 
-    if (g_failures == 0) {
-        std::puts("skin loader: all assertions passed");
+    if( g_failures == 0 ) {
+        std::puts( "skin loader: all assertions passed" );
         return 0;
     }
-    std::printf("skin loader: %d failure(s)\n", g_failures);
+    std::printf( "skin loader: %d failure(s)\n", g_failures );
     return 1;
 }

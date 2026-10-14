@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::gles {
+namespace sq::gles
+{
 
 /** @brief What a buffer's contents are bound as. */
 enum class BufferTarget {
@@ -14,4 +15,4 @@ enum class BufferTarget {
     Uniform
 };
 
-}  // namespace sq::gles
+} // namespace sq::gles

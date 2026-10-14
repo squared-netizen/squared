@@ -1,6 +1,7 @@
 #pragma once
 
-namespace sq::assets {
+namespace sq::assets
+{
 
 /** @brief Stable error categories produced by asset loading. */
 enum class AssetErrorCode {
@@ -17,4 +18,4 @@ enum class AssetErrorCode {
     NotLoaded
 };
 
-}  // namespace sq::assets
+} // namespace sq::assets

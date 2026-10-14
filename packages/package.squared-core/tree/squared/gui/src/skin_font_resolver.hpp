@@ -5,7 +5,8 @@
 #include <functional>
 #include <string_view>
 
-namespace sq::gui {
+namespace sq::gui
+{
 
 /**
  * @brief Resolve one declared bitmap-font resource without fixing an I/O API.
@@ -17,9 +18,7 @@ namespace sq::gui {
  * @param descriptor_path Safe relative descriptor path from that declaration.
  * @return Immutable font resource, or empty to reject the skin.
  */
-using SkinFontResolver = std::function<FontPtr(
-    std::string_view resource_name,
-    std::string_view descriptor_path
-)>;
+using SkinFontResolver =
+    std::function<FontPtr( std::string_view resource_name, std::string_view descriptor_path )>;
 
 } // namespace sq::gui
