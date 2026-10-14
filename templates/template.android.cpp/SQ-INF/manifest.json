@@ -99,11 +99,14 @@
           "capability.project.plan@^1.0"
         ]
       },
-      "executable": [],
+      "executable": [
+        "tools/docs-archive.sh"
+      ],
       "ownership": {
         "generated": [
           "mk/squared_generated.mk",
-          "mk/squared_android_package.mk"
+          "mk/squared_android_package.mk",
+          "tools/docs-archive.sh"
         ],
         "user": [],
         "shared": [],
