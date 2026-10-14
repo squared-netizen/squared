@@ -78,10 +78,26 @@ DEPS     := $(CXX_OBJ:.o=.d)
 
 CPPFLAGS += $(SQ_CPPFLAGS) $(SQ_KIT_CPPFLAGS)
 CXXFLAGS += -std=$(CXXSTD) $(OPT) $(WARN) -fPIC -fvisibility=hidden
-LDFLAGS  += $(SQ_LDFLAGS) $(SQ_KIT_LDFLAGS)
+# An unresolved symbol is a link error here, not a library that installs and then
+# fails to load on the device with "cannot locate symbol". (Switch it off with
+# `make SQ_NO_UNDEFINED= apk` if a library of yours resolves symbols at load.)
+SQ_NO_UNDEFINED ?= -Wl,--no-undefined
+LDFLAGS  += $(SQ_LDFLAGS) $(SQ_KIT_LDFLAGS) $(SQ_NO_UNDEFINED)
 LDLIBS   += $(SQ_LDLIBS) $(SQ_KIT_LDLIBS)
 
 include mk/squared_android_package.mk
+
+# What the objects were built with.
+#
+# make compares timestamps, not flags. Without this, objects compiled for a
+# DEV_LOG=1 build were reused by the next plain build, which then linked
+# without the dev library and failed on a symbol that was only ever meant to
+# exist in the other kind of build. The stamp is rewritten only when the flags
+# change; every object, and the packaged resources (whose manifest differs
+# between the two kinds of build), depend on it.
+SQ_FLAGS_STAMP := $(BUILD)/.flags
+$(shell mkdir -p '$(BUILD)'; [ "$$(cat '$(SQ_FLAGS_STAMP)' 2>/dev/null)" = '$(CPPFLAGS) $(CXXFLAGS)' ] || printf '%s' '$(CPPFLAGS) $(CXXFLAGS)' > '$(SQ_FLAGS_STAMP)')
+$(SQ_APK_DIR)/base.apk: $(SQ_FLAGS_STAMP)
 
 .PHONY: all clean help
 all: require-ndk squared-core $(SQ_SO)
@@ -118,14 +134,14 @@ verify-link:
 	esac; \
 	echo "  link check     $$needed"
 
-$(BUILD)/%.o: %.cpp
+$(BUILD)/%.o: %.cpp $(SQ_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 # The native-app-glue is compiled from the NDK rather than vendored into the
 # project: it is part of the platform, it is versioned with the NDK, and a
 # stale copy in your tree would be a bug nobody goes looking for.
-$(GLUE_OBJ): $(SQ_GLUE_SRC)
+$(GLUE_OBJ): $(SQ_GLUE_SRC) $(SQ_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
 	@if [ ! -f "$(SQ_GLUE_SRC)" ]; then \
 	  echo "native-app-glue not found at $(SQ_GLUE_SRC)" >&2; \

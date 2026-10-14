@@ -14,6 +14,8 @@
 //   * owns the file system and asset manager, and hands the application a
 //     sq::app::Runtime referring to all three
 //   * translates NativeActivity lifecycle and input into sq::app::Event
+//   * measures the system bars and camera cut-out and tells the application
+//     (sq::app::SafeArea), because Android draws the app edge to edge
 //   * measures frame time and drives update() separately from render()
 //
 // There is no longer an "is a renderer present" question. sq::graphics::Context
@@ -28,6 +30,7 @@
 #include <squared/app/runtime.hpp>
 #include <squared/assets/asset_manager.hpp>
 #include <squared/files/android_asset_file_system.hpp>
+#include <squared/app/safe_area.hpp>
 #include <squared/app/src/key_modifier.hpp>
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
@@ -35,7 +38,9 @@
 #include <android/log.h>
 #include <android/keycodes.h>
 #include <android_native_app_glue.h>
+#include <jni.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -149,6 +154,99 @@ sq::app::KeyModifiers translate_modifiers(std::int32_t state) {
     return modifiers;
 }
 
+// ---------------------------------------------------------------------------
+// Safe area: how far the status bar, the navigation bar and a camera cut-out
+// reach into the window.
+//
+// Since Android 15 an application draws edge to edge, so those bars sit on top
+// of the surface. NativeActivity offers no call for their size, so it is asked
+// of the Java side: Activity -> Window -> decor view -> root window insets.
+// Every step can fail (no window yet, a method missing on an old release), and
+// every failure means "nothing is covering the window" - the application then
+// behaves as it did before this existed.
+// ---------------------------------------------------------------------------
+
+/// Call an object-returning method that takes no arguments. Null on any failure.
+jobject call_object(JNIEnv* env, jobject target, const char* name, const char* signature) {
+    if (target == nullptr) return nullptr;
+    jclass type = env->GetObjectClass(target);
+    jmethodID method = type != nullptr ? env->GetMethodID(type, name, signature) : nullptr;
+    jobject result = method != nullptr ? env->CallObjectMethod(target, method) : nullptr;
+    if (type != nullptr) env->DeleteLocalRef(type);
+    if (env->ExceptionCheck() != JNI_FALSE) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
+}
+
+/// Call an int-returning method that takes no arguments. `fallback` on any failure.
+jint call_int(JNIEnv* env, jobject target, const char* name, jint fallback) {
+    if (target == nullptr) return fallback;
+    jclass type = env->GetObjectClass(target);
+    jmethodID method = type != nullptr ? env->GetMethodID(type, name, "()I") : nullptr;
+    const jint result = method != nullptr ? env->CallIntMethod(target, method) : fallback;
+    if (type != nullptr) env->DeleteLocalRef(type);
+    if (env->ExceptionCheck() != JNI_FALSE) {
+        env->ExceptionClear();
+        return fallback;
+    }
+    return result;
+}
+
+std::int16_t to_pixels(jint value) {
+    return static_cast<std::int16_t>(std::clamp<jint>(value, 0, 4096));
+}
+
+/// Read the insets of the activity's window, in pixels. Zero when unavailable.
+///
+/// The system-window insets already include a cut-out on current releases; the
+/// cut-out's own safe insets are folded in with max() for the releases where
+/// they do not. No allocation on our side. Each call makes a handful of JNI
+/// calls and deletes every local reference it creates, so it is cheap enough
+/// to repeat twice a second.
+sq::app::SafeArea measure_safe_area(JNIEnv* env, jobject activity) {
+    sq::app::SafeArea area;
+    if (env == nullptr || activity == nullptr) return area;
+
+    jobject window = call_object(env, activity, "getWindow", "()Landroid/view/Window;");
+    jobject decor = call_object(env, window, "getDecorView", "()Landroid/view/View;");
+    jobject insets = call_object(env, decor, "getRootWindowInsets",
+                                 "()Landroid/view/WindowInsets;");
+    if (insets != nullptr) {
+        jint left = call_int(env, insets, "getSystemWindowInsetLeft", 0);
+        jint top = call_int(env, insets, "getSystemWindowInsetTop", 0);
+        jint right = call_int(env, insets, "getSystemWindowInsetRight", 0);
+        jint bottom = call_int(env, insets, "getSystemWindowInsetBottom", 0);
+
+        jobject cutout = call_object(env, insets, "getDisplayCutout",
+                                     "()Landroid/view/DisplayCutout;");
+        if (cutout != nullptr) {
+            left = std::max(left, call_int(env, cutout, "getSafeInsetLeft", 0));
+            top = std::max(top, call_int(env, cutout, "getSafeInsetTop", 0));
+            right = std::max(right, call_int(env, cutout, "getSafeInsetRight", 0));
+            bottom = std::max(bottom, call_int(env, cutout, "getSafeInsetBottom", 0));
+            env->DeleteLocalRef(cutout);
+        }
+        area = {to_pixels(left), to_pixels(top), to_pixels(right), to_pixels(bottom)};
+        env->DeleteLocalRef(insets);
+    }
+    if (decor != nullptr) env->DeleteLocalRef(decor);
+    if (window != nullptr) env->DeleteLocalRef(window);
+    return area;
+}
+
+/// Tell an application about the safe area, if it has a use for it.
+///
+/// An application written before SafeArea existed has no such method; the
+/// requires-expression lets it keep compiling rather than forcing an edit.
+template <class Application>
+void notify_safe_area(Application& application, const sq::app::SafeArea& area) {
+    if constexpr (requires { application.safe_area_changed(area); }) {
+        application.safe_area_changed(area);
+    }
+}
+
 /// Storage roots from the activity.
 ///
 /// Android's "internal storage" - internalDataPath - is squared's Local:
@@ -182,7 +280,9 @@ struct Platform {
     explicit Platform(android_app* native)
         : files(*native->activity->assetManager, storage_roots(native))
         , assets(files)
-        , runtime{graphics, files, assets} {}
+        , runtime{graphics, files, assets}
+        , vm(native->activity->vm)
+        , activity(native->activity->clazz) {}
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
@@ -192,6 +292,16 @@ struct Platform {
     sq::assets::AssetManager assets;
     sq::app::Runtime runtime;
     {{project_name}}::App app;
+
+    /// The Java side, for the safe-area query. Both are owned by Android and
+    /// outlive the platform object.
+    JavaVM* vm;
+    jobject activity;
+    JNIEnv* env{nullptr};
+    bool env_attached{false};
+    sq::app::SafeArea reported_area{};
+    int frames_since_measure{0};
+    int fast_measure_frames{0};
 
     bool has_focus{false};
     bool surface_ready{false};
@@ -208,6 +318,47 @@ struct Platform {
     int reported_height{0};
 
     void send(const Event& event) { app.handle_event(event); }
+
+    /// The JNI environment for this thread. Attached once on first use and
+    /// kept: attaching and detaching around every query would allocate a Java
+    /// thread object each time.
+    JNIEnv* jni() {
+        if (env != nullptr || vm == nullptr) return env;
+        if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
+            return env;
+        }
+        if (vm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            env_attached = true;
+        } else {
+            env = nullptr;
+        }
+        return env;
+    }
+
+    /// Release the attachment taken by jni(). Must run on the same thread,
+    /// before android_main returns.
+    void release_jni() {
+        if (env_attached && vm != nullptr) vm->DetachCurrentThread();
+        env = nullptr;
+        env_attached = false;
+    }
+
+    /// Measure the bars and tell the application if they changed.
+    ///
+    /// The numbers are not available at the first frame - the window has not
+    /// been laid out yet - and change on rotation, so this runs after a size
+    /// change and then about twice a second. An unchanged answer costs the
+    /// JNI calls and nothing else.
+    void sync_safe_area() {
+        frames_since_measure = 0;
+        const sq::app::SafeArea measured = measure_safe_area(jni(), activity);
+        if (measured == reported_area) return;
+        reported_area = measured;
+        SQ_LOGI("safe area (px): left %d top %d right %d bottom %d",
+                static_cast<int>(measured.left), static_cast<int>(measured.top),
+                static_cast<int>(measured.right), static_cast<int>(measured.bottom));
+        notify_safe_area(app, measured);
+    }
 
     /// Re-measure the surface, and tell the application if its size changed.
     ///
@@ -236,6 +387,13 @@ struct Platform {
         resized.width = width;
         resized.height = height;
         send(resized);
+
+        // The bars are different in the other orientation, and Android reports
+        // the new ones a few frames after the new size. Ask again on each of
+        // the next frames rather than waiting out the slow poll, which left
+        // the interface laid out for the old orientation for half a second.
+        fast_measure_frames = 12;
+        sync_safe_area();
     }
 
     /// Bring the rendering surface up. Called when Android hands us a window,
@@ -306,6 +464,13 @@ struct Platform {
         if (delta > maximum_delta) delta = maximum_delta;
 
         sync_size(false);
+        constexpr int measure_interval_frames = 30;
+        if (fast_measure_frames > 0) {
+            --fast_measure_frames;
+            sync_safe_area();
+        } else if (++frames_since_measure >= measure_interval_frames) {
+            sync_safe_area();
+        }
         app.update(delta);
         app.render(graphics);
 
@@ -511,6 +676,7 @@ void android_main(android_app* app) {
         SQ_LOGI("shutting down");
         platform->detach();
         platform->app.dispose();
+        platform->release_jni();
         app->userData = nullptr;
     };
 

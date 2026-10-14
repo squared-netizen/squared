@@ -154,10 +154,13 @@ $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so: $(SQ_LIBCXX)
 # libc++_shared.so does not define. The APK would install, and the library would
 # fail to load on the device with "cannot locate symbol", before any of your
 # code runs and with no crash report. Checked on the symbols libc++ owns
-# (the __ndk1 namespace); the rest of the dynamic symbols are the system's.
+# (names that begin in std::__ndk1: the namespace itself, not any name that
+# merely mentions it as an argument type - a function of ours that takes a
+# std::string_view is `_ZN2sq...`, and is ours to define, not libc++'s); the
+# rest of the dynamic symbols are the system's or the application's.
 .PHONY: verify-libcxx
 verify-libcxx: $(SQ_SO) $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
-	@nm -D --undefined-only $(SQ_SO) | awk '{print $$NF}' | grep '__ndk1' | sort -u > $(SQ_APK_DIR)/.libcxx_wanted || true
+	@nm -D --undefined-only $(SQ_SO) | awk '{print $$NF}' | grep -E '^_Z(N|NK|TVN|TIN|TSN)St6__ndk1' | sort -u > $(SQ_APK_DIR)/.libcxx_wanted || true
 	@nm -D --defined-only $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so | awk '{print $$NF}' | sort -u > $(SQ_APK_DIR)/.libcxx_has
 	@missing=$$(comm -23 $(SQ_APK_DIR)/.libcxx_wanted $(SQ_APK_DIR)/.libcxx_has); \
 	if [ -n "$$missing" ]; then \
