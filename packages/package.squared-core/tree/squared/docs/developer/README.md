@@ -5,8 +5,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 
 ## Cross-cutting
 
-- [File layout](file-layout.md) &mdash; the one-type-per-file rule and the
-  self-containment invariant
+- [File layout](file-layout.md) &mdash; where files go in a module, the
+  one-type-per-file rule and the self-containment invariant
 - [Memory profile](memory-profile.md) &mdash; measured `sizeof` of every core
   type, and what allocates
 - [Priority audit](priority-audit.md) &mdash; where the tree contradicts the
@@ -17,7 +17,9 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [Design patterns](design-patterns.md)
 - [Build and toolchain](build-and-toolchain.md)
 - [Refactor notes](refactor-notes.md) &mdash; how the split was done and how it
-  was verified
+  was verified (history: written before the Sprint 1 layout move)
+- [Tools](tools.md) &mdash; the scripts in `squared/tools/` and the workspace
+  wrappers
 
 ## Modules
 
@@ -28,10 +30,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [files](files.md)
   - [asset-index](asset-index.md) &mdash; how nested APK assets are listed
 - [gles](gles.md)
-- [graphics](graphics.md)
-- [graphics2d](graphics2d.md)
-- [scene2d](scene2d.md)
-- [gui](gui.md)
+- [graphics](graphics.md) &mdash; includes the former `graphics2d`
+- [gui](gui.md) &mdash; includes the former `scene2d`
 - [messaging](messaging.md)
 - [math](math.md)
 - [time](time.md)

@@ -11,8 +11,8 @@ Programmer counterpart: [../programmer/math.md](../programmer/math.md)
 
 ```
 math/
-  include/squared/math/   one header per public type, plus math.hpp
-  src/                        one translation unit per type with definitions
+  math.hpp matrix4.hpp vector2.hpp
+  src/   one translation unit per type with definitions
   Makefile
 ```
 

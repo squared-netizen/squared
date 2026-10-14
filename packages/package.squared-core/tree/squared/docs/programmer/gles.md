@@ -8,21 +8,21 @@ Developer counterpart: [../developer/gles.md](../developer/gles.md)
 | Type | Header | Purpose |
 |---|---|---|
 | `Buffer` | `squared/gles/buffer.hpp` | one GL buffer object, owned |
-| `BufferTarget` | `squared/gles/buffer_target.hpp` | vertex, index or uniform |
-| `BufferUsage` | `squared/gles/buffer_usage.hpp` | static, dynamic or stream hint |
+| `BufferTarget` | `squared/gles/src/buffer_target.hpp` | vertex, index or uniform |
+| `BufferUsage` | `squared/gles/src/buffer_usage.hpp` | static, dynamic or stream hint |
 | `Shader` | `squared/gles/shader.hpp` | one compiled stage, owned |
-| `ShaderStage` | `squared/gles/shader_stage.hpp` | vertex or fragment |
+| `ShaderStage` | `squared/gles/src/shader_stage.hpp` | vertex or fragment |
 | `Program` | `squared/gles/program.hpp` | one linked program, owned |
-| `AttributeInfo` | `squared/gles/attribute_info.hpp` | an attribute the linker kept |
-| `UniformInfo` | `squared/gles/uniform_info.hpp` | a uniform the linker kept |
+| `AttributeInfo` | `squared/gles/src/attribute_info.hpp` | an attribute the linker kept |
+| `UniformInfo` | `squared/gles/src/uniform_info.hpp` | a uniform the linker kept |
 | `VertexArray` | `squared/gles/vertex_array.hpp` | one VAO, owned |
-| `VertexAttribute` | `squared/gles/vertex_attribute.hpp` | one attribute's layout |
+| `VertexAttribute` | `squared/gles/src/vertex_attribute.hpp` | one attribute's layout |
 | `Texture2D` | `squared/gles/texture2d.hpp` | one 2D texture, owned |
-| `TextureFormat` | `squared/gles/texture_format.hpp` | Rgba8, Rgb8 or R8 |
-| `TextureFilter` | `squared/gles/texture_filter.hpp` | nearest or linear |
-| `TextureWrap` | `squared/gles/texture_wrap.hpp` | clamp, repeat or mirrored |
-| `GlesError` | `squared/gles/gles_error.hpp` | structured failure, with driver logs |
-| `GlesErrorCode` | `squared/gles/gles_error_code.hpp` | stable error categories |
+| `TextureFormat` | `squared/gles/src/texture_format.hpp` | Rgba8, Rgb8 or R8 |
+| `TextureFilter` | `squared/gles/src/texture_filter.hpp` | nearest or linear |
+| `TextureWrap` | `squared/gles/src/texture_wrap.hpp` | clamp, repeat or mirrored |
+| `GlesError` | `squared/gles/src/gles_error.hpp` | structured failure, with driver logs |
+| `GlesErrorCode` | `squared/gles/src/gles_error_code.hpp` | stable error categories |
 
 ## A triangle
 

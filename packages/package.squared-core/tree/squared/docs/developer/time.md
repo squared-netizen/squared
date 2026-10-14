@@ -11,8 +11,8 @@ Programmer counterpart: [../programmer/time.md](../programmer/time.md)
 
 ```
 time/
-  include/squared/time/   one header per public type, plus time.hpp
-  src/                        one translation unit per type with definitions
+  clock.hpp duration.hpp time_point.hpp timepiece.hpp manual_timepiece.hpp time.hpp
+  src/   deadline_queue.hpp, and one translation unit per type with definitions
   Makefile
 ```
 

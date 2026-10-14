@@ -35,15 +35,15 @@ They were three distinct questions, answered three ways:
 
 | Was | Sites | Now |
 |---|---:|---|
-| `Actor*` &rarr; `Widget*` | 11 | `scene2d::actor_cast<Widget>()` |
-| `Actor*` &rarr; `Group*` | 3 | `scene2d::actor_cast<scene2d::Group>()` |
+| `Actor*` &rarr; `Widget*` | 11 | `gui::actor_cast<Widget>()` |
+| `Actor*` &rarr; `Group*` | 3 | `gui::actor_cast<Group>()` |
 | `Widget*` &rarr; `TextField*` | 3 | `Widget::wants_text_input()` |
 
 `actor_cast` is a one-virtual-call downcast built on
 `Actor::actor_interface(ActorInterfaceId)`: each derived interface publishes a
 constant and answers for it, delegating to its base otherwise. It costs no
 storage &mdash; `Actor` already had a vtable &mdash; and is cheaper than
-`dynamic_cast` was. See [scene2d.md](scene2d.md).
+`dynamic_cast` was. See [gui.md](gui.md#downcasting-without-rtti).
 
 The third replacement is an improvement rather than a translation: only
 `TextField` could raise the soft keyboard before, and a virtual lets any
@@ -106,7 +106,7 @@ table exists once instead of once per map.
 
 Eight `std::function` members across the public API: `Button::Callback`,
 `ToggleButton::ChangeCallback`, `Slider::ChangeCallback`,
-`Dialog::ResultCallback`, `Widget::TooltipFactory`, `scene2d::InputListener`,
+`Dialog::ResultCallback`, `Widget::TooltipFactory`, `gui::InputListener`,
 and both skin resolvers. 32 bytes each, plus a heap allocation for any capture
 past the small-buffer size, plus an indirect call.
 
@@ -131,7 +131,7 @@ integer.
 `Ui::layout` and `Ui::paint`. This is the ergonomic model libGDX users expect,
 and the priority order does put ergonomics above speed &mdash; but it also says
 ergonomics must not cost memory, and the vtable pointer is already paid for by
-`scene2d::Actor`. Recorded here as a known cost, not as a defect.
+`gui::Actor`. Recorded here as a known cost, not as a defect.
 
 ## 8. Other standard-library choices
 

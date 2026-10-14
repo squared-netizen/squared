@@ -58,7 +58,7 @@ ownership hierarchy.
   live in an ordinary widget subtree.
 - **Cost:** 40 bytes plus one pointer per member button.
 
-## Observer &mdash; `scene2d::InputListener`, widget callbacks
+## Observer &mdash; `gui::InputListener`, widget callbacks
 
 Low-frequency events only: input, lifecycle, value changes. Not used for
 per-frame data flow, which matches the project rule.

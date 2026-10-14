@@ -11,9 +11,10 @@ Programmer counterpart: [../programmer/data.md](../programmer/data.md)
 
 ```
 data/
-  include/squared/data/   one header per public type, plus json.hpp
-  src/json_value.cpp      JsonValue's own members - no yyjson
-  src/json.cpp            parse_json, write_json, and the conversion helpers
+  json.hpp json_value.hpp   the workhorse headers
+  src/                      the six supporting headers: errors, options, results
+  src/json_value.cpp        JsonValue's own members - no yyjson
+  src/json.cpp              parse_json, write_json, and the conversion helpers
   Makefile
 ```
 

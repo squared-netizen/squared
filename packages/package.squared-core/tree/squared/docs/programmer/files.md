@@ -8,14 +8,14 @@ Developer counterpart: [../developer/files.md](../developer/files.md)
 | Type | Header | Purpose |
 |---|---|---|
 | `FileHandle` | `squared/files/file_handle.hpp` | A named location, modelled on libGDX's FileHandle |
-| `FileType` | `squared/files/file_type.hpp` | Where a path is rooted |
+| `FileType` | `squared/files/src/file_type.hpp` | Where a path is rooted |
 | `FileSystem` | `squared/files/file_system.hpp` | The framework's porting layer for storage |
 | `PosixFileSystem` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
 | `PosixFileSystemRoots` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
-| `FileReadResult` | `squared/files/file_read_result.hpp` | Bytes read from one file, or the failure that prevented it |
-| `FileTextResult` | `squared/files/file_text_result.hpp` | Text read from one file, or the failure that prevented it |
-| `FileError` | `squared/files/file_error.hpp` | Structured file system failure information |
-| `FileErrorCode` | `squared/files/file_error_code.hpp` | Stable error categories produced by file system operations |
+| `FileReadResult` | `squared/files/src/file_read_result.hpp` | Bytes read from one file, or the failure that prevented it |
+| `FileTextResult` | `squared/files/src/file_text_result.hpp` | Text read from one file, or the failure that prevented it |
+| `FileError` | `squared/files/src/file_error.hpp` | Structured file system failure information |
+| `FileErrorCode` | `squared/files/src/file_error_code.hpp` | Stable error categories produced by file system operations |
 
 ## The shortest call site
 

@@ -18,7 +18,7 @@ inline variable. An inline variable has one address across every translation
 unit, so the result is unique per type, stable for the life of the program,
 `constexpr`, and free at run time. No registration, no macro, no central list.
 
-This is the same problem `scene2d::actor_cast` solves, answered the same way.
+This is the same problem `gui::actor_cast` solves, answered the same way.
 
 ## What it is, and is not
 

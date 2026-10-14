@@ -43,7 +43,7 @@ class MyPainter final : public sq::gui::Painter {
                         sq::graphics::Color) override;
     void stroke_rectangle(const sq::gui::Rectangle&,
                           sq::graphics::Color, float) override;
-    void draw_region(const sq::graphics2d::TextureRegion&,
+    void draw_region(const sq::graphics::TextureRegion&,
                      const sq::gui::Rectangle&,
                      sq::graphics::Color) override;
     void draw_text(std::string_view, float, float,

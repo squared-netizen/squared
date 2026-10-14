@@ -13,9 +13,11 @@ Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 
 ```
 messaging/
-  include/squared/messaging/   one header per public type, plus messaging.hpp
-  src/                         one translation unit per type with definitions
-  src/detail/                  private, not installed
+  message_dispatcher.hpp subscription.hpp telegram.hpp telegraph.hpp messaging.hpp
+  src/          the 20 supporting headers: ids, results, statuses, receipts,
+                and the provider extension surface (telegram_provider.hpp);
+                one translation unit per type with definitions
+  src/detail/   private, not installed
   Makefile
 ```
 

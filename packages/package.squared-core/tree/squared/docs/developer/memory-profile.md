@@ -25,8 +25,8 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::LabelStyle` | 56 | 8 |
 | `gui::WindowStyle` | 176 | 8 |
 | `gui::Skin` | 688 | 8 |
-| `scene2d::Actor` | 72 | 8 |
-| `scene2d::Group` | 96 | 8 |
+| `gui::Actor` | 72 | 8 |
+| `gui::Group` | 96 | 8 |
 | `gui::Widget` | 136 | 8 |
 | `gui::Label` | 208 | 8 |
 | `gui::Button` | 304 | 8 |
@@ -44,9 +44,9 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::Dialog` | 360 | 8 |
 | `gui::Ui` | 1032 | 8 |
 | `gui::ButtonGroup` | 40 | 8 |
-| `graphics2d::TextureRegion` | 40 | 8 |
-| `graphics2d::BitmapGlyph` | 48 | 8 |
-| `graphics2d::GlyphPlacement` | 56 | 8 |
+| `graphics::TextureRegion` | 40 | 8 |
+| `graphics::BitmapGlyph` | 48 | 8 |
+| `graphics::GlyphPlacement` | 56 | 8 |
 | `std::string` | 32 | 8 |
 | `std::function<void()>` | 32 | 8 |
 
@@ -57,7 +57,7 @@ at 16, `Color` at 16, `PointerEvent` at 32. These are packed sensibly and
 there is nothing to reclaim.
 
 **Widget instances are dominated by strings and callbacks.** `Widget` is 136
-bytes: 96 from `scene2d::Group`, two bools, and a 32-byte
+bytes: 96 from `gui::Group`, two bools, and a 32-byte
 `std::function` tooltip factory that every widget pays for whether or not it
 has a tooltip. `Button` at 304 bytes is `Widget` plus a 32-byte label string,
 a 32-byte style-name string, a 32-byte callback, a 32-byte glyph string, and

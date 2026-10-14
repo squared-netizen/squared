@@ -10,7 +10,7 @@ Programmer counterpart: [../programmer/files.md](../programmer/files.md)
 ## Why this module exists
 
 Every other subsystem in squared takes bytes it is handed. There is no `fopen`,
-no `ifstream` and no `AAssetManager` anywhere in `gui`, `graphics2d`, `scene2d`
+no `ifstream` and no `AAssetManager` anywhere in `gui`, `graphics`
 or `data` &mdash; `load_libgdx_skin` takes a `std::string_view`, fonts parse
 from bytes. This module is what hands them those bytes without any of them
 learning where storage comes from.

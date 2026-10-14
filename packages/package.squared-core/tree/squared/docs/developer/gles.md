@@ -31,7 +31,7 @@ way `GL_ELEMENT_ARRAY_BUFFER` does not.
 **No CPU-side mirror of anything.** That is the priority-1 decision at the
 centre of the module. Retaining pixel data would make recovery after context
 loss automatic and would double the resident cost of every texture in the
-application. Recovery policy lives in `graphics2d::Texture`, where the caller
+application. Recovery policy lives in `graphics::Texture`, where the caller
 chooses per resource; this layer only offers what a policy needs.
 
 ## invalidate() is the non-obvious one

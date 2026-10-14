@@ -9,12 +9,12 @@ Developer counterpart: [../developer/data.md](../developer/data.md)
 | Type | Header | Purpose |
 |---|---|---|
 | `JsonValue` | `squared/data/json_value.hpp` | One owned JSON value independent of the parser backend |
-| `JsonErrorCode` | `squared/data/json_error_code.hpp` | Stable error categories produced by JSON parsing and writing |
-| `JsonError` | `squared/data/json_error.hpp` | Structured JSON failure information |
-| `JsonParseOptions` | `squared/data/json_parse_options.hpp` | Limits and strictness applied to one parse operation |
-| `JsonParseResult` | `squared/data/json_parse_result.hpp` | Result of parsing one complete RFC 8259 JSON document |
-| `JsonWriteOptions` | `squared/data/json_write_options.hpp` | Formatting controls for deterministic JSON serialization |
-| `JsonWriteResult` | `squared/data/json_write_result.hpp` | Result of serializing one owned JSON value |
+| `JsonErrorCode` | `squared/data/src/json_error_code.hpp` | Stable error categories produced by JSON parsing and writing |
+| `JsonError` | `squared/data/src/json_error.hpp` | Structured JSON failure information |
+| `JsonParseOptions` | `squared/data/src/json_parse_options.hpp` | Limits and strictness applied to one parse operation |
+| `JsonParseResult` | `squared/data/src/json_parse_result.hpp` | Result of parsing one complete RFC 8259 JSON document |
+| `JsonWriteOptions` | `squared/data/src/json_write_options.hpp` | Formatting controls for deterministic JSON serialization |
+| `JsonWriteResult` | `squared/data/src/json_write_result.hpp` | Result of serializing one owned JSON value |
 
 ## Free functions
 

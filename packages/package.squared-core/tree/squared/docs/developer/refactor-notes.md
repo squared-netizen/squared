@@ -1,5 +1,11 @@
 # Refactor notes
 
+> **History.** These notes record the one-type-per-file split, before the
+> Sprint 1 layout move. Paths and module names below are as they were then:
+> `<module>/include/squared/<module>/` has since become the module root and
+> `src/`, `graphics2d` is part of `graphics`, and `scene2d` is part of `gui`.
+> The current layout is in [file-layout.md](file-layout.md).
+
 ## What changed
 
 - The archive's flattened layout was restored to
