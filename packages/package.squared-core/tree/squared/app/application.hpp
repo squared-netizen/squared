@@ -2,6 +2,7 @@
 
 #include <squared/app/event.hpp>
 #include <squared/app/runtime.hpp>
+#include <squared/app/safe_area.hpp>
 #include <squared/app/src/text_input.hpp>
 #include <squared/app/src/text_input_service.hpp>
 
@@ -67,6 +68,18 @@ public:
 
     /** @brief Notify the application of current drawable dimensions. */
     virtual void resize(int, int) {}
+
+    /**
+     * @brief Tell the application which edges of the drawable are covered.
+     *
+     * Called when the platform first measures the bars and again whenever they
+     * change (rotation, a hidden navigation bar). Not called on a platform
+     * with nothing covering the window, so the default - ignore it - is right
+     * for a desktop application.
+     *
+     * @param area Pixels covered along each edge of the drawable.
+     */
+    virtual void safe_area_changed(const SafeArea& area) { static_cast<void>(area); }
 
     /** @brief Restore or validate GPU resources after a surface becomes usable. */
     virtual void surface_created(graphics::Context&) {}

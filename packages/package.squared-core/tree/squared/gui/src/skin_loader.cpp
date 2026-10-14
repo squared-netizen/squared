@@ -18,28 +18,31 @@ namespace {
 
 using data::JsonValue;
 
-constexpr std::string_view color_class =
-    "com.badlogic.gdx.graphics.Color";
-constexpr std::string_view font_class =
-    "com.badlogic.gdx.graphics.g2d.BitmapFont";
-constexpr std::string_view tinted_class =
-    "com.badlogic.gdx.scenes.gui.ui.Skin$TintedDrawable";
-constexpr std::string_view button_class =
-    "com.badlogic.gdx.scenes.gui.ui.Button$ButtonStyle";
-constexpr std::string_view text_button_class =
-    "com.badlogic.gdx.scenes.gui.ui.TextButton$TextButtonStyle";
-constexpr std::string_view text_field_class =
-    "com.badlogic.gdx.scenes.gui.ui.TextField$TextFieldStyle";
-constexpr std::string_view label_class =
-    "com.badlogic.gdx.scenes.gui.ui.Label$LabelStyle";
-constexpr std::string_view check_box_class =
-    "com.badlogic.gdx.scenes.gui.ui.CheckBox$CheckBoxStyle";
-constexpr std::string_view slider_class =
-    "com.badlogic.gdx.scenes.gui.ui.Slider$SliderStyle";
-constexpr std::string_view progress_bar_class =
-    "com.badlogic.gdx.scenes.gui.ui.ProgressBar$ProgressBarStyle";
-constexpr std::string_view window_class =
-    "com.badlogic.gdx.scenes.gui.ui.Window$WindowStyle";
+// libGDX writes the full Java name of a style class as a key:
+// com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle. The package part is
+// libGDX's, not squared's, so none of it appears here: a key is matched on what
+// follows its last dot (see short_class_name), which also lets a skin written
+// for squared say just `Label$LabelStyle`.
+constexpr std::string_view color_class = "Color";
+constexpr std::string_view font_class = "BitmapFont";
+constexpr std::string_view tinted_class = "Skin$TintedDrawable";
+constexpr std::string_view button_class = "Button$ButtonStyle";
+constexpr std::string_view text_button_class = "TextButton$TextButtonStyle";
+constexpr std::string_view text_field_class = "TextField$TextFieldStyle";
+constexpr std::string_view label_class = "Label$LabelStyle";
+constexpr std::string_view check_box_class = "CheckBox$CheckBoxStyle";
+constexpr std::string_view slider_class = "Slider$SliderStyle";
+constexpr std::string_view progress_bar_class = "ProgressBar$ProgressBarStyle";
+constexpr std::string_view window_class = "Window$WindowStyle";
+
+/// What follows the last dot of a class key: `Label$LabelStyle` for
+/// `com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle`, and a name with no
+/// dot unchanged.
+std::string_view short_class_name(std::string_view name) noexcept
+{
+    const std::size_t dot = name.rfind('.');
+    return dot == std::string_view::npos ? name : name.substr(dot + 1);
+}
 
 bool bare_delimiter(char value) noexcept
 {
@@ -338,9 +341,17 @@ private:
         std::string_view class_name
     )
     {
-        const auto found = classes.find(class_name);
-        if (found == classes.end()) return nullptr;
-        const auto* result = found->second.object_if();
+        const JsonValue* match = nullptr;
+        for (const auto& [key, value] : classes) {
+            if (short_class_name(key) != class_name) continue;
+            if (match != nullptr) {
+                error(key, "resource class is given twice, under different names");
+                return nullptr;
+            }
+            match = &value;
+        }
+        if (match == nullptr) return nullptr;
+        const auto* result = match->object_if();
         if (!result) error(std::string(class_name), "resource class must be an object");
         return result;
     }
@@ -852,7 +863,7 @@ private:
         };
         for (const auto& [name, value] : classes) {
             static_cast<void>(value);
-            if (!supported.contains(name)) {
+            if (!supported.contains(short_class_name(name))) {
                 warning(name, "libGDX resource class is not used by this GUI slice");
             }
         }

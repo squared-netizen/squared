@@ -54,9 +54,31 @@ Widget& Ui::set_content(std::unique_ptr<Widget> content)
     overlays_.clear();
     stage_.root().clear();
     content_ = content.get();
-    content_->set_bounds(0.0F, 0.0F, stage_.root().width(), stage_.root().height());
     static_cast<void>(stage_.add_actor(std::move(content)));
+    place_content();
     return *content_;
+}
+
+void Ui::place_content() noexcept
+{
+    if (content_ == nullptr) return;
+    const float width = stage_.root().width();
+    const float height = stage_.root().height();
+    content_->set_bounds(
+        safe_area_.left, safe_area_.top,
+        std::max(0.0F, width - safe_area_.left - safe_area_.right),
+        std::max(0.0F, height - safe_area_.top - safe_area_.bottom));
+}
+
+void Ui::set_safe_area(Insets insets) noexcept
+{
+    const auto clean = [](float value) noexcept {
+        return std::isfinite(value) && value > 0.0F ? value : 0.0F;
+    };
+    safe_area_ = Insets{clean(insets.left), clean(insets.top),
+                        clean(insets.right), clean(insets.bottom)};
+    place_content();
+    if (content_ != nullptr) content_->invalidate_layout();
 }
 
 Window& Ui::show_window(std::unique_ptr<Window> window, bool center)
@@ -122,7 +144,7 @@ void Ui::resize(float width, float height)
 {
     stage_.resize(width, height);
     if (content_) {
-        content_->set_bounds(0.0F, 0.0F, width, height);
+        place_content();
         content_->invalidate_layout();
     }
     for (Overlay& overlay : overlays_) {

@@ -3,6 +3,7 @@
 #include <squared/app/event.hpp>
 #include <squared/app/src/text_input.hpp>
 #include <squared/gui/dialog.hpp>
+#include <squared/gui/src/insets.hpp>
 #include <squared/gui/src/key.hpp>
 #include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/pointer_action.hpp>
@@ -95,6 +96,28 @@ public:
      * @return Pointer to the content widget, or null when unset.
      */
     [[nodiscard]] const Widget* content() const noexcept { return content_; }
+
+    /**
+     * @brief Keep the content inside the part of the screen the user can see.
+     *
+     * A phone draws the interface edge to edge, so the status bar, the
+     * navigation bar and a camera cut-out sit on top of it. Insets move the
+     * content's rectangle in from each edge; windows and dialogs are still
+     * free to use the whole viewport.
+     *
+     * @param insets Distance to keep clear on each side, in logical units.
+     * Negative or non-finite values count as zero, and insets larger than the
+     * viewport leave the content empty rather than inverted.
+     * @note Survives resize() and set_content(); call it again only when the
+     * bars change.
+     */
+    void set_safe_area(Insets insets) noexcept;
+
+    /**
+     * @brief Report the insets last given to set_safe_area().
+     * @return The sanitized insets; all zero until one is set.
+     */
+    [[nodiscard]] Insets safe_area() const noexcept { return safe_area_; }
 
     /**
      * @brief Resize the virtual viewport.
@@ -299,7 +322,10 @@ private:
 
     Stage stage_;
     Skin skin_;
+    void place_content() noexcept;
+
     Widget* content_{nullptr};
+    Insets safe_area_{};
     Widget* focused_{nullptr};
     std::unordered_map<std::int64_t, Widget*> captures_;
     app::TextInputService* text_input_service_{nullptr};
