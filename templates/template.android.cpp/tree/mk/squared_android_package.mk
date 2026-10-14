@@ -150,13 +150,35 @@ $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so: $(SQ_LIBCXX)
 	@$(SQ_STRIP) --strip-unneeded $@ 2>/dev/null || true
 	@echo "  bundled        libc++_shared.so ($$(wc -c < $@) bytes, stripped)"
 
+# Refuse to package an app that expects C++ runtime symbols the bundled
+# libc++_shared.so does not define. The APK would install, and the library would
+# fail to load on the device with "cannot locate symbol", before any of your
+# code runs and with no crash report. Checked on the symbols libc++ owns
+# (the __ndk1 namespace); the rest of the dynamic symbols are the system's.
+.PHONY: verify-libcxx
+verify-libcxx: $(SQ_SO) $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
+	@nm -D --undefined-only $(SQ_SO) | awk '{print $$NF}' | grep '__ndk1' | sort -u > $(SQ_APK_DIR)/.libcxx_wanted || true
+	@nm -D --defined-only $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so | awk '{print $$NF}' | sort -u > $(SQ_APK_DIR)/.libcxx_has
+	@missing=$$(comm -23 $(SQ_APK_DIR)/.libcxx_wanted $(SQ_APK_DIR)/.libcxx_has); \
+	if [ -n "$$missing" ]; then \
+	  echo "" >&2; \
+	  echo "libc++ mismatch: lib$(SQ_PROJECT).so needs symbols the bundled libc++_shared.so lacks:" >&2; \
+	  echo "$$missing" | head -5 | sed 's/^/  /' >&2; \
+	  echo "  bundled from: $(SQ_LIBCXX)" >&2; \
+	  echo "  the compiler links: $(SQ_LIBCXX_LINKED)" >&2; \
+	  echo "  set SQ_LIBCXX=/path/to/matching/libc++_shared.so" >&2; \
+	  exit 1; \
+	fi; \
+	echo "  libc++ check   every needed symbol is in the bundled runtime"
+
 $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so: $(SQ_SO)
 	@mkdir -p $(dir $@)
 	@cp $< $@
 
 $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
                     $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so \
-                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
+                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so \
+                    | verify-libcxx
 	@cp $(SQ_APK_DIR)/base.apk $@
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) lib/$(SQ_ABI)/*.so

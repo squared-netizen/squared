@@ -74,7 +74,14 @@ SQ_NDK_INC  := $(SQ_SYSROOT)/usr/include
 # level up, in the ABI directory.
 SQ_NDK_LIB     := $(SQ_SYSROOT)/usr/lib/$(SQ_LIB_TRIPLE)/$(SQ_MIN_SDK)
 SQ_NDK_LIB_ABI := $(SQ_SYSROOT)/usr/lib/$(SQ_LIB_TRIPLE)
-SQ_LIBCXX      := $(SQ_NDK_LIB_ABI)/libc++_shared.so
+# libc++_shared.so is taken from where the compiler itself finds it, not from
+# the NDK folder. The two can differ: Termux's clang ships its own, newer libc++
+# headers, and the copy in an older NDK folder lacks symbols those headers call
+# (std::__hash_memory, added in libc++ 21). The APK then installs, and the
+# library fails to load with "cannot locate symbol". If the compiler reports no
+# path, fall back to the NDK copy. Override with: make SQ_LIBCXX=/path/to.so
+SQ_LIBCXX_LINKED := $(shell $(CXX) -print-file-name=libc++_shared.so 2>/dev/null)
+SQ_LIBCXX      := $(if $(filter /%,$(SQ_LIBCXX_LINKED)),$(SQ_LIBCXX_LINKED),$(SQ_NDK_LIB_ABI)/libc++_shared.so)
 
 SQ_GLUE_DIR := $(SQ_NDK)/sources/android/native_app_glue
 SQ_GLUE_SRC := $(SQ_GLUE_DIR)/android_native_app_glue.c
