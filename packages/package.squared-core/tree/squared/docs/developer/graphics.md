@@ -379,6 +379,42 @@ neighbour. For a 1x1 fallback it is the same texel either way.
 It is computed per call rather than stored, so it stays a view of the current
 region rather than a copy that would go stale.
 
+## GlyphLayout
+
+`set_text()` lays text out into the layout's own storage, in two passes:
+
+1. **Read.** Decode the UTF-8 once without touching the layout: reject invalid
+   bytes when asked to, count lines, and bound the glyph count (one per
+   scalar, `tab_spaces` per tab, one per replaced byte). Then `reserve()` both
+   vectors to those bounds.
+2. **Write.** Clear and fill in place. Within the reserved capacity nothing
+   allocates or throws, so a call that reaches this pass completes.
+
+That keeps the documented guarantee (a failed call leaves the previous layout
+unchanged) without the old way of providing it: building a complete second
+layout and moving it over the first. That cost two allocations per call,
+because the fresh layout's vectors started empty, and freed the old storage
+every time. In the gui, where every label is laid out every frame, it was every
+allocation the demo made per frame (Sprint 3, task 3.0; found with the
+frame-allocation counter's call sites).
+
+`clear()` keeps the storage for the same reason. The storage a layout keeps is
+bounded by the longest text it has held: 56 bytes per glyph and 32 per line.
+
+The glyph bound is capped at 2^24. A text that would expand past that, which
+only tabs can do, fails with `limit_exceeded` before anything is allocated,
+rather than asking `reserve()` for gigabytes.
+
+The rewrite was checked differentially against the old implementation: 4,000
+random texts (newlines, CR/LF, tabs, multi-byte, invalid bytes, kerning
+pairs) under random options produced identical glyphs, lines, sizes and errors.
+`graphics/test/glyph_layout_test.cpp` counts allocations with the dev module's
+counter: none for a repeated, shorter or cleared layout, and the failed call
+leaves the previous layout in place.
+
+Priority 1 governed this one: storage kept for the longest text, against two
+heap round trips per text per frame.
+
 ## Notes
 
 `graphics/src/detail/bitmap_font_detail.hpp` holds the

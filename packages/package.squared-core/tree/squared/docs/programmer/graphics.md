@@ -61,6 +61,27 @@ Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 | `GlyphLine` | `squared/graphics/src/glyph_line.hpp` | One explicit line in a GlyphLayout |
 | `GlyphPlacement` | `squared/graphics/src/glyph_placement.hpp` | One SpriteBatch-ready glyph quad in top-left logical coordinates |
 
+**Keep one `GlyphLayout` and lay text out again into it.** `set_text()` reuses
+the layout's storage, and allocates only when the text needs more glyphs or
+lines than any earlier text did. A layout made fresh for every call allocates
+twice, every time:
+
+```cpp
+// once, alongside your font
+sq::graphics::GlyphLayout layout;
+
+// every frame
+sq::graphics::BitmapFontError error;
+if (layout.set_text(font, score_text, error)) {
+    for (const auto& glyph : layout.glyphs()) { /* draw it */ }
+}
+```
+
+`clear()` empties the layout and keeps that storage. Assign
+`sq::graphics::GlyphLayout{}` to give it back. A failed `set_text()` leaves the
+previous layout as it was. Failure is reported through `BitmapFontError`, not
+thrown.
+
 ## Creating a context
 
 The platform layer owns the `Context`. Application code receives higher-level objects and never presents the window itself.

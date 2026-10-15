@@ -116,7 +116,11 @@ that every subsystem allocate from an arena it owns, sized at init, and that
 the steady-state footprint be knowable before `main` runs. Neither holds
 today.
 
-Nothing allocates inside `Ui::paint`. `Ui::layout` and `Ui::update` can:
+Nothing allocates inside `Ui::paint` once text storage has grown. Until Sprint
+3 it did: every text a widget measured or drew made a fresh `GlyphLayout`, two
+allocations each, 8 to 10 per frame in the demo. The frame-allocation counter
+found it; `gui.md` (BatchPainter) and `graphics.md` (GlyphLayout) have the fix.
+`Ui::layout` and `Ui::update` can still allocate:
 `Ui::focusable_widgets` returns a fresh `std::vector<Widget*>` on every focus
 move, and tooltip materialisation builds a whole widget subtree. Both are
 input-driven rather than per-frame, but both are on a path a user can trigger

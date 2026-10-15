@@ -104,11 +104,10 @@ Size BatchPainter::measure_text( std::string_view text )
 
 Size BatchPainter::measure_text( std::string_view text, const FontResource *font )
 {
-    graphics::GlyphLayout layout;
-    if( !layout_text( font, text, layout ) ) {
+    if( !layout_text( font, text, text_layout_ ) ) {
         return Size{ 0.0F, 0.0F };
     }
-    return Size{ layout.width(), layout.height() };
+    return Size{ text_layout_.width(), text_layout_.height() };
 }
 
 void BatchPainter::fill_rectangle( const Rectangle &rectangle, graphics::Color color )
@@ -173,12 +172,11 @@ void BatchPainter::draw_text( std::string_view text, float x, float y, graphics:
 void BatchPainter::draw_text( std::string_view text, float x, float y, const FontResource *font,
                               graphics::Color color )
 {
-    graphics::GlyphLayout layout;
-    if( !layout_text( font, text, layout ) ) {
+    if( !layout_text( font, text, text_layout_ ) ) {
         return;
     }
 
-    for( const graphics::GlyphPlacement &glyph : layout.glyphs() ) {
+    for( const graphics::GlyphPlacement &glyph : text_layout_.glyphs() ) {
         const graphics::TextureRegion region = font->glyph_region( glyph );
         if( !region.valid() ) {
             continue;

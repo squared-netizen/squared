@@ -127,6 +127,16 @@ without.
 Passing null is supported and creates an owned 1x1. It is the fallback, not
 the intent.
 
+**Text goes through one scratch layout.** `measure_text()` and `draw_text()`
+lay text out into a `GlyphLayout` member, `text_layout_`, rather than a local.
+Its storage grows to the longest text the painter has handled and then stays,
+so painting text allocates nothing once that has happened. A local layout per
+call allocated twice per text, and widgets measure and draw every frame: that
+was all 8 to 10 allocations per frame the demo made (Sprint 3, task 3.0). Cost:
+`sizeof(BatchPainter)` 472 → 536 bytes, plus the kept storage (56 bytes per
+glyph of the longest text). The base `Painter::measure_text()` still uses a
+local layout; it has no state of its own, and `BatchPainter` overrides it.
+
 ### Clipping
 
 `push_clip`/`pop_clip` map onto `SpriteBatch::set_clip`, which takes a scissor

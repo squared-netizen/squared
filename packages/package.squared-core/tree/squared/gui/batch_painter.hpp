@@ -1,6 +1,7 @@
 #pragma once
 
 #include <squared/graphics/color.hpp>
+#include <squared/graphics/glyph_layout.hpp>
 #include <squared/graphics/texture.hpp>
 #include <squared/graphics/texture_region.hpp>
 #include <squared/gui/src/painter.hpp>
@@ -125,6 +126,14 @@ class BatchPainter final : public Painter
 
         graphics::SpriteBatch *batch_;
         const FontResource *default_font_;
+        /**
+     * @brief Scratch layout shared by measure_text and draw_text.
+     *
+     * Kept between calls so that laying text out reuses its storage: it grows
+     * to the longest text drawn and then stops allocating, where a layout
+     * made per call allocated twice for every label, every frame.
+     */
+        graphics::GlyphLayout text_layout_;
         const graphics::TextureRegion *fill_{ nullptr };
         graphics::Texture owned_white_;
         graphics::TextureRegion owned_fill_;

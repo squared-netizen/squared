@@ -26,6 +26,10 @@ class GlyphLayout final
      * @param error Cleared on success or filled on failure.
      * @return true after transactional replacement; false leaves the prior
      * layout unchanged.
+     *
+     * The layout's storage is reused: a call allocates only when this text
+     * needs more glyphs or lines than any earlier one did. Keep one layout and
+     * call this again rather than making a new one per call.
      */
         [[nodiscard]] bool set_text( const BitmapFont &font, std::string_view text,
                                      const GlyphLayoutOptions &options,
@@ -38,6 +42,7 @@ class GlyphLayout final
             return set_text( font, text, {}, error );
         }
 
+        /** @brief Empty the layout, keeping its storage; assign GlyphLayout{} to release it. */
         void clear() noexcept;
         [[nodiscard]] float width() const noexcept { return width_; }
         [[nodiscard]] float height() const noexcept { return height_; }

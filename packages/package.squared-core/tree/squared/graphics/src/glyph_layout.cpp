@@ -24,6 +24,15 @@ namespace sq::graphics
 // original single translation unit; they are shared now.
 using namespace detail;
 
+namespace
+{
+
+// The most glyphs one call may produce: a bound on what a tab-heavy text can
+// expand to, well above any real text and far below what reserve() rejects.
+constexpr std::size_t glyph_bound_limit = std::size_t{ 1 } << 24U;
+
+} // namespace
+
 bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
                             const GlyphLayoutOptions &options, BitmapFontError &error ) noexcept
 {
@@ -38,9 +47,58 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
     }
 
     try {
-        GlyphLayout candidate;
-        candidate.line_height_ = static_cast<float>( font.line_height() ) * options.scale;
-        candidate.glyphs_.reserve( text.size() );
+        // Pass 1 reads the text without touching this layout: it rejects
+        // invalid UTF-8 when asked to, and counts the most glyphs and lines the
+        // text can produce. Growing the storage to that before anything is
+        // written is what keeps the call transactional without building a
+        // second layout: reserve() either succeeds or leaves the contents as
+        // they were, and nothing after it allocates.
+        std::size_t glyph_bound = 0;
+        std::size_t line_count = 1;
+        const auto add_glyphs = [&]( std::size_t count ) {
+            if( count > glyph_bound_limit - glyph_bound ) {
+                return false;
+            }
+            glyph_bound += count;
+            return true;
+        };
+        for( std::size_t cursor = 0; cursor < text.size(); ) {
+            const auto byte_offset = cursor;
+            const auto decoded = decode_utf8( text, cursor );
+            bool fits = true;
+            if( !decoded ) {
+                if( options.reject_invalid_utf8 ) {
+                    fail( error, BitmapFontErrorCode::invalid_utf8, 0,
+                          "invalid UTF-8 at byte " + std::to_string( byte_offset ) );
+                    return false;
+                }
+                fits = options.replacement == 0 || add_glyphs( 1 );
+            } else if( *decoded == U'\r' ) {
+                if( cursor < text.size() && text[cursor] == '\n' ) {
+                    ++cursor;
+                }
+                ++line_count;
+            } else if( *decoded == U'\n' ) {
+                ++line_count;
+            } else if( *decoded == U'\t' ) {
+                fits = add_glyphs( options.tab_spaces );
+            } else {
+                fits = add_glyphs( 1 );
+            }
+            if( !fits ) {
+                fail( error, BitmapFontErrorCode::limit_exceeded, 0, "text expands too far" );
+                return false;
+            }
+        }
+        glyphs_.reserve( glyph_bound );
+        lines_.reserve( line_count );
+
+        // Pass 2 lays the text out in place. Within the capacity reserved above
+        // nothing here allocates or fails, so once it starts it finishes.
+        glyphs_.clear();
+        lines_.clear();
+        width_ = 0.0F;
+        line_height_ = static_cast<float>( font.line_height() ) * options.scale;
 
         std::size_t line_first = 0;
         float pen_x = 0.0F;
@@ -48,11 +106,10 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
         std::optional<char32_t> previous;
 
         const auto finish_line = [&]() {
-            candidate.lines_.push_back( GlyphLine{
-                line_first, candidate.glyphs_.size() - line_first, line_width, 0.0F,
-                static_cast<float>( candidate.lines_.size() ) * candidate.line_height_ } );
-            candidate.width_ = std::max( candidate.width_, line_width );
-            line_first = candidate.glyphs_.size();
+            lines_.push_back( GlyphLine{ line_first, glyphs_.size() - line_first, line_width, 0.0F,
+                                         static_cast<float>( lines_.size() ) * line_height_ } );
+            width_ = std::max( width_, line_width );
+            line_first = glyphs_.size();
             pen_x = 0.0F;
             line_width = 0.0F;
             previous.reset();
@@ -75,12 +132,12 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
             const float width = static_cast<float>( glyph->width ) * options.scale;
             const float height = static_cast<float>( glyph->height ) * options.scale;
             const float x = pen_x + static_cast<float>( glyph->x_offset ) * options.scale;
-            const float y = static_cast<float>( candidate.lines_.size() ) * candidate.line_height_ +
+            const float y = static_cast<float>( lines_.size() ) * line_height_ +
                             static_cast<float>( glyph->y_offset ) * options.scale;
             const float advance = static_cast<float>( glyph->x_advance ) * options.scale;
-            candidate.glyphs_.push_back( GlyphPlacement{ rendered, glyph->page, glyph->x, glyph->y,
-                                                         glyph->width, glyph->height, x, y, width,
-                                                         height, advance } );
+            glyphs_.push_back( GlyphPlacement{ rendered, glyph->page, glyph->x, glyph->y,
+                                               glyph->width, glyph->height, x, y, width, height,
+                                               advance } );
             pen_x += advance;
             line_width = std::max( { line_width, pen_x, x + width } );
             previous = rendered;
@@ -88,14 +145,10 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
 
         std::size_t cursor = 0;
         while( cursor < text.size() ) {
-            const auto byte_offset = cursor;
             const auto decoded = decode_utf8( text, cursor );
             if( !decoded ) {
-                if( options.reject_invalid_utf8 ) {
-                    fail( error, BitmapFontErrorCode::invalid_utf8, 0,
-                          "invalid UTF-8 at byte " + std::to_string( byte_offset ) );
-                    return false;
-                }
+                // Only reached when invalid UTF-8 is not rejected: pass 1 has
+                // already returned otherwise.
                 if( options.replacement != 0 ) {
                     place_scalar( options.replacement );
                 }
@@ -119,8 +172,8 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
         finish_line();
 
         if( options.target_width > 0.0F ) {
-            candidate.width_ = options.target_width;
-            for( auto &line : candidate.lines_ ) {
+            width_ = options.target_width;
+            for( auto &line : lines_ ) {
                 const float remaining = std::max( 0.0F, options.target_width - line.width );
                 if( options.alignment == GlyphAlignment::center ) {
                     line.x_offset = remaining * 0.5F;
@@ -129,12 +182,11 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
                 }
                 for( std::size_t index = line.first_glyph;
                      index < line.first_glyph + line.glyph_count; ++index ) {
-                    candidate.glyphs_[index].x += line.x_offset;
+                    glyphs_[index].x += line.x_offset;
                 }
             }
         }
-        candidate.height_ = static_cast<float>( candidate.lines_.size() ) * candidate.line_height_;
-        *this = std::move( candidate );
+        height_ = static_cast<float>( lines_.size() ) * line_height_;
         return true;
     } catch( const std::bad_alloc & ) {
         error.code = BitmapFontErrorCode::limit_exceeded;
@@ -151,7 +203,13 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
 
 void GlyphLayout::clear() noexcept
 {
-    *this = GlyphLayout{};
+    // Keeps the storage, so the next set_text() of no longer text does not
+    // allocate. Assign GlyphLayout{} to release it.
+    width_ = 0.0F;
+    height_ = 0.0F;
+    line_height_ = 0.0F;
+    glyphs_.clear();
+    lines_.clear();
 }
 
 } // namespace sq::graphics

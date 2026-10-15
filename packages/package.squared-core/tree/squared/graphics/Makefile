@@ -83,11 +83,24 @@ ATLAS_TEST := $(BUILD_DIR)/texture_atlas_test
 # that quietly skips what is up to date reports green without having run.
 BATCH_TEST := $(BUILD_DIR)/sprite_batch_test
 
-test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST)
+# Laying the same text out again allocates nothing. Counted with the dev
+# module's frame-allocation counter, linked into this test only.
+GLYPH_TEST := $(BUILD_DIR)/glyph_layout_test
+
+test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST)
 	@$(TEST_BINARY)
 	@$(TEXTURE_TEST)
 	@$(ATLAS_TEST)
 	@$(BATCH_TEST)
+	@$(GLYPH_TEST)
+
+$(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
+               $(MODULE_DIR)/src/glyph_layout.cpp \
+               $(MODULE_DIR)/src/bitmap_font.cpp \
+               $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+               $(SQUARED_ROOT)/dev/src/dev_log.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $^ -ldl -pthread -o $@
 
 $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(MODULE_DIR)/src/common/sprite_batch_common.cpp \
