@@ -73,10 +73,30 @@ load order: the application library before `libc++_shared.so`. So libc++'s
 own calls to `operator new` (a `std::string` growing out of line) reach the
 replacements too. The host test checks the same thing against libstdc++.
 
+**Call sites.** Each `operator new` passes its own return address
+(`__builtin_return_address( 0 )`, expanded in each definition through one
+macro, because a helper would report its own frame). While counting, the
+allocation walks the stack with `_Unwind_Backtrace`, skips frames until it
+reaches that address (the counter's own frames, however many inlining left),
+and keeps the four frames from there outwards. That is the site's key. Sites
+live in a fixed table of 64, searched linearly; the 65th distinct site and
+beyond are counted as `unnamed`. A guard flag stops the walk from recursing if
+an unwinder ever allocated. LLVM's libunwind grows its frame cache with
+`malloc`, which is not counted.
+
+The walk costs a few microseconds per allocation, paid only on the frame
+thread while armed, and only in a development build. A frame that allocates
+ten times pays it ten times; that is the price of naming them.
+
 **Reporting** is done by `frame_end()` on the frame thread, after disarming,
-into a 160-byte stack buffer with `std::to_chars`, then `log_line()`. The
-first allocating frame is reported at once; after that, one summary per 120
-frames, only when one of them allocated.
+into a 256-byte stack buffer with `std::to_chars`, then `log_line()`:
+
+1. one `site` line for each site first seen in this frame, each frame as
+   `library 0xoffset` (from `dladdr`), the form `addr2line -e` takes;
+2. the first allocating frame, once;
+3. every 120 frames, when one of them allocated, the summary and then the
+   window's sites by count (`id:count`, at most eight distinct counts, found by
+   repeated passes over the table: no sort, no copy).
 
 **Linking.** `entry.cpp` calls `frame_begin()`, which pulls
 `frame_allocations.o` out of `libsquared_dev.a`, and the replacements come with
@@ -101,7 +121,8 @@ is allocated at run time, in `open_log_sink` or anywhere else.
 | socket fd | 4 |
 | per-crash line buffer | on the alternate stack, 1001 |
 | counter state (flags, tallies, report window) | about 100 |
-| report line | on the frame thread's stack, 160 |
+| site table: 64 sites of 56 bytes (4 frames, 2 counts, 2 flags) | 3584 |
+| report line | on the frame thread's stack, 256 |
 
 Priority 1 governs: the module is opt-in and costs nothing in a release build,
 where the archive is not linked.
@@ -161,5 +182,11 @@ where the archive is not linked.
   `make_unique` (1 allocation, 8 bytes), a string grown inside the shared C++
   library (counted), an over-aligned `new` (counted, aligned), and a vector
   built on another thread during the frame (not counted). Then it opens a sink
-  and checks the summary line for a window with three allocating frames, and
-  that a clean window sends nothing.
+  and runs two windows: two new sites, each named once with this program's
+  name and an offset; the summary; the by-site line with the right counts;
+  then a window where a known site allocates again, which reports its id and
+  names nothing new; and a clean window, which sends nothing.
+
+The offsets in the `site` lines were checked with
+`addr2line -f -C -i -e build/release/frame_allocations_test`: they resolve to
+`std::make_unique`, inlined into the test's `allocate_here()`, and to `main`.

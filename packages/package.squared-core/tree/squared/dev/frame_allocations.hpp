@@ -28,7 +28,10 @@ void frame_begin() noexcept;
  *
  * When a log sink is open (open_log_sink()), allocating frames are reported
  * through it: the first one at once, then at most one summary line every 120
- * frames. A frame that allocated nothing is never reported.
+ * frames, followed by the window's busiest call sites. Each call site is named
+ * once, the first time it allocates, as the four innermost frames above
+ * operator new, in the `library 0xoffset` form addr2line takes. A frame that
+ * allocated nothing is never reported.
  *
  * @return This frame's count; zero when frame_begin() was not called on this
  * thread.

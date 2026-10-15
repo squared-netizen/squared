@@ -236,9 +236,14 @@ frame's `update()` and `render()` with `sq::dev::frame_begin()` and
 `frame_end()`. Frames that allocate are reported over the log sink:
 
 ```
-alloc: frame 3 allocated 2 times, 96 bytes (the first frame that allocated)
-alloc: 41 of the last 120 frames allocated: 82 times, 3936 bytes; most in one frame: 2
+alloc: site 1 (frame 3): libdemo.so 0x4a5f0 < libdemo.so 0x51c2c < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
+alloc: frame 3: 2 allocations, 96 bytes (the first frame that allocated)
+alloc: 41 of the last 120 frames allocated: 82 allocations, 3936 bytes; most in one frame: 2
+alloc: by site: 1:41 2:41
 ```
+
+Each site is named once, as library offsets; `addr2line -f -C -i -e
+build/libdemo.so <offsets>` turns them into functions and lines.
 
 Only the frame thread is counted, and a release build contains none of it.
 Unlike layers 1 and 2 it does not fail `make lint`: it runs on the device, so

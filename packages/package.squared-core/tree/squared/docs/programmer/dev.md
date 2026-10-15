@@ -104,14 +104,35 @@ The Android template does it for you in `DEV_LOG` builds: every frame's
 over the log sink.
 
 ```
-alloc: frame 3 allocated 2 times, 96 bytes (the first frame that allocated)
-alloc: 41 of the last 120 frames allocated: 82 times, 3936 bytes; most in one frame: 2
+alloc: site 1 (frame 3): libdemo.so 0x4a5f0 < libdemo.so 0x51c2c < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
+alloc: frame 3: 2 allocations, 96 bytes (the first frame that allocated)
+alloc: site 2 (frame 7): libc++_shared.so 0x8f1c4 < libdemo.so 0x52018 < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
+alloc: 41 of the last 120 frames allocated: 82 allocations, 3936 bytes; most in one frame: 2
+alloc: by site: 1:41 2:41
 ```
 
-The first line arrives the first time any frame allocates. After that, at most
-one summary every 120 frames (two seconds at 60 frames a second), and only
-when a frame in that window allocated. A program whose frames never allocate
-prints nothing.
+- **`frame` and summary lines.** The first arrives the first time any frame
+  allocates. After that, at most one summary every 120 frames (two seconds at
+  60 frames a second), and only when a frame in that window allocated. A
+  program whose frames never allocate prints nothing.
+- **`site` lines** name each place that allocates, once, the first time it
+  does. A site is the four innermost frames above `operator new`, innermost
+  first: the code that called `new` (often a container growing), then what
+  called that. The number is the site's id for the rest of the run.
+- **`by site`** follows each summary: the window's busiest sites as
+  `id:allocations`, most first.
+
+Turn a site into function names and source lines with the unstripped library
+from your build, one offset or several at once:
+
+```sh
+addr2line -f -C -i -e build/libdemo.so 0x4a5f0 0x51c2c 0x3e110
+```
+
+`-i` matters. It shows the functions inlined at that address, which is where
+`std::vector` and `std::string` growth usually is. A frame in
+`libc++_shared.so` is the C++ library's own code, and the APK's copy of it is
+stripped. Look one frame further out, in your library, to see who called it.
 
 To count something else, bracket it yourself:
 
@@ -157,6 +178,8 @@ thread.
 - Not other threads: a loader or audio thread allocating meanwhile is not a
   frame allocation.
 - Not `malloc` called directly, and not the GPU driver.
+- At most 64 distinct sites are named per run. Later ones are still counted
+  and show as `unnamed` in the `by site` line.
 
 Linking this part of the module replaces the global `operator new` and
 `operator delete` for the whole process. That is why it exists only in a

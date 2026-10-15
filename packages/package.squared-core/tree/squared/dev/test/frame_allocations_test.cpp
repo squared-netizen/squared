@@ -62,6 +62,20 @@ struct Listener
         }
 };
 
+// Two allocation sites the reporting test can tell apart. Not inlined, so each
+// is a frame of its own in the recorded stack.
+[[gnu::noinline]] void allocate_here()
+{
+    auto value = std::make_unique<std::uint32_t>( 3 );
+    g_sink = value.get();
+}
+
+[[gnu::noinline]] void allocate_there()
+{
+    auto value = std::make_unique<std::uint32_t>( 4 );
+    g_sink = value.get();
+}
+
 bool starts_with( const std::string &text, std::string_view prefix )
 {
     return text.compare( 0, prefix.size(), prefix ) == 0;
@@ -134,30 +148,56 @@ int main()
     assert( status == sq::dev::LogSinkStatus::Opened );
     static_cast<void>( status );
 
-    // The frames above already reported the first allocating frame (with no
-    // sink open, so it went nowhere). Finish the current 120-frame window with
-    // clean frames, then run one with three allocating frames in it.
+    // The frames above already reported the first allocating frame and named
+    // their sites (with no sink open, so those lines went nowhere). Finish the
+    // current 120-frame window with clean frames and drain what it sent.
     for( int i = 0; i < 120; ++i ) {
         frame_begin();
         frame_end();
     }
-    std::string line = listener.receive();
-    while( !line.empty() && !starts_with( line, "alloc: " ) ) {
-        line = listener.receive();
+    while( !listener.receive().empty() ) {
     }
-    for( int i = 0; i < 120; ++i ) {
+
+    // Two windows. The first has five allocating frames from two new sites:
+    // three from allocate_here(), two from allocate_there(). The second has
+    // one, from the same allocate_here() call, which is a known site by then.
+    // (A site includes its callers, so it has to be the same call expression.)
+    for( int i = 0; i < 240; ++i ) {
         frame_begin();
-        if( i < 3 ) {
-            auto value = std::make_unique<std::uint32_t>( 3 );
-            g_sink = value.get();
+        if( i < 3 || i == 120 ) {
+            allocate_here();
+        } else if( i < 5 ) {
+            allocate_there();
         }
         frame_end();
     }
-    line = listener.receive();
-    std::printf( "  %s\n", line.c_str() );
-    assert( starts_with( line, "alloc: 3 of the last 120 frames allocated: 3 times, 12 bytes" ) );
-    assert( listener.receive().empty() );
+    std::vector<std::string> lines;
+    for( std::string next = listener.receive(); !next.empty(); next = listener.receive() ) {
+        std::printf( "  %s\n", next.c_str() );
+        lines.push_back( next );
+    }
+    // Two "site" lines, each naming this program with an offset addr2line
+    // takes; the summary and the by-site line; then the second window's
+    // summary and by-site line, with no new site.
+    assert( lines.size() == 6 );
+    assert( starts_with( lines[0], "alloc: site " ) );
+    assert( starts_with( lines[1], "alloc: site " ) );
+    assert( lines[0].find( "frame_allocations_test 0x" ) != std::string::npos );
+    assert( lines[1].find( "frame_allocations_test 0x" ) != std::string::npos );
+    assert( lines[0] != lines[1] );
+    assert( starts_with( lines[2],
+                         "alloc: 5 of the last 120 frames allocated: 5 allocations, 20 bytes" ) );
+    assert( starts_with( lines[3], "alloc: by site: " ) );
+    assert( lines[3].find( ":3 " ) != std::string::npos );
+    assert( lines[3].compare( lines[3].size() - 2, 2, ":2" ) == 0 );
+    assert( starts_with( lines[4],
+                         "alloc: 1 of the last 120 frames allocated: 1 allocations, 4 bytes" ) );
+    // The by-site line names the same site as allocate_here()'s first line.
+    const std::string here =
+        lines[3].substr( std::string( "alloc: by site: " ).size(), lines[3].find( ':', 16 ) - 16 );
+    assert( lines[5] == "alloc: by site: " + here + ":1" );
 
+    // A clean window sends nothing.
     for( int i = 0; i < 120; ++i ) {
         frame_begin();
         frame_end();
