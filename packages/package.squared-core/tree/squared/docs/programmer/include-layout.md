@@ -92,5 +92,7 @@ class Skin;
 ## Self-containment
 
 Every header compiles on its own, with no prerequisite include. `make headers`
-(or `tools/check_headers.sh`) proves it by compiling each one in isolation;
-run it before you commit a new header.
+(or `tools/check_headers.sh`) proves it by compiling each one in isolation.
+It also checks that every header under `src/` is reached through one at a
+module root, which is what lets you include the root header and get the rest.
+Run it before you commit a new header.

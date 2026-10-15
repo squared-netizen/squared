@@ -84,17 +84,24 @@ one commit with clang-format 21 (`244cc13`, listed in the repo's
 the flags above minus the warnings, read from the Makefiles, so a flag changed
 here changes what it analyses too.
 
-## Checking self-containment
+## Checking the headers
 
 ```sh
 ./tools/check_headers.sh
 ```
 
-Compiles every public header alone with `-Wall -Wextra -Wpedantic`. Exit status
-is the number that are not self-contained. Run it in CI; it is the one check
-that protects the layout.
+Two checks, which together protect the layout ([file-layout.md](file-layout.md)):
 
-Each header is a full compile, so the whole tree takes minutes on a phone. Two
+1. **Reachability.** Every header under `src/` must be reached through the
+   includes of a header at a module root (not counting the module's
+   aggregate). Instant.
+2. **Self-containment.** Every public header is compiled alone with
+   `-Wall -Wextra -Wpedantic`.
+
+Exit status is 0 when both pass, 1 when either fails, and 2 for a usage or
+environment error. `make headers` runs it; run it in CI.
+
+Each header is a full compile, so the second check takes minutes on a phone. Two
 things make that bearable:
 
 ```sh

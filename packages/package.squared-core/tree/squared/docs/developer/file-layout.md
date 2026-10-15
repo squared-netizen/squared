@@ -36,8 +36,22 @@ The exception is deliberate extension surface: `messaging/src/telegram_provider.
 with `provider_result.hpp` and `provider_status.hpp` behind it, is for
 someone writing a provider, and no everyday header pulls it in.
 
-`gui/batch_painter.hpp` sits at the root without a verdict; Sprint 3 decides
-it along with the rest of the API simplification.
+This is checked, not asserted. The first step of `tools/check_headers.sh`
+follows the `#include <squared/...>` lines out from every workhorse header and
+fails for any supporting header it never reaches. A module's aggregate,
+`<module>/<module>.hpp`, is not a starting point: it includes the whole module,
+so counting it would let anything pass. The three extension-surface headers
+are listed in the script, and a listed header that no longer exists fails too,
+so the list cannot quietly go stale. The step is one `grep` over the tree and
+one `awk`, and takes well under a second.
+
+**`gui/batch_painter.hpp` is a workhorse header.** It was the last header
+without a verdict, and Sprint 3 settled it. An application names
+`BatchPainter` in its own code: it constructs one, keeps it, and passes it to
+`Ui::layout()` and `Ui::paint()`, which take the abstract `Painter`. It is the
+only `Painter` that puts widgets on screen. It was already at the root, so no
+file moved and no include line changed. Every header now has a verdict: 77 at
+module roots (eight of them aggregates) and 120 in `src/`.
 
 ## Include paths
 
@@ -109,8 +123,8 @@ directory listing a user sees is the short list of types they will use.
 **Every header compiles on its own.** No header requires another to be
 included first.
 
-This is checked, not asserted: `tools/check_headers.sh` compiles every header
-at a module root and under `src/` in isolation, with
+This is checked, not asserted: the second step of `tools/check_headers.sh`
+compiles every header at a module root and under `src/` in isolation, with
 `-std=c++20 -Wall -Wextra -Wpedantic`, and `make headers` runs it. It skips
 `src/detail/`, which is private. A header that regresses fails there.
 

@@ -252,16 +252,27 @@ Widgets draw through a `Painter`. `BatchPainter` is the one that puts them on
 screen:
 
 ```cpp
-sq::gui::BatchPainter painter{batch, &default_font};
-painter.set_fill_source(skin.region("white"));      // see below
+#include <squared/gui/batch_painter.hpp>
+
+// Once, after the skin's atlas and font are loaded:
+sq::gui::BatchPainter painter{batch, font.get()};   // font: the skin's FontPtr
+const sq::graphics::AtlasRegion* white = atlas.find_region("white");
+if (!painter.set_fill_source(white != nullptr ? &white->region() : nullptr)) {
+    // no fill source at all; solid fills are skipped
+}
 painter.set_viewport(640.0F, 480.0F, graphics.pixel_width(),
                      graphics.pixel_height());
 
+// Every frame:
+ui.layout(painter);          // does nothing unless something changed
 if (batch.begin(camera)) {
-    ui.paint(painter, skin);
+    ui.paint(painter);
     batch.end();
 }
 ```
+
+Keep one painter for the life of the interface. It holds the scratch storage
+text is laid out in, so a new painter per frame would allocate again.
 
 Call `set_viewport()` again on resize. Only clipping needs it.
 
