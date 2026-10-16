@@ -1,7 +1,6 @@
 #include <squared/dev/frame_allocations.hpp>
 #include <squared/graphics/bitmap_font.hpp>
 #include <squared/graphics/glyph_layout.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
 #include <squared/graphics/src/glyph_layout_options.hpp>
 
 #include <cassert>
@@ -30,9 +29,8 @@ constexpr std::string_view k_font =
 std::uint64_t allocations_for( sq::graphics::GlyphLayout &layout,
                                const sq::graphics::BitmapFont &font, std::string_view text )
 {
-    sq::graphics::BitmapFontError error;
     sq::dev::frame_begin();
-    const bool laid_out = layout.set_text( font, text, error );
+    const bool laid_out = !layout.set_text( font, text );
     const sq::dev::FrameAllocations used = sq::dev::frame_end();
     assert( laid_out );
     static_cast<void>( laid_out );
@@ -44,8 +42,7 @@ std::uint64_t allocations_for( sq::graphics::GlyphLayout &layout,
 int main()
 {
     sq::graphics::BitmapFont font;
-    sq::graphics::BitmapFontError error;
-    const bool loaded = font.load( k_font, error );
+    const bool loaded = !font.load( k_font );
     assert( loaded );
     static_cast<void>( loaded );
 
@@ -76,12 +73,12 @@ int main()
     strict.reject_invalid_utf8 = true;
     const float width = layout.width();
     const std::size_t count = layout.glyphs().size();
-    assert( !layout.set_text( font, "A\xff", strict, error ) );
+    const sq::graphics::BitmapFontError error = layout.set_text( font, "A\xff", strict );
     assert( error.code == sq::graphics::BitmapFontErrorCode::invalid_utf8 );
     assert( layout.width() == width && layout.glyphs().size() == count );
 
     // Kerning between A and B still applies: B starts one unit closer.
-    assert( layout.set_text( font, "AB", error ) );
+    assert( !layout.set_text( font, "AB" ) );
     assert( layout.glyphs()[1].x == 9.0F - 1.0F + 1.0F );
 
     std::printf( "glyph layout: all assertions passed  sizeof(GlyphLayout)=%zu\n",

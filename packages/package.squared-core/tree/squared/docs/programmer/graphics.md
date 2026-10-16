@@ -51,7 +51,7 @@ Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 | `BitmapFontInfo` | `squared/graphics/src/bitmap_font_info.hpp` | Portable BMFont face metadata |
 | `BitmapFontPage` | `squared/graphics/src/bitmap_font_page.hpp` | One texture-page dependency declared by a BMFont |
 | `BitmapFontParseLimits` | `squared/graphics/src/bitmap_font_parse_limits.hpp` | Explicit resource limits for one text BMFont descriptor |
-| `BitmapFontError` | `squared/graphics/src/bitmap_font_error.hpp` | One owned BMFont parsing or glyph-layout failure |
+| `BitmapFontError` | `squared/graphics/src/bitmap_font_error.hpp` | What `BitmapFont::load` or `GlyphLayout::set_text` returns: true when something failed |
 | `BitmapFontErrorCode` | `squared/graphics/src/bitmap_font_error_code.hpp` | Stable failure categories for BMFont parsing and glyph layout |
 | `BitmapGlyph` | `squared/graphics/src/bitmap_glyph.hpp` | One Unicode scalar's source rectangle and layout metrics |
 | `BitmapKerning` | `squared/graphics/src/bitmap_kerning.hpp` | Pair-specific horizontal advance adjustment in source pixels |
@@ -71,16 +71,52 @@ twice, every time:
 sq::graphics::GlyphLayout layout;
 
 // every frame
-sq::graphics::BitmapFontError error;
-if (layout.set_text(font, score_text, error)) {
+if (!layout.set_text(font, score_text)) {
     for (const auto& glyph : layout.glyphs()) { /* draw it */ }
 }
 ```
 
 `clear()` empties the layout and keeps that storage. Assign
 `sq::graphics::GlyphLayout{}` to give it back. A failed `set_text()` leaves the
-previous layout as it was. Failure is reported through `BitmapFontError`, not
-thrown.
+previous layout as it was.
+
+### Errors
+
+`BitmapFont::load()` and `GlyphLayout::set_text()` return a `BitmapFontError`.
+It is empty on success and true when something failed, so the failure path
+reads as one line:
+
+```cpp
+sq::graphics::BitmapFont font;
+if (const auto error = font.load(descriptor_text)) {
+    std::printf("font: line %u: %s %s\n", error.line, error.message, error.field);
+}
+```
+
+A failed `load()` leaves the font as it was; a failed `set_text()` leaves the
+layout as it was. Nothing is thrown.
+
+| Field | Meaning |
+|---|---|
+| `code` | The category, a `BitmapFontErrorCode`; `none` on success |
+| `message` | What failed, in words, such as `"missing required field"`. Never null; empty on success |
+| `field` | The descriptor field involved, such as `"lineHeight"`; empty when none is |
+| `line` | The descriptor line, counted from 1; 0 when the failure is not about one line |
+| `byte` | For `invalid_utf8`: the offset of the first bad byte in the text; 0 otherwise |
+
+| Code | Returned by | When |
+|---|---|---|
+| `invalid_argument` | both | The parse limits include a zero; or the font is not valid, or the options are out of range |
+| `limit_exceeded` | both | The descriptor, a line, a name or a count is over its parse limit; the text expands past 2^24 glyphs; out of memory |
+| `malformed` | `load` | A record or field cannot be read, or the records disagree |
+| `unsupported` | `load` | A record BMFont text does not define; `line` says which |
+| `duplicate` | `load` | A record, page, glyph or kerning pair appears twice |
+| `missing_required` | `load` | A required record or field is absent; `field` names a missing field |
+| `invalid_utf8` | `set_text` | The text is not valid UTF-8 and `reject_invalid_utf8` is set, which is the default; `byte` says where |
+
+The error owns nothing, so making, copying and returning one never allocates.
+The texts in `message` and `field` live in the library for the life of the
+program; keep the pointers or print them, but don't free them.
 
 ## Creating a context
 

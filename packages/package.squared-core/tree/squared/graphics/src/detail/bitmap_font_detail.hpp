@@ -10,11 +10,10 @@
 
 #include <charconv>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 
 namespace sq::graphics::detail
 {
@@ -31,10 +30,16 @@ using Fields = std::unordered_map<std::string_view, std::string_view>;
     return value <= 0x10FFFF && !( value >= 0xD800 && value <= 0xDFFF );
 }
 
+/// Record a failure. `message` and `field` must be string literals: the error
+/// keeps the pointers, not copies.
 inline void fail( BitmapFontError &error, BitmapFontErrorCode code, std::size_t line,
-                  std::string message )
+                  const char *message, const char *field = "" ) noexcept
 {
-    error = BitmapFontError{ code, line, std::move( message ) };
+    error = BitmapFontError{};
+    error.code = code;
+    error.line = static_cast<std::uint32_t>( line );
+    error.message = message;
+    error.field = field;
 }
 
 [[nodiscard]] inline bool parse_record( std::string_view line, std::string_view &tag,
@@ -113,21 +118,19 @@ inline void fail( BitmapFontError &error, BitmapFontErrorCode code, std::size_t 
 }
 
 template<typename Integer>
-[[nodiscard]] inline bool integer_field( const Fields &fields, std::string_view name,
-                                         Integer &result, BitmapFontError &error, std::size_t line )
+[[nodiscard]] inline bool integer_field( const Fields &fields, const char *name, Integer &result,
+                                         BitmapFontError &error, std::size_t line )
 {
     const auto found = fields.find( name );
     if( found == fields.end() ) {
-        fail( error, BitmapFontErrorCode::missing_required, line,
-              "missing required field: " + std::string{ name } );
+        fail( error, BitmapFontErrorCode::missing_required, line, "missing required field", name );
         return false;
     }
     const auto value = found->second;
     Integer parsed{};
     const auto conversion = std::from_chars( value.data(), value.data() + value.size(), parsed );
     if( conversion.ec != std::errc{} || conversion.ptr != value.data() + value.size() ) {
-        fail( error, BitmapFontErrorCode::malformed, line,
-              "invalid integer field: " + std::string{ name } );
+        fail( error, BitmapFontErrorCode::malformed, line, "invalid integer field", name );
         return false;
     }
     result = parsed;

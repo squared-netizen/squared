@@ -2,7 +2,6 @@
 
 #include <squared/graphics/color.hpp>
 #include <squared/graphics/glyph_layout.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
 #include <squared/graphics/src/glyph_layout_options.hpp>
 #include <squared/graphics/texture_region.hpp>
 #include <squared/gui/src/font_resource.hpp>
@@ -27,8 +26,7 @@ Size Painter::measure_text( std::string_view text, const FontResource *font )
     graphics::GlyphLayout layout;
     graphics::GlyphLayoutOptions options;
     options.scale = font->scale();
-    graphics::BitmapFontError error;
-    if( !layout.set_text( *font->bitmap_font(), text, options, error ) ) {
+    if( layout.set_text( *font->bitmap_font(), text, options ) ) {
         return {};
     }
     return { layout.width(), layout.height() };

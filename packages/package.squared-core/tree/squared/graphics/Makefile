@@ -86,13 +86,25 @@ BATCH_TEST := $(BUILD_DIR)/sprite_batch_test
 # Laying the same text out again allocates nothing. Counted with the dev
 # module's frame-allocation counter, linked into this test only.
 GLYPH_TEST := $(BUILD_DIR)/glyph_layout_test
+# What load() and set_text() return when they fail; a failed layout is counted
+# by the frame-allocation counter too.
+FONT_ERROR_TEST := $(BUILD_DIR)/bitmap_font_error_test
 
-test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST)
+test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST) $(FONT_ERROR_TEST)
 	@$(TEST_BINARY)
 	@$(TEXTURE_TEST)
 	@$(ATLAS_TEST)
 	@$(BATCH_TEST)
 	@$(GLYPH_TEST)
+	@$(FONT_ERROR_TEST)
+
+$(FONT_ERROR_TEST): $(MODULE_DIR)/test/bitmap_font_error_test.cpp \
+                    $(MODULE_DIR)/src/glyph_layout.cpp \
+                    $(MODULE_DIR)/src/bitmap_font.cpp \
+                    $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+                    $(SQUARED_ROOT)/dev/src/dev_log.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $^ -ldl -pthread -o $@
 
 $(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
                $(MODULE_DIR)/src/glyph_layout.cpp \

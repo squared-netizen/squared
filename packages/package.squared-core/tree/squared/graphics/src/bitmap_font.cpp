@@ -27,20 +27,20 @@ std::uint64_t BitmapFont::kerning_key( char32_t first, char32_t second ) noexcep
     return ( static_cast<std::uint64_t>( first ) << 32U ) | static_cast<std::uint32_t>( second );
 }
 
-bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
-                       const BitmapFontParseLimits &limits ) noexcept
+BitmapFontError BitmapFont::load( std::string_view descriptor,
+                                  const BitmapFontParseLimits &limits ) noexcept
 {
-    error = {};
+    BitmapFontError error;
     if( limits.maximum_bytes == 0 || limits.maximum_line_bytes == 0 || limits.maximum_pages == 0 ||
         limits.maximum_glyphs == 0 || limits.maximum_kernings == 0 ||
         limits.maximum_name_bytes == 0 ) {
         fail( error, BitmapFontErrorCode::invalid_argument, 0,
               "all parse limits must be positive" );
-        return false;
+        return error;
     }
     if( descriptor.size() > limits.maximum_bytes ) {
         fail( error, BitmapFontErrorCode::limit_exceeded, 0, "descriptor exceeds maximum_bytes" );
-        return false;
+        return error;
     }
 
     try {
@@ -67,32 +67,32 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
             if( line.size() > limits.maximum_line_bytes ) {
                 fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                       "line exceeds maximum_line_bytes" );
-                return false;
+                return error;
             }
 
             Fields fields;
             std::string_view tag;
             if( !parse_record( line, tag, fields, error, line_number ) ) {
-                return false;
+                return error;
             }
 
             if( tag == "info" ) {
                 if( saw_info ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate info record" );
-                    return false;
+                    return error;
                 }
                 saw_info = true;
                 const auto face = fields.find( "face" );
                 if( face == fields.end() || face->second.empty() ) {
                     fail( error, BitmapFontErrorCode::missing_required, line_number,
                           "missing font face" );
-                    return false;
+                    return error;
                 }
                 if( face->second.size() > limits.maximum_name_bytes ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "font face exceeds maximum_name_bytes" );
-                    return false;
+                    return error;
                 }
                 candidate.info_.face = face->second;
                 int bold = 0;
@@ -102,7 +102,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     !integer_field( fields, "bold", bold, error, line_number ) ||
                     !integer_field( fields, "italic", italic, error, line_number ) ||
                     !integer_field( fields, "unicode", unicode, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 candidate.info_.bold = bold != 0;
                 candidate.info_.italic = italic != 0;
@@ -111,7 +111,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                 if( saw_common ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate common record" );
-                    return false;
+                    return error;
                 }
                 saw_common = true;
                 int pages = 0;
@@ -122,26 +122,26 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     !integer_field( fields, "scaleH", candidate.page_height_, error,
                                     line_number ) ||
                     !integer_field( fields, "pages", pages, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 if( candidate.line_height_ <= 0 || candidate.baseline_ < 0 ||
                     candidate.page_width_ <= 0 || candidate.page_height_ <= 0 || pages <= 0 ) {
                     fail( error, BitmapFontErrorCode::malformed, line_number,
                           "common metrics must be positive" );
-                    return false;
+                    return error;
                 }
                 declared_pages = static_cast<std::size_t>( pages );
                 if( declared_pages > limits.maximum_pages ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "page count exceeds maximum_pages" );
-                    return false;
+                    return error;
                 }
                 candidate.pages_.reserve( declared_pages );
             } else if( tag == "page" ) {
                 saw_pages = true;
                 int id = 0;
                 if( !integer_field( fields, "id", id, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 const auto file = fields.find( "file" );
                 if( id < 0 || file == fields.end() ||
@@ -149,42 +149,42 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     !safe_page_path( file == fields.end() ? std::string_view{} : file->second ) ) {
                     fail( error, BitmapFontErrorCode::malformed, line_number,
                           "page requires a nonnegative id and safe relative file" );
-                    return false;
+                    return error;
                 }
                 if( candidate.pages_.size() == limits.maximum_pages ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "page count exceeds maximum_pages" );
-                    return false;
+                    return error;
                 }
                 const auto page_id = static_cast<std::size_t>( id );
                 if( std::ranges::any_of( candidate.pages_, [page_id]( const auto &page ) {
                         return page.id == page_id;
                     } ) ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number, "duplicate page id" );
-                    return false;
+                    return error;
                 }
                 candidate.pages_.push_back( { page_id, std::string{ file->second } } );
             } else if( tag == "chars" ) {
                 if( saw_chars ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate chars record" );
-                    return false;
+                    return error;
                 }
                 saw_chars = true;
                 if( !integer_field( fields, "count", declared_glyphs, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 if( declared_glyphs == 0 || declared_glyphs > limits.maximum_glyphs ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "glyph count is zero or exceeds maximum_glyphs" );
-                    return false;
+                    return error;
                 }
                 candidate.glyphs_.reserve( declared_glyphs );
             } else if( tag == "char" ) {
                 if( candidate.glyphs_.size() == limits.maximum_glyphs ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "glyph count exceeds maximum_glyphs" );
-                    return false;
+                    return error;
                 }
                 int id = 0;
                 int page = 0;
@@ -198,7 +198,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     !integer_field( fields, "yoffset", glyph.y_offset, error, line_number ) ||
                     !integer_field( fields, "xadvance", glyph.x_advance, error, line_number ) ||
                     !integer_field( fields, "page", page, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 glyph.codepoint = static_cast<char32_t>( id );
                 if( id < 0 || !valid_scalar( glyph.codepoint ) || page < 0 || glyph.x < 0 ||
@@ -207,7 +207,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     glyph.y > candidate.page_height_ - glyph.height ) {
                     fail( error, BitmapFontErrorCode::malformed, line_number,
                           "invalid glyph scalar, page, or metrics" );
-                    return false;
+                    return error;
                 }
                 glyph.page = static_cast<std::size_t>( page );
                 if( std::ranges::any_of( candidate.glyphs_, [&glyph]( const auto &item ) {
@@ -215,38 +215,38 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     } ) ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate glyph id" );
-                    return false;
+                    return error;
                 }
                 candidate.glyphs_.push_back( glyph );
             } else if( tag == "kernings" ) {
                 if( saw_kernings ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate kernings record" );
-                    return false;
+                    return error;
                 }
                 saw_kernings = true;
                 int count = 0;
                 if( !integer_field( fields, "count", count, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 // libGDX's Hiero exporter uses -1 as a no-kerning sentinel.
                 if( count < -1 ) {
                     fail( error, BitmapFontErrorCode::malformed, line_number,
                           "kerning count must be nonnegative or libGDX -1" );
-                    return false;
+                    return error;
                 }
                 declared_kernings = count < 0 ? 0 : static_cast<std::size_t>( count );
                 if( declared_kernings > limits.maximum_kernings ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "kerning count exceeds maximum_kernings" );
-                    return false;
+                    return error;
                 }
                 candidate.kernings_.reserve( declared_kernings );
             } else if( tag == "kerning" ) {
                 if( candidate.kernings_.size() == limits.maximum_kernings ) {
                     fail( error, BitmapFontErrorCode::limit_exceeded, line_number,
                           "kerning count exceeds maximum_kernings" );
-                    return false;
+                    return error;
                 }
                 int first = 0;
                 int second = 0;
@@ -254,7 +254,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                 if( !integer_field( fields, "first", first, error, line_number ) ||
                     !integer_field( fields, "second", second, error, line_number ) ||
                     !integer_field( fields, "amount", kerning.amount, error, line_number ) ) {
-                    return false;
+                    return error;
                 }
                 kerning.first = static_cast<char32_t>( first );
                 kerning.second = static_cast<char32_t>( second );
@@ -262,7 +262,7 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     !valid_scalar( kerning.second ) ) {
                     fail( error, BitmapFontErrorCode::malformed, line_number,
                           "kerning pair contains an invalid scalar" );
-                    return false;
+                    return error;
                 }
                 const auto key = kerning_key( kerning.first, kerning.second );
                 if( std::ranges::any_of( candidate.kernings_, [key]( const auto &item ) {
@@ -270,13 +270,13 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                     } ) ) {
                     fail( error, BitmapFontErrorCode::duplicate, line_number,
                           "duplicate kerning pair" );
-                    return false;
+                    return error;
                 }
                 candidate.kernings_.push_back( kerning );
             } else if( !tag.empty() ) {
                 fail( error, BitmapFontErrorCode::unsupported, line_number,
-                      "unsupported BMFont record: " + std::string{ tag } );
-                return false;
+                      "unsupported BMFont record" );
+                return error;
             }
 
             if( newline == descriptor.npos ) {
@@ -288,12 +288,12 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
         if( !saw_info || !saw_common || !saw_pages || !saw_chars ) {
             fail( error, BitmapFontErrorCode::missing_required, 0,
                   "descriptor is missing required records" );
-            return false;
+            return error;
         }
         if( candidate.pages_.size() != declared_pages ) {
             fail( error, BitmapFontErrorCode::malformed, 0,
                   "declared page count does not match descriptor contents" );
-            return false;
+            return error;
         }
 
         std::ranges::sort( candidate.pages_, {}, &BitmapFontPage::id );
@@ -301,14 +301,14 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
             if( candidate.pages_[index].id != index ) {
                 fail( error, BitmapFontErrorCode::malformed, 0,
                       "page ids must be contiguous from zero" );
-                return false;
+                return error;
             }
         }
         for( const auto &glyph : candidate.glyphs_ ) {
             if( glyph.page >= candidate.pages_.size() ) {
                 fail( error, BitmapFontErrorCode::malformed, 0,
                       "glyph references an undeclared page" );
-                return false;
+                return error;
             }
         }
 
@@ -325,17 +325,13 @@ bool BitmapFont::load( std::string_view descriptor, BitmapFontError &error,
                                                 kerning.amount );
         }
         *this = std::move( candidate );
-        return true;
+        return {};
     } catch( const std::bad_alloc & ) {
-        error.code = BitmapFontErrorCode::limit_exceeded;
-        error.line = 0;
-        error.message.clear();
-        return false;
+        fail( error, BitmapFontErrorCode::limit_exceeded, 0, "out of memory while parsing" );
+        return error;
     } catch( ... ) {
-        error.code = BitmapFontErrorCode::malformed;
-        error.line = 0;
-        error.message.clear();
-        return false;
+        fail( error, BitmapFontErrorCode::malformed, 0, "descriptor could not be parsed" );
+        return error;
     }
 }
 

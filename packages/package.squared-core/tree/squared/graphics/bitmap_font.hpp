@@ -30,13 +30,14 @@ class BitmapFont final
         /**
      * @brief Parse a text BMFont descriptor transactionally.
      * @param descriptor Complete UTF-8/ASCII BMFont text; not retained.
-     * @param error Replaced with the first failure, or cleared on success.
      * @param limits Positive resource bounds applied before allocation.
-     * @return true after committing a complete font; false leaves this font
-     * unchanged.
+     * @return The first failure, true when something failed; an empty error
+     * after committing a complete font. A failure leaves this font unchanged.
+     *
+     * `if( const auto error = font.load( text ) ) { ... }`
      */
-        [[nodiscard]] bool load( std::string_view descriptor, BitmapFontError &error,
-                                 const BitmapFontParseLimits &limits = {} ) noexcept;
+        [[nodiscard]] BitmapFontError load( std::string_view descriptor,
+                                            const BitmapFontParseLimits &limits = {} ) noexcept;
 
         /** @brief Remove all parsed metadata and return to the invalid state. */
         void clear() noexcept;

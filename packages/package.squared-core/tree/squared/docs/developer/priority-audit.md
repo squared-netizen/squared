@@ -72,7 +72,9 @@ programmer error, which the framework rules say is an assert.
 
 `FontResource` is the only genuine API change on the list. It does not need a
 new `Result` type: `BitmapFont::parse(..., BitmapFontError&)` already
-establishes the idiom this codebase uses for recoverable failure.
+establishes the idiom this codebase uses for recoverable failure. (Since 3.1c,
+2026-10-16, that idiom is a returned error: `BitmapFont::load()` returns a
+`BitmapFontError`, true on failure. See `graphics.md`.)
 
 **External blocker:** `gui/src/skin_loader.cpp` wraps the whole load in
 `catch (const std::exception&)`, and inside it calls `data::parse_json` from a

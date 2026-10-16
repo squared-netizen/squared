@@ -2,7 +2,6 @@
 #include <squared/graphics/color.hpp>
 #include <squared/graphics/glyph_layout.hpp>
 #include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
 #include <squared/graphics/src/glyph_placement.hpp>
 #include <squared/graphics/src/texture_recovery_options.hpp>
 #include <squared/graphics/texture_region.hpp>
@@ -43,8 +42,7 @@ bool layout_text( const FontResource *font, std::string_view text,
         return false;
     }
 
-    graphics::BitmapFontError error;
-    return layout.set_text( *bitmap, text, error );
+    return !layout.set_text( *bitmap, text );
 }
 
 } // namespace

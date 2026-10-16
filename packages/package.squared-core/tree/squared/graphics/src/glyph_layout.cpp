@@ -33,17 +33,17 @@ constexpr std::size_t glyph_bound_limit = std::size_t{ 1 } << 24U;
 
 } // namespace
 
-bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
-                            const GlyphLayoutOptions &options, BitmapFontError &error ) noexcept
+BitmapFontError GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
+                                       const GlyphLayoutOptions &options ) noexcept
 {
-    error = {};
+    BitmapFontError error;
     if( !font.valid() || !std::isfinite( options.scale ) || options.scale <= 0.0F ||
         !std::isfinite( options.target_width ) || options.target_width < 0.0F ||
         options.tab_spaces == 0 ||
         ( options.replacement != 0 && !valid_scalar( options.replacement ) ) ) {
         fail( error, BitmapFontErrorCode::invalid_argument, 0,
               "invalid font or glyph-layout options" );
-        return false;
+        return error;
     }
 
     try {
@@ -68,9 +68,9 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
             bool fits = true;
             if( !decoded ) {
                 if( options.reject_invalid_utf8 ) {
-                    fail( error, BitmapFontErrorCode::invalid_utf8, 0,
-                          "invalid UTF-8 at byte " + std::to_string( byte_offset ) );
-                    return false;
+                    fail( error, BitmapFontErrorCode::invalid_utf8, 0, "invalid UTF-8" );
+                    error.byte = static_cast<std::uint32_t>( byte_offset );
+                    return error;
                 }
                 fits = options.replacement == 0 || add_glyphs( 1 );
             } else if( *decoded == U'\r' ) {
@@ -87,7 +87,7 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
             }
             if( !fits ) {
                 fail( error, BitmapFontErrorCode::limit_exceeded, 0, "text expands too far" );
-                return false;
+                return error;
             }
         }
         glyphs_.reserve( glyph_bound );
@@ -187,17 +187,13 @@ bool GlyphLayout::set_text( const BitmapFont &font, std::string_view text,
             }
         }
         height_ = static_cast<float>( lines_.size() ) * line_height_;
-        return true;
+        return {};
     } catch( const std::bad_alloc & ) {
-        error.code = BitmapFontErrorCode::limit_exceeded;
-        error.line = 0;
-        error.message.clear();
-        return false;
+        fail( error, BitmapFontErrorCode::limit_exceeded, 0, "out of memory while laying out" );
+        return error;
     } catch( ... ) {
-        error.code = BitmapFontErrorCode::malformed;
-        error.line = 0;
-        error.message.clear();
-        return false;
+        fail( error, BitmapFontErrorCode::malformed, 0, "text could not be laid out" );
+        return error;
     }
 }
 

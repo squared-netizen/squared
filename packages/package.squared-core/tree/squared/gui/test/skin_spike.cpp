@@ -11,7 +11,6 @@
 #include <squared/graphics/bitmap_font.hpp>
 #include <squared/graphics/orthographic_camera.hpp>
 #include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
 #include <squared/graphics/src/bitmap_font_page.hpp>
 #include <squared/graphics/texture.hpp>
 #include <squared/graphics/texture_atlas.hpp>
@@ -92,11 +91,11 @@ int main( int argc, char **argv )
     check( static_cast<bool>( descriptor ), "default.fnt reads" );
 
     graphics::BitmapFont font;
-    graphics::BitmapFontError font_error;
-    const bool font_parsed = font.load( descriptor.text, font_error );
-    check( font_parsed, "default.fnt parses" );
-    if( !font_parsed ) {
-        std::printf( "    %s\n", font_error.message.c_str() );
+    const graphics::BitmapFontError font_error = font.load( descriptor.text );
+    check( !font_error, "default.fnt parses" );
+    if( font_error ) {
+        std::printf( "    %s %s, line %u\n", font_error.message, font_error.field,
+                     static_cast<unsigned>( font_error.line ) );
         return 1;
     }
     std::printf( "  %zu glyph(s), line height %d, %zu page(s)\n", font.glyphs().size(),

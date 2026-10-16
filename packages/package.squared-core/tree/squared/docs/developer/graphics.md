@@ -415,6 +415,62 @@ leaves the previous layout in place.
 Priority 1 governed this one: storage kept for the longest text, against two
 heap round trips per text per frame.
 
+## BitmapFontError
+
+`BitmapFont::load()` and `GlyphLayout::set_text()` return their failure as a
+value (since 3.1c, 2026-10-16). Until then both took a `BitmapFontError&`
+out-parameter, and the error owned its message as a `std::string`.
+
+| | Before | After |
+|---|---|---|
+| Shape | out-parameter, `bool` returned | returned; true on failure |
+| `sizeof` (64-bit) | 48 (libstdc++), 40 (libc++) | 32 (20 on 32-bit) |
+| Owns | a `std::string` message | nothing; trivially copyable |
+| Allocates | on four messages, which glued a value onto the text | never |
+| A caller of `set_text` includes | `glyph_layout.hpp` and `src/bitmap_font_error.hpp` | `glyph_layout.hpp` |
+
+**Why.** Both callers in `gui` (`BatchPainter`'s text path, run for every
+label every frame, and `Painter::measure_text`) built an error, ignored it and
+threw it away; `glyph_layout.hpp` only forward-declared it, so each also
+included a `src/` header to do so. And because `reject_invalid_utf8` is on by
+default, a label holding one bad byte failed on every frame and built
+`"invalid UTF-8 at byte N"` into the string each time, past libc++'s inline
+capacity: a heap allocation per label per frame, on a path the frame
+counter otherwise shows clean.
+
+**What replaced the owned text.** Of the 38 failure sites, 34 passed fixed
+text. The four that built text carried a value: a field name (twice, both
+string literals at every call site), a record tag, and a byte offset. The field
+name became `field`, a pointer to the same literal; the byte offset became
+`byte`; the tag was dropped, because `line` already points at the record.
+`detail::fail()` takes `const char *` and documents that it keeps the pointer,
+so passing a temporary would be a bug at the call site, not a silent copy.
+
+**Choices.**
+
+- `line` and `byte` are separate fields, not one `position` whose meaning
+  depends on the code. Packing them would make the struct 24 bytes; neither
+  size is ever resident (the error lives on the stack for one call), so
+  priority 2, a field with one meaning, governed over the 8 bytes.
+- `message` and `field` default to `""`, not null, so printing an empty error
+  is safe.
+- `explicit operator bool` is true on failure, as for the module's other error
+  types. The return value flipping meaning from `bool` success could not pass
+  unnoticed: every old call passed the error argument, so every one stopped
+  compiling.
+- `set_text`'s two overloads became one with a defaulted `options`.
+
+`graphics/test/bitmap_font_error_test.cpp` checks each kind of failure's code,
+line, field and byte; that a failure leaves the font or layout unchanged; and
+that a failed layout of warm storage makes no allocation, counted by the dev
+module's frame counter.
+
+The other modules' error types (`FileError`, `AssetError`, `JsonError`) still
+own their messages and a copy of the path. They are returned only when a load
+fails, never on a frame path, and get the same shape when their modules are
+reworked for the model's loading (Sprints 6–7). `GlesError` keeps its owned
+text: it is the driver's compile log, which squared cannot know in advance.
+
 ## Notes
 
 `graphics/src/detail/bitmap_font_detail.hpp` holds the
@@ -422,4 +478,5 @@ BMFont parsing helpers shared by `bitmap_font.cpp` and `glyph_layout.cpp`.
 
 `BitmapFont` and `GlyphLayout` both name their options struct only by
 reference but use it in a defaulted argument, so those two headers include the
-options definition rather than forward declaring it.
+options definition rather than forward declaring it. Both return
+`BitmapFontError` by value, so both include its definition too.
