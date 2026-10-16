@@ -1,8 +1,8 @@
 #pragma once
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/group.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/size.hpp>
 #include <squared/gui/src/size_hints.hpp>
 
@@ -142,7 +142,7 @@ class Widget : public Group
      * @param modifiers Modifier state at the time of the event.
      * @return true when the key was handled.
      */
-        virtual bool key_down( Key key, KeyModifiers modifiers = {} );
+        virtual bool key_down( app::Key key, app::KeyModifiers modifiers = {} );
 
         /**
      * @brief Handle committed UTF-8 text input.

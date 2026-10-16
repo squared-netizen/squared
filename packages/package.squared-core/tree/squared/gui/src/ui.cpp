@@ -1,17 +1,16 @@
 #include "detail/gui_detail.hpp"
 
 #include <squared/app/event.hpp>
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
+#include <squared/app/src/navigation.hpp>
 #include <squared/app/src/text_input.hpp>
 #include <squared/gui/actor.hpp>
 #include <squared/gui/dialog.hpp>
 #include <squared/gui/group.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/src/input_event.hpp>
-#include <squared/gui/src/input_key.hpp>
 #include <squared/gui/src/input_type.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
-#include <squared/gui/src/navigation_action.hpp>
 #include <squared/gui/src/painter.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/size.hpp>
@@ -301,76 +300,10 @@ bool Ui::event( const app::Event &event )
             return text_editing( event.text, event.editing_start, event.editing_length );
         case app::Event::Type::TextInputHidden:
             return text_editing( {}, 0, 0 );
-        case app::Event::Type::KeyDown: {
-            using AppKey = app::Event::Key;
-            KeyModifiers modifiers{ event.modifiers.contains( app::KeyModifier::shift ),
-                                    event.modifiers.contains( app::KeyModifier::control ),
-                                    event.modifiers.contains( app::KeyModifier::alt ),
-                                    event.modifiers.contains( app::KeyModifier::meta ) };
-            switch( event.key ) {
-                case AppKey::left:
-                    return key_down( Key::left, modifiers );
-                case AppKey::right:
-                    return key_down( Key::right, modifiers );
-                case AppKey::up:
-                    return key_down( Key::up, modifiers );
-                case AppKey::down:
-                    return key_down( Key::down, modifiers );
-                case AppKey::home:
-                    return key_down( Key::home, modifiers );
-                case AppKey::end:
-                    return key_down( Key::end, modifiers );
-                case AppKey::backspace:
-                    return key_down( Key::backspace, modifiers );
-                case AppKey::delete_key:
-                    return key_down( Key::delete_key, modifiers );
-                case AppKey::enter:
-                    return key_down( Key::enter, modifiers );
-                case AppKey::space:
-                    return key_down( Key::space, modifiers );
-                case AppKey::tab:
-                    return key_down( Key::tab, modifiers );
-                case AppKey::escape:
-                    return key_down( Key::escape, modifiers );
-                default:
-                    return false;
-            }
-        }
-        case app::Event::Type::KeyUp: {
-            using AppKey = app::Event::Key;
-            KeyModifiers modifiers{ event.modifiers.contains( app::KeyModifier::shift ),
-                                    event.modifiers.contains( app::KeyModifier::control ),
-                                    event.modifiers.contains( app::KeyModifier::alt ),
-                                    event.modifiers.contains( app::KeyModifier::meta ) };
-            switch( event.key ) {
-                case AppKey::left:
-                    return key_up( Key::left, modifiers );
-                case AppKey::right:
-                    return key_up( Key::right, modifiers );
-                case AppKey::up:
-                    return key_up( Key::up, modifiers );
-                case AppKey::down:
-                    return key_up( Key::down, modifiers );
-                case AppKey::home:
-                    return key_up( Key::home, modifiers );
-                case AppKey::end:
-                    return key_up( Key::end, modifiers );
-                case AppKey::backspace:
-                    return key_up( Key::backspace, modifiers );
-                case AppKey::delete_key:
-                    return key_up( Key::delete_key, modifiers );
-                case AppKey::enter:
-                    return key_up( Key::enter, modifiers );
-                case AppKey::space:
-                    return key_up( Key::space, modifiers );
-                case AppKey::tab:
-                    return key_up( Key::tab, modifiers );
-                case AppKey::escape:
-                    return key_up( Key::escape, modifiers );
-                default:
-                    return false;
-            }
-        }
+        case app::Event::Type::KeyDown:
+            return event.key != app::Key::unknown && key_down( event.key, event.modifiers );
+        case app::Event::Type::KeyUp:
+            return event.key != app::Key::unknown && key_up( event.key, event.modifiers );
         case app::Event::Type::NavigationInput:
             return navigation( event.navigation, event.input_device_id );
         default:
@@ -488,61 +421,24 @@ bool Ui::pointer( PointerAction action, float x, float y, int button, std::int64
     return handled;
 }
 
-bool Ui::key_down( Key key, KeyModifiers modifiers )
+bool Ui::key_down( app::Key key, app::KeyModifiers modifiers )
 {
     hide_tooltip();
     focus_tooltip_owner_ = nullptr;
     focus_tooltip_elapsed_ = 0.0;
     InputEvent routed;
     routed.type = InputType::key_down;
+    routed.key = key;
     routed.modifiers = modifiers;
-    switch( key ) {
-        case Key::left:
-            routed.key = InputKey::left;
-            break;
-        case Key::right:
-            routed.key = InputKey::right;
-            break;
-        case Key::up:
-            routed.key = InputKey::up;
-            break;
-        case Key::down:
-            routed.key = InputKey::down;
-            break;
-        case Key::home:
-            routed.key = InputKey::home;
-            break;
-        case Key::end:
-            routed.key = InputKey::end;
-            break;
-        case Key::backspace:
-            routed.key = InputKey::backspace;
-            break;
-        case Key::delete_key:
-            routed.key = InputKey::delete_key;
-            break;
-        case Key::enter:
-            routed.key = InputKey::enter;
-            break;
-        case Key::space:
-            routed.key = InputKey::space;
-            break;
-        case Key::tab:
-            routed.key = InputKey::tab;
-            break;
-        case Key::escape:
-            routed.key = InputKey::escape;
-            break;
-    }
     bool handled = focused_ && stage_.dispatch_input( routed, focused_ );
-    if( !handled && key == Key::tab ) {
+    if( !handled && key == app::Key::tab ) {
         handled = focus_next( modifiers.shift );
     }
-    if( !handled &&
-        ( key == Key::left || key == Key::right || key == Key::up || key == Key::down ) ) {
+    if( !handled && ( key == app::Key::left || key == app::Key::right || key == app::Key::up ||
+                      key == app::Key::down ) ) {
         handled = focus_direction( key );
     }
-    if( !handled && key == Key::escape && !overlays_.empty() ) {
+    if( !handled && key == app::Key::escape && !overlays_.empty() ) {
         Window *window = overlays_.back().window;
         if( window->escape_closes() ) {
             window->request_close();
@@ -553,113 +449,52 @@ bool Ui::key_down( Key key, KeyModifiers modifiers )
     return handled;
 }
 
-bool Ui::key_up( Key key, KeyModifiers modifiers )
+bool Ui::key_up( app::Key key, app::KeyModifiers modifiers )
 {
     if( !focused_ ) {
         return false;
     }
     InputEvent routed;
     routed.type = InputType::key_up;
+    routed.key = key;
     routed.modifiers = modifiers;
-    switch( key ) {
-        case Key::left:
-            routed.key = InputKey::left;
-            break;
-        case Key::right:
-            routed.key = InputKey::right;
-            break;
-        case Key::up:
-            routed.key = InputKey::up;
-            break;
-        case Key::down:
-            routed.key = InputKey::down;
-            break;
-        case Key::home:
-            routed.key = InputKey::home;
-            break;
-        case Key::end:
-            routed.key = InputKey::end;
-            break;
-        case Key::backspace:
-            routed.key = InputKey::backspace;
-            break;
-        case Key::delete_key:
-            routed.key = InputKey::delete_key;
-            break;
-        case Key::enter:
-            routed.key = InputKey::enter;
-            break;
-        case Key::space:
-            routed.key = InputKey::space;
-            break;
-        case Key::tab:
-            routed.key = InputKey::tab;
-            break;
-        case Key::escape:
-            routed.key = InputKey::escape;
-            break;
-    }
     return stage_.dispatch_input( routed, focused_ );
 }
 
-bool Ui::navigation( app::Event::Navigation navigation_value, std::int32_t input_device_id )
+bool Ui::navigation( app::Navigation navigation_value, std::int32_t input_device_id )
 {
     hide_tooltip();
     focus_tooltip_owner_ = nullptr;
     focus_tooltip_elapsed_ = 0.0;
-    using Navigation = app::Event::Navigation;
+    using app::Navigation;
     InputEvent routed;
     routed.type = InputType::navigation;
     routed.input_device_id = input_device_id;
-    switch( navigation_value ) {
-        case Navigation::left:
-            routed.navigation = NavigationAction::left;
-            break;
-        case Navigation::right:
-            routed.navigation = NavigationAction::right;
-            break;
-        case Navigation::up:
-            routed.navigation = NavigationAction::up;
-            break;
-        case Navigation::down:
-            routed.navigation = NavigationAction::down;
-            break;
-        case Navigation::next:
-            routed.navigation = NavigationAction::next;
-            break;
-        case Navigation::previous:
-            routed.navigation = NavigationAction::previous;
-            break;
-        case Navigation::activate:
-            routed.navigation = NavigationAction::activate;
-            break;
-        case Navigation::cancel:
-            routed.navigation = NavigationAction::cancel;
-            break;
-        case Navigation::unknown:
-            return false;
+    if( navigation_value == Navigation::unknown ) {
+        return false;
     }
+    routed.navigation = navigation_value;
     if( focused_ && stage_.dispatch_input( routed, focused_ ) ) {
         return true;
     }
 
     switch( navigation_value ) {
         case Navigation::left:
-            return focus_direction( Key::left );
+            return focus_direction( app::Key::left );
         case Navigation::right:
-            return focus_direction( Key::right );
+            return focus_direction( app::Key::right );
         case Navigation::up:
-            return focus_direction( Key::up );
+            return focus_direction( app::Key::up );
         case Navigation::down:
-            return focus_direction( Key::down );
+            return focus_direction( app::Key::down );
         case Navigation::next:
             return focus_next( false );
         case Navigation::previous:
             return focus_next( true );
         case Navigation::activate:
-            return key_down( Key::enter );
+            return key_down( app::Key::enter );
         case Navigation::cancel:
-            return key_down( Key::escape );
+            return key_down( app::Key::escape );
         case Navigation::unknown:
         default:
             return false;
@@ -814,7 +649,7 @@ bool Ui::focus_next( bool reverse )
     return true;
 }
 
-bool Ui::focus_direction( Key direction )
+bool Ui::focus_direction( app::Key direction )
 {
     if( !focused_ ) {
         return focus_next( false );
@@ -842,19 +677,19 @@ bool Ui::focus_direction( Key direction )
         float primary = 0.0F;
         float perpendicular = 0.0F;
         bool eligible = false;
-        if( direction == Key::left && dx < 0.0F ) {
+        if( direction == app::Key::left && dx < 0.0F ) {
             primary = -dx;
             perpendicular = std::abs( dy );
             eligible = true;
-        } else if( direction == Key::right && dx > 0.0F ) {
+        } else if( direction == app::Key::right && dx > 0.0F ) {
             primary = dx;
             perpendicular = std::abs( dy );
             eligible = true;
-        } else if( direction == Key::up && dy < 0.0F ) {
+        } else if( direction == app::Key::up && dy < 0.0F ) {
             primary = -dy;
             perpendicular = std::abs( dx );
             eligible = true;
-        } else if( direction == Key::down && dy > 0.0F ) {
+        } else if( direction == app::Key::down && dy > 0.0F ) {
             primary = dy;
             perpendicular = std::abs( dx );
             eligible = true;

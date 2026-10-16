@@ -78,11 +78,23 @@ SAFE_AREA_TEST := $(BUILD_DIR)/ui_safe_area_test
 # a real uiskin.json are still the ones it recognises.
 SKIN_LOADER_TEST := $(BUILD_DIR)/skin_loader_test
 
+# Keys and navigation from an app::Event to the focused widget: every named key
+# arrives as itself, with its modifiers.
+KEYS_TEST := $(BUILD_DIR)/ui_keys_test
+
 .PHONY: test
-test: $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST)
+test: $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST)
 	@$(PAINTER_TEST)
 	@$(SAFE_AREA_TEST)
 	@$(SKIN_LOADER_TEST)
+	@$(KEYS_TEST)
+
+$(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
+              $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< $(TARGET) \
+	    $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 $(SKIN_LOADER_TEST): $(MODULE_DIR)/test/skin_loader_test.cpp $(TARGET) \
                      $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \

@@ -31,7 +31,9 @@
 #include <squared/assets/asset_manager.hpp>
 #include <squared/files/android_asset_file_system.hpp>
 #include <squared/app/safe_area.hpp>
-#include <squared/app/src/key_modifier.hpp>
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
+#include <squared/app/src/navigation.hpp>
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
 
@@ -100,6 +102,8 @@ __attribute__((constructor(101))) void open_dev_log() {
 #endif
 
 using Event = sq::app::Event;
+using Key = sq::app::Key;
+using Navigation = sq::app::Navigation;
 using Clock = std::chrono::steady_clock;
 
 /// Translate an Android keycode into squared's portable key.
@@ -107,23 +111,23 @@ using Clock = std::chrono::steady_clock;
 /// Only the keys squared names. Everything else arrives as Key::unknown with
 /// the Android code still in input_device_id, so an application that needs a
 /// key squared does not name can still find it.
-Event::Key translate_key(std::int32_t code) {
+Key translate_key(std::int32_t code) {
     switch (code) {
-        case AKEYCODE_DPAD_LEFT:  return Event::Key::left;
-        case AKEYCODE_DPAD_RIGHT: return Event::Key::right;
-        case AKEYCODE_DPAD_UP:    return Event::Key::up;
-        case AKEYCODE_DPAD_DOWN:  return Event::Key::down;
-        case AKEYCODE_MOVE_HOME:  return Event::Key::home;
-        case AKEYCODE_MOVE_END:   return Event::Key::end;
-        case AKEYCODE_DEL:        return Event::Key::backspace;
-        case AKEYCODE_FORWARD_DEL:return Event::Key::delete_key;
+        case AKEYCODE_DPAD_LEFT:  return Key::left;
+        case AKEYCODE_DPAD_RIGHT: return Key::right;
+        case AKEYCODE_DPAD_UP:    return Key::up;
+        case AKEYCODE_DPAD_DOWN:  return Key::down;
+        case AKEYCODE_MOVE_HOME:  return Key::home;
+        case AKEYCODE_MOVE_END:   return Key::end;
+        case AKEYCODE_DEL:        return Key::backspace;
+        case AKEYCODE_FORWARD_DEL:return Key::delete_key;
         case AKEYCODE_ENTER:
         case AKEYCODE_NUMPAD_ENTER:
-        case AKEYCODE_DPAD_CENTER:return Event::Key::enter;
-        case AKEYCODE_SPACE:      return Event::Key::space;
-        case AKEYCODE_TAB:        return Event::Key::tab;
-        case AKEYCODE_ESCAPE:     return Event::Key::escape;
-        default:                  return Event::Key::unknown;
+        case AKEYCODE_DPAD_CENTER:return Key::enter;
+        case AKEYCODE_SPACE:      return Key::space;
+        case AKEYCODE_TAB:        return Key::tab;
+        case AKEYCODE_ESCAPE:     return Key::escape;
+        default:                  return Key::unknown;
     }
 }
 
@@ -132,28 +136,26 @@ Event::Key translate_key(std::int32_t code) {
 /// A D-pad or a game controller drives focus movement without the application
 /// having to know which key did it. This is what makes a squared GUI navigable
 /// on a TV or with a gamepad attached.
-Event::Navigation translate_navigation(std::int32_t code) {
+Navigation translate_navigation(std::int32_t code) {
     switch (code) {
-        case AKEYCODE_DPAD_LEFT:  return Event::Navigation::left;
-        case AKEYCODE_DPAD_RIGHT: return Event::Navigation::right;
-        case AKEYCODE_DPAD_UP:    return Event::Navigation::up;
-        case AKEYCODE_DPAD_DOWN:  return Event::Navigation::down;
-        case AKEYCODE_TAB:        return Event::Navigation::next;
+        case AKEYCODE_DPAD_LEFT:  return Navigation::left;
+        case AKEYCODE_DPAD_RIGHT: return Navigation::right;
+        case AKEYCODE_DPAD_UP:    return Navigation::up;
+        case AKEYCODE_DPAD_DOWN:  return Navigation::down;
+        case AKEYCODE_TAB:        return Navigation::next;
         case AKEYCODE_DPAD_CENTER:
-        case AKEYCODE_ENTER:      return Event::Navigation::activate;
+        case AKEYCODE_ENTER:      return Navigation::activate;
         case AKEYCODE_BACK:
-        case AKEYCODE_ESCAPE:     return Event::Navigation::cancel;
-        default:                  return Event::Navigation::unknown;
+        case AKEYCODE_ESCAPE:     return Navigation::cancel;
+        default:                  return Navigation::unknown;
     }
 }
 
 sq::app::KeyModifiers translate_modifiers(std::int32_t state) {
-    sq::app::KeyModifiers modifiers;
-    modifiers.set(sq::app::KeyModifier::shift, (state & AMETA_SHIFT_ON) != 0);
-    modifiers.set(sq::app::KeyModifier::control, (state & AMETA_CTRL_ON) != 0);
-    modifiers.set(sq::app::KeyModifier::alt, (state & AMETA_ALT_ON) != 0);
-    modifiers.set(sq::app::KeyModifier::meta, (state & AMETA_META_ON) != 0);
-    return modifiers;
+    return {.shift = (state & AMETA_SHIFT_ON) != 0,
+            .control = (state & AMETA_CTRL_ON) != 0,
+            .alt = (state & AMETA_ALT_ON) != 0,
+            .meta = (state & AMETA_META_ON) != 0};
 }
 
 // ---------------------------------------------------------------------------
@@ -635,8 +637,8 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
 
     // Back is a navigation action and also a request to leave. Send both and
     // let the application decide: a dialog consumes it, a main screen exits.
-    const Event::Navigation navigation = translate_navigation(code);
-    if (navigation != Event::Navigation::unknown
+    const Navigation navigation = translate_navigation(code);
+    if (navigation != Navigation::unknown
         && event.type == Event::Type::KeyDown) {
         Event nav;
         nav.type = Event::Type::NavigationInput;

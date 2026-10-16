@@ -1,9 +1,9 @@
 #pragma once
 
 #include <squared/gles/src/gles_error.hpp>
-#include <squared/gles/src/texture_filter.hpp>
 #include <squared/gles/src/texture_format.hpp>
-#include <squared/gles/src/texture_wrap.hpp>
+#include <squared/graphics/src/texture_filter.hpp>
+#include <squared/graphics/src/texture_wrap.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -77,8 +77,9 @@ class Texture2D final
      * @param wrap Behaviour outside the zero-to-one range.
      * @return A no-error GlesError on success.
      */
-        [[nodiscard]] GlesError set_sampling( TextureFilter minify, TextureFilter magnify,
-                                              TextureWrap wrap ) noexcept;
+        [[nodiscard]] GlesError set_sampling( graphics::TextureFilter minify,
+                                              graphics::TextureFilter magnify,
+                                              graphics::TextureWrap wrap ) noexcept;
 
         /**
      * @brief Bind to a texture unit.

@@ -1,13 +1,13 @@
 #include "detail/gui_detail.hpp"
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/graphics/color.hpp>
 #include <squared/gui/button.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/src/drawable_ptr.hpp>
 #include <squared/gui/src/font_ptr.hpp>
 #include <squared/gui/src/font_resource.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/painter.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
@@ -167,9 +167,9 @@ bool Button::pointer_event( const PointerEvent &event )
     return true;
 }
 
-bool Button::key_down( Key key, KeyModifiers )
+bool Button::key_down( app::Key key, app::KeyModifiers )
 {
-    if( !enabled() || ( key != Key::enter && key != Key::space ) ) {
+    if( !enabled() || ( key != app::Key::enter && key != app::Key::space ) ) {
         return false;
     }
     activate();

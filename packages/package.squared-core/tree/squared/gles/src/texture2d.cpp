@@ -1,9 +1,9 @@
 #include <squared/gles/src/gles_error.hpp>
 #include <squared/gles/src/gles_error_code.hpp>
-#include <squared/gles/src/texture_filter.hpp>
 #include <squared/gles/src/texture_format.hpp>
-#include <squared/gles/src/texture_wrap.hpp>
 #include <squared/gles/texture2d.hpp>
+#include <squared/graphics/src/texture_filter.hpp>
+#include <squared/graphics/src/texture_wrap.hpp>
 
 #include <GLES3/gl3.h>
 
@@ -36,19 +36,19 @@ GlFormat to_gl_format( TextureFormat format ) noexcept
     return { GL_RGBA8, GL_RGBA };
 }
 
-GLint to_gl_filter( TextureFilter filter ) noexcept
+GLint to_gl_filter( graphics::TextureFilter filter ) noexcept
 {
-    return filter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR;
+    return filter == graphics::TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR;
 }
 
-GLint to_gl_wrap( TextureWrap wrap ) noexcept
+GLint to_gl_wrap( graphics::TextureWrap wrap ) noexcept
 {
     switch( wrap ) {
-        case TextureWrap::ClampToEdge:
+        case graphics::TextureWrap::ClampToEdge:
             return GL_CLAMP_TO_EDGE;
-        case TextureWrap::Repeat:
+        case graphics::TextureWrap::Repeat:
             return GL_REPEAT;
-        case TextureWrap::MirroredRepeat:
+        case graphics::TextureWrap::MirroredRepeat:
             return GL_MIRRORED_REPEAT;
     }
     return GL_CLAMP_TO_EDGE;
@@ -139,7 +139,8 @@ GlesError Texture2D::create( int width, int height, TextureFormat format,
 
     // Sensible defaults so a freshly created texture samples rather than
     // coming out black: GL's default minification filter needs mipmaps.
-    return set_sampling( TextureFilter::Linear, TextureFilter::Linear, TextureWrap::ClampToEdge );
+    return set_sampling( graphics::TextureFilter::Linear, graphics::TextureFilter::Linear,
+                         graphics::TextureWrap::ClampToEdge );
 }
 
 GlesError Texture2D::upload( std::span<const std::byte> pixels ) noexcept
@@ -174,8 +175,8 @@ GlesError Texture2D::upload_region( int x, int y, int width, int height,
     return check_gl_errors();
 }
 
-GlesError Texture2D::set_sampling( TextureFilter minify, TextureFilter magnify,
-                                   TextureWrap wrap ) noexcept
+GlesError Texture2D::set_sampling( graphics::TextureFilter minify, graphics::TextureFilter magnify,
+                                   graphics::TextureWrap wrap ) noexcept
 {
     if( name_ == 0 ) {
         return GlesError{ .code = GlesErrorCode::InvalidArgument,

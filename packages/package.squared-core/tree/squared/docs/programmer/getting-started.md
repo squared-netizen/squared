@@ -28,7 +28,7 @@ Events arrive either as framework events or as direct injections:
 ```cpp
 ui.event(application_event);
 ui.pointer(sq::gui::PointerAction::down, x, y);
-ui.key_down(sq::gui::Key::enter);
+ui.key_down(sq::app::Key::enter);
 ```
 
 ## Supplying a Painter

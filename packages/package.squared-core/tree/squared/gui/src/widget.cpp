@@ -1,15 +1,14 @@
 #include "detail/gui_detail.hpp"
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/margin_container.hpp>
 #include <squared/gui/panel.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/src/input_event.hpp>
-#include <squared/gui/src/input_key.hpp>
 #include <squared/gui/src/input_type.hpp>
 #include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/painter.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
@@ -93,7 +92,7 @@ bool Widget::pointer_event( const PointerEvent & )
     return false;
 }
 
-bool Widget::key_down( Key, KeyModifiers )
+bool Widget::key_down( app::Key, app::KeyModifiers )
 {
     return false;
 }
@@ -166,51 +165,12 @@ void Widget::input_event( InputEvent &event )
                 { action, event.pointer_id, event.local_x(), event.local_y(), event.button } );
             break;
         }
-        case InputType::key_down: {
-            Key key = Key::escape;
-            switch( event.key ) {
-                case InputKey::left:
-                    key = Key::left;
-                    break;
-                case InputKey::right:
-                    key = Key::right;
-                    break;
-                case InputKey::up:
-                    key = Key::up;
-                    break;
-                case InputKey::down:
-                    key = Key::down;
-                    break;
-                case InputKey::home:
-                    key = Key::home;
-                    break;
-                case InputKey::end:
-                    key = Key::end;
-                    break;
-                case InputKey::backspace:
-                    key = Key::backspace;
-                    break;
-                case InputKey::delete_key:
-                    key = Key::delete_key;
-                    break;
-                case InputKey::enter:
-                    key = Key::enter;
-                    break;
-                case InputKey::space:
-                    key = Key::space;
-                    break;
-                case InputKey::tab:
-                    key = Key::tab;
-                    break;
-                case InputKey::escape:
-                    key = Key::escape;
-                    break;
-                case InputKey::unknown:
-                    return;
+        case InputType::key_down:
+            if( event.key == app::Key::unknown ) {
+                return;
             }
-            handled = key_down( key, event.modifiers );
+            handled = key_down( event.key, event.modifiers );
             break;
-        }
         default:
             break;
     }

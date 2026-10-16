@@ -1,9 +1,9 @@
 #pragma once
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/src/drawable_ptr.hpp>
 #include <squared/gui/src/font_ptr.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/size.hpp>
 #include <squared/gui/widget.hpp>
 
@@ -110,7 +110,7 @@ class Button : public Widget
      * name and the modifier state at the time of the event.
      * @return true when the key activated the button.
      */
-        bool key_down( Key, KeyModifiers = {} ) override;
+        bool key_down( app::Key, app::KeyModifiers = {} ) override;
 
         /**
      * @brief Track the focused state.

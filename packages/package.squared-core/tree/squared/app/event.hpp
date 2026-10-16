@@ -1,6 +1,8 @@
 #pragma once
 
+#include <squared/app/src/key.hpp>
 #include <squared/app/src/key_modifiers.hpp>
+#include <squared/app/src/navigation.hpp>
 
 #include <cstdint>
 #include <string>
@@ -11,39 +13,13 @@ namespace sq::app
 /**
  * @brief Platform-neutral application event.
  *
- * The SDL platform adapter converts supported SDL events into this compact
- * representation before developer application code receives them.
+ * The platform layer converts what the system reports into this compact
+ * representation before application code receives it. Keys, modifiers and
+ * navigation use the same types the GUI routes, so nothing converts them
+ * again on the way to a widget.
  */
 struct Event final
 {
-        /** @brief Portable hardware-independent key names for key events. */
-        enum class Key : std::uint8_t {
-            unknown,
-            left,
-            right,
-            up,
-            down,
-            home,
-            end,
-            backspace,
-            delete_key,
-            enter,
-            space,
-            tab,
-            escape
-        };
-        /** @brief Semantic focus/navigation action from any supported device. */
-        enum class Navigation : std::uint8_t {
-            unknown,
-            left,
-            right,
-            up,
-            down,
-            next,
-            previous,
-            activate,
-            cancel
-        };
         /** @brief Supported event categories for the Phase 5 boundary. */
         enum class Type : std::uint8_t {
             QuitRequested,

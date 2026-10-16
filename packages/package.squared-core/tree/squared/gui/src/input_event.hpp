@@ -1,10 +1,10 @@
 #pragma once
 
-#include <squared/gui/src/input_key.hpp>
-#include <squared/gui/src/input_modifiers.hpp>
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
+#include <squared/app/src/navigation.hpp>
 #include <squared/gui/src/input_phase.hpp>
 #include <squared/gui/src/input_type.hpp>
-#include <squared/gui/src/navigation_action.hpp>
 
 #include <cstdint>
 
@@ -38,13 +38,13 @@ class InputEvent final
         int button{ 0 };
 
         /** @brief Portable key name for key events. */
-        InputKey key{ InputKey::unknown };
+        app::Key key{ app::Key::unknown };
 
         /** @brief Modifier state captured with the event. */
-        InputModifiers modifiers;
+        app::KeyModifiers modifiers;
 
         /** @brief Semantic action for navigation events. */
-        NavigationAction navigation{ NavigationAction::unknown };
+        app::Navigation navigation{ app::Navigation::unknown };
 
         /** @brief Stable source-device identifier for navigation events. */
         std::int32_t input_device_id{ 0 };

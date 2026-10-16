@@ -24,9 +24,11 @@ Developer counterpart: [../developer/gui.md](../developer/gui.md)
 | `InputPhase` | `squared/gui/src/input_phase.hpp` | Dispatch phase of an event inside a Stage |
 | `InputListener` | `squared/gui/src/input_listener.hpp` | Callback invoked for each phase during input dispatch |
 | `InputListenerId` | `squared/gui/src/input_listener_id.hpp` | Stable actor-local listener identifier; insertions increase it |
-| `InputKey` | `squared/gui/src/input_key.hpp` | Portable hardware-independent key names for key events |
-| `InputModifiers` | `squared/gui/src/input_modifiers.hpp` | Backend-neutral modifier state copied at the input boundary |
-| `NavigationAction` | `squared/gui/src/navigation_action.hpp` | Semantic focus and navigation action from any supported device |
+
+Keys, modifiers and navigation are `sq::app` types, shared with the platform
+layer: `app::Key`, `app::KeyModifiers` and `app::Navigation`
+([app.md](app.md#keys-modifiers-and-navigation)). `InputEvent` carries them
+as they arrived, and `squared/gui/input.hpp` and `gui.hpp` include them.
 
 ## Geometry
 
@@ -77,8 +79,18 @@ Developer counterpart: [../developer/gui.md](../developer/gui.md)
 |---|---|---|
 | `PointerAction` | `squared/gui/src/pointer_action.hpp` | Pointer action delivered to widgets |
 | `PointerEvent` | `squared/gui/src/pointer_event.hpp` | Portable pointer event payload in widget-local logical units |
-| `Key` | `squared/gui/src/key.hpp` | Portable key name used by the GUI input boundary |
-| `KeyModifiers` | `squared/gui/src/key_modifiers.hpp` | Modifier state reused from `InputModifiers` in the input-routing contract |
+
+A widget of your own takes keys by overriding `key_down`, with the `sq::app`
+types:
+
+```cpp
+bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
+{
+    if (key != sq::app::Key::enter || held.any()) return false;
+    activate();
+    return true;
+}
+```
 
 ## Widget base
 

@@ -1,8 +1,11 @@
 #pragma once
 
-// Every public type in sq::gui.
-// Prefer a narrower include in headers of your own.
+// Every public type in sq::gui, and the sq::app key, modifier and navigation
+// types its input uses. Prefer a narrower include in headers of your own.
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
+#include <squared/app/src/navigation.hpp>
 #include <squared/gui/actor.hpp>
 #include <squared/gui/batch_painter.hpp>
 #include <squared/gui/button.hpp>
@@ -38,17 +41,12 @@
 #include <squared/gui/src/font_ptr.hpp>
 #include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/input_event.hpp>
-#include <squared/gui/src/input_key.hpp>
 #include <squared/gui/src/input_listener.hpp>
 #include <squared/gui/src/input_listener_id.hpp>
-#include <squared/gui/src/input_modifiers.hpp>
 #include <squared/gui/src/input_phase.hpp>
 #include <squared/gui/src/input_type.hpp>
 #include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/label_style.hpp>
-#include <squared/gui/src/navigation_action.hpp>
 #include <squared/gui/src/nine_patch_drawable.hpp>
 #include <squared/gui/src/nine_patch_splits.hpp>
 #include <squared/gui/src/painter.hpp>

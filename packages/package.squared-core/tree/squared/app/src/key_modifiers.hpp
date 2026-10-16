@@ -1,70 +1,38 @@
 #pragma once
 
-#include <squared/app/src/key_modifier.hpp>
-
-#include <cstdint>
-
 namespace sq::app
 {
 
-/** @brief Compact value object containing zero or more modifier keys. */
-class KeyModifiers final
+/**
+ * @brief The modifier keys held during a key or navigation event.
+ *
+ * One byte: four one-bit fields. Read them as fields (`modifiers.shift`) and
+ * build with designated initializers (`KeyModifiers{ .shift = true }`).
+ */
+struct KeyModifiers final
 {
-    public:
-        /** @brief Construct an empty modifier set. */
-        constexpr KeyModifiers() noexcept = default;
+        /** @brief Either Shift key. */
+        bool shift : 1 = false;
+        /** @brief Either Control key. */
+        bool control : 1 = false;
+        /** @brief Either Alt key. */
+        bool alt : 1 = false;
+        /** @brief Either Meta key (the Windows or Command key). */
+        bool meta : 1 = false;
 
         /**
-     * @brief Construct a set containing one modifier.
-     * @param modifier Shift, Control, Alt, or Meta.
+     * @brief Report whether any modifier is held.
+     * @return true when at least one field is set.
      */
-        constexpr KeyModifiers( KeyModifier modifier ) noexcept
-            : bits_( static_cast<std::uint8_t>( modifier ) )
-        {}
-
-        /**
-     * @brief Test whether the given modifier is set.
-     * @param modifier Shift, Control, Alt, or Meta.
-     * @return true when the modifier is present.
-     */
-        [[nodiscard]] constexpr bool contains( KeyModifier modifier ) const noexcept
+        [[nodiscard]] constexpr bool any() const noexcept
         {
-            return ( bits_ & static_cast<std::uint8_t>( modifier ) ) != 0;
+            return shift || control || alt || meta;
         }
 
-        /**
-     * @brief Set or clear one modifier.
-     * @param modifier Shift, Control, Alt, or Meta.
-     * @param enabled `true` sets the modifier; `false` clears it.
-     */
-        constexpr void set( KeyModifier modifier, bool enabled = true ) noexcept
-        {
-            const auto bit = static_cast<std::uint8_t>( modifier );
-            bits_ = enabled ? static_cast<std::uint8_t>( bits_ | bit )
-                            : static_cast<std::uint8_t>( bits_ & ~bit );
-        }
-
-        /**
-     * @brief Check whether the set holds any modifier.
-     * @return true when no modifier is set.
-     */
-        [[nodiscard]] constexpr bool empty() const noexcept { return bits_ == 0; }
-
-        /**
-     * @brief Read the raw bit field.
-     * @return Bit field with one bit per enabled modifier.
-     */
-        [[nodiscard]] constexpr std::uint8_t bits() const noexcept { return bits_; }
-
-    private:
-        std::uint8_t bits_{ 0 };
+        /** @brief Equal when the same modifiers are held. */
+        friend constexpr bool operator==( KeyModifiers, KeyModifiers ) noexcept = default;
 };
 
-[[nodiscard]] constexpr KeyModifiers operator|( KeyModifier left, KeyModifier right ) noexcept
-{
-    KeyModifiers result( left );
-    result.set( right );
-    return result;
-}
+static_assert( sizeof( KeyModifiers ) == 1, "KeyModifiers is one byte; see docs/developer/app.md" );
 
 } // namespace sq::app

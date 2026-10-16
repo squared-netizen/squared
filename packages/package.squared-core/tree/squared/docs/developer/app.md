@@ -1,11 +1,11 @@
 # app &mdash; internals
 
-The platform-neutral boundary: nine types, no translation units, no
+The platform-neutral boundary: eleven types, no translation units, no
 dependencies beyond `sq::graphics::Context` (forward declared).
 
 Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 
-- Public types: 9
+- Public types: 11
 - Translation units: 0 &mdash; every type is a value type or a pure interface
 
 ## Layout
@@ -13,7 +13,7 @@ Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 ```
 app/
   application.hpp event.hpp runtime.hpp safe_area.hpp
-  src/   the seven supporting headers: key modifiers and text input
+  src/   the eight supporting headers: key, modifiers, navigation, and text input
 ```
 
 No `Makefile`, because there is nothing to compile. The headers are still
@@ -30,25 +30,50 @@ module's aggregate header: `Application` cannot be implemented without both,
 and there is no free name left for a separate `<module>/<module>.hpp` umbrella
 with the class already holding it.
 
-`event.hpp` is likewise the `Event` struct rather than a group umbrella. Any
-consumer that included it for `KeyModifier` still compiles, because `Event`
-holds a `KeyModifiers` by value and therefore includes it transitively.
+`event.hpp` is likewise the `Event` struct rather than a group umbrella. It
+includes `key.hpp`, `key_modifiers.hpp` and `navigation.hpp`, because `Event`
+holds all three by value.
 
 ## Memory
 
 `Event` carries a `std::string text` member for `TextInput` and `TextEditing`
-events, which makes it 64 bytes and heap-capable, and it is passed by const
-reference everywhere &mdash; so no copy is made on the dispatch path. The
-platform adapter owns the one live `Event`. `KeyModifiers` is a single
-`std::uint8_t`. `TextInputArea` is four floats.
+events, which makes it 88 bytes (libstdc++, measured) and heap-capable, and it
+is passed by const reference everywhere &mdash; so no copy is made on the
+dispatch path. The platform adapter owns the one live `Event`. `KeyModifiers`
+is one byte (`static_assert`ed). `TextInputArea` is four floats.
 
 Nothing in this module allocates on its own behalf.
 
-## Free functions
+## One vocabulary for keys
 
-`operator|(KeyModifier, KeyModifier)` lives in `key_modifiers.hpp` rather than
-a header of its own: it builds a `KeyModifiers`, so that is the type it
-belongs to.
+**Before Sprint 3.1b** there were three key enums, two modifier types and two
+navigation enums for the same things:
+- keys: `app::Event::Key`, `gui::Key` (without `unknown`, so offset by one) and
+  `gui::InputKey`;
+- modifiers: `app::KeyModifiers` (a one-byte bitset driven by an
+  `app::KeyModifier` flag enum) and `gui::InputModifiers` (four `bool`s), with
+  `gui::KeyModifiers` an alias of the second;
+- navigation: `app::Event::Navigation` and `gui::NavigationAction`.
+
+`gui::Ui` and `gui::Widget` carried six switch statements converting between
+them.
+
+**Now** there is one of each, in this module, because it is the lowest layer
+that both the platform entry file and the GUI see: `app::Key`, `app::KeyModifiers`
+and `app::Navigation`. The GUI routes them unchanged, and the conversions are
+gone (243 lines out of `ui.cpp` and `widget.cpp`). Pinned by
+`gui/test/ui_keys_test.cpp`: every named key arrives as itself, with its
+modifiers, and focus moves as it did.
+
+**`KeyModifiers` is four one-bit `bool` fields** with default member
+initializers.
+- Priority 1: it stays one byte, where `gui::InputModifiers` was four, which
+  takes `gui::InputEvent` from 88 to 80 bytes.
+- Priority 2: callers read fields (`modifiers.shift`) and build with designated
+  initializers (`KeyModifiers{ .shift = true }`), instead of `contains()`,
+  `set()` and `operator|`.
+
+`==` is defaulted, and `any()` replaces `empty()`.
 
 ## Safe area
 

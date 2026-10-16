@@ -22,8 +22,8 @@ Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 | `TextureRegion` | `squared/graphics/texture_region.hpp` | Non-owning rectangular view into a Texture |
 | `TextureAtlas` | `squared/graphics/texture_atlas.hpp` | Owning, transactionally loaded libGDX text texture atlas |
 | `AtlasRegion` | `squared/graphics/atlas_region.hpp` | One named region and its libGDX-compatible atlas metadata |
-| `TextureFilter` | `squared/graphics/src/texture_filter.hpp` | Texture filtering mode |
-| `TextureWrap` | `squared/graphics/src/texture_wrap.hpp` | Texture coordinate wrapping mode |
+| `TextureFilter` | `squared/graphics/src/texture_filter.hpp` | Nearest or linear sampling; also what `gles::Texture2D` takes |
+| `TextureWrap` | `squared/graphics/src/texture_wrap.hpp` | Clamp, repeat or mirrored outside zero to one; also what `gles::Texture2D` takes |
 
 ## Recovering textures after context loss
 

@@ -90,6 +90,17 @@ through `build/common.mk`, but the root one does not include `common.mk`, so a
 backend chosen in `local.mk` would otherwise select the right `context.cpp` and
 the wrong module list.
 
+## Shared vocabulary with graphics
+
+`Texture2D::set_sampling()` takes `graphics::TextureFilter` and
+`graphics::TextureWrap`. Until Sprint 3.1b this module had its own copies of both
+enums, with the same values. `gles` already depends on `graphics` in the root
+`Makefile` (`gles: graphics`), and `graphics` is always built while `gles` is
+not, so the shared pair lives in `graphics`. Only the two headers are shared, and
+nothing is linked. The two small `to_gl_filter`/`to_gl_wrap` helpers are still
+written twice, here and in `graphics/src/gles/texture.cpp`, because the
+`graphics` backend must not depend on this module.
+
 ## Testing against a fake driver
 
 `make -C gles test` links the module against `test/gl_stub.cpp`, which defines

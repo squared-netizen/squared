@@ -44,7 +44,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::Dialog` | 360 | 8 |
 | `gui::Ui` | 1048 | 8 |
 | `gui::ButtonGroup` | 40 | 8 |
-| `gui::InputEvent` | 88 | 8 |
+| `gui::InputEvent` | 80 | 8 |
 | `gui::SkinLoadIssue` | 72 | 8 |
 | `graphics::TextureRegion` | 40 | 8 |
 | `graphics::BitmapGlyph` | 48 | 8 |
@@ -95,8 +95,10 @@ new ones that way. Measured at the change: `gui::Cell` went from 80 to 72
 bytes and `app::Event` from 96 to 88. Every other measured type kept its
 size: the bytes the enums gave up became padding next to wider members.
 Getting them back means ordering members by size, type by type, with the
-table above as the check. `gui::InputEvent` (88), `gui::PointerEvent` (32) and
-`gui::Window` (304) are the first candidates, because they hold several.
+table above as the check. `gui::PointerEvent` (32) and `gui::Window` (304) are
+the first candidates, because they hold several. `gui::InputEvent` went from 88
+to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
+(Sprint 3.1b).
 
 ## What allocates, when
 

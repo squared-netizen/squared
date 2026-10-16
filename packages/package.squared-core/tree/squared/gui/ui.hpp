@@ -1,12 +1,12 @@
 #pragma once
 
 #include <squared/app/event.hpp>
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/app/src/text_input.hpp>
 #include <squared/gui/dialog.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/rectangle.hpp>
 #include <squared/gui/src/tooltip_config.hpp>
@@ -171,7 +171,7 @@ class Ui
      * @param modifiers Modifier state at the time of the event.
      * @return true when the focused widget handled the key.
      */
-        bool key_down( Key key, KeyModifiers modifiers = {} );
+        bool key_down( app::Key key, app::KeyModifiers modifiers = {} );
 
         /**
      * @brief Dispatch a key-up event.
@@ -179,7 +179,7 @@ class Ui
      * @param modifiers Modifier state at the time of the event.
      * @return true when the focused widget handled the key.
      */
-        bool key_up( Key key, KeyModifiers modifiers = {} );
+        bool key_up( app::Key key, app::KeyModifiers modifiers = {} );
 
         /**
      * @brief Dispatch a navigation action, including focus moves.
@@ -187,7 +187,7 @@ class Ui
      * @param input_device_id Source device identifier.
      * @return true when the navigation was handled.
      */
-        bool navigation( app::Event::Navigation navigation, std::int32_t input_device_id = 0 );
+        bool navigation( app::Navigation navigation, std::int32_t input_device_id = 0 );
 
         /**
      * @brief Forward committed text to the focused widget.
@@ -278,7 +278,7 @@ class Ui
         static void paint_tree( const Actor &, Painter &, const Skin &, float, float );
         void set_focus( Widget *widget );
         bool focus_next( bool reverse );
-        bool focus_direction( Key direction );
+        bool focus_direction( app::Key direction );
         [[nodiscard]] std::vector<Widget *> focusable_widgets();
         static void collect_focusable( Actor &actor, std::vector<Widget *> &result );
         static void stage_position( const Actor &actor, float &x, float &y ) noexcept;

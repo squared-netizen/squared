@@ -1,7 +1,7 @@
 #pragma once
 
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/src/size.hpp>
 #include <squared/gui/widget.hpp>
 
@@ -107,7 +107,7 @@ class Slider final : public Widget
      * name and the modifier state at the time of the event.
      * @return true when the key adjusted the value.
      */
-        bool key_down( Key, KeyModifiers = {} ) override;
+        bool key_down( app::Key, app::KeyModifiers = {} ) override;
 
         /**
      * @brief Track the focused state.

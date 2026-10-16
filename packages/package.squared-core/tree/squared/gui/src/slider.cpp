@@ -1,9 +1,9 @@
 #include "detail/gui_detail.hpp"
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/slider.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/painter.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
@@ -125,13 +125,13 @@ bool Slider::pointer_event( const PointerEvent &event )
     return true;
 }
 
-bool Slider::key_down( Key key, KeyModifiers )
+bool Slider::key_down( app::Key key, app::KeyModifiers )
 {
-    if( !enabled() || ( key != Key::left && key != Key::right ) ) {
+    if( !enabled() || ( key != app::Key::left && key != app::Key::right ) ) {
         return false;
     }
     const float amount = step_ > 0.0F ? step_ : std::max( 0.01F, ( maximum_ - minimum_ ) * 0.05F );
-    set_value( value_ + ( key == Key::left ? -amount : amount ) );
+    set_value( value_ + ( key == app::Key::left ? -amount : amount ) );
     return true;
 }
 

@@ -1,9 +1,9 @@
 #include "detail/gui_detail.hpp"
 
+#include <squared/app/src/key.hpp>
+#include <squared/app/src/key_modifiers.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/src/drawable_ptr.hpp>
-#include <squared/gui/src/key.hpp>
-#include <squared/gui/src/key_modifiers.hpp>
 #include <squared/gui/src/painter.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
@@ -95,25 +95,25 @@ bool TextField::pointer_event( const PointerEvent &event )
     return contains( event.x, event.y );
 }
 
-bool TextField::key_down( Key key, KeyModifiers )
+bool TextField::key_down( app::Key key, app::KeyModifiers )
 {
     if( !enabled() ) {
         return false;
     }
     switch( key ) {
-        case Key::left:
+        case app::Key::left:
             cursor_ = previous_codepoint( text_, cursor_ );
             return true;
-        case Key::right:
+        case app::Key::right:
             cursor_ = next_codepoint( text_, cursor_ );
             return true;
-        case Key::home:
+        case app::Key::home:
             cursor_ = 0;
             return true;
-        case Key::end:
+        case app::Key::end:
             cursor_ = text_.size();
             return true;
-        case Key::backspace:
+        case app::Key::backspace:
             if( cursor_ > 0 ) {
                 const std::size_t previous = previous_codepoint( text_, cursor_ );
                 text_.erase( previous, cursor_ - previous );
@@ -121,7 +121,7 @@ bool TextField::key_down( Key key, KeyModifiers )
             }
             invalidate_layout();
             return true;
-        case Key::delete_key:
+        case app::Key::delete_key:
             if( cursor_ < text_.size() ) {
                 text_.erase( cursor_, next_codepoint( text_, cursor_ ) - cursor_ );
             }

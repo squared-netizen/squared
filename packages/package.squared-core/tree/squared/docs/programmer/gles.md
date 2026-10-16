@@ -19,8 +19,8 @@ Developer counterpart: [../developer/gles.md](../developer/gles.md)
 | `VertexAttribute` | `squared/gles/src/vertex_attribute.hpp` | one attribute's layout |
 | `Texture2D` | `squared/gles/texture2d.hpp` | one 2D texture, owned |
 | `TextureFormat` | `squared/gles/src/texture_format.hpp` | Rgba8, Rgb8 or R8 |
-| `TextureFilter` | `squared/gles/src/texture_filter.hpp` | nearest or linear |
-| `TextureWrap` | `squared/gles/src/texture_wrap.hpp` | clamp, repeat or mirrored |
+| `graphics::TextureFilter` | `squared/graphics/src/texture_filter.hpp` | nearest or linear; shared with `graphics::Texture` |
+| `graphics::TextureWrap` | `squared/graphics/src/texture_wrap.hpp` | clamp, repeat or mirrored; shared with `graphics::Texture` |
 | `GlesError` | `squared/gles/src/gles_error.hpp` | structured failure, with driver logs |
 | `GlesErrorCode` | `squared/gles/src/gles_error_code.hpp` | stable error categories |
 

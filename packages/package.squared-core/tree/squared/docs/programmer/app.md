@@ -8,8 +8,9 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `KeyModifier` | `squared/app/src/key_modifier.hpp` | Platform-neutral modifier keys carried by keyboard events |
-| `KeyModifiers` | `squared/app/src/key_modifiers.hpp` | Compact value object containing zero or more modifier keys |
+| `Key` | `squared/app/src/key.hpp` | Portable key names; the one key type in squared, shared with the GUI |
+| `KeyModifiers` | `squared/app/src/key_modifiers.hpp` | The modifier keys held: four `bool` fields in one byte |
+| `Navigation` | `squared/app/src/navigation.hpp` | Semantic focus and navigation action from any supported device |
 | `Event` | `squared/app/event.hpp` | Platform-neutral application event |
 | `TextInputPurpose` | `squared/app/src/text_input_purpose.hpp` | Desired soft-keyboard content mode |
 | `TextInputArea` | `squared/app/src/text_input_area.hpp` | Soft-keyboard target rectangle in stage/logical coordinates |
@@ -23,6 +24,29 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 the module's aggregate header: it pulls in `Event` and the text-input types,
 because implementing `Application` needs all of them.
 `squared/app/src/text_input.hpp` aggregates the four text-input types.
+
+## Keys, modifiers and navigation
+
+There is one of each in squared, and the GUI uses the same ones: what the
+platform puts in an `Event` is exactly what a widget's `key_down` receives.
+
+```cpp
+#include <squared/app/event.hpp>
+
+if (event.type == sq::app::Event::Type::KeyDown &&
+    event.key == sq::app::Key::enter && event.modifiers.control) {
+    submit();
+}
+
+sq::app::KeyModifiers held{.shift = true};   // build one with designated initializers
+if (held.any()) { /* ... */ }
+```
+
+| Type | Values |
+|---|---|
+| `Key` | `unknown`, `left`, `right`, `up`, `down`, `home`, `end`, `backspace`, `delete_key`, `enter`, `space`, `tab`, `escape`. A key squared doesn't name arrives as `unknown`, with the platform's code in `Event::input_device_id` |
+| `KeyModifiers` | the fields `shift`, `control`, `alt`, `meta`; `any()`; `==` |
+| `Navigation` | `unknown`, `left`, `right`, `up`, `down`, `next`, `previous`, `activate`, `cancel` |
 
 ## Implementing an Application
 
