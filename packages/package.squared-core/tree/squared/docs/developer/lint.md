@@ -27,6 +27,7 @@ A format check runs first, so `make lint` is the one command for all of it.
 ```sh
 make lint                              # everything, every file
 make lint LINT_ARGS=--changed          # files changed since the last commit
+make lint LINT_ARGS="--since HEAD~1"   # files the last commit touched
 make lint LINT_ARGS="--only tidy"      # one step: format, rules or tidy
 tools/lint.sh gui/src/ui.cpp           # the files named
 tools/lint.sh --jobs 2                 # fewer clang-tidy processes at once
@@ -45,7 +46,7 @@ fix-it hints, is in `build/release/lint/tidy/<file>.log`.
 |---|---|
 | 0 | no findings |
 | 1 | findings; the report lists them |
-| 2 | usage error, a named file that does not exist, `--changed` outside git, `--record-baseline` with a file list |
+| 2 | usage error, a named file that does not exist, `--changed` or `--since` outside git, an unknown commit for `--since`, `--record-baseline` with a file list |
 
 A step whose tool is missing says so and is skipped. It does not fail the run:
 a machine without clang-tidy can still run the rules.
@@ -280,7 +281,10 @@ distributions have bash 5. It uses no GNU-only option of `find`, `grep`, `sed`,
   through another header.
 - The android configuration needs the NDK. Without it, the GLES and Android
   sources are skipped, and the run says so.
-- `--changed` compares with `HEAD`: committed work is not re-checked.
+- `--changed` compares with `HEAD`: committed work is not re-checked. For that,
+  `--since <commit>` compares with an earlier commit, so `--since HEAD~1` checks
+  what the last commit touched. Both leave out deleted files; until 2026-10-16,
+  `--changed` stopped with "no such file" on a change that removed a header.
 - clang-tidy versions disagree at the edges: 21 finds more `exception-escape`
   cases (it sees libc++'s throws), 18 finds guarded optionals that 21 does
   not. The phone's clang-tidy 21 is the reference.

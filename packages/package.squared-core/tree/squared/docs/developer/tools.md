@@ -69,7 +69,8 @@ compiles, with the build's flags). What each checks and why is in
 
 | option | effect |
 |---|---|
-| `--changed` | only files changed since the last commit, untracked ones included |
+| `--changed` | only files changed since the last commit, untracked ones included; deleted ones left out |
+| `--since <commit>` | the same, compared with that commit: `--since HEAD~1` checks what the last commit touched |
 | `--only format\|rules\|tidy` | one step |
 | `--jobs N` | clang-tidy processes at once (default: CPUs, at most 4) |
 | `--record-baseline` | write today's rule matches to the baseline; whole tree only |

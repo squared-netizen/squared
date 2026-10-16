@@ -4,6 +4,8 @@
 #
 #   tools/lint.sh                    everything, every file (what `make lint` runs)
 #   tools/lint.sh --changed          only files changed since the last commit
+#   tools/lint.sh --since HEAD~1     only files changed since that commit: what a
+#                                    commit touched, after it is made
 #   tools/lint.sh gui/src/ui.cpp     only the files named
 #   tools/lint.sh --only tidy        one step: format, rules or tidy
 #   tools/lint.sh --jobs 4           run clang-tidy on 4 files at once
@@ -37,6 +39,7 @@ OUT=$root/build/release/lint
 
 only=""
 changed=0
+base=HEAD
 # nproc first: Termux has it (coreutils) but not getconf.
 jobs=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 [ "$jobs" -ge 1 ] 2>/dev/null || jobs=1
@@ -46,6 +49,11 @@ named=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --changed) changed=1 ;;
+        --since)
+            [ $# -ge 2 ] && [ -n "$2" ] || { echo "lint: --since needs a commit, for example HEAD~1" >&2; exit 2; }
+            changed=1
+            base=$2
+            shift ;;
         --record-baseline) record=1 ;;
         --only)
             [ $# -ge 2 ] || { echo "lint: --only needs format, rules or tidy" >&2; exit 2; }
@@ -66,7 +74,7 @@ done
 run() { [ -z "$only" ] || [ "$only" = "$1" ]; }
 if [ "$record" -eq 1 ]; then
     if [ ${#named[@]} -gt 0 ] || [ "$changed" -eq 1 ]; then
-        echo "lint: --record-baseline needs the whole tree; drop the file list and --changed" >&2
+        echo "lint: --record-baseline needs the whole tree; drop the file list, --changed and --since" >&2
         exit 2
     fi
     only=rules
@@ -93,8 +101,12 @@ if [ ${#named[@]} -gt 0 ]; then
     printf '%s\n' "${named[@]}" >"$TMP/files"
 elif [ "$changed" -eq 1 ]; then
     git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
-        || { echo "lint: --changed needs a git checkout" >&2; exit 2; }
-    { git -C "$root" diff --name-only --relative HEAD -- .
+        || { echo "lint: --changed and --since need a git checkout" >&2; exit 2; }
+    git -C "$root" rev-parse --verify --quiet "$base^{commit}" >/dev/null \
+        || { echo "lint: no such commit: $base" >&2; exit 2; }
+    # Deleted files are left out (--diff-filter=d): a change that removes a
+    # header has nothing of it left to check.
+    { git -C "$root" diff --name-only --relative --diff-filter=d "$base" -- .
       git -C "$root" ls-files --others --exclude-standard -- . ; } \
         | grep -E '\.(hpp|cpp)$' | grep -vE '^(third_party|build|docs)/' | LC_ALL=C sort -u >"$TMP/files"
 else
