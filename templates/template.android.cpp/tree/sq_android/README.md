@@ -23,6 +23,16 @@ The renderer include is guarded, so this file compiles with no kit at all.
 That guard is what makes `kit.opengl` and a future `kit.sfml` alternatives
 rather than one of them being baked in.
 
+**What the device lacks is decided from its API level**, read once at start
+from the configuration NativeActivity already holds
+(`AConfiguration_getSdkVersion`) and logged as `device: API <n>`; the GL
+driver is logged once as `driver: <version>; <renderer>; <vendor>` when the
+first context is current. Both reach logcat (`adb logcat -s <tag>`), which is
+how a device without Termux is read. Below API 23 the safe-area query is
+skipped: the bars sit outside the window there, and the Java method it calls
+does not exist. Each such check costs a comparison, cheaper than reading a
+cached answer from storage, so nothing is cached.
+
 ## `AndroidManifest.xml`
 
 Two deliberate absences:

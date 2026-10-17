@@ -37,9 +37,11 @@
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
 
+#include <android/configuration.h>
 #include <android/log.h>
 #include <android/keycodes.h>
 #include <android_native_app_glue.h>
+#include <dlfcn.h>
 #include <jni.h>
 
 #include <algorithm>
@@ -202,16 +204,24 @@ std::int16_t to_pixels(jint value) {
     return static_cast<std::int16_t>(std::clamp<jint>(value, 0, 4096));
 }
 
-/// Read the insets of the activity's window, in pixels. Zero when unavailable.
+/// The releases the safe-area query needs. View.getRootWindowInsets() arrived
+/// in API 23 and WindowInsets.getDisplayCutout() in API 28. Below 23 the bars
+/// sit outside the window, so there is nothing to measure; asking anyway made
+/// the method lookup fail, and Java build and throw an error, on every query.
+constexpr int kInsetsApi = 23;
+constexpr int kCutoutApi = 28;
+
+/// Read the insets of the activity's window, in pixels. Zero when unavailable,
+/// and without a single JNI call below kInsetsApi.
 ///
 /// The system-window insets already include a cut-out on current releases; the
 /// cut-out's own safe insets are folded in with max() for the releases where
 /// they do not. No allocation on our side. Each call makes a handful of JNI
 /// calls and deletes every local reference it creates, so it is cheap enough
 /// to repeat twice a second.
-sq::app::SafeArea measure_safe_area(JNIEnv* env, jobject activity) {
+sq::app::SafeArea measure_safe_area(JNIEnv* env, jobject activity, int api_level) {
     sq::app::SafeArea area;
-    if (env == nullptr || activity == nullptr) return area;
+    if (env == nullptr || activity == nullptr || api_level < kInsetsApi) return area;
 
     jobject window = call_object(env, activity, "getWindow", "()Landroid/view/Window;");
     jobject decor = call_object(env, window, "getDecorView", "()Landroid/view/View;");
@@ -223,8 +233,9 @@ sq::app::SafeArea measure_safe_area(JNIEnv* env, jobject activity) {
         jint right = call_int(env, insets, "getSystemWindowInsetRight", 0);
         jint bottom = call_int(env, insets, "getSystemWindowInsetBottom", 0);
 
-        jobject cutout = call_object(env, insets, "getDisplayCutout",
-                                     "()Landroid/view/DisplayCutout;");
+        jobject cutout = api_level >= kCutoutApi
+            ? call_object(env, insets, "getDisplayCutout", "()Landroid/view/DisplayCutout;")
+            : nullptr;
         if (cutout != nullptr) {
             left = std::max(left, call_int(env, cutout, "getSafeInsetLeft", 0));
             top = std::max(top, call_int(env, cutout, "getSafeInsetTop", 0));
@@ -286,7 +297,8 @@ struct Platform {
         , assets(files)
         , runtime{graphics, files, assets}
         , vm(native->activity->vm)
-        , activity(native->activity->clazz) {}
+        , activity(native->activity->clazz)
+        , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {}
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
@@ -301,6 +313,11 @@ struct Platform {
     /// outlive the platform object.
     JavaVM* vm;
     jobject activity;
+
+    /// The device's API level, read once from the configuration NativeActivity
+    /// already holds. What the device lacks is decided from this, by comparing
+    /// numbers, not by calling and catching the failure.
+    int api_level;
     JNIEnv* env{nullptr};
     bool env_attached{false};
     sq::app::SafeArea reported_area{};
@@ -355,7 +372,8 @@ struct Platform {
     /// JNI calls and nothing else.
     void sync_safe_area() {
         frames_since_measure = 0;
-        const sq::app::SafeArea measured = measure_safe_area(jni(), activity);
+        if (api_level < kInsetsApi) return;
+        const sq::app::SafeArea measured = measure_safe_area(jni(), activity, api_level);
         if (measured == reported_area) return;
         reported_area = measured;
         SQ_LOGI("safe area (px): left %d top %d right %d bottom %d",
@@ -426,6 +444,7 @@ struct Platform {
                 graphics.pixel_width(), graphics.pixel_height(),
                 static_cast<unsigned long long>(graphics.generation()),
                 graphics.resources_preserved() ? "preserved" : "lost");
+        if (!created) log_driver();
 
         if (!created) {
             if (!app.create(runtime)) {
@@ -442,6 +461,31 @@ struct Platform {
         // Always, even at an unchanged size: a new surface is a new
         // application state, and the application re-lays out from here.
         sync_size(true);
+    }
+
+    /// Name the GL driver once, after the first context is current: what a
+    /// report from a device needs, and three calls.
+    ///
+    /// Through dlsym rather than a direct call, so this file does not link GL
+    /// itself: the graphics backend decides that, and under the null backend
+    /// there is no GL to ask and the line is simply not printed.
+    static void log_driver() {
+        using GetString = const unsigned char* (*)(unsigned int);
+        // Already loaded by the backend; NOLOAD finds it and never loads it.
+        // Either name: on some releases one is a link to the other.
+        void* gles = dlopen("libGLESv3.so", RTLD_NOW | RTLD_NOLOAD);
+        if (gles == nullptr) gles = dlopen("libGLESv2.so", RTLD_NOW | RTLD_NOLOAD);
+        if (gles == nullptr) return;
+        const auto get = reinterpret_cast<GetString>(dlsym(gles, "glGetString"));
+        if (get != nullptr) {
+            constexpr unsigned int kVendor = 0x1F00, kRenderer = 0x1F01, kVersion = 0x1F02;
+            const auto text = [&](unsigned int name) {
+                const unsigned char* value = get(name);
+                return value != nullptr ? reinterpret_cast<const char*>(value) : "?";
+            };
+            SQ_LOGI("driver: %s; %s; %s", text(kVersion), text(kRenderer), text(kVendor));
+        }
+        dlclose(gles);
     }
 
     /// The window is going away. Suspend rather than destroy: the context and
@@ -680,6 +724,7 @@ void android_main(android_app* app) {
     // function returns.
     auto platform = std::make_unique<Platform>(app);
     app->userData = platform.get();
+    SQ_LOGI("device: API %d", platform->api_level);
     app->onAppCmd = on_command;
     app->onInputEvent = on_input;
 
