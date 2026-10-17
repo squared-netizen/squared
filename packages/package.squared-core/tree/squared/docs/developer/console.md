@@ -25,9 +25,10 @@ It was planned as its own package, `package.squared-console` (decided 2026-10-15
 | the copy of the line being run | 256 |
 | `Args` (16 views and a count) | 264 |
 | the scrollback's own `Scrollback` | 56 |
-| **`sizeof(Console)`** | **71,328** |
+| the shown flag, padded | 8 |
+| **`sizeof(Console)`** | **71,336** |
 
-Owned by its user, constructed once and long-lived; 70 KB is too much for a stack. Nothing it does allocates (checked: 200 rounds of running, printing, completing and editing make no allocation, by the frame counter).
+Owned by its user, constructed once and long-lived; 70 KB is too much for a stack. Whether it is shown is a flag in the model (`show`, `hide`, `shown`), not in the view: the `close` command and the close button change the same state, and whoever draws it reads it. Nothing it does allocates (checked: 200 rounds of running, printing, completing and editing make no allocation, by the frame counter).
 
 **Choices.**
 
@@ -39,6 +40,28 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 - **Keys:** Space is left to typed text, because on Android a typed space arrives through the text-input path; taking the key too would insert it twice.
 
 **Threads.** One thread uses a Console. The spec's one-slot mailbox for commands that must run on the model thread comes with the model thread (Sprint 6).
+
+## Built-in commands
+
+| Command | Where | Reads |
+|---|---|---|
+| `help`, `clear`, `close` | `src/console.cpp`, always | the table; the scrollback; the shown flag |
+| `mem` | `src/system_commands.cpp` | `/proc/self/status` (`VmRSS`, `VmHWM`), `/proc/meminfo` (`MemAvailable`, `MemTotal`) |
+| `heap` | same | `mallinfo` (bionic, older glibc) or `mallinfo2` (glibc 2.33 and later): `uordblks`, `fordblks`, `hblkhd` |
+| `threads` | same | `/proc/self/status` (`Threads`) |
+| `fds` | same | `/proc/self/fd`, through `getdents64` |
+| `device` | same | system properties (`ro.product.manufacturer`, `.model`, `ro.build.version.release`, `.sdk`, `ro.product.cpu.abi`) on bionic; `uname` everywhere |
+| `gl` | `src/gles/gl_command.cpp`, gles backend | `glGetString` (version, renderer, vendor, GLSL), `glGetIntegerv` (texture, renderbuffer and viewport limits, attributes, texture units, extension count) |
+| `display` | the Android template | its own state: pixels, dpi, the Console's cell and grid, the safe area |
+| `alloc` | the Android template, `DEV_LOG` only | `sq::dev::report_allocations()`, which arrives through the dev log's listener |
+
+`add_system_commands()` and `add_gl_command()` register them; the template adds `display` and `alloc` itself, because only it holds what they read (and `dev` is linked only with `DEV_LOG`; the Console must not depend on it). A table too small for them refuses the rest, and the template logs how many once.
+
+**Nothing is allocated, nothing kept.** Each command reads into stack buffers (4 KB for a `/proc` file, 2 KB of directory records) and prints through the Console's `printf` buffer. No `fopen` (stdio allocates its buffer) and no `opendir` (allocates its `DIR`): `fds` calls `getdents64` straight into the stack and counts names not starting with `.`, less the descriptor reading them. Sizes print with integer arithmetic (`%lld.%lld MB`), not `%f`: bionic's float formatting can allocate in its dtoa. Priority 1 over 3 (a few more lines).
+
+**One file for Android, Termux and desktop Linux.** The interfaces are Linux's. What differs is the C library: bionic has system properties and `mallinfo`; glibc deprecated `mallinfo` for `mallinfo2` in 2.33. The two `#if` blocks test the C library (`__BIONIC__`, `__GLIBC__`), not the platform, because Termux is the posix platform on bionic: a Makefile switch on `SQUARED_PLATFORM` would pick the wrong branch there. Priority 2 (one file) over 4.
+
+**Left for later.** `crash` needs the crash file (4.6); `copy` needs the clipboard (4.5); `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
 
 ## Drawing
 
@@ -99,10 +122,11 @@ Transient, in `create()` only: the atlas texels (8 KB) and the indices (6 KB), o
 The Android template's `entry.cpp` holds the Console under `#ifdef SQUARED_CONSOLE`, so a `CONSOLE=0` build has none of this:
 
 - **Ownership.** `Console` and `Renderer` are members of the entry's `Platform`, which is allocated once: about 88 KB inside that one allocation, nothing more. They come after `graphics` in it, so the renderer's GL objects go before the context.
-- **The log.** `SQ_LOGI` and `SQ_LOGW` format a line once into the stack and hand it to the dev log (with `DEV_LOG`) and the Console (with `CONSOLE`): one formatting function for both, replacing the dev-log-only one. Warnings are coloured as warnings. Lines logged before the platform exists (the first, "starting") are not shown.
+- **The log.** `SQ_LOGI` and `SQ_LOGW` format a line once into the stack. With `DEV_LOG`, it goes to the dev log with its level, and the dev log's listener, set to the Console while the platform exists, prints it: so every dev log line of the main thread reaches the Console, the application's own (`sq::dev::log_line`) and the allocation reports included. Without `DEV_LOG`, the template prints its lines into the Console directly; the application's lines then have nowhere to go but logcat. Warnings and errors keep their colour. Lines logged before the platform exists (the first, "starting") are not shown, nor are lines from other threads.
+- **Commands.** The platform's constructor registers the built-ins (above) and shows the Console.
 - **When.** The renderer is made as soon as the surface is ready, before the application's `create()`, because the Console is for when that goes wrong; after a resume that lost resources it is invalidated and made again. It draws after `App::render`, inside the frame-allocation count, so a console frame that allocated would be reported.
 - **Where.** The upper half of the screen inside the safe area. The cell is 8 pixels for every 160 dpi of the screen's density, rounded (`AConfiguration_getDensity`): 24 on a 420 dpi phone, 45 columns across 1080 pixels.
-- **Input, for now.** A touch that starts on `[x]` closes it for the rest of the run; every other touch goes to the application as before. The keyboard, the gesture that opens it again, and the touch handling of its own come in 4.5.
+- **Input, for now.** A touch that starts on `[x]` hides it (`Console::hide`) for the rest of the run; every other touch goes to the application as before. The keyboard, the gesture that opens it again, and the touch handling of its own come in 4.5.
 
 ### Tested
 
@@ -136,4 +160,4 @@ The Android template's `entry.cpp` holds the Console under `#ifdef SQUARED_CONSO
 
 **Standard library.** `std::span` for the storage; `std::string_view` for lines. A `std::deque<std::string>` would allocate a node per line and a buffer per long line, and its size would depend on what was logged; the ring's is fixed at compile time.
 
-**Tested** (`console/test/scrollback_test.cpp`, and `console_test.cpp` for the rest of the module: words, the table and its refusals, UTF-8 editing, history, completion, keys, the built-ins, cut `printf` output, no allocation; `make -C console test`): against a plain model (a deque with the same byte budget) over 20,000 random pushes into five storage sizes from 64 to 4096 bytes: the ring always holds a suffix of the model's lines, with the right levels, and every push is accounted for as held or dropped. Exact-fit records are all kept, before and after a wrap; an over-long line is cut; pushing 2,000 lines and walking them allocates nothing (the frame counter). Mutations that break the wrap, the end marker, or the exact-fit comparison each fail the test.
+**Tested** (`console/test/scrollback_test.cpp`, and `console_test.cpp` for the rest of the module: words, the table and its refusals, UTF-8 editing, history, completion, keys, the built-ins, cut `printf` output, no allocation, the shown flag and `close`, and the system commands against the real `/proc` and C library (every `mem` figure found, `threads: 1`, `fds` rising by one after a `dup`, the kernel line, and on bionic the device line); `renderer_test.cpp` also runs `gl` against the fake driver; `make -C console test`): against a plain model (a deque with the same byte budget) over 20,000 random pushes into five storage sizes from 64 to 4096 bytes: the ring always holds a suffix of the model's lines, with the right levels, and every push is accounted for as held or dropped. Exact-fit records are all kept, before and after a wrap; an over-long line is cut; pushing 2,000 lines and walking them allocates nothing (the frame counter). Mutations that break the wrap, the end marker, or the exact-fit comparison each fail the test.

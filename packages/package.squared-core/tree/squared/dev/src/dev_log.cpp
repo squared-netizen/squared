@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <dlfcn.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <unwind.h>
@@ -30,6 +31,14 @@ sockaddr_in g_address{};
 alignas( 16 ) char g_alt_stack[kAltStackBytes];
 struct sigaction g_previous[kSignalCount];
 bool g_handlers_installed = false;
+
+// The listener, its context, and the one thread allowed to call it. The
+// listener and context are only read on that thread; other threads only read
+// the flag and the owner, so neither needs a lock.
+std::atomic<bool> g_listening{ false };
+std::atomic<pthread_t> g_listener_thread{};
+LogListener g_listener = nullptr;
+void *g_listener_context = nullptr;
 
 // A line under construction. Plain character appends, so the crash handler can
 // use it: no allocation, no stdio, no locale.
@@ -212,7 +221,8 @@ void install_handlers() noexcept
     stack.ss_flags = 0;
     ( void )::sigaltstack( &stack, nullptr );
 
-    struct sigaction action{};
+    struct sigaction action
+    {};
     action.sa_sigaction = on_fatal_signal;
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sigemptyset( &action.sa_mask );
@@ -258,12 +268,27 @@ LogSinkStatus open_log_sink( const LogSinkOptions &options ) noexcept
     return LogSinkStatus::Opened;
 }
 
-void log_line( std::string_view line ) noexcept
+void log_line( std::string_view line, LogLevel level ) noexcept
 {
-    if( g_fd.load( std::memory_order_relaxed ) < 0 ) {
-        return;
+    if( g_fd.load( std::memory_order_relaxed ) >= 0 ) {
+        send_bytes( line.data(), line.size() < kLineMax ? line.size() : kLineMax );
     }
-    send_bytes( line.data(), line.size() < kLineMax ? line.size() : kLineMax );
+    if( g_listening.load( std::memory_order_acquire ) &&
+        pthread_equal( g_listener_thread.load( std::memory_order_relaxed ), pthread_self() ) !=
+            0 ) {
+        g_listener( g_listener_context, level, line );
+    }
+}
+
+void set_log_listener( LogListener listener, void *context ) noexcept
+{
+    g_listening.store( false, std::memory_order_release );
+    g_listener = listener;
+    g_listener_context = context;
+    if( listener != nullptr ) {
+        g_listener_thread.store( pthread_self(), std::memory_order_relaxed );
+        g_listening.store( true, std::memory_order_release );
+    }
 }
 
 void close_log_sink() noexcept

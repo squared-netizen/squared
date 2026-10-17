@@ -61,7 +61,8 @@
 #endif
 
 // The in-app Console (`make CONSOLE=app`): drawn over the application's frame,
-// with every log line below mirrored into it. Nothing of it exists in a
+// showing the log - with DEV_LOG, every dev log line of the main thread, the
+// application's included; without, the lines below. Nothing of it exists in a
 // CONSOLE=0 build. For now it only shows: the keyboard and the gesture that
 // opens it come later (Sprint 4.5), so it is open from the start and its [x]
 // closes it for the rest of the run.
@@ -69,6 +70,7 @@
 #include <squared/console/console.hpp>
 #include <squared/console/layout.hpp>
 #include <squared/console/renderer.hpp>
+#include <squared/console/system_commands.hpp>
 #endif
 
 #if defined(SQUARED_DEV_LOG) || defined(SQUARED_CONSOLE)
@@ -81,15 +83,26 @@ namespace {
 
 constexpr const char* kTag = "{{project_name}}";
 
-#ifdef SQUARED_CONSOLE
-/// The Console log lines are mirrored into: the platform's, while it exists.
-/// Lines logged before (the first one) or after are not shown in it.
+#if defined(SQUARED_CONSOLE) && defined(SQUARED_DEV_LOG)
+/// The dev log's listener while the platform exists: every dev log line made
+/// on this thread - these, the application's, the allocation reports - is
+/// printed into the Console as well.
+void console_listener(void* context, sq::dev::LogLevel level, std::string_view line) noexcept {
+    static_cast<sq::console::Console*>(context)->print(
+        line, level == sq::dev::LogLevel::Error     ? sq::console::Level::error
+              : level == sq::dev::LogLevel::Warning ? sq::console::Level::warning
+                                                    : sq::console::Level::info);
+}
+#elif defined(SQUARED_CONSOLE)
+/// Without the dev log, the lines below go to the Console directly: the
+/// platform's, while it exists. Lines logged before (the first one) or after
+/// are not shown in it.
 sq::console::Console* console_sink = nullptr;
 #endif
 
 #if defined(SQUARED_DEV_LOG) || defined(SQUARED_CONSOLE)
-/// Format a log line once, into the stack, and hand it to the dev log and the
-/// Console, whichever this build has.
+/// Format a log line once, into the stack, and hand it to the dev log (whose
+/// listener feeds the Console) or, without one, to the Console.
 __attribute__((format(printf, 2, 3))) void mirror(int priority, const char* format, ...) {
     char line[512];
     va_list arguments;
@@ -101,15 +114,13 @@ __attribute__((format(printf, 2, 3))) void mirror(int priority, const char* form
                                           ? static_cast<std::size_t>(length)
                                           : sizeof(line) - 1};
 #ifdef SQUARED_DEV_LOG
-    sq::dev::log_line(text);
-#endif
-#ifdef SQUARED_CONSOLE
+    sq::dev::log_line(text, priority >= ANDROID_LOG_WARN ? sq::dev::LogLevel::Warning
+                                                         : sq::dev::LogLevel::Info);
+#else
     if (console_sink != nullptr) {
         console_sink->print(text, priority >= ANDROID_LOG_WARN ? sq::console::Level::warning
                                                                 : sq::console::Level::info);
     }
-#else
-    static_cast<void>(priority);
 #endif
 }
 #define SQ_MIRROR(priority, ...) mirror(priority, __VA_ARGS__)
@@ -261,13 +272,18 @@ constexpr int kInsetsApi = 23;
 constexpr int kCutoutApi = 28;
 
 #ifdef SQUARED_CONSOLE
-/// The Console's character cell for the screen's density: 8 pixels for each
-/// 160 dpi, rounded, so the 8-pixel font is only ever scaled by whole steps.
-/// A configuration without a number (default, any, none) counts as 160.
-int console_cell(AConfiguration* config) {
-    std::int32_t dpi = config != nullptr ? AConfiguration_getDensity(config) : 0;
-    if (dpi <= 0 || dpi >= ACONFIGURATION_DENSITY_ANY) dpi = ACONFIGURATION_DENSITY_MEDIUM;
-    return 8 * std::max(1, static_cast<int>((dpi + 80) / 160));
+/// The screen's density in dpi. A configuration without a number (default,
+/// any, none) counts as 160.
+int screen_dpi(AConfiguration* config) {
+    const std::int32_t dpi = config != nullptr ? AConfiguration_getDensity(config) : 0;
+    return dpi <= 0 || dpi >= ACONFIGURATION_DENSITY_ANY ? ACONFIGURATION_DENSITY_MEDIUM
+                                                          : static_cast<int>(dpi);
+}
+
+/// The Console's character cell: 8 pixels for each 160 dpi, rounded, so the
+/// 8-pixel font is only ever scaled by whole steps.
+int console_cell(int dpi) {
+    return 8 * std::max(1, (dpi + 80) / 160);
 }
 #endif
 
@@ -360,16 +376,29 @@ struct Platform {
         , activity(native->activity->clazz)
         , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {
 #ifdef SQUARED_CONSOLE
-        console_cell_pixels = console_cell(native->config);
+        dpi = screen_dpi(native->config);
+        console_cell_pixels = console_cell(dpi);
+#ifdef SQUARED_DEV_LOG
+        sq::dev::set_log_listener(console_listener, &console);
+#else
         console_sink = &console;
+#endif
         console.print("console: the log, as it is written; [x] closes it");
+        add_console_commands();
+        console.show();
 #endif
     }
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
 #ifdef SQUARED_CONSOLE
-    ~Platform() { console_sink = nullptr; }
+    ~Platform() {
+#ifdef SQUARED_DEV_LOG
+        sq::dev::set_log_listener(nullptr, nullptr);
+#else
+        console_sink = nullptr;
+#endif
+    }
 #endif
 
     sq::graphics::Context graphics;
@@ -384,8 +413,40 @@ struct Platform {
     /// objects are deleted before the context is.
     sq::console::Console console;
     sq::console::Renderer console_renderer;
+    int dpi{160};
     int console_cell_pixels{8};
-    bool console_open{true};
+
+    /// The built-in commands: the system's, `gl`, `display`, and `alloc`
+    /// with the dev log. A table too small for them says so once.
+    void add_console_commands() {
+        using Added = sq::console::Commands::AddResult;
+        std::size_t refused = sq::console::add_system_commands(console);
+        refused += sq::console::add_gl_command(console) != Added::added ? 1 : 0;
+        refused += console.add("display",
+                               "display: pixels, density, the console's cells and the safe area",
+                               display_command, this) != Added::added ? 1 : 0;
+#ifdef SQUARED_DEV_LOG
+        refused += console.add("alloc", "alloc: heap allocations made in frames, and where",
+                               [](sq::console::Console&, const sq::console::Args&, void*) {
+                                   sq::dev::report_allocations();
+                               }) != Added::added ? 1 : 0;
+#endif
+        if (refused != 0) {
+            SQ_LOGW("console: %zu built-in commands did not fit; raise CONSOLE_COMMANDS", refused);
+        }
+    }
+
+    static void display_command(sq::console::Console& out, const sq::console::Args&,
+                                void* context) noexcept {
+        const auto& self = *static_cast<const Platform*>(context);
+        const sq::console::GridSize cells = sq::console::grid(self.console_frame());
+        out.printf(sq::console::Level::info,
+                   "display: %dx%d px, %d dpi; console cell %d px, %d by %d; safe area (px): "
+                   "left %d top %d right %d bottom %d",
+                   self.reported_width, self.reported_height, self.dpi, self.console_cell_pixels,
+                   cells.columns, cells.rows, self.reported_area.left, self.reported_area.top,
+                   self.reported_area.right, self.reported_area.bottom);
+    }
 #endif
 
     /// The Java side, for the safe-area query. Both are owned by Android and
@@ -628,7 +689,7 @@ struct Platform {
         app.update(delta);
         app.render(graphics);
 #ifdef SQUARED_CONSOLE
-        if (console_open) {
+        if (console.shown()) {
             console_renderer.draw(console, console_frame(), graphics.pixel_width(),
                                   graphics.pixel_height());
         }
@@ -732,10 +793,10 @@ int32_t on_motion(Platform& platform, AInputEvent* input) {
 #ifdef SQUARED_CONSOLE
     // The Console's [x]. Every other touch still reaches the application: the
     // Console takes input of its own in Sprint 4.5.
-    if (platform.console_open && action == AMOTION_EVENT_ACTION_DOWN &&
+    if (platform.console.shown() && action == AMOTION_EVENT_ACTION_DOWN &&
         sq::console::touches_close(platform.console_frame(), static_cast<int>(event.x),
                                    static_cast<int>(event.y))) {
-        platform.console_open = false;
+        platform.console.hide();
         SQ_LOGI("console: closed");
         return 1;
     }

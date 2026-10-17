@@ -38,4 +38,14 @@ void frame_begin() noexcept;
  */
 FrameAllocations frame_end() noexcept;
 
+/**
+ * @brief Report every frame counted so far through log_line(): one summary
+ * line (frames counted, how many allocated, allocations, bytes, the most in
+ * one frame), then every site found, as the `site` lines name them.
+ *
+ * What the Console's `alloc` command runs. Call it on the thread that counts
+ * frames. Allocates nothing.
+ */
+void report_allocations() noexcept;
+
 } // namespace sq::dev

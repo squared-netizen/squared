@@ -90,4 +90,14 @@ class Renderer final
         std::uint32_t quads_{ 0 };
 };
 
+/**
+ * @brief Add the `gl` command: the driver's vendor, renderer, version and
+ * shading language, and the limits that decide what a program can draw
+ * (texture and renderbuffer size, viewport, vertex attributes, texture
+ * units), plus the extension count. Built with the gles backend, like the
+ * Renderer; it must run where the context is current, as commands typed into
+ * the Console do.
+ */
+[[nodiscard]] Commands::AddResult add_gl_command( Console &console ) noexcept;
+
 } // namespace sq::console

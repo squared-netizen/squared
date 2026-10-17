@@ -75,15 +75,37 @@ Failure is a returned value; nothing is thrown.
 ## log_line
 
 ```cpp
-void log_line(std::string_view line) noexcept;
+void log_line(std::string_view line, LogLevel level = LogLevel::Info) noexcept;
 ```
 
-Sends one line. Does nothing if no sink is open. Lines over 1000 bytes are
-cut. It never blocks; if nothing is listening the line is dropped.
+Sends one line to the sink, if one is open; lines over 1000 bytes are cut.
+Also hands it, whole and with its level, to the listener, if one is set and
+this is the thread that set it. It never blocks; if nothing is listening the
+line is dropped. The sink sends the text alone: `level` is for the listener
+(the in-app Console colours warnings and errors).
 
 ```cpp
 sq::dev::log_line("loaded skin");
+sq::dev::log_line("skin: no font named 'title'; using the default", sq::dev::LogLevel::Warning);
 ```
+
+`LogLevel` is `Info`, `Warning` or `Error`.
+
+## set_log_listener
+
+```cpp
+using LogListener = void (*)(void* context, LogLevel level, std::string_view line) noexcept;
+void set_log_listener(LogListener listener, void* context) noexcept;
+```
+
+Every later `log_line()` made on the calling thread is also handed to
+`listener`, with `context`; `nullptr` stops it. One listener at a time.
+Lines written on other threads go to the sink only, so the listener needs no
+lock; the crash handler's lines never reach it. The listener must not call
+`log_line()` itself.
+
+The Android template sets one in `CONSOLE` builds with `DEV_LOG`, so the
+dev log shows in the in-app Console ([console.md](console.md)).
 
 ## close_log_sink
 
@@ -172,6 +194,23 @@ FrameAllocations frame_end() noexcept;
 Stops counting and returns the count. Reports through the log sink as above
 when one is open. Returns zeros when `frame_begin()` was not called on this
 thread.
+
+### report_allocations
+
+```cpp
+void report_allocations() noexcept;
+```
+
+Reports every frame counted so far through `log_line()`: one summary line,
+then a `site` line for every site found.
+
+```text
+alloc: 1840 frames counted, 3 allocated: 6 allocations, 288 bytes; most in one frame: 2
+alloc: site 1 (frame 3): libdemo.so 0x4a5f0 < libdemo.so 0x51c2c < ...
+```
+
+The Console's `alloc` command runs it. Call it on the thread that counts
+frames.
 
 ### What it counts
 

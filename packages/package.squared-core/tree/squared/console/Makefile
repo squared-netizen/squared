@@ -21,13 +21,15 @@ SOURCES := src/args.cpp \
     src/console.cpp \
     src/font8x8.cpp \
     src/input_line.cpp \
-    src/scrollback.cpp
+    src/scrollback.cpp \
+    src/system_commands.cpp
 
-# The renderer needs the GLES 3.0 headers, so it is built with the gles
-# backend only; the rest of the Console builds anywhere.
+# The renderer and the `gl` command need the GLES 3.0 headers, so they are
+# built with the gles backend only; the rest of the Console builds anywhere.
 SQUARED_GRAPHICS_BACKEND ?= null
 ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
-SOURCES += src/gles/renderer.cpp
+SOURCES += src/gles/gl_command.cpp \
+    src/gles/renderer.cpp
 endif
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/console/%.o,$(SOURCES))

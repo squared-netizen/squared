@@ -3,7 +3,10 @@
 // allocate, which the frame-allocation counter checks at the end.
 
 #include <squared/console/console.hpp>
+#include <squared/console/system_commands.hpp>
 #include <squared/dev/frame_allocations.hpp>
+
+#include <unistd.h>
 
 #include <cassert>
 #include <cstdio>
@@ -229,6 +232,52 @@ int main()
     }
     const sq::dev::FrameAllocations used = sq::dev::frame_end();
     assert( used.count == 0 && quiet_calls == 400 );
+
+    // --- shown, and the close built-in ------------------------------------------------
+    assert( !console->shown() );
+    console->show();
+    assert( console->shown() );
+    console->run( "close" );
+    assert( !console->shown() );
+    console->show();
+    console->hide();
+    assert( !console->shown() );
+
+    // --- the system commands: real /proc, real libc ----------------------------------------
+    assert( add_system_commands( *console ) == 0 );
+    assert( add_system_commands( *console ) == 5 ); // the second time, every name is taken
+    const auto starts = []( const std::string &text, const char *prefix ) {
+        return text.rfind( prefix, 0 ) == 0;
+    };
+    console->run( "mem" );
+    const std::string mem = newest( *console );
+    assert( starts( mem, "memory: resident " ) && mem.find( " MB (peak " ) != std::string::npos );
+    assert( mem.find( '?' ) == std::string::npos ); // every figure was found
+    console->run( "heap" );
+    assert( starts( newest( *console ), "heap: " ) &&
+            newest( *console ).find( " MB mapped" ) != std::string::npos );
+    console->run( "threads" );
+    assert( newest( *console ) == "threads: 1" );
+    console->run( "fds" );
+    const std::string fds = newest( *console );
+    assert( starts( fds, "open files: " ) && std::stoi( fds.substr( 12 ) ) >= 3 );
+    const int open_before = std::stoi( fds.substr( 12 ) );
+    {
+        const int extra = ::dup( 0 );
+        console->run( "fds" );
+        assert( std::stoi( newest( *console ).substr( 12 ) ) == open_before + 1 );
+        ::close( extra );
+    }
+    console->run( "device" );
+    assert( starts( newest( *console ), "kernel: Linux " ) );
+#if defined( __BIONIC__ )
+    {
+        auto it = console->lines().last( 2 );
+        assert( starts( std::string( ( *it ).text ), "device: " ) );
+    }
+#endif
+    std::printf( "system commands: %s | %s | %s\n", mem.c_str(), fds.c_str(),
+                 newest( *console ).c_str() );
 
     std::printf( "console: all assertions passed  sizeof(Console)=%zu (scrollback %zu)  "
                  "sizeof(InputLine)=%zu  sizeof(Commands)=%zu\n",

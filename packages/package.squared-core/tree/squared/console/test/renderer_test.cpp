@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <string>
 
 using namespace sq::console;
 
@@ -111,6 +112,21 @@ int main()
 
     renderer.reset(); // the destructor deletes nothing more
     assert( glstub::state.created == glstub::state.deleted );
+
+    // The gl command: four lines, an unknown string as ?.
+    assert( add_gl_command( *console ) == Commands::AddResult::added );
+    console->run( "gl" );
+    auto line = console->lines().last( 4 );
+    assert( std::string( ( *line ).text ) == "gl: OpenGL ES 3.0 stub; stub renderer; squared" );
+    ++line;
+    assert( std::string( ( *line ).text ) == "glsl: ?" );
+    ++line;
+    assert( std::string( ( *line ).text ) ==
+            "limits: texture 4096, renderbuffer 16, viewport 4096x2048, vertex attributes 16, "
+            "texture units 16 (16 in all)" );
+    ++line;
+    assert( std::string( ( *line ).text ) == "extensions: 42" );
+    assert( glstub::state.strings_asked == 4 );
 
     std::printf(
         "renderer: all assertions passed  sizeof(Renderer)=%zu  %zu quads in %d draws\n",

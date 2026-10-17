@@ -36,6 +36,11 @@ std::uint64_t g_window_allocating = 0;
 FrameAllocations g_window{};
 std::uint64_t g_window_worst = 0;
 
+// Since the start, for report_allocations().
+std::uint64_t g_allocating_frames = 0;
+FrameAllocations g_total{};
+std::uint64_t g_worst = 0;
+
 // Call sites. An allocation's site is the four innermost frames of the stack
 // that called operator new, starting at its direct caller: enough to name
 // both the container that grew and the code that grew it. Sites live in a
@@ -169,6 +174,23 @@ struct Report
         void send() const noexcept { log_line( std::string_view( text, length ) ); }
 };
 
+/** @brief The "site" line for g_sites[index]. */
+void report_site( std::size_t index ) noexcept
+{
+    const Site &site = g_sites[index];
+    Report line;
+    line.add( "alloc: site " );
+    line.add( index + 1 );
+    line.add( " (frame " );
+    line.add( site.first_frame );
+    line.add( "):" );
+    for( std::size_t frame = 0; frame < kSiteFrames && site.pcs[frame] != 0; ++frame ) {
+        line.add( frame == 0 ? " " : " < " );
+        line.add_frame( site.pcs[frame] );
+    }
+    line.send();
+}
+
 /** @brief "new site" lines for sites first seen since the last call. */
 void report_new_sites() noexcept
 {
@@ -178,17 +200,7 @@ void report_new_sites() noexcept
             continue;
         }
         site.named = true;
-        Report line;
-        line.add( "alloc: site " );
-        line.add( index + 1 );
-        line.add( " (frame " );
-        line.add( site.first_frame );
-        line.add( "):" );
-        for( std::size_t frame = 0; frame < kSiteFrames && site.pcs[frame] != 0; ++frame ) {
-            line.add( frame == 0 ? " " : " < " );
-            line.add_frame( site.pcs[frame] );
-        }
-        line.send();
+        report_site( index );
     }
     if( g_unnamed != 0 && !g_reported_full ) {
         g_reported_full = true;
@@ -242,6 +254,10 @@ void report( const FrameAllocations &frame ) noexcept
 {
     ++g_window_frames;
     if( frame.count != 0 ) {
+        ++g_allocating_frames;
+        g_total.count += frame.count;
+        g_total.bytes += frame.bytes;
+        g_worst = frame.count > g_worst ? frame.count : g_worst;
         ++g_window_allocating;
         g_window.count += frame.count;
         g_window.bytes += frame.bytes;
@@ -381,6 +397,27 @@ FrameAllocations frame_end() noexcept
     report_new_sites();
     report( frame );
     return frame;
+}
+
+void report_allocations() noexcept
+{
+    Report line;
+    line.add( "alloc: " );
+    line.add( g_frames );
+    line.add( " frames counted, " );
+    line.add( g_allocating_frames );
+    line.add( " allocated: " );
+    line.add( g_total.count );
+    line.add( " allocations, " );
+    line.add( g_total.bytes );
+    line.add( " bytes; most in one frame: " );
+    line.add( g_worst );
+    line.send();
+    for( std::size_t index = 0; index < kSites; ++index ) {
+        if( g_sites[index].used ) {
+            report_site( index );
+        }
+    }
 }
 
 } // namespace sq::dev

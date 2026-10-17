@@ -237,5 +237,25 @@ GL_APICALL void GL_APIENTRY glBlendFunc( GLenum, GLenum )
 {
     ++state.calls;
 }
+GL_APICALL const GLubyte *GL_APIENTRY glGetString( GLenum name )
+{
+    ++state.calls;
+    ++state.strings_asked;
+    const char *text = name == GL_VERSION    ? "OpenGL ES 3.0 stub"
+                       : name == GL_RENDERER ? "stub renderer"
+                       : name == GL_VENDOR   ? "squared"
+                                             : nullptr; // the shading language: unknown
+    return reinterpret_cast<const GLubyte *>( text );
+}
+GL_APICALL void GL_APIENTRY glGetIntegerv( GLenum name, GLint *data )
+{
+    ++state.calls;
+    if( name == GL_MAX_VIEWPORT_DIMS ) {
+        data[0] = 4096;
+        data[1] = 2048;
+        return;
+    }
+    data[0] = name == GL_MAX_TEXTURE_SIZE ? 4096 : name == GL_NUM_EXTENSIONS ? 42 : 16;
+}
 
 } // extern "C"

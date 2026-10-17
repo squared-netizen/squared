@@ -34,6 +34,11 @@ void clear( Console &console, const Args &, void * ) noexcept
     console.lines().clear();
 }
 
+void close( Console &console, const Args &, void * ) noexcept
+{
+    console.hide();
+}
+
 } // namespace
 
 Console::Console() noexcept
@@ -42,6 +47,7 @@ Console::Console() noexcept
     static_cast<void>(
         commands_.add( "help", "help [command]: list the commands, or show one", help ) );
     static_cast<void>( commands_.add( "clear", "clear: empty the scrollback", clear ) );
+    static_cast<void>( commands_.add( "close", "close: hide the console", close ) );
 }
 
 void Console::print( std::string_view text, Level level ) noexcept

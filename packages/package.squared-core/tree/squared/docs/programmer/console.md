@@ -24,7 +24,7 @@ In code, `SQUARED_CONSOLE` is defined (1 for `app`, 2 for `monitor`) when it is 
 
 ## What you see
 
-With `CONSOLE=app` the Android template draws the Console over the upper half of your app, from the first frame: every line the template logs (`device:`, `driver:`, `graphics:`, `safe area`, the lifecycle), warnings in amber. Tap `[x]` to close it; until Sprint 4.5 it stays closed for the rest of the run, and it takes no typing yet. Your app runs underneath as usual and still gets every other touch. A `CONSOLE=0` build has none of this.
+With `CONSOLE=app` the Android template draws the Console over the upper half of your app, from the first frame. With `DEV_LOG=1` too, it shows the dev log of the main thread: the template's lines (`device:`, `driver:`, `graphics:`, `safe area`, the lifecycle), your own `sq::dev::log_line()` lines, and the `alloc:` reports; warnings in amber, errors in red. Without `DEV_LOG`, only the template's lines. Tap `[x]` to close it; until Sprint 4.5 it stays closed for the rest of the run, and it takes no typing yet. Your app runs underneath as usual and still gets every other touch. A `CONSOLE=0` build has none of this.
 
 ## Console
 
@@ -56,7 +56,32 @@ console->run("spawn goblin 3");          // or typed: text("spawn goblin 3"), th
 | `text(utf8)` | Typed text, inserted at the cursor |
 | `lines()`, `input()`, `commands()` | The scrollback, the input line, the table |
 
-Two commands are built in: `help` (all commands, or `help <name>` for one) and `clear`.
+Three commands are built in: `help` (all commands, or `help <name>` for one), `clear` and `close`. More come from the calls below, and the Android template adds them all.
+
+| Call | Does |
+|---|---|
+| `show()`, `hide()`, `shown()` | Whether it should be drawn. A new Console is hidden; `close` and the close button hide it. The drawing code reads it |
+
+## Built-in commands
+
+```cpp
+#include <squared/console/system_commands.hpp>
+
+if (sq::console::add_system_commands(console) != 0) { /* the table was too small */ }
+```
+
+| Command | Prints |
+|---|---|
+| `mem` | `memory: resident 52.3 MB (peak 60.1 MB); the system has 2140.0 MB of 7660.2 MB available` |
+| `heap` | the allocator's bytes in use, free in its arena, and mapped |
+| `threads` | `threads: 14` |
+| `fds` | `open files: 37` |
+| `device` | `device: <maker> <model>, Android 16 (API 36), arm64-v8a` (Android and Termux), then `kernel: Linux <release>, aarch64` |
+| `gl` | the driver's version, renderer and vendor; the GLSL version; texture, renderbuffer and viewport limits, vertex attributes, texture units; the extension count. With the gles backend: `add_gl_command(console)`, from `renderer.hpp` |
+| `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
+| `alloc` | the frame-allocation counter's figures and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
+
+`add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` returns the table's `AddResult`. None of them allocates or keeps anything. Typing them on the device arrives with the keyboard (Sprint 4.5).
 
 **A command** is a plain function, `void(Console&, const Args&, void* context)`; a lambda that captures nothing converts to one. The `context` is what you passed to `add`. Names and help texts are kept as pointers, not copied: pass string literals, or text that lives as long as the Console.
 

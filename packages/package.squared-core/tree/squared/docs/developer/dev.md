@@ -19,13 +19,25 @@ dev/
   src/frame_allocations.cpp
   test/dev_log_test.cpp
   test/frame_allocations_test.cpp
+  test/log_listener_test.cpp
   Makefile
 ```
 
 ## How it works
 
 One UDP socket, non-blocking, `SOCK_CLOEXEC`, with its destination fixed to
-`127.0.0.1:<port>`. `log_line` is one `sendto` and nothing else.
+`127.0.0.1:<port>`. `log_line` is one `sendto`, then the listener, if any.
+
+**The listener** is a function pointer, a context and the thread that set it
+(`set_log_listener`). `log_line` calls it only on that thread: the flag and
+the owner are atomics any thread may read, while the pointer and context are
+read only by the owner, so no lock is needed and a line from a loader thread
+cannot reach the Console, which one thread uses. It is what the in-app
+Console reads the dev log through; a function pointer and `void*`, not a
+`std::function` or an observer list (§2.1, §5): there is one reader. The crash
+handler builds its packets with `send_line` and never calls it: the Console
+is not async-signal-safe. `LogLevel` travels with the line to the listener;
+the UDP packet stays the bare text, so `nc` shows what it always did.
 
 The crash handler runs on an alternate signal stack (so a stack overflow can be
 reported) and builds its packets with fixed-size character appends. It sends:
@@ -124,7 +136,8 @@ is allocated at run time, in `open_log_sink` or anywhere else.
 | destination `sockaddr_in` | 16 |
 | socket fd | 4 |
 | per-crash line buffer | on the alternate stack, 1001 |
-| counter state (flags, tallies, report window) | about 100 |
+| counter state (flags, tallies, report window, totals since the start) | about 130 |
+| listener (flag, owner thread, function, context) | 32 |
 | site table: 64 sites of 56 bytes (4 frames, 2 counts, 2 flags) | 3584 |
 | report line | on the frame thread's stack, 256 |
 
@@ -177,7 +190,13 @@ where the archive is not linked.
 
 ## Testing
 
-`make -C dev test` runs two programs.
+`make -C dev test` runs three programs.
+
+- `log_listener_test`: lines reach the listener with their level and whole
+  (3000 bytes, past the sink's cut), with no sink open; another thread's line
+  does not; `report_allocations()` sends the summary (`2 frames counted, 1
+  allocated: 1 allocations, 8 bytes; most in one frame: 1`) and the site line
+  `frame_end()` sent; once cleared, nothing arrives.
 
 - `dev_log_test` sends a line, checks truncation and the closed state, then
   forks a child that dereferences null. It checks the report arrives in order,

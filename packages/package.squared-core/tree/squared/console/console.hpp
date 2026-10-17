@@ -36,7 +36,7 @@ namespace sq::console
 class Console final
 {
     public:
-        /** @brief An empty console with its two built-ins, `help` and `clear`. */
+        /** @brief An empty, hidden console with its built-ins: `help`, `clear`, `close`. */
         Console() noexcept;
         ~Console() = default;
         Console( const Console & ) = delete;
@@ -86,6 +86,15 @@ class Console final
         /** @brief Typed text, from a keyboard or the soft keyboard. */
         void text( std::string_view utf8 ) noexcept { input_.insert( utf8 ); }
 
+        /**
+         * @brief Whether it should be drawn. The Console only keeps the flag:
+         * whoever draws it reads it. Hidden at first; `close` and the close
+         * button hide it.
+         */
+        [[nodiscard]] bool shown() const noexcept { return shown_; }
+        void show() noexcept { shown_ = true; }
+        void hide() noexcept { shown_ = false; }
+
         [[nodiscard]] const Scrollback &lines() const noexcept { return lines_; }
         [[nodiscard]] Scrollback &lines() noexcept { return lines_; }
         [[nodiscard]] const InputLine &input() const noexcept { return input_; }
@@ -100,6 +109,7 @@ class Console final
         InputLine input_;
         Commands commands_;
         Args args_;
+        bool shown_{ false };
 };
 
 } // namespace sq::console

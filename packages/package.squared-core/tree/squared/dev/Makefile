@@ -34,9 +34,20 @@ TEST_BINARY := $(BUILD_DIR)/dev_log_test
 # each one observable.
 FRAME_TEST := $(BUILD_DIR)/frame_allocations_test
 
-test: $(TEST_BINARY) $(FRAME_TEST)
+# The listener the Console reads the dev log through: levels, threads,
+# clearing, and report_allocations() arriving through it. No socket.
+LISTENER_TEST := $(BUILD_DIR)/log_listener_test
+
+test: $(TEST_BINARY) $(FRAME_TEST) $(LISTENER_TEST)
 	@$(TEST_BINARY)
 	@$(FRAME_TEST)
+	@$(LISTENER_TEST)
+
+$(LISTENER_TEST): $(MODULE_DIR)/test/log_listener_test.cpp \
+                  $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp \
+                  $(MODULE_DIR)/dev_log.hpp $(MODULE_DIR)/frame_allocations.hpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(TEST_BINARY): $(MODULE_DIR)/test/dev_log_test.cpp $(MODULE_DIR)/src/dev_log.cpp
 	@mkdir -p $(dir $@)

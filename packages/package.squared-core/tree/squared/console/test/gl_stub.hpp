@@ -37,6 +37,7 @@ struct State
         int palette_entries = 0;
         float screen_width = 0;
         float screen_height = 0;
+        int strings_asked = 0;
 };
 
 extern State state;

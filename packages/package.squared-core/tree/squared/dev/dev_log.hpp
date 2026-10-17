@@ -14,6 +14,21 @@ enum class LogSinkStatus : std::uint8_t {
                   ///< always the missing INTERNET permission.
 };
 
+/// How serious a line is. The UDP sink sends the text alone; a listener gets both.
+enum class LogLevel : std::uint8_t {
+    Info,    ///< The default.
+    Warning, ///< Something went wrong and was handled.
+    Error,   ///< Something went wrong and was not.
+};
+
+/**
+ * @brief Also handed every line sent with log_line(), on the thread that set it.
+ *
+ * Called inside log_line(), so it must not call log_line() itself. A plain
+ * function and a context, not a `std::function`: nothing is allocated.
+ */
+using LogListener = void ( * )( void *context, LogLevel level, std::string_view line ) noexcept;
+
 /// Where the sink sends and what it watches.
 struct LogSinkOptions
 {
@@ -39,11 +54,24 @@ struct LogSinkOptions
 [[nodiscard]] LogSinkStatus open_log_sink( const LogSinkOptions &options = {} ) noexcept;
 
 /**
- * @brief Send one line. Does nothing if no sink is open.
- * @param line Text without a trailing newline; longer than 1000 bytes is cut.
- * Never blocks and never fails visibly: a missing listener drops the line.
+ * @brief Send one line to the sink, if one is open, and to the listener, if
+ * one is set and this is its thread.
+ * @param line Text without a trailing newline; longer than 1000 bytes is cut
+ * for the sink (the listener gets it whole).
+ * @param level Passed to the listener; the sink sends the text alone.
+ * Never blocks and never fails visibly: a missing `nc` drops the line.
  */
-void log_line( std::string_view line ) noexcept;
+void log_line( std::string_view line, LogLevel level = LogLevel::Info ) noexcept;
+
+/**
+ * @brief Hand every later log_line() made on the calling thread to `listener`
+ * as well, with `context`; nullptr stops it. One listener at a time: setting
+ * one replaces the last. Lines written on other threads reach the sink only,
+ * so the listener never needs a lock. The crash handler's lines never reach it.
+ *
+ * The in-app Console sets one, so the dev log shows on screen.
+ */
+void set_log_listener( LogListener listener, void *context ) noexcept;
 
 /// Close the sink and restore the signal handlers it replaced.
 void close_log_sink() noexcept;
