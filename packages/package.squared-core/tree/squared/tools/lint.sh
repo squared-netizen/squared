@@ -306,7 +306,10 @@ fi
 #
 # Two configurations: the one local.mk selects ("host"), then, when the NDK's
 # headers are installed, the Android one (gles backend, android platform), for
-# the sources only it compiles.
+# the sources only it compiles. The Android one is compiled the way the
+# template builds it: for API $android_api, against the NDK's sysroot and its
+# libc++ headers (mk/squared_generated.mk, "Compiler and link flags").
+android_api=22
 printf 'print-%%:\n\t@:$(info $($*))\n' >"$TMP/print.mk"
 mk_print() { # mk_print <dir> <variables...>; one line per variable
     local dir=$1
@@ -366,7 +369,9 @@ if run tidy; then
         plan_config host
         ndk=$(ndk_include || true)
         if [ -n "$ndk" ]; then
-            overrides=(SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android "SQUARED_EXTERNAL_INCLUDES=-idirafter $ndk")
+            sysroot=${ndk%/usr/include}
+            overrides=(SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android
+                "SQUARED_EXTERNAL_INCLUDES=--target=aarch64-linux-android$android_api --sysroot=$sysroot -stdlib++-isystem $sysroot/usr/include/c++/v1")
             plan_config android
         fi
         if [ ! -s "$TMP/plan" ]; then

@@ -79,8 +79,15 @@ make gl-status
 passed to `aapt2` by the build, so retargeting never means editing a file:
 
 ```sh
-make apk SQ_MIN_SDK=21 SQ_TARGET_SDK=35
+make apk SQ_MIN_SDK=26 SQ_TARGET_SDK=35
 ```
+
+`SQ_MIN_SDK` is more than a manifest entry. The code is compiled for that API
+level and linked against that level's system libraries from the NDK, so a call
+to anything newer fails the link instead of the device. The default, 22
+(Android 5.1), gives one APK that runs on that and on everything after it.
+The C++ runtime is linked into your library; the APK carries no
+`libc++_shared.so`.
 
 ## One ABI
 

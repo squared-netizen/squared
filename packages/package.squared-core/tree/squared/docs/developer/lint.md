@@ -124,8 +124,10 @@ There are two configurations:
 - **android**: added when the NDK's sysroot headers are found
   (`$PREFIX/opt/android-sdk/ndk/*/toolchains/llvm/prebuilt/<host>/sysroot/usr/include`,
   or under `$ANDROID_NDK_HOME`). It sets `SQUARED_GRAPHICS_BACKEND=gles`,
-  `SQUARED_PLATFORM=android` and `SQUARED_EXTERNAL_INCLUDES=-idirafter <sysroot>`,
-  the same way the `gles` module test is built, and contributes only the
+  `SQUARED_PLATFORM=android` and compiles for API 22 against the NDK
+  (`--target=aarch64-linux-android22 --sysroot=<sysroot> -stdlib++-isystem
+  <sysroot>/usr/include/c++/v1`), the way the Android template builds an
+  application since 3.3, and contributes only the
   sources the host configuration does not compile (`gles/`, the GLES backend,
   the Android asset file system).
 

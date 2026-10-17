@@ -106,7 +106,7 @@ over the log sink.
 ```
 alloc: site 1 (frame 3): libdemo.so 0x4a5f0 < libdemo.so 0x51c2c < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
 alloc: frame 3: 2 allocations, 96 bytes (the first frame that allocated)
-alloc: site 2 (frame 7): libc++_shared.so 0x8f1c4 < libdemo.so 0x52018 < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
+alloc: site 2 (frame 7): libdemo.so 0x8f1c4 < libdemo.so 0x52018 < libdemo.so 0x3e110 < libdemo.so 0x3d9a8
 alloc: 41 of the last 120 frames allocated: 82 allocations, 3936 bytes; most in one frame: 2
 alloc: by site: 1:41 2:41
 ```
@@ -130,9 +130,11 @@ addr2line -f -C -i -e build/libdemo.so 0x4a5f0 0x51c2c 0x3e110
 ```
 
 `-i` matters. It shows the functions inlined at that address, which is where
-`std::vector` and `std::string` growth usually is. A frame in
-`libc++_shared.so` is the C++ library's own code, and the APK's copy of it is
-stripped. Look one frame further out, in your library, to see who called it.
+`std::vector` and `std::string` growth usually is. The C++ library is linked
+into your library, so its frames resolve the same way, from the same
+unstripped `build/libdemo.so`; the APK's copy is stripped. A frame inside
+libc++ is usually a container growing: look one frame further out to see who
+asked it to.
 
 To count something else, bracket it yourself:
 

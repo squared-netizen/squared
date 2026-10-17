@@ -47,6 +47,79 @@ Every setting is overridable:
 make CXX=clang++ CXXFLAGS_EXTRA=-fsanitize=address
 ```
 
+## Android: target, sysroot and runtime
+
+The Android template compiles the application and the vendored framework with
+the host's clang (Termux's) against the **NDK's sysroot**, for the API level in
+`SQ_MIN_SDK` (default 22), and links the **NDK's libc++ statically** (since
+Sprint 3, task 3.3, 2026-10-16). The flags live in the template's
+`mk/squared_generated.mk`; `mk/pkg_squared_core.mk` passes them to this tree's
+build as `CXX` and `CXXFLAGS_EXTRA`.
+
+```
+--target=aarch64-linux-android$(SQ_MIN_SDK) --sysroot=<ndk>/sysroot     compile and link
+-stdlib++-isystem <ndk>/sysroot/usr/include/c++/v1                      C++ compiles
+-L<ndk>/sysroot/usr/lib/aarch64-linux-android/$(SQ_MIN_SDK)              link
+-nostdlib++ --unwindlib=none -Wl,--hash-style=both -Wl,--gc-sections     link
+libc++_static.a libc++abi.a <ndk clang>/libunwind.a                     link, last
+```
+
+**What it replaced, and what was wrong with it.** Termux's clang targets
+`aarch64-unknown-linux-android24` and its own sysroot by default, and the build
+never told it otherwise: `SQ_MIN_SDK` reached only the manifest. The library
+was compiled against API 24's headers, linked against Termux's copies of the
+system libraries, carried only `DT_GNU_HASH`, and needed `__register_atfork`
+(API 23). Android 5.1 refuses such a library on all three counts. The probe
+that found this is `probe_api22.sh` (3.3, not kept in the tree).
+
+**Why this shape.**
+
+- `--sysroot` replaces Termux's headers and libraries wholesale. Putting the
+  NDK's headers on `-I` was tried long ago and broke `<cctype>` (two C
+  libraries ahead of libc++'s wrappers); a sysroot is one coherent set. The
+  `-idirafter` that `mk/pkg_squared_core.mk` still adds for the GL headers is
+  now redundant and harmless.
+- `-stdlib++-isystem` selects the NDK's libc++ headers, the ones
+  `libc++_static.a` was built from, and affects only C++ compiles; Termux's
+  clang would otherwise find Termux's own libc++ beside itself. In NDK r29 both
+  are libc++ 21, but their `__config_site` need not agree.
+- **Static runtime.** An application is one `.so`, the case the NDK documents
+  the static runtime for. Only the libc++ code the program reaches is linked
+  (with `--gc-sections`, which also drops this tree's unreferenced functions);
+  there is one library fewer to map and relocate at start; and the class of
+  failure where the bundled `libc++_shared.so` lacked a symbol the headers
+  called (`std::__hash_memory`, 2026-10-13) cannot happen. Priority 1 governed:
+  code only for what is used, no second library's relocated data per process.
+  The trade: a second native library in one APK would each carry their own
+  copy, and `operator new` replacement must stay in the one library (it does).
+- **Named by path.** Termux's clang always asks for `-lc++_shared`
+  (`-nostdlib++` stops it) and finds its unwinder beside itself, which the
+  sysroot hides; `--unwindlib=none` plus the NDK clang's own `libunwind.a`
+  replaces it. The same reasoning as the GLES libraries: a search order cannot
+  go wrong when there is no search.
+- `--hash-style=both`: `DT_HASH` for the loader before Android 6.0,
+  `DT_GNU_HASH` for faster lookup after. A few hundred bytes.
+- **The API level is enforced by the link.** That level's stubs define nothing
+  newer, and the template links with `-Wl,--no-undefined`, so a newer call
+  fails the build. Newer functions are reached with `dlsym` and recorded by the
+  feature cache (3.4).
+
+**Checked on the phone (2026-10-16, NDK r29, clang 21.1.8).** Every framework
+and demo source (83 files) compiles for API 22 with the NDK's headers; a trial
+library linked this way carries both hash tables, needs only `liblog`,
+`libdl`, `libm` and `libc`, and references one symbol newer than API 22,
+`memfd_create`, weakly (from the runtime; resolved as null on older releases).
+The demo APK already carries a v1 signature, which Android 5.1 needs.
+
+**Flags stamp.** This tree's build does not track flags. The project's
+`squared-core` target writes the flags it builds with to
+`build/release/.project-flags` and cleans the tree when they change, so
+archives for one level or one libc++ never link into a library for another.
+
+**The link check** (template `Makefile`, `verify-link`) refuses a library that
+needs `libc++_shared.so` (the runtime was not linked in) and, when
+`SQ_MIN_SDK` is below 23, one without `DT_HASH`.
+
 ## `SQUARED_ABI`
 
 `SQUARED_ABI` carries the ABI-shrinking flags.

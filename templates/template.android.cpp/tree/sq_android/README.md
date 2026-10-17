@@ -28,9 +28,11 @@ rather than one of them being baked in.
 Two deliberate absences:
 
 **No `<uses-sdk>`.** `minSdkVersion` and `targetSdkVersion` are passed to
-`aapt2` by the build, so `make apk SQ_MIN_SDK=21` retargets without editing a
+`aapt2` by the build, so `make apk SQ_MIN_SDK=26` retargets without editing a
 file. Declaring them here too would create two sources of truth, and aapt2
-would take this one.
+would take this one. `SQ_MIN_SDK` (default 22) is also what the code is
+compiled and linked for, so the manifest cannot claim a level the library was
+not built for.
 
 **No `android:debuggable`.** Set by the build for debug APKs. Committing it
 would ship a debuggable release.

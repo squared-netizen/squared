@@ -1,4 +1,9 @@
-build/
+# The build's output: this project's build/ and the vendored framework's
+# release and debug trees. Not every build/: squared/build/ also holds
+# common.mk, the framework's build settings, which a clone needs to build.
+/build/
+squared/build/release/
+squared/build/debug/
 *.o
 *.d
 *.apk

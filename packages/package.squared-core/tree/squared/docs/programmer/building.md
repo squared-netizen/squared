@@ -57,6 +57,34 @@ for a one-off:
 SQUARED_EXTERNAL_INCLUDES="-I../application/include" ./tools/build.sh
 ```
 
+## For Android
+
+A project made from the Android template builds squared for you, for the
+project's target: `make` in the project compiles the vendored `squared/` with
+the same compiler, API level and NDK sysroot as your own code. You do not build
+the framework separately.
+
+The API level is `SQ_MIN_SDK` in the project's `mk/squared_generated.mk`,
+default **22** (Android 5.1). It is what the code is compiled and linked for,
+not only what the manifest claims, so one APK runs on Android 5.1 and on every
+release after it.
+
+```sh
+make apk                  # for API 22
+make apk SQ_MIN_SDK=26    # for Android 8.0 and later only
+make android-status       # the NDK, the API level, the C++ runtime it found
+```
+
+| What happens | Why |
+|---|---|
+| A call to a function newer than `SQ_MIN_SDK` fails the **link** | It is not in that level's system libraries; reach it with `dlsym` and do without when it is absent |
+| The C++ runtime is linked **into** your library | One `.so`, nothing beside it to get out of step; the APK carries no `libc++_shared.so` |
+| The link fails if the library could not load on Android before 6.0 | It must carry the `DT_HASH` symbol table; the build adds it |
+| Changing `SQ_MIN_SDK` or the NDK rebuilds the framework | Archives built for one level must not link into another |
+
+The NDK must have libraries for the level you ask for; `make` says which levels
+it has if not. NDK r29 has 21 to 35.
+
 ## Flags
 
 `build/common.mk` holds every shared setting and each one is overridable:

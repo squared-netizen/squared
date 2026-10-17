@@ -67,11 +67,15 @@ allocate on first use, which here would be inside `operator new`.
 
 **Whole process.** The replacements are declared
 `[[gnu::visibility( "default" )]]`, against the build's hidden default, so
-they are exported from the application's `.so`. On Android the dynamic linker
-looks a symbol up in the executable, then in the loaded library's own group in
-load order: the application library before `libc++_shared.so`. So libc++'s
-own calls to `operator new` (a `std::string` growing out of line) reach the
-replacements too. The host test checks the same thing against libstdc++.
+they are exported from the application's `.so`. On Android the C++ runtime is
+linked into that `.so` (since 3.3: `libc++_static.a`, see
+[build-and-toolchain.md](build-and-toolchain.md#android-target-sysroot-and-runtime)),
+and libc++ defines its own `operator new` weak, as the standard's replacement
+rule requires. So the static link binds libc++'s own calls to `operator new`
+(a `std::string` growing out of line) to these replacements, before anything
+runs. (With the shared runtime this used to depend on the dynamic linker's
+search order, the application library ahead of `libc++_shared.so`.) The host
+test checks the same thing against libstdc++.
 
 **Call sites.** Each `operator new` passes its own return address
 (`__builtin_return_address( 0 )`, expanded in each definition through one

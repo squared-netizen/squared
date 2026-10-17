@@ -112,10 +112,35 @@ SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 # without complaint. SQUARED_PLATFORM was exactly that for a while - set to
 # android, never passed, so every APK shipped a files library that could not
 # read its own assets.
+#
+# The framework is compiled for the same target as the application: the
+# template's SQ_TARGET (the ABI, the API level, the NDK sysroot) rides on CXX,
+# so the C it vendors (yyjson, stb) gets it too, and SQ_CXX_INC (the NDK's
+# libc++ headers, which match the runtime the application links) on
+# CXXFLAGS_EXTRA, which only C++ compiles read. Both are empty under a template
+# that does not set them, and the framework then builds as before.
+#
+# The framework's build does not track flags, so the flags are stamped here.
+# When they change (another SQ_MIN_SDK, another NDK, a first build after this
+# change) the framework is cleaned before it is built: archives compiled for
+# one API level or one libc++ linked into a library for another would link
+# without complaint and fail on the device.
+SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
+SQ_SQUARED_STAMP := $(SQ_SQUARED_DIR)/build/release/.project-flags
+
 .PHONY: squared-core squared-core-clean squared-core-status
 squared-core:
+	@if [ "$$(cat '$(SQ_SQUARED_STAMP)' 2>/dev/null)" != '$(SQ_SQUARED_FLAGS)' ]; then \
+	  if [ -d '$(SQ_SQUARED_DIR)/build/release' ]; then \
+	    echo "  squared-core   build flags changed: cleaning the framework first"; \
+	    $(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) clean >/dev/null; \
+	  fi; \
+	  mkdir -p '$(dir $(SQ_SQUARED_STAMP))'; \
+	  printf '%s' '$(SQ_SQUARED_FLAGS)' > '$(SQ_SQUARED_STAMP)'; \
+	fi
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) \
-	    CXX="$(CXX)" \
+	    CXX="$(strip $(CXX) $(SQ_TARGET))" \
+	    CXXFLAGS_EXTRA="$(SQ_CXX_INC)" \
 	    SQUARED_GRAPHICS_BACKEND=$(SQUARED_GRAPHICS_BACKEND) \
 	    SQUARED_PLATFORM=$(SQUARED_PLATFORM) \
 	    SQUARED_EXTERNAL_INCLUDES="$(if $(strip $(SQ_GL_LIBS)),-idirafter $(SQ_NDK_INC),)"
@@ -142,6 +167,7 @@ squared-core-status:
 	@printf '  %-14s %s\n' "tree" "$(SQ_SQUARED_DIR)"
 	@printf '  %-14s %s\n' "backend" "$(SQUARED_GRAPHICS_BACKEND)"
 	@printf '  %-14s %s\n' "platform" "$(SQUARED_PLATFORM)"
+	@printf '  %-14s %s\n' "compiled for" "$(if $(strip $(SQ_TARGET)),$(SQ_TARGET),the compiler's default target)"
 	@printf '  %-14s %s\n' "headers" \
 	    "$(if $(strip $(SQ_GL_LIBS)),$(SQ_NDK_INC)  (via idirafter),not needed for the null backend)"
 	@printf '  %-14s %s\n' "libEGL" \

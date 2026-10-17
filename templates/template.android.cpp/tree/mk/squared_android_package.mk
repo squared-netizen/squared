@@ -10,7 +10,7 @@
 #
 #     aapt2 compile --dir res      -> compiled resources
 #     aapt2 link -I android.jar    -> base APK, binary manifest, resources.arsc
-#     zip                          -> inject lib<name>.so and libc++_shared.so
+#     zip                          -> inject lib<name>.so
 #     apksigner sign               -> installable
 #
 # Notably absent: zipalign. It is not packaged on Termux, and
@@ -129,59 +129,26 @@ $(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_ST
 	    $(if $(strip $(SQ_ASSET_FILES)),-A $(SQ_ASSETS_DIR),) \
 	    $(SQ_APK_DIR)/resources.zip
 
-# The libraries the APK carries. libc++_shared.so is not optional: Termux's
-# clang links the shared C++ runtime unconditionally -- -static-libstdc++ fails
-# with "unable to find library -lc++_shared" -- and Android does not supply it.
-# Without it the APK installs and then dies on launch before any of your code
-# runs.
+# The one library the APK carries. The C++ runtime is linked into it (see
+# SQ_CXX_RUNTIME in mk/squared_generated.mk), so there is no libc++_shared.so to
+# bundle, and no chance of bundling one that disagrees with the headers.
 #
-# It is stripped on the way in. The NDK ships it unstripped at ~9 MB, of which
-# the overwhelming majority is debug information; stripping brings it under
-# half a megabyte. Shipping 9 MB of someone else's debug symbols in every APK
-# would be careless.
-$(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so: $(SQ_LIBCXX)
-	@mkdir -p $(dir $@)
-	@if [ ! -f "$(SQ_LIBCXX)" ]; then \
-	  echo "libc++_shared.so not found at $(SQ_LIBCXX)" >&2; \
-	  echo "the APK would install and crash on launch; refusing to build it" >&2; \
-	  exit 1; \
-	fi
-	@cp $(SQ_LIBCXX) $@
-	@$(SQ_STRIP) --strip-unneeded $@ 2>/dev/null || true
-	@echo "  bundled        libc++_shared.so ($$(wc -c < $@) bytes, stripped)"
-
-# Refuse to package an app that expects C++ runtime symbols the bundled
-# libc++_shared.so does not define. The APK would install, and the library would
-# fail to load on the device with "cannot locate symbol", before any of your
-# code runs and with no crash report. Checked on the symbols libc++ owns
-# (names that begin in std::__ndk1: the namespace itself, not any name that
-# merely mentions it as an argument type - a function of ours that takes a
-# std::string_view is `_ZN2sq...`, and is ours to define, not libc++'s); the
-# rest of the dynamic symbols are the system's or the application's.
-.PHONY: verify-libcxx
-verify-libcxx: $(SQ_SO) $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
-	@nm -D --undefined-only $(SQ_SO) | awk '{print $$NF}' | grep -E '^_Z(N|NK|TVN|TIN|TSN)St6__ndk1' | sort -u > $(SQ_APK_DIR)/.libcxx_wanted || true
-	@nm -D --defined-only $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so | awk '{print $$NF}' | sort -u > $(SQ_APK_DIR)/.libcxx_has
-	@missing=$$(comm -23 $(SQ_APK_DIR)/.libcxx_wanted $(SQ_APK_DIR)/.libcxx_has); \
-	if [ -n "$$missing" ]; then \
-	  echo "" >&2; \
-	  echo "libc++ mismatch: lib$(SQ_PROJECT).so needs symbols the bundled libc++_shared.so lacks:" >&2; \
-	  echo "$$missing" | head -5 | sed 's/^/  /' >&2; \
-	  echo "  bundled from: $(SQ_LIBCXX)" >&2; \
-	  echo "  the compiler links: $(SQ_LIBCXX_LINKED)" >&2; \
-	  echo "  set SQ_LIBCXX=/path/to/matching/libc++_shared.so" >&2; \
-	  exit 1; \
-	fi; \
-	echo "  libc++ check   every needed symbol is in the bundled runtime"
-
+# The APK's copy is stripped; build/lib$(SQ_PROJECT).so keeps its symbols for
+# addr2line. --strip-unneeded keeps the dynamic symbol table, which the loader
+# and dladdr() read, so the crash report names functions as before. Debug
+# sections are never loaded into memory, so this saves APK and install space,
+# not RAM; the statically linked runtime's archives carry most of them.
 $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so: $(SQ_SO)
 	@mkdir -p $(dir $@)
 	@cp $< $@
+	@$(SQ_STRIP) --strip-unneeded $@ 2>/dev/null || true
+	@echo "  bundled        lib$(SQ_PROJECT).so ($$(wc -c < $@) bytes, stripped; C++ runtime inside)"
 
+# A libc++_shared.so left in lib/ by a build from before the runtime was linked
+# in is removed, so the zip below cannot pick it up.
 $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
-                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so \
-                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so \
-                    | verify-libcxx
+                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so
+	@rm -f $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
 	@cp $(SQ_APK_DIR)/base.apk $@
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) lib/$(SQ_ABI)/*.so
@@ -224,7 +191,8 @@ android-status:
 	@printf '  %-14s %s\n' "sysroot" "$(if $(wildcard $(SQ_NDK_INC)),$(SQ_NDK_INC),NOT FOUND)"
 	@printf '  %-14s %s\n' "stub libs" "$(if $(wildcard $(SQ_NDK_LIB)),$(SQ_NDK_LIB),NOT FOUND)"
 	@printf '  %-14s %s\n' "glue" "$(if $(wildcard $(SQ_GLUE_SRC)),$(SQ_GLUE_SRC),NOT FOUND)"
-	@printf '  %-14s %s\n' "libc++" "$(if $(wildcard $(SQ_LIBCXX)),$(SQ_LIBCXX),NOT FOUND)"
+	@printf '  %-14s %s\n' "C++ runtime" "$(if $(wildcard $(SQ_NDK_LIB_ABI)/libc++_static.a),$(SQ_NDK_LIB_ABI)/libc++_static.a (linked in),NOT FOUND)"
+	@printf '  %-14s %s\n' "unwinder" "$(if $(SQ_NDK_UNWIND),$(SQ_NDK_UNWIND),NOT FOUND)"
 	@echo "packaging"
 	@printf '  %-14s %s\n' "android.jar" "$(if $(SQ_ANDROID_JAR),$(SQ_ANDROID_JAR),NOT FOUND)"
 	@printf '  %-14s %s\n' "aapt2" "$$(command -v $(SQ_AAPT2) || echo 'NOT FOUND')"
@@ -232,7 +200,7 @@ android-status:
 	@printf '  %-14s %s\n' "keystore" "$(if $(wildcard $(SQ_KEYSTORE)),$(SQ_KEYSTORE),will be generated)"
 	@echo "target"
 	@printf '  %-14s %s\n' "abi" "$(SQ_ABI) ($(SQ_TRIPLE))"
-	@printf '  %-14s %s\n' "sdk" "min $(SQ_MIN_SDK), target $(SQ_TARGET_SDK)"
+	@printf '  %-14s %s\n' "sdk" "min $(SQ_MIN_SDK) (compiled and linked for it), target $(SQ_TARGET_SDK)"
 	@printf '  %-14s %s\n' "kits" "$(if $(SQ_KITS_PRESENT),$(SQ_KITS_PRESENT),none)"
 	@printf '  %-14s %s\n' "assets" "$(if $(strip $(SQ_ASSET_FILES)),$(words $(SQ_ASSET_FILES)) file(s),none - nothing will be packaged)"
 
@@ -247,7 +215,8 @@ android-help:
 	@echo "  make logcat         follow this app's log"
 	@echo
 	@echo "overrides"
-	@echo "  SQ_MIN_SDK=21       retarget without regenerating"
+	@echo "  SQ_MIN_SDK=24       build for another level, without regenerating"
+	@echo "                      (the NDK's oldest is the lowest; default 22)"
 	@echo "  SQ_ABI=armeabi-v7a  a different ABI (needs a toolchain that targets it)"
 	@echo "  SQ_ANDROID_JAR=...  a specific platform jar"
 	@echo "  SQ_NDK=...          a specific NDK"

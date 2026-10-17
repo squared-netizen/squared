@@ -19,7 +19,9 @@
 #   make DEV_LOG=1 apk   a development build that sends its log lines, and a
 #                        crash report, to UDP port 5555 on this device
 #
-# Overridable, e.g. `make SQ_MIN_SDK=21 OPT=-O3 apk`.
+# Overridable, e.g. `make SQ_MIN_SDK=24 OPT=-O3 apk`. SQ_MIN_SDK is what the
+# library is compiled and linked for (default 22, Android 5.1), not only what
+# the manifest says.
 
 CXX      ?= clang++
 CC       ?= clang
@@ -102,12 +104,28 @@ $(SQ_APK_DIR)/base.apk: $(SQ_FLAGS_STAMP)
 .PHONY: all clean help
 all: require-ndk squared-core $(SQ_SO)
 
+# The C++ runtime goes last: everything before it, the framework's archives
+# included, may call into it.
 $(SQ_SO): $(OBJ) $(SQ_SQUARED_LIBS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -shared $(OBJ) $(LDFLAGS) $(LDLIBS) -o $@
+	$(CXX) $(CXXFLAGS) -shared $(OBJ) $(LDFLAGS) $(LDLIBS) $(SQ_CXX_RUNTIME) -o $@
 	@$(MAKE) --no-print-directory verify-link
 
-# Report what the linker actually bound.
+# Report what the linker actually bound, and refuse a library the oldest
+# device it is built for could not load.
+#
+# Three checks, each for a failure that once got as far as the device:
+#
+#   GLES       below.
+#   runtime    libc++_shared.so among the needed libraries means the C++
+#              runtime was not linked in (see SQ_CXX_RUNTIME), and the APK
+#              would carry none: it fails to load on every device.
+#   DT_HASH    the loader before Android 6.0 reads only this symbol table. A
+#              library without it fails there with "empty/missing DT_HASH";
+#              the CDDA build on the Android 5.1 tablet did exactly that.
+#
+# A call to a function newer than SQ_MIN_SDK needs no check here: it fails the
+# link itself, against that level's stubs, under -Wl,--no-undefined.
 #
 # On Termux, $PREFIX/lib/libEGL.so belongs to libglvnd — the X11 EGL, not
 # Android's — and a plain -lEGL picks it over the NDK stub. The link succeeds
@@ -132,7 +150,21 @@ verify-link:
 	      exit 1; \
 	    fi ;; \
 	esac; \
-	echo "  link check     $$needed"
+	case " $$needed " in \
+	  *" libc++_shared.so "*) \
+	    echo "" >&2; \
+	    echo "link check: lib$(SQ_PROJECT).so needs libc++_shared.so, which the APK does not carry." >&2; \
+	    echo "  The C++ runtime should be linked in; is SQ_CXX_RUNTIME empty? (make android-status)" >&2; \
+	    exit 1 ;; \
+	esac; \
+	if [ "$(SQ_MIN_SDK)" -lt 23 ] && ! readelf -d $(SQ_SO) 2>/dev/null | grep -q '(HASH)'; then \
+	  echo "" >&2; \
+	  echo "link check: lib$(SQ_PROJECT).so has no DT_HASH table; Android before 6.0 cannot load it." >&2; \
+	  echo "  The link needs -Wl,--hash-style=both (SQ_LDFLAGS in mk/squared_generated.mk)." >&2; \
+	  exit 1; \
+	fi; \
+	echo "  link check     $$needed"; \
+	echo "                 built for API $(SQ_MIN_SDK); C++ runtime linked in$$(readelf -d $(SQ_SO) 2>/dev/null | grep -q '(HASH)' && echo '; DT_HASH present')"
 
 $(BUILD)/%.o: %.cpp $(SQ_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
