@@ -19,8 +19,16 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 SOURCES := src/args.cpp \
     src/commands.cpp \
     src/console.cpp \
+    src/font8x8.cpp \
     src/input_line.cpp \
     src/scrollback.cpp
+
+# The renderer needs the GLES 3.0 headers, so it is built with the gles
+# backend only; the rest of the Console builds anywhere.
+SQUARED_GRAPHICS_BACKEND ?= null
+ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
+SOURCES += src/gles/renderer.cpp
+endif
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/console/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -36,20 +44,45 @@ SCROLLBACK_TEST := $(BUILD_DIR)/scrollback_test
 # The input line, words, the command table and the Console together: editing,
 # history, completion, running commands; none of it allocates.
 CONSOLE_TEST := $(BUILD_DIR)/console_test
+# Where every character goes, read back as a grid; the font atlas; no
+# allocation while laying out.
+LAYOUT_TEST := $(BUILD_DIR)/layout_test
+# With the gles backend: the renderer against a fake driver that records calls
+# (test/gl_stub.cpp). It proves the call sequence, not what a driver accepts.
+RENDERER_TEST := $(BUILD_DIR)/console_renderer_test
 
-test: $(SCROLLBACK_TEST) $(CONSOLE_TEST)
-	@$(SCROLLBACK_TEST)
-	@$(CONSOLE_TEST)
+# Every test is rebuilt when any of the module's headers change: layout() is
+# a template in one, and a header's change must not leave a stale test passing.
+HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/test/*.hpp)
 
-$(CONSOLE_TEST): $(MODULE_DIR)/test/console_test.cpp $(addprefix $(MODULE_DIR)/,$(SOURCES)) \
-                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
+TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST)
+ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
+TESTS += $(RENDERER_TEST)
+endif
+
+test: $(TESTS)
+	@for t in $(TESTS); do $$t || exit 1; done
+
+$(LAYOUT_TEST): $(MODULE_DIR)/test/layout_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+                $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -pthread -o $@
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
+
+$(RENDERER_TEST): $(MODULE_DIR)/test/renderer_test.cpp $(MODULE_DIR)/test/gl_stub.cpp \
+                  $(addprefix $(MODULE_DIR)/,$(SOURCES)) \
+                  $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) $(filter %.cpp,$^) -ldl -pthread -o $@
+
+$(CONSOLE_TEST): $(MODULE_DIR)/test/console_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(SCROLLBACK_TEST): $(MODULE_DIR)/test/scrollback_test.cpp $(MODULE_DIR)/src/scrollback.cpp \
-                    $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
+                    $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -pthread -o $@
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

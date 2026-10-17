@@ -1,6 +1,6 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**, and the Console's working core without drawing: the **`Console`** itself, its **commands**, the **input line** with history and completion, and the **scrollback**. Drawing it on screen comes next.
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows**; the **`Console`** itself, its **commands**, the **input line** with history and completion, and the **scrollback**; and the **drawing** parts, for drawing it yourself. Typing into it on the device, and the gesture that opens it, come next (Sprint 4.5).
 
 Developer side: [../developer/console.md](../developer/console.md).
 
@@ -21,6 +21,10 @@ make CONSOLE=app CONSOLE_SCROLLBACK=1048576 install # a bigger history
 | `CONSOLE_COMMANDS` | `64` | Commands the table holds, 1 to 1024 |
 
 In code, `SQUARED_CONSOLE` is defined (1 for `app`, 2 for `monitor`) when it is on, and `sq::console::scrollback_bytes` and `sq::console::command_slots` hold the sizes. A wrong value is a build error, not a surprise on the device.
+
+## What you see
+
+With `CONSOLE=app` the Android template draws the Console over the upper half of your app, from the first frame: every line the template logs (`device:`, `driver:`, `graphics:`, `safe area`, the lifecycle), warnings in amber. Tap `[x]` to close it; until Sprint 4.5 it stays closed for the rest of the run, and it takes no typing yet. Your app runs underneath as usual and still gets every other touch. A `CONSOLE=0` build has none of this.
 
 ## Console
 
@@ -111,3 +115,37 @@ The Console owns the storage and the scrollback, and the input line uses one for
 **A `Line`'s `text` points into the storage.** It is valid until the next `push()` or `clear()`; copy it to keep it.
 
 Nothing here fails: there are no error values. A line that doesn't fit drops older ones, and a line too long for the storage is cut.
+
+## Drawing it yourself
+
+The template does this for you. To draw the Console somewhere else, or in another engine's frame:
+
+```cpp
+#include <squared/console/renderer.hpp>
+
+sq::console::Renderer renderer;                        // 16 KB; keep it with the Console
+if (!renderer.create()) { /* no GLES 3.0: draw nothing */ }
+
+// Each frame, after your own drawing:
+renderer.draw(console, {.x = 0, .y = 0, .width = w, .height = h / 2, .cell = 24}, w, h);
+```
+
+| Type | Header | Purpose |
+|---|---|---|
+| `Renderer` | `squared/console/renderer.hpp` | Draws a `Console` with GLES 3.0. Built with the gles backend only |
+| `Frame` | `squared/console/src/frame.hpp` | Where: `x`, `y`, `width`, `height` in pixels from the top left; `cell`, the character size in pixels; `scroll`, rows moved back from the newest |
+| `layout()` | `squared/console/layout.hpp` | Where each character goes, as `Quad`s, without drawing: for another renderer, or a test |
+| `grid(frame)` | `squared/console/layout.hpp` | The columns and rows a frame holds |
+| `touches_close(frame, x, y)` | `squared/console/layout.hpp` | Whether a point is on `[x]` |
+
+| Call | Does |
+|---|---|
+| `Renderer::create()` | Compile its shader, upload its 8 KB font, make its buffers. Needs a current context. Returns `false` if any of that failed, leaving nothing behind |
+| `Renderer::draw(console, frame, width, height)` | Draw into `frame`, with a `width` by `height` pixel viewport. Nothing before a successful `create()`. Leaves blending on, the scissor off, and no program or buffer bound |
+| `Renderer::invalidate()` | The context was lost with its objects: forget them. Then `create()` again |
+| `Renderer::destroy()` | Delete its GL objects (also done by the destructor). The context must be current |
+
+**Pick a cell that is a multiple of 8**: the font is 8 by 8 pixels, and whole steps keep it sharp. The template uses 8 for every 160 dpi. Characters outside ASCII show as `?`; their bytes are kept in the scrollback.
+
+**`layout(console, frame, emit)`** calls `emit(const Quad&)` once per rectangle, back to front: background, title, lines, input row. A `Quad` is `x`, `y`, `width`, `height`, a `glyph` (an ASCII code; 127, `solid_glyph`, is a filled square) and a `colour` (`Colour::text`, `warning`, `error`, `dim`, `background`, `cursor`, `title`). It allocates nothing.
+

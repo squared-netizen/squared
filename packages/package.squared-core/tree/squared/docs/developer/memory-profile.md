@@ -62,6 +62,9 @@ Regenerate with `tools/measure_sizes.sh`.
 | `console::InputLine` | 2648 | 8 |
 | `console::Commands` | 2056 | 8 |
 | `console::Console` | 71328 | 8 |
+| `console::Quad` | 20 | 4 |
+| `console::Frame` | 24 | 4 |
+| `console::Renderer` | 16416 | 4 |
 | `std::string` | 32 | 8 |
 | `std::function<void()>` | 32 | 8 |
 

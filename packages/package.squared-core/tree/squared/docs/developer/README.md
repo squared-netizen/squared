@@ -31,7 +31,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 
 - [app](app.md)
 - [assets](assets.md)
-- [console](console.md) &mdash; the Console (Sprint 4): where it lives, its sizes, the scrollback ring
+- [console](console.md) &mdash; the Console (Sprint 4): where it lives, its sizes, the font, layout and renderer, the template's hook, the scrollback ring
 - [data](data.md)
 - [dev](dev.md) &mdash; loopback log sink, crash reporter and frame-allocation counter (development only)
 - [files](files.md)

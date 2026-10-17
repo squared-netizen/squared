@@ -58,37 +58,71 @@
 #ifdef SQUARED_DEV_LOG
 #include <squared/dev/dev_log.hpp>
 #include <squared/dev/frame_allocations.hpp>
+#endif
 
+// The in-app Console (`make CONSOLE=app`): drawn over the application's frame,
+// with every log line below mirrored into it. Nothing of it exists in a
+// CONSOLE=0 build. For now it only shows: the keyboard and the gesture that
+// opens it come later (Sprint 4.5), so it is open from the start and its [x]
+// closes it for the rest of the run.
+#ifdef SQUARED_CONSOLE
+#include <squared/console/console.hpp>
+#include <squared/console/layout.hpp>
+#include <squared/console/renderer.hpp>
+#endif
+
+#if defined(SQUARED_DEV_LOG) || defined(SQUARED_CONSOLE)
 #include <cstdarg>
 #include <cstdio>
+#include <string_view>
 #endif
 
 namespace {
 
 constexpr const char* kTag = "{{project_name}}";
 
-#ifdef SQUARED_DEV_LOG
-__attribute__((format(printf, 1, 2))) void dev_mirror(const char* format, ...) {
+#ifdef SQUARED_CONSOLE
+/// The Console log lines are mirrored into: the platform's, while it exists.
+/// Lines logged before (the first one) or after are not shown in it.
+sq::console::Console* console_sink = nullptr;
+#endif
+
+#if defined(SQUARED_DEV_LOG) || defined(SQUARED_CONSOLE)
+/// Format a log line once, into the stack, and hand it to the dev log and the
+/// Console, whichever this build has.
+__attribute__((format(printf, 2, 3))) void mirror(int priority, const char* format, ...) {
     char line[512];
     va_list arguments;
     va_start(arguments, format);
     const int length = std::vsnprintf(line, sizeof(line), format, arguments);
     va_end(arguments);
-    if (length > 0) {
-        sq::dev::log_line({line, static_cast<std::size_t>(length) < sizeof(line)
-                                     ? static_cast<std::size_t>(length)
-                                     : sizeof(line) - 1});
+    if (length <= 0) return;
+    const std::string_view text{line, static_cast<std::size_t>(length) < sizeof(line)
+                                          ? static_cast<std::size_t>(length)
+                                          : sizeof(line) - 1};
+#ifdef SQUARED_DEV_LOG
+    sq::dev::log_line(text);
+#endif
+#ifdef SQUARED_CONSOLE
+    if (console_sink != nullptr) {
+        console_sink->print(text, priority >= ANDROID_LOG_WARN ? sq::console::Level::warning
+                                                                : sq::console::Level::info);
     }
-}
-#define SQ_DEV_MIRROR(...) dev_mirror(__VA_ARGS__)
 #else
-#define SQ_DEV_MIRROR(...) ((void)0)
+    static_cast<void>(priority);
+#endif
+}
+#define SQ_MIRROR(priority, ...) mirror(priority, __VA_ARGS__)
+#else
+#define SQ_MIRROR(...) ((void)0)
 #endif
 
 #define SQ_LOGI(...) \
-    (__android_log_print(ANDROID_LOG_INFO, kTag, __VA_ARGS__), SQ_DEV_MIRROR(__VA_ARGS__))
+    (__android_log_print(ANDROID_LOG_INFO, kTag, __VA_ARGS__), \
+     SQ_MIRROR(ANDROID_LOG_INFO, __VA_ARGS__))
 #define SQ_LOGW(...) \
-    (__android_log_print(ANDROID_LOG_WARN, kTag, __VA_ARGS__), SQ_DEV_MIRROR(__VA_ARGS__))
+    (__android_log_print(ANDROID_LOG_WARN, kTag, __VA_ARGS__), \
+     SQ_MIRROR(ANDROID_LOG_WARN, __VA_ARGS__))
 
 #ifdef SQUARED_DEV_LOG
 // Runs when the library loads, before any static initializer of ours, so a
@@ -226,6 +260,17 @@ void process_name(char* out, std::size_t size) {
 constexpr int kInsetsApi = 23;
 constexpr int kCutoutApi = 28;
 
+#ifdef SQUARED_CONSOLE
+/// The Console's character cell for the screen's density: 8 pixels for each
+/// 160 dpi, rounded, so the 8-pixel font is only ever scaled by whole steps.
+/// A configuration without a number (default, any, none) counts as 160.
+int console_cell(AConfiguration* config) {
+    std::int32_t dpi = config != nullptr ? AConfiguration_getDensity(config) : 0;
+    if (dpi <= 0 || dpi >= ACONFIGURATION_DENSITY_ANY) dpi = ACONFIGURATION_DENSITY_MEDIUM;
+    return 8 * std::max(1, static_cast<int>((dpi + 80) / 160));
+}
+#endif
+
 /// Read the insets of the activity's window, in pixels. Zero when unavailable,
 /// and without a single JNI call below kInsetsApi.
 ///
@@ -313,16 +358,35 @@ struct Platform {
         , runtime{graphics, files, assets}
         , vm(native->activity->vm)
         , activity(native->activity->clazz)
-        , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {}
+        , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {
+#ifdef SQUARED_CONSOLE
+        console_cell_pixels = console_cell(native->config);
+        console_sink = &console;
+        console.print("console: the log, as it is written; [x] closes it");
+#endif
+    }
 
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
+#ifdef SQUARED_CONSOLE
+    ~Platform() { console_sink = nullptr; }
+#endif
 
     sq::graphics::Context graphics;
     sq::files::AndroidAssetFileSystem files;
     sq::assets::AssetManager assets;
     sq::app::Runtime runtime;
     {{project_name}}::App app;
+
+#ifdef SQUARED_CONSOLE
+    /// The Console and what draws it, inside this object's one allocation
+    /// (about 88 KB at the defaults). After graphics, so the renderer's GL
+    /// objects are deleted before the context is.
+    sq::console::Console console;
+    sq::console::Renderer console_renderer;
+    int console_cell_pixels{8};
+    bool console_open{true};
+#endif
 
     /// The Java side, for the safe-area query. Both are owned by Android and
     /// outlive the platform object.
@@ -460,6 +524,13 @@ struct Platform {
                 static_cast<unsigned long long>(graphics.generation()),
                 graphics.resources_preserved() ? "preserved" : "lost");
         if (!created) log_driver();
+#ifdef SQUARED_CONSOLE
+        // Before the application: the Console is for when that goes wrong.
+        if (!graphics.resources_preserved()) console_renderer.invalidate();
+        if (!console_renderer.valid() && !console_renderer.create()) {
+            SQ_LOGW("console: renderer not available");
+        }
+#endif
 
         if (!created) {
             if (!app.create(runtime)) {
@@ -477,6 +548,20 @@ struct Platform {
         // application state, and the application re-lays out from here.
         sync_size(true);
     }
+
+#ifdef SQUARED_CONSOLE
+    /// Where the Console is drawn: the upper half of the screen, inside the
+    /// safe area.
+    sq::console::Frame console_frame() const {
+        const int left = reported_area.left;
+        const int top = reported_area.top;
+        return {.x = left,
+                .y = top,
+                .width = reported_width - left - reported_area.right,
+                .height = (reported_height - top - reported_area.bottom) / 2,
+                .cell = console_cell_pixels};
+    }
+#endif
 
     /// Name the GL driver once, after the first context is current: what a
     /// report from a device needs, and three calls.
@@ -542,6 +627,12 @@ struct Platform {
 #endif
         app.update(delta);
         app.render(graphics);
+#ifdef SQUARED_CONSOLE
+        if (console_open) {
+            console_renderer.draw(console, console_frame(), graphics.pixel_width(),
+                                  graphics.pixel_height());
+        }
+#endif
 #ifdef SQUARED_DEV_LOG
         sq::dev::frame_end();
 #endif
@@ -637,6 +728,18 @@ int32_t on_motion(Platform& platform, AInputEvent* input) {
     // Tracking by index is how multi-touch drags end up on the wrong widget.
     event.pointer_id = AMotionEvent_getPointerId(input, index);
     event.input_device_id = AInputEvent_getDeviceId(input);
+
+#ifdef SQUARED_CONSOLE
+    // The Console's [x]. Every other touch still reaches the application: the
+    // Console takes input of its own in Sprint 4.5.
+    if (platform.console_open && action == AMOTION_EVENT_ACTION_DOWN &&
+        sq::console::touches_close(platform.console_frame(), static_cast<int>(event.x),
+                                   static_cast<int>(event.y))) {
+        platform.console_open = false;
+        SQ_LOGI("console: closed");
+        return 1;
+    }
+#endif
 
     switch (action) {
         case AMOTION_EVENT_ACTION_DOWN:
