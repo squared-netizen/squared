@@ -30,3 +30,24 @@ Failures, each with a message on stderr and a non-zero exit:
 | 2 | unknown option, two destinations, `--workspace` without a directory |
 
 The archive leaves out Obsidian state (`.obsidian/`, `.trash/`), editor scratch files and `*.bak.*` backups. Running it twice on the same day writes `...-2.zip` rather than overwriting.
+
+## dexgen.sh
+
+Maintainer tool: checks, rewrites or prints the shim dex the console's monitor
+process is built with. You do not need it to build an app.
+
+    squared/tools/dexgen.sh             # the committed dex regenerates byte for byte
+    squared/tools/dexgen.sh --dump      # print it
+
+Exit status: 0 good, 1 a check failed, 2 usage or a failed build. Details:
+[developer/shims.md](../developer/shims.md).
+
+## shim_spike.sh
+
+A device test, for Sprint 4 only: builds your project's `DEV_LOG` APK plus a
+copy with a second launcher icon, "<project> console", that runs the same app in
+its own process. Your project's files are not changed; the copy is
+`build/spike/<project>-spike.apk`.
+
+    squared/tools/shim_spike.sh         # in the project
+

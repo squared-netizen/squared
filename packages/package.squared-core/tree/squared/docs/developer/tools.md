@@ -87,3 +87,34 @@ rewritten (in Lua, say) without touching the Makefile or the rules;
 Linux targets have bash 5.
 
 No workspace wrapper, for the same reason as `format.sh`.
+
+## dexgen.sh
+
+Builds `tools/dexgen/dexgen.cpp` (with `$CXX`, default `c++`, into
+`build/release/tools/`) and checks the committed shim dex against it. What the
+dex is, and why: [shims.md](shims.md).
+
+| option | effect |
+|---|---|
+| (none) | regenerate into a temporary file and compare byte for byte with `tools/dexgen/shims.dex`; exit 1 if they differ |
+| `--write` | regenerate the committed dex, after changing the shim table |
+| `--dump [dex]` | print a dex: checksums, tables, classes, methods, instructions (default: the committed one) |
+| `--self-test` | build with a test shim that has native methods and parameter lists, write it, read it back |
+
+Exit status: 0 good, 1 a check failed, 2 usage or a failed build. The binary is
+rebuilt when the source is newer than it. No workspace wrapper: it is a
+maintainer tool.
+
+## shim_spike.sh
+
+Sprint 4's device test of the console shim, run in a project:
+`squared/tools/shim_spike.sh [project dir]`. It builds the project's
+`DEV_LOG=1` APK, then a second one in `build/spike/` with
+`dev.squared.ConsoleActivity` added as a launcher activity in its own process
+(`:console`) and task, `android:hasCode="false"` dropped, and `classes.dex`
+(the committed shim dex) added before signing. The project's files are not
+touched. It reads the build's own settings (`SQ_AAPT2`, `SQ_ANDROID_JAR`,
+`SQ_MIN_SDK`, the keystore) from the project's Makefile, the way `lint.sh`
+reads module settings. It is temporary: the `CONSOLE=monitor` packaging in the
+template's `mk/` (4.7) replaces it.
+

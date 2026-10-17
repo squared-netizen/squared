@@ -42,7 +42,9 @@
 #include <android/keycodes.h>
 #include <android_native_app_glue.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <jni.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <chrono>
@@ -202,6 +204,19 @@ jint call_int(JNIEnv* env, jobject target, const char* name, jint fallback) {
 
 std::int16_t to_pixels(jint value) {
     return static_cast<std::int16_t>(std::clamp<jint>(value, 0, 4096));
+}
+
+/// This process's name, such as "com.example.app" or "com.example.app:console":
+/// the first string in /proc/self/cmdline, which Android sets to the process
+/// name from the manifest. One open and one read, once, at start. Empty if
+/// the file cannot be read.
+void process_name(char* out, std::size_t size) {
+    out[0] = '\0';
+    const int fd = open("/proc/self/cmdline", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return;
+    const ssize_t got = read(fd, out, size - 1);
+    close(fd);
+    out[got > 0 ? static_cast<std::size_t>(got) : 0] = '\0';
 }
 
 /// The releases the safe-area query needs. View.getRootWindowInsets() arrived
@@ -724,7 +739,9 @@ void android_main(android_app* app) {
     // function returns.
     auto platform = std::make_unique<Platform>(app);
     app->userData = platform.get();
-    SQ_LOGI("device: API %d", platform->api_level);
+    char process[128];
+    process_name(process, sizeof(process));
+    SQ_LOGI("device: API %d, process %s", platform->api_level, process);
     app->onAppCmd = on_command;
     app->onInputEvent = on_input;
 

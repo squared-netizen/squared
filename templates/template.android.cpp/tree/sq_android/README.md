@@ -25,7 +25,9 @@ rather than one of them being baked in.
 
 **What the device lacks is decided from its API level**, read once at start
 from the configuration NativeActivity already holds
-(`AConfiguration_getSdkVersion`) and logged as `device: API <n>`; the GL
+(`AConfiguration_getSdkVersion`) and logged with the process's name as
+`device: API <n>, process <name>` (an app with a `:console` process logs
+each separately); the GL
 driver is logged once as `driver: <version>; <renderer>; <vendor>` when the
 first context is current. Both reach logcat (`adb logcat -s <tag>`), which is
 how a device without Termux is read. Below API 23 the safe-area query is

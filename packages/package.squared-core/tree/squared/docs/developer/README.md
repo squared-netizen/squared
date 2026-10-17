@@ -24,6 +24,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
   was verified (history: written before the Sprint 1 layout move)
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/` and the workspace
   wrappers
+- [Shims](shims.md) &mdash; the generated classes Android calls into, and
+  `dexgen`, which writes them without a Java toolchain
 
 ## Modules
 
