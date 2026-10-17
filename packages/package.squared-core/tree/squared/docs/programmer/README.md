@@ -12,6 +12,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 
 - [app](app.md) &mdash; the platform-neutral lifecycle, event and text-input boundary
 - [assets](assets.md) &mdash; typed asset cache with dependency tracking
+- [console](console.md) &mdash; the Console, compiled in with `CONSOLE=app`; so far its scrollback and build switches
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
 - [dev](dev.md) &mdash; development aids: a loopback log sink, crash reporter and frame-allocation counter (not in release builds)
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles
@@ -26,6 +27,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 |---|---:|---:|---|
 | `app` | 4 | 7 | `squared/app/application.hpp` |
 | `assets` | 1 | 8 | `squared/assets/assets.hpp` |
+| `console` | 1 | 3 | none yet: `scrollback.hpp` |
 | `data` | 2 | 6 | `squared/data/json.hpp` |
 | `dev` | 2 | 0 | none: `dev_log.hpp` and `frame_allocations.hpp` are independent |
 | `files` | 4 | 5 | `squared/files/files.hpp` |

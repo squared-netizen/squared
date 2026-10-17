@@ -69,11 +69,35 @@ SQUARED_PLATFORM := posix
 
 endif
 
+# --- the Console ------------------------------------------------------------
+#
+#   make CONSOLE=app install       the in-app console (Sprint 4)
+#   make CONSOLE=monitor install   the same, plus the monitor process (Sprint 4.7)
+#   CONSOLE_SCROLLBACK=<bytes>     its history, default 65536 (about 1,000 lines)
+#   CONSOLE_COMMANDS=<n>           its command table, default 64
+#
+# CONSOLE=0, the default, carries none of it: the archive is not linked and no
+# flag reaches the compiler. Otherwise the sizes reach the framework's build
+# and the application's alike, as -D flags, so the two always agree, and the
+# flags stamp below rebuilds the framework when they change.
+CONSOLE            ?= 0
+CONSOLE_SCROLLBACK ?= 65536
+CONSOLE_COMMANDS   ?= 64
+ifeq ($(filter 0 app monitor,$(CONSOLE)),)
+  $(error CONSOLE must be 0, app or monitor, not '$(CONSOLE)')
+endif
+ifneq ($(CONSOLE),0)
+  SQ_CONSOLE_FLAGS := -DSQUARED_CONSOLE=$(if $(filter monitor,$(CONSOLE)),2,1) \
+                      -DSQUARED_CONSOLE_SCROLLBACK=$(CONSOLE_SCROLLBACK) \
+                      -DSQUARED_CONSOLE_COMMANDS=$(CONSOLE_COMMANDS)
+  SQ_CPPFLAGS += $(SQ_CONSOLE_FLAGS)
+endif
+
 # --- the framework ----------------------------------------------------------
 
 # Modules that publish headers. A module with no sources still publishes
 # headers, which is why this is a list rather than the archive list.
-SQ_SQUARED_MODULES := app assets data dev files gles graphics gui \
+SQ_SQUARED_MODULES := app assets console data dev files gles graphics gui \
                       math messaging time
 
 # One include root for every header, workhorse or supporting: the directory
@@ -86,6 +110,7 @@ SQ_SQUARED_INC := -I$(SQ_SQUARED_DIR)/..
 # everything that parses needs data. gles stands alone.
 SQ_SQUARED_LIB_DIR := $(SQ_SQUARED_DIR)/build/release/lib
 SQ_SQUARED_LIBS := \
+  $(if $(filter-out 0,$(CONSOLE)),$(SQ_SQUARED_LIB_DIR)/libsquared_console.a,) \
   $(SQ_SQUARED_LIB_DIR)/libsquared_gui.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_graphics.a \
   $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),\
@@ -125,7 +150,7 @@ SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 # change) the framework is cleaned before it is built: archives compiled for
 # one API level or one libc++ linked into a library for another would link
 # without complaint and fail on the device.
-SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
+SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) $(SQ_CONSOLE_FLAGS) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
 SQ_SQUARED_STAMP := $(SQ_SQUARED_DIR)/build/release/.project-flags
 
 .PHONY: squared-core squared-core-clean squared-core-status
@@ -140,7 +165,7 @@ squared-core:
 	fi
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) \
 	    CXX="$(strip $(CXX) $(SQ_TARGET))" \
-	    CXXFLAGS_EXTRA="$(SQ_CXX_INC)" \
+	    CXXFLAGS_EXTRA="$(strip $(SQ_CXX_INC) $(SQ_CONSOLE_FLAGS))" \
 	    SQUARED_GRAPHICS_BACKEND=$(SQUARED_GRAPHICS_BACKEND) \
 	    SQUARED_PLATFORM=$(SQUARED_PLATFORM) \
 	    SQUARED_EXTERNAL_INCLUDES="$(if $(strip $(SQ_GL_LIBS)),-idirafter $(SQ_NDK_INC),)"
@@ -167,6 +192,7 @@ squared-core-status:
 	@printf '  %-14s %s\n' "tree" "$(SQ_SQUARED_DIR)"
 	@printf '  %-14s %s\n' "backend" "$(SQUARED_GRAPHICS_BACKEND)"
 	@printf '  %-14s %s\n' "platform" "$(SQUARED_PLATFORM)"
+	@printf '  %-14s %s\n' "console" "$(if $(filter-out 0,$(CONSOLE)),$(CONSOLE) (scrollback $(CONSOLE_SCROLLBACK) bytes, $(CONSOLE_COMMANDS) commands),off (CONSOLE=0))"
 	@printf '  %-14s %s\n' "compiled for" "$(if $(strip $(SQ_TARGET)),$(SQ_TARGET),the compiler's default target)"
 	@printf '  %-14s %s\n' "headers" \
 	    "$(if $(strip $(SQ_GL_LIBS)),$(SQ_NDK_INC)  (via idirafter),not needed for the null backend)"

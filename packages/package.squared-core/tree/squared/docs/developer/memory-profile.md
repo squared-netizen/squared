@@ -58,6 +58,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `assets::AssetError` | 72 | 8 |
 | `messaging::Telegram` | 208 | 8 |
 | `messaging::DispatchResult` | 16 | 8 |
+| `console::Scrollback` | 56 | 8 |
 | `std::string` | 32 | 8 |
 | `std::function<void()>` | 32 | 8 |
 

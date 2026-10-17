@@ -81,6 +81,7 @@ make android-status       # the NDK, the API level, the C++ runtime it found
 | The C++ runtime is linked **into** your library | One `.so`, nothing beside it to get out of step; the APK carries no `libc++_shared.so` |
 | The link fails if the library could not load on Android before 6.0 | It must carry the `DT_HASH` symbol table; the build adds it |
 | Changing `SQ_MIN_SDK` or the NDK rebuilds the framework | Archives built for one level must not link into another |
+| `CONSOLE=app` (or `monitor`) links the Console in; the default, `0`, carries none of it | See [console.md](console.md) |
 
 The NDK must have libraries for the level you ask for; `make` says which levels
 it has if not. NDK r29 has 21 to 35.
