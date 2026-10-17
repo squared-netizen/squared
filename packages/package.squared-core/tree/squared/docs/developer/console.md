@@ -61,7 +61,9 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 
 **One file for Android, Termux and desktop Linux.** The interfaces are Linux's. What differs is the C library: bionic has system properties and `mallinfo`; glibc deprecated `mallinfo` for `mallinfo2` in 2.33. The two `#if` blocks test the C library (`__BIONIC__`, `__GLIBC__`), not the platform, because Termux is the posix platform on bionic: a Makefile switch on `SQUARED_PLATFORM` would pick the wrong branch there. Priority 2 (one file) over 4.
 
-**Left for later.** `crash` needs the crash file (4.6); `copy` needs the clipboard (4.5); `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
+**`copy`** (`src/copy_command.cpp`) selects lines (all, the error lines, the last *n*; never its own echo, which is the newest line when it runs) and streams them to a `ClipboardWriter`: three function pointers and a context, the same shape as the command table's entries, not a virtual interface, since there is one writer per program (§5). The template's writer builds a Java string through JNI in 512-unit pieces, so the whole scrollback is never copied into a second buffer: a 64 KB buffer for a command run a few times a session would be priority 1 spent on nothing. Tested with a collecting writer: all, errors, last 2 (the echo excluded), more than there are, bad arguments, no clipboard, a refusal, an empty scrollback.
+
+**Left for later.** `crash` needs the crash file (4.6); `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
 
 ## Drawing
 
@@ -126,7 +128,12 @@ The Android template's `entry.cpp` holds the Console under `#ifdef SQUARED_CONSO
 - **Commands.** The platform's constructor registers the built-ins (above) and shows the Console.
 - **When.** The renderer is made as soon as the surface is ready, before the application's `create()`, because the Console is for when that goes wrong; after a resume that lost resources it is invalidated and made again. It draws after `App::render`, inside the frame-allocation count, so a console frame that allocated would be reported.
 - **Where.** The upper half of the screen inside the safe area. The cell is 8 pixels for every 160 dpi of the screen's density, rounded (`AConfiguration_getDensity`): 24 on a 420 dpi phone, 45 columns across 1080 pixels.
-- **Input, for now.** A touch that starts on `[x]` hides it (`Console::hide`) for the rest of the run; every other touch goes to the application as before. The keyboard, the gesture that opens it again, and the touch handling of its own come in 4.5.
+- **Input.** In the template's `Platform` (`console_motion`, `console_key`), before the application sees anything:
+  - **Three-finger tap** (decided 2026-10-17; edge swipes and corners collide with Android's own gestures): from the third finger down until every finger is up, the gesture is the Console's. The fingers already down are sent to the application as `PointerUp` far off screen, which ends their presses without a click (the GUI clicks only on an up inside the pressed widget); a fourth finger, a move past 2 cells, or more than 500 ms from the first finger down makes it not a tap.
+  - **A gesture that starts on the Console** is all the Console's, down to the up, so nothing leaks to the application (4.2's `[x]` sent the application an unpaired up). Under the slop it is a tap: `[x]` closes, a hold of 500 ms on the input row pastes, anything else focuses (shows the keyboard). Past it, a drag: one row per cell of vertical movement, clamped with `scroll_limit`. Other fingers in the same event still go to the application.
+  - **Keys:** backtick (no Ctrl, Alt or Meta) toggles it from anywhere. While it has focus every key is its own except volume and power: Back closes; Ctrl+V pastes; `Console::key` takes editing keys; anything else is turned into the character it types (`KeyCharacterMap`, through JNI) and inserted.
+  - **Keyboard:** opening it, or tapping it, shows the soft keyboard; closing hides it unless the application's text field still wants it.
+  - **State:** about 70 bytes in `Platform` (the touch, the three fingers, the scroll, the focus flag), and the `ClipboardWriter`. Nothing allocates per event; JNI runs per key press and per paste or copy.
 
 ### Tested
 

@@ -8,6 +8,7 @@ This is the expert escape hatch. You should not normally need it.
 ```text
 AndroidManifest.xml    package id, activity, launcher entry
 entry.cpp              native_app_glue loop → your App
+android_text.hpp/.cpp  the keyboard, what a key types, the clipboard (JNI)
 res/values/            label and icon colour
 res/drawable/          the icon, as a vector path
 res/mipmap-*/          adaptive icon and legacy fallback
@@ -34,6 +35,25 @@ how a device without Termux is read. Below API 23 the safe-area query is
 skipped: the bars sit outside the window there, and the Java method it calls
 does not exist. Each such check costs a comparison, cheaper than reading a
 cached answer from storage, so nothing is cached.
+
+**Typing.** NativeActivity gives native code key codes, never characters.
+`android_text.cpp` turns a key press into the character it types through
+Java's `KeyCharacterMap` (one JNI call per key press, never per frame), and
+shows and hides the soft keyboard. `entry.cpp` hands your `App` a
+`sq::app::TextInputService` (`set_text_input_service`): when a text field
+takes focus the keyboard shows, and each key arrives as a `KeyDown` event
+and, if it types something, a `TextInput` event. What does not arrive: an
+input method's composition (accents built from two keys, CJK input, emoji),
+which needs a Java `InputConnection`. The volume keys are left to Android.
+
+**The Console** (`make CONSOLE=app`; see squared's `docs/programmer/console.md`).
+A three-finger tap anywhere, or `` ` `` on a keyboard, opens and closes it;
+the gesture is taken before your `App` sees it (fingers already down are
+released far off screen, so nothing is clicked). While it is open, a gesture
+that starts on it is its own: tap to type (the keyboard shows), drag to
+scroll back, hold the input row for half a second to paste, `[x]` or Back
+to close. `copy` puts lines on the clipboard. Every other touch, and every
+key while it is closed, reaches your `App` as before.
 
 ## `AndroidManifest.xml`
 

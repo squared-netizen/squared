@@ -3,6 +3,7 @@
 // allocate, which the frame-allocation counter checks at the end.
 
 #include <squared/console/console.hpp>
+#include <squared/console/copy_command.hpp>
 #include <squared/console/system_commands.hpp>
 #include <squared/dev/frame_allocations.hpp>
 
@@ -269,15 +270,76 @@ int main()
         ::close( extra );
     }
     console->run( "device" );
-    assert( starts( newest( *console ), "kernel: Linux " ) );
+    const std::string kernel = newest( *console );
+    assert( starts( kernel, "kernel: Linux " ) );
 #if defined( __BIONIC__ )
     {
         auto it = console->lines().last( 2 );
         assert( starts( std::string( ( *it ).text ), "device: " ) );
     }
 #endif
-    std::printf( "system commands: %s | %s | %s\n", mem.c_str(), fds.c_str(),
-                 newest( *console ).c_str() );
+    // --- copy: all, errors, the last n; the echo left out; a missing clipboard ----------
+    {
+        struct Clip
+        {
+                std::string text;
+                bool available = true;
+                bool accept = true;
+                int clips = 0;
+        };
+        static Clip clip;
+        const ClipboardWriter writer{ .context = &clip,
+                                      .begin =
+                                          []( void *context ) noexcept {
+                                              auto &c = *static_cast<Clip *>( context );
+                                              c.text.clear();
+                                              return c.available;
+                                          },
+                                      .append =
+                                          []( void *context, std::string_view text ) noexcept {
+                                              static_cast<Clip *>( context )->text.append( text );
+                                          },
+                                      .end =
+                                          []( void *context ) noexcept {
+                                              auto &c = *static_cast<Clip *>( context );
+                                              ++c.clips;
+                                              return c.accept;
+                                          } };
+        assert( add_copy_command( *console, writer ) == Commands::AddResult::added );
+        console->run( "clear" );
+        console->print( "one" );
+        console->print( "two", Level::error );
+        console->print( "three" );
+        console->print( "four", Level::error );
+        console->run( "copy" );
+        assert( clip.text == "one\ntwo\nthree\nfour" && clip.clips == 1 );
+        assert( newest( *console ) == "copied 4 lines, 18 bytes" );
+        console->run( "copy errors" );
+        // the previous echo and "copied" lines are info, so only the two errors
+        assert( clip.text == "two\nfour" );
+        assert( newest( *console ) == "copied 2 lines, 8 bytes" );
+        console->run( "copy 2" ); // the two lines before this echo
+        assert( clip.text == "> copy errors\ncopied 2 lines, 8 bytes" );
+        console->run( "copy 1000" ); // more than there are: all of them
+        assert( clip.text.rfind( "one\n", 0 ) == 0 );
+        console->run( "copy zero" );
+        assert( newest_level( *console ) == Level::error && clip.clips == 4 );
+        console->run( "copy 1 2" );
+        assert( newest_level( *console ) == Level::error );
+        clip.available = false;
+        console->run( "copy" );
+        assert( newest( *console ) == "copy: the clipboard is not available" && clip.clips == 4 );
+        clip.available = true;
+        clip.accept = false;
+        console->run( "copy" );
+        assert( newest( *console ) == "copy: the clipboard refused the text" );
+        clip.accept = true;
+        console->run( "clear" );
+        console->run( "copy" ); // nothing but its own echo
+        assert( clip.text.empty() && newest( *console ) == "copied 0 lines, 0 bytes" );
+    }
+
+    std::printf( "system commands: %s | %s | %s\n", mem.c_str(), fds.c_str(), kernel.c_str() );
 
     std::printf( "console: all assertions passed  sizeof(Console)=%zu (scrollback %zu)  "
                  "sizeof(InputLine)=%zu  sizeof(Commands)=%zu\n",

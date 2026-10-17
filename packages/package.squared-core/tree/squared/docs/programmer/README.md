@@ -27,7 +27,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 |---|---:|---:|---|
 | `app` | 4 | 7 | `squared/app/application.hpp` |
 | `assets` | 1 | 8 | `squared/assets/assets.hpp` |
-| `console` | 8 | 8 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
+| `console` | 9 | 9 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`, `copy_command.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
 | `data` | 2 | 6 | `squared/data/json.hpp` |
 | `dev` | 2 | 0 | none: `dev_log.hpp` and `frame_allocations.hpp` are independent |
 | `files` | 4 | 5 | `squared/files/files.hpp` |

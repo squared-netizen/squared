@@ -287,6 +287,7 @@ distributions have bash 5. It uses no GNU-only option of `find`, `grep`, `sed`,
   `--since <commit>` compares with an earlier commit, so `--since HEAD~1` checks
   what the last commit touched. Both leave out deleted files; until 2026-10-16,
   `--changed` stopped with "no such file" on a change that removed a header.
+- clang-format versions disagree on one construct this tree has met: a variable declared with an elaborated type and empty braces, `struct sigaction action{};`. clang-format 18 reads it as a struct definition and breaks it over two lines; 21, the tree's reference, keeps it whole. Write `struct sigaction action = {};`, or drop the `struct` where the name is not also a function's (`utsname name{};`): both versions leave those alone (found 2026-10-17, when a package formatted with 18 failed the phone's format check)
 - clang-tidy versions disagree at the edges: 21 finds more `exception-escape`
   cases (it sees libc++'s throws), 18 finds guarded optionals that 21 does
   not. The phone's clang-tidy 21 is the reference.

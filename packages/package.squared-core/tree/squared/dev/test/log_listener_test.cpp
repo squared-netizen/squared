@@ -30,6 +30,10 @@ void hear( void *context, sq::dev::LogLevel level, std::string_view line ) noexc
     heard->levels.push_back( level );
 }
 
+// Keeps the counted allocation observable: clang elides a new/delete pair
+// nothing reads, even at -O1 (it did on the phone, 2026-10-17; g++ does not).
+void *volatile g_sink = nullptr;
+
 bool starts_with( const std::string &text, const char *prefix )
 {
     return text.rfind( prefix, 0 ) == 0;
@@ -61,6 +65,7 @@ int main()
     static_cast<void>( sq::dev::frame_end() ); // a frame with nothing
     sq::dev::frame_begin();
     auto kept = std::make_unique<std::uint64_t>( 7 ); // one allocation, one site
+    g_sink = kept.get();
     static_cast<void>( sq::dev::frame_end() );
     const std::size_t before = heard.lines.size(); // frame_end() reported the new site
     assert( before >= 4 && starts_with( heard.lines[3], "alloc: site 1 (frame 2):" ) );

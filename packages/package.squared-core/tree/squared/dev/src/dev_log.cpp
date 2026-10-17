@@ -221,8 +221,7 @@ void install_handlers() noexcept
     stack.ss_flags = 0;
     ( void )::sigaltstack( &stack, nullptr );
 
-    struct sigaction action
-    {};
+    struct sigaction action = {};
     action.sa_sigaction = on_fatal_signal;
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sigemptyset( &action.sa_mask );

@@ -62,6 +62,33 @@ struct GridSize final
 
 namespace detail
 {
+[[nodiscard]] inline std::size_t characters( std::string_view text ) noexcept;
+} // namespace detail
+
+/**
+ * @brief The largest useful `frame.scroll`: how many wrapped rows of lines
+ * there are beyond those the frame shows. A view scrolled further shows the
+ * oldest rows all the same; a caller keeping its own scroll clamps to this, so
+ * scrolling back down takes effect at once. O(scrollback), allocates nothing.
+ */
+[[nodiscard]] inline int scroll_limit( const Console &console, const Frame &frame ) noexcept
+{
+    const GridSize size = grid( frame );
+    if( size.columns < 8 || size.rows < 3 ) {
+        return 0;
+    }
+    const auto columns = static_cast<std::size_t>( size.columns );
+    std::size_t total = 0;
+    for( const Line line : console.lines() ) {
+        total +=
+            std::max<std::size_t>( 1, ( detail::characters( line.text ) + columns - 1 ) / columns );
+    }
+    const auto visible = static_cast<std::size_t>( size.rows - 2 );
+    return total > visible ? static_cast<int>( total - visible ) : 0;
+}
+
+namespace detail
+{
 
 /// The glyph for the character starting at text[at], and the start of the next.
 [[nodiscard]] inline std::uint8_t glyph_at( std::string_view text, std::size_t &at ) noexcept

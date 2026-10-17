@@ -17,6 +17,8 @@
 //   * measures the system bars and camera cut-out and tells the application
 //     (sq::app::SafeArea), because Android draws the app edge to edge
 //   * measures frame time and drives update() separately from render()
+//   * shows the soft keyboard for a text field and turns key presses into
+//     typed text (android_text.cpp: the Java side, through JNI)
 //
 // There is no longer an "is a renderer present" question. sq::graphics::Context
 // always exists; which backend answers it is chosen at link time, and the null
@@ -24,6 +26,7 @@
 // gets a black window and a log line, which is what the old __has_include
 // guard was for.
 
+#include "android_text.hpp"
 #include "app.hpp"
 
 #include <squared/app/event.hpp>
@@ -47,6 +50,8 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -70,6 +75,7 @@
 #include <squared/console/console.hpp>
 #include <squared/console/layout.hpp>
 #include <squared/console/renderer.hpp>
+#include <squared/console/copy_command.hpp>
 #include <squared/console/system_commands.hpp>
 #endif
 
@@ -375,6 +381,9 @@ struct Platform {
         , vm(native->activity->vm)
         , activity(native->activity->clazz)
         , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {
+        if (!text.create(jni(), native->activity)) {
+            SQ_LOGW("text: the keyboard, key characters or the clipboard is not reachable");
+        }
 #ifdef SQUARED_CONSOLE
         dpi = screen_dpi(native->config);
         console_cell_pixels = console_cell(dpi);
@@ -383,7 +392,8 @@ struct Platform {
 #else
         console_sink = &console;
 #endif
-        console.print("console: the log, as it is written; [x] closes it");
+        console.print("console: the log, as it is written. Three fingers or ` open and close it;");
+        console.print("tap it to type, drag it to scroll, hold the input row to paste");
         add_console_commands();
         console.show();
 #endif
@@ -407,6 +417,11 @@ struct Platform {
     sq::app::Runtime runtime;
     {{project_name}}::App app;
 
+    /// The keyboard, key characters and the clipboard, through JNI; and the
+    /// text-input service the application's text fields use.
+    sq_android::AndroidText text;
+    sq_android::TextInput text_input{text};
+
 #ifdef SQUARED_CONSOLE
     /// The Console and what draws it, inside this object's one allocation
     /// (about 88 KB at the defaults). After graphics, so the renderer's GL
@@ -415,6 +430,231 @@ struct Platform {
     sq::console::Renderer console_renderer;
     int dpi{160};
     int console_cell_pixels{8};
+    /// Wrapped rows the view is moved back from the newest, by dragging.
+    int console_scroll{0};
+    /// Typing goes to the Console: it was opened, or tapped, and not closed since.
+    bool console_focused{false};
+
+    /// A gesture that started on the Console: all of it is the Console's.
+    struct ConsoleTouch {
+        std::int64_t pointer{-1};  ///< The finger, or -1 when none.
+        float x{0};
+        float y{0};
+        int scroll{0};             ///< console_scroll when it went down.
+        bool moved{false};         ///< Past the slop: a drag, not a tap.
+    } console_touch;
+
+    /// A three-finger tap, from the third finger down until every finger is up.
+    struct ThreeFingers {
+        bool active{false};
+        bool tap{true};            ///< Still a tap: no fourth finger, nothing moved far.
+        std::array<std::int64_t, 3> ids{};
+        std::array<float, 3> x{};
+        std::array<float, 3> y{};
+    } three;
+
+    /// Where `copy` writes: the clipboard, through `text`.
+    sq::console::ClipboardWriter clipboard_writer{
+        .context = &text,
+        .begin = [](void* c) noexcept { return static_cast<sq_android::AndroidText*>(c)->clip_begin(); },
+        .append = [](void* c, std::string_view piece) noexcept {
+            static_cast<sq_android::AndroidText*>(c)->clip_append(piece);
+        },
+        .end = [](void* c) noexcept { return static_cast<sq_android::AndroidText*>(c)->clip_end(); }};
+
+    /// How far a finger may move and still tap: 2 cells, about 3 mm.
+    [[nodiscard]] float slop() const { return static_cast<float>(2 * console_cell_pixels); }
+
+    void open_console() {
+        console.show();
+        console_scroll = 0;
+        focus_console();
+    }
+    void focus_console() {
+        console_focused = true;
+        text.show_keyboard();
+    }
+    void close_console() {
+        console.hide();
+        console_focused = false;
+        console_touch.pointer = -1;
+        if (!text_input.active()) text.hide_keyboard();
+        SQ_LOGI("console: closed");
+    }
+    void toggle_console() {
+        if (console.shown()) {
+            close_console();
+        } else {
+            open_console();
+        }
+    }
+
+    /// The clipboard's text into the input line, newlines as spaces.
+    void paste_into_console() {
+        std::array<char, sq::console::input_bytes> pasted{};
+        const std::size_t length = text.clip_text(pasted);
+        for (std::size_t i = 0; i < length; ++i) {
+            if (pasted[i] == '\n' || pasted[i] == '\r' || pasted[i] == '\t') pasted[i] = ' ';
+        }
+        console.text({pasted.data(), length});
+    }
+
+    /// A key while the Console has the keyboard, or backtick at any time.
+    /// True when it was the Console's; then nothing of it reaches the
+    /// application. Volume and other system keys are never taken.
+    bool console_key(std::int32_t code, std::int32_t action, std::int32_t meta,
+                     std::int32_t device, bool repeat) {
+        const bool down = action == AKEY_EVENT_ACTION_DOWN;
+        const bool plain = (meta & (AMETA_CTRL_ON | AMETA_ALT_ON | AMETA_META_ON)) == 0;
+        if (code == AKEYCODE_GRAVE && plain) {
+            if (down && !repeat) toggle_console();
+            return true;
+        }
+        if (!console_focused || !console.shown()) return false;
+        switch (code) {
+            case AKEYCODE_VOLUME_UP:
+            case AKEYCODE_VOLUME_DOWN:
+            case AKEYCODE_VOLUME_MUTE:
+            case AKEYCODE_POWER:
+                return false;
+            case AKEYCODE_BACK:
+                if (!down) close_console();
+                return true;
+            default:
+                break;
+        }
+        if (!down) return true;
+        if (code == AKEYCODE_V && (meta & AMETA_CTRL_ON) != 0) {
+            paste_into_console();
+            return true;
+        }
+        if (!console.key(translate_key(code), translate_modifiers(meta))) {
+            const char32_t typed = text.character(device, code, meta);
+            if (typed >= 0x20 && typed != 0x7F) {
+                std::array<char, 4> utf8{};
+                console.text({utf8.data(), sq_android::encode_utf8(typed, utf8)});
+            }
+        }
+        console_scroll = 0;
+        if (!console.shown()) close_console();  // the `close` command ran
+        return true;
+    }
+
+    /// A touch, before the application sees it: the three-finger tap, and any
+    /// gesture that starts on the Console. True when it was the Console's.
+    bool console_motion(AInputEvent* input, std::int32_t action, std::size_t index) {
+        const std::size_t count = AMotionEvent_getPointerCount(input);
+        if (three.active) {
+            if (action == AMOTION_EVENT_ACTION_POINTER_DOWN) three.tap = false;
+            if (action == AMOTION_EVENT_ACTION_MOVE) {
+                for (std::size_t i = 0; i < count; ++i) {
+                    const std::int64_t id = AMotionEvent_getPointerId(input, i);
+                    for (std::size_t f = 0; f < three.ids.size(); ++f) {
+                        if (three.ids[f] == id &&
+                            (std::abs(AMotionEvent_getX(input, i) - three.x[f]) > slop() ||
+                             std::abs(AMotionEvent_getY(input, i) - three.y[f]) > slop())) {
+                            three.tap = false;
+                        }
+                    }
+                }
+            }
+            if (action == AMOTION_EVENT_ACTION_UP || action == AMOTION_EVENT_ACTION_CANCEL) {
+                constexpr std::int64_t tap_nanoseconds = 500'000'000;
+                if (three.tap && action == AMOTION_EVENT_ACTION_UP &&
+                    AMotionEvent_getEventTime(input) - AMotionEvent_getDownTime(input) <
+                        tap_nanoseconds) {
+                    toggle_console();
+                }
+                three.active = false;
+            }
+            return true;
+        }
+        if (action == AMOTION_EVENT_ACTION_POINTER_DOWN && count == 3) {
+            // The gesture becomes the Console's. The two fingers already down
+            // are released far off screen, so the application ends their
+            // presses without a click; nothing more of it reaches the app.
+            three = {.active = true, .tap = true};
+            for (std::size_t i = 0; i < count; ++i) {
+                const std::int64_t id = AMotionEvent_getPointerId(input, i);
+                three.ids[i] = id;
+                three.x[i] = AMotionEvent_getX(input, i);
+                three.y[i] = AMotionEvent_getY(input, i);
+                if (i == index) continue;
+                if (id == console_touch.pointer) {
+                    console_touch.pointer = -1;
+                    continue;
+                }
+                Event released;
+                released.type = Event::Type::PointerUp;
+                released.pointer_id = id;
+                released.x = -1.0e6F;
+                released.y = -1.0e6F;
+                send(released);
+            }
+            return true;
+        }
+
+        const float x = AMotionEvent_getX(input, index);
+        const float y = AMotionEvent_getY(input, index);
+        const std::int64_t id = AMotionEvent_getPointerId(input, index);
+        const sq::console::Frame frame = console_frame();
+        if (action == AMOTION_EVENT_ACTION_DOWN && console.shown() &&
+            x >= static_cast<float>(frame.x) && x < static_cast<float>(frame.x + frame.width) &&
+            y >= static_cast<float>(frame.y) && y < static_cast<float>(frame.y + frame.height)) {
+            console_touch = {.pointer = id, .x = x, .y = y, .scroll = console_scroll};
+            return true;
+        }
+        if (console_touch.pointer < 0) return false;
+
+        if (action == AMOTION_EVENT_ACTION_MOVE) {
+            for (std::size_t i = 0; i < count; ++i) {
+                if (AMotionEvent_getPointerId(input, i) != console_touch.pointer) continue;
+                const float dx = AMotionEvent_getX(input, i) - console_touch.x;
+                const float dy = AMotionEvent_getY(input, i) - console_touch.y;
+                if (std::abs(dx) > slop() || std::abs(dy) > slop()) console_touch.moved = true;
+                if (console_touch.moved) {
+                    // Drag down to see older lines.
+                    const int rows = static_cast<int>(dy) / std::max(1, frame.cell);
+                    console_scroll = std::clamp(console_touch.scroll + rows, 0,
+                                                sq::console::scroll_limit(console, frame));
+                }
+            }
+            // The other fingers' moves still go to the application.
+            for (std::size_t i = 0; i < count; ++i) {
+                if (AMotionEvent_getPointerId(input, i) == console_touch.pointer) continue;
+                Event moved;
+                moved.type = Event::Type::PointerMove;
+                moved.x = AMotionEvent_getX(input, i);
+                moved.y = AMotionEvent_getY(input, i);
+                moved.pointer_id = AMotionEvent_getPointerId(input, i);
+                moved.input_device_id = AInputEvent_getDeviceId(input);
+                send(moved);
+            }
+            return true;
+        }
+        const bool lifted = action == AMOTION_EVENT_ACTION_UP || action == AMOTION_EVENT_ACTION_CANCEL ||
+                            (action == AMOTION_EVENT_ACTION_POINTER_UP && id == console_touch.pointer);
+        if (!lifted) return false;  // another finger, the application's
+        if (!console_touch.moved && action != AMOTION_EVENT_ACTION_CANCEL) {
+            const int sx = static_cast<int>(console_touch.x);
+            const int sy = static_cast<int>(console_touch.y);
+            const sq::console::GridSize cells = sq::console::grid(frame);
+            const bool on_input_row = cells.rows > 0 && sy >= frame.y + (cells.rows - 1) * frame.cell;
+            constexpr std::int64_t hold_nanoseconds = 500'000'000;
+            const bool held = AMotionEvent_getEventTime(input) - AMotionEvent_getDownTime(input) >=
+                              hold_nanoseconds;
+            if (sq::console::touches_close(frame, sx, sy)) {
+                close_console();
+            } else if (on_input_row && held) {
+                focus_console();
+                paste_into_console();
+            } else {
+                focus_console();
+            }
+        }
+        console_touch.pointer = -1;
+        return true;
+    }
 
     /// The built-in commands: the system's, `gl`, `display`, and `alloc`
     /// with the dev log. A table too small for them says so once.
@@ -422,6 +662,7 @@ struct Platform {
         using Added = sq::console::Commands::AddResult;
         std::size_t refused = sq::console::add_system_commands(console);
         refused += sq::console::add_gl_command(console) != Added::added ? 1 : 0;
+        refused += sq::console::add_copy_command(console, clipboard_writer) != Added::added ? 1 : 0;
         refused += console.add("display",
                                "display: pixels, density, the console's cells and the safe area",
                                display_command, this) != Added::added ? 1 : 0;
@@ -601,6 +842,7 @@ struct Platform {
             }
             created = true;
             last_frame = Clock::now();
+            app.set_text_input_service(&text_input);
         }
 
         app.surface_created(graphics);
@@ -620,7 +862,8 @@ struct Platform {
                 .y = top,
                 .width = reported_width - left - reported_area.right,
                 .height = (reported_height - top - reported_area.bottom) / 2,
-                .cell = console_cell_pixels};
+                .cell = console_cell_pixels,
+                .scroll = console_scroll};
     }
 #endif
 
@@ -791,15 +1034,8 @@ int32_t on_motion(Platform& platform, AInputEvent* input) {
     event.input_device_id = AInputEvent_getDeviceId(input);
 
 #ifdef SQUARED_CONSOLE
-    // The Console's [x]. Every other touch still reaches the application: the
-    // Console takes input of its own in Sprint 4.5.
-    if (platform.console.shown() && action == AMOTION_EVENT_ACTION_DOWN &&
-        sq::console::touches_close(platform.console_frame(), static_cast<int>(event.x),
-                                   static_cast<int>(event.y))) {
-        platform.console.hide();
-        SQ_LOGI("console: closed");
-        return 1;
-    }
+    // The Console first: the three-finger tap, and gestures that start on it.
+    if (platform.console_motion(input, action, index)) return 1;
 #endif
 
     switch (action) {
@@ -841,10 +1077,18 @@ int32_t on_motion(Platform& platform, AInputEvent* input) {
 int32_t on_key(Platform& platform, AInputEvent* input) {
     const std::int32_t code = AKeyEvent_getKeyCode(input);
     const std::int32_t action = AKeyEvent_getAction(input);
+    const std::int32_t meta = AKeyEvent_getMetaState(input);
+    const std::int32_t device = AInputEvent_getDeviceId(input);
+
+#ifdef SQUARED_CONSOLE
+    if (platform.console_key(code, action, meta, device, AKeyEvent_getRepeatCount(input) > 0)) {
+        return 1;
+    }
+#endif
 
     Event event;
     event.key = translate_key(code);
-    event.modifiers = translate_modifiers(AKeyEvent_getMetaState(input));
+    event.modifiers = translate_modifiers(meta);
     event.input_device_id = code;   // the raw code, for keys squared does not name
     event.repeat = AKeyEvent_getRepeatCount(input) > 0;
 
@@ -857,6 +1101,18 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
     }
 
     platform.send(event);
+
+    // What the key types, for a text field that asked for the keyboard.
+    if (event.type == Event::Type::KeyDown && platform.text_input.active()) {
+        const char32_t typed = platform.text.character(device, code, meta);
+        if (typed >= 0x20 && typed != 0x7F) {
+            std::array<char, 4> utf8{};
+            Event text;
+            text.type = Event::Type::TextInput;
+            text.text.assign(utf8.data(), sq_android::encode_utf8(typed, utf8));
+            platform.send(text);
+        }
+    }
 
     // Back is a navigation action and also a request to leave. Send both and
     // let the application decide: a dialog consumes it, a main screen exits.
@@ -878,8 +1134,16 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
 
     // Returning 1 for BACK stops Android closing the activity behind our back;
     // the application decides, through quit_requested(), and android_main
-    // then finishes the activity.
-    return 1;
+    // then finishes the activity. The volume keys are the system's: 0 lets
+    // Android change the volume, which returning 1 for every key prevented.
+    switch (code) {
+        case AKEYCODE_VOLUME_UP:
+        case AKEYCODE_VOLUME_DOWN:
+        case AKEYCODE_VOLUME_MUTE:
+            return 0;
+        default:
+            return 1;
+    }
 }
 
 int32_t on_input(android_app* app, AInputEvent* input) {
@@ -915,6 +1179,7 @@ void android_main(android_app* app) {
         SQ_LOGI("shutting down");
         platform->detach();
         platform->app.dispose();
+        platform->text.destroy();
         platform->release_jni();
         app->userData = nullptr;
     };

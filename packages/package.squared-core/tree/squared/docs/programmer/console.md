@@ -1,6 +1,6 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows**; the **`Console`** itself, its **commands**, the **input line** with history and completion, and the **scrollback**; and the **drawing** parts, for drawing it yourself. Typing into it on the device, and the gesture that opens it, come next (Sprint 4.5).
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; and the **drawing** parts, for drawing it yourself. Crash reports (4.6) and the monitor process (4.7) come next.
 
 Developer side: [../developer/console.md](../developer/console.md).
 
@@ -24,7 +24,19 @@ In code, `SQUARED_CONSOLE` is defined (1 for `app`, 2 for `monitor`) when it is 
 
 ## What you see
 
-With `CONSOLE=app` the Android template draws the Console over the upper half of your app, from the first frame. With `DEV_LOG=1` too, it shows the dev log of the main thread: the template's lines (`device:`, `driver:`, `graphics:`, `safe area`, the lifecycle), your own `sq::dev::log_line()` lines, and the `alloc:` reports; warnings in amber, errors in red. Without `DEV_LOG`, only the template's lines. Tap `[x]` to close it; until Sprint 4.5 it stays closed for the rest of the run, and it takes no typing yet. Your app runs underneath as usual and still gets every other touch. A `CONSOLE=0` build has none of this.
+With `CONSOLE=app` the Android template draws the Console over the upper half of your app, from the first frame. With `DEV_LOG=1` too, it shows the dev log of the main thread: the template's lines (`device:`, `driver:`, `graphics:`, `safe area`, the lifecycle), your own `sq::dev::log_line()` lines, and the `alloc:` reports; warnings in amber, errors in red. Without `DEV_LOG`, only the template's lines. Your app runs underneath as usual. A `CONSOLE=0` build has none of this.
+
+| To | Do |
+|---|---|
+| open or close it | a three-finger tap anywhere, or `` ` `` on a keyboard |
+| type into it | tap it: the soft keyboard shows (it covers the lower half; the Console is the upper) |
+| run a command | type it, Enter. Tab completes a name; Up and Down walk the history |
+| scroll back | drag it down; typing returns to the newest |
+| paste | hold the input row for half a second, or Ctrl+V on a keyboard |
+| copy | `copy`, `copy errors` or `copy 20` |
+| close it | `[x]`, Back, or `close` |
+
+While it is open, a gesture that starts on it is the Console's, and while it has the keyboard, so are the keys (but not the volume keys); everything else reaches your app. The three-finger tap is taken before your app sees it: the fingers already down are released far off screen, so nothing under them is clicked. Typed text is what the keyboard's keys map to: ASCII and the accented Latin letters a keyboard has keys for; an input method's composition (accents built from two keys, CJK input, emoji) does not arrive.
 
 ## Console
 
@@ -81,7 +93,21 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
 | `alloc` | the frame-allocation counter's figures and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
 
-`add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` returns the table's `AddResult`. None of them allocates or keeps anything. Typing them on the device arrives with the keyboard (Sprint 4.5).
+| `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
+
+`add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` and `add_copy_command` return the table's `AddResult`. None of them allocates or keeps anything.
+
+**`ClipboardWriter`** (`squared/console/src/clipboard_writer.hpp`) is where `copy` writes: a `context` and three functions, `begin(context)` (false: there is no clipboard), `append(context, text)` as often as needed, and `end(context)` (false: it refused). The text arrives in pieces, so nothing builds a copy of the whole scrollback first. `add_copy_command` keeps the writer by address: it must outlive the Console.
+
+```cpp
+std::string clip;   // a test's clipboard
+const sq::console::ClipboardWriter writer{
+    .context = &clip,
+    .begin = [](void* c) noexcept { static_cast<std::string*>(c)->clear(); return true; },
+    .append = [](void* c, std::string_view text) noexcept { static_cast<std::string*>(c)->append(text); },
+    .end = [](void*) noexcept { return true; }};
+static_cast<void>(sq::console::add_copy_command(console, writer));
+```
 
 **A command** is a plain function, `void(Console&, const Args&, void* context)`; a lambda that captures nothing converts to one. The `context` is what you passed to `add`. Names and help texts are kept as pointers, not copied: pass string literals, or text that lives as long as the Console.
 
@@ -162,6 +188,7 @@ renderer.draw(console, {.x = 0, .y = 0, .width = w, .height = h / 2, .cell = 24}
 | `layout()` | `squared/console/layout.hpp` | Where each character goes, as `Quad`s, without drawing: for another renderer, or a test |
 | `grid(frame)` | `squared/console/layout.hpp` | The columns and rows a frame holds |
 | `touches_close(frame, x, y)` | `squared/console/layout.hpp` | Whether a point is on `[x]` |
+| `scroll_limit(console, frame)` | `squared/console/layout.hpp` | The largest useful `frame.scroll`: clamp a scroll you keep to it, so scrolling back down takes effect at once |
 
 | Call | Does |
 |---|---|

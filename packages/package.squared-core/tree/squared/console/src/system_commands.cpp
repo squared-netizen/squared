@@ -171,8 +171,7 @@ void device( Console &console, const Args &, void * ) noexcept
         property( "ro.build.version.release", release ), property( "ro.build.version.sdk", sdk ),
         property( "ro.product.cpu.abi", abi ) );
 #endif
-    struct utsname name
-    {};
+    utsname name{};
     if( ::uname( &name ) == 0 ) {
         console.printf( Level::info, "kernel: %s %s, %s", name.sysname, name.release,
                         name.machine );

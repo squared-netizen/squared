@@ -202,6 +202,26 @@ int main()
         assert( screen.rows[1] == "a b?c?d             " );
     }
 
+    // --- scroll_limit: the rows beyond the view ---------------------------------------------
+    {
+        console->run( "clear" ); // the echo is gone with the rest
+        assert( scroll_limit( *console, frame ) == 0 );
+        for( int i = 0; i < 8; ++i ) {
+            console->print( "x" );
+        }
+        assert( scroll_limit( *console, frame ) == 0 ); // 8 rows, 8 shown
+        console->print( "0123456789abcdefghij0" );      // 2 rows
+        assert( scroll_limit( *console, frame ) == 2 );
+        Frame back = frame;
+        back.scroll = scroll_limit( *console, frame );
+        const Screen screen = draw( *console, back );
+        assert( screen.rows[1] == "x                   " &&
+                screen.rows[8] == "x                   " );
+        back.scroll = 1;
+        assert( draw( *console, back ).rows[8] == "0123456789abcdefghij" );
+        assert( scroll_limit( *console, Frame{ .width = 56, .height = 80, .cell = 8 } ) == 0 );
+    }
+
     // --- the input row: typed text, the cursor, scrolled to keep the cursor in view ------
     {
         console->text( "help" );

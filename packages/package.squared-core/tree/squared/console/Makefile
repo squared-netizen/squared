@@ -19,6 +19,7 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 SOURCES := src/args.cpp \
     src/commands.cpp \
     src/console.cpp \
+    src/copy_command.cpp \
     src/font8x8.cpp \
     src/input_line.cpp \
     src/scrollback.cpp \
