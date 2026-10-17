@@ -28,7 +28,7 @@ work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 cat > "$work/sizes.cpp" <<'EOF'
 #include <squared/app/event.hpp>
 #include <squared/assets/assets.hpp>
-#include <squared/console/scrollback.hpp>
+#include <squared/console/console.hpp>
 #include <squared/data/json.hpp>
 #include <squared/files/files.hpp>
 #include <squared/graphics/graphics.hpp>
@@ -55,7 +55,7 @@ int main() {
   P(graphics::GlyphPlacement) P(graphics::BitmapFontError)
   P(app::Event) P(files::FileHandle) P(files::FileError)
   P(data::JsonValue) P(data::JsonError) P(assets::AssetError)
-  P(messaging::Telegram) P(messaging::DispatchResult) P(console::Scrollback)
+  P(messaging::Telegram) P(messaging::DispatchResult) P(console::Scrollback) P(console::InputLine) P(console::Commands) P(console::Console)
   P(std::string) P(std::function<void()>)
   return 0;
 }

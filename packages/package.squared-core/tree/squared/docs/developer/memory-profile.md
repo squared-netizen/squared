@@ -59,6 +59,9 @@ Regenerate with `tools/measure_sizes.sh`.
 | `messaging::Telegram` | 208 | 8 |
 | `messaging::DispatchResult` | 16 | 8 |
 | `console::Scrollback` | 56 | 8 |
+| `console::InputLine` | 2648 | 8 |
+| `console::Commands` | 2056 | 8 |
+| `console::Console` | 71328 | 8 |
 | `std::string` | 32 | 8 |
 | `std::function<void()>` | 32 | 8 |
 

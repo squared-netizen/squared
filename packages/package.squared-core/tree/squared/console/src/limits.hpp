@@ -22,6 +22,18 @@ inline constexpr std::size_t scrollback_bytes = SQUARED_CONSOLE_SCROLLBACK;
 /** @brief Registered commands the table holds. */
 inline constexpr std::size_t command_slots = SQUARED_CONSOLE_COMMANDS;
 
+/** @brief Bytes in the input line; a longer line is cut at a character boundary. */
+inline constexpr std::size_t input_bytes = 256;
+
+/** @brief Bytes of input history: about 50 earlier lines. */
+inline constexpr std::size_t history_bytes = 2048;
+
+/** @brief Words a command line is split into, the command's name included. */
+inline constexpr std::size_t max_words = 16;
+
+/** @brief Bytes one printf() line may format to; longer is cut. */
+inline constexpr std::size_t format_bytes = 512;
+
 static_assert( scrollback_bytes >= 1024 && scrollback_bytes % 4 == 0,
                "SQUARED_CONSOLE_SCROLLBACK: at least 1024, and a multiple of 4" );
 static_assert( scrollback_bytes <= 0x7FFFFFFF, "SQUARED_CONSOLE_SCROLLBACK: below 2 GB" );

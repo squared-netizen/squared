@@ -16,7 +16,11 @@ MODULE_DIR := $(SQUARED_ROOT)/console
 
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/scrollback.cpp
+SOURCES := src/args.cpp \
+    src/commands.cpp \
+    src/console.cpp \
+    src/input_line.cpp \
+    src/scrollback.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/console/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -29,9 +33,18 @@ all: $(TARGET)
 # the frame-allocation counter confirms pushing allocates nothing. Asserts on,
 # whatever OPTIMISE says.
 SCROLLBACK_TEST := $(BUILD_DIR)/scrollback_test
+# The input line, words, the command table and the Console together: editing,
+# history, completion, running commands; none of it allocates.
+CONSOLE_TEST := $(BUILD_DIR)/console_test
 
-test: $(SCROLLBACK_TEST)
+test: $(SCROLLBACK_TEST) $(CONSOLE_TEST)
 	@$(SCROLLBACK_TEST)
+	@$(CONSOLE_TEST)
+
+$(CONSOLE_TEST): $(MODULE_DIR)/test/console_test.cpp $(addprefix $(MODULE_DIR)/,$(SOURCES)) \
+                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -pthread -o $@
 
 $(SCROLLBACK_TEST): $(MODULE_DIR)/test/scrollback_test.cpp $(MODULE_DIR)/src/scrollback.cpp \
                     $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
