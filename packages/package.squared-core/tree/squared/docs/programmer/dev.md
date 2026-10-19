@@ -107,6 +107,18 @@ lock; the crash handler's lines never reach it. The listener must not call
 The Android template sets one in `CONSOLE` builds with `DEV_LOG`, so the
 dev log shows in the in-app Console ([console.md](console.md)).
 
+## write_crash_trace
+
+`#include <squared/dev/crash_trace.hpp>`, header-only: usable without linking this module.
+
+```cpp
+using CrashSink = void (*)(void* context, const char* text, std::size_t length) noexcept;
+void write_crash_trace(int signal, const siginfo_t* info, void* ucontext,
+                       CrashSink sink, void* context) noexcept;
+```
+
+From inside a fatal-signal handler: hands `sink` the report a line at a time (`CRASH <name> (<n>) code <c> addr <a>`, frame 0 from the saved registers, up to 23 unwound frames as `  #n pc 0xOFFSET library`, `END`). The sink must be async-signal-safe (`write`, `sendto`). The dev log's crash report and the Console's crash file both use it.
+
 ## close_log_sink
 
 ```cpp

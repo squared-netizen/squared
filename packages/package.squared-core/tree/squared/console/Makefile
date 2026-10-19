@@ -20,6 +20,7 @@ SOURCES := src/args.cpp \
     src/commands.cpp \
     src/console.cpp \
     src/copy_command.cpp \
+    src/crash_file.cpp \
     src/font8x8.cpp \
     src/input_line.cpp \
     src/scrollback.cpp \
@@ -56,15 +57,25 @@ RENDERER_TEST := $(BUILD_DIR)/console_renderer_test
 
 # Every test is rebuilt when any of the module's headers change: layout() is
 # a template in one, and a header's change must not leave a stale test passing.
-HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/test/*.hpp)
+HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/test/*.hpp) \
+           $(wildcard $(SQUARED_ROOT)/dev/*.hpp $(SQUARED_ROOT)/dev/src/*.hpp)
 
-TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST)
+# A child process crashes for real (SIGSEGV, abort) with the crash file
+# installed; the parent reads the report, shows it, and checks the signal
+# still reached the handler before it and killed the child.
+CRASH_TEST := $(BUILD_DIR)/crash_file_test
+
+TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST) $(CRASH_TEST)
 ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
 TESTS += $(RENDERER_TEST)
 endif
 
 test: $(TESTS)
 	@for t in $(TESTS); do $$t || exit 1; done
+
+$(CRASH_TEST): $(MODULE_DIR)/test/crash_file_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -o $@
 
 $(LAYOUT_TEST): $(MODULE_DIR)/test/layout_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)

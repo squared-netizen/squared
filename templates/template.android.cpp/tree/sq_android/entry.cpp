@@ -76,6 +76,7 @@
 #include <squared/console/layout.hpp>
 #include <squared/console/renderer.hpp>
 #include <squared/console/copy_command.hpp>
+#include <squared/console/crash_file.hpp>
 #include <squared/console/system_commands.hpp>
 #endif
 
@@ -471,6 +472,19 @@ struct Platform {
 #endif
         console.print("console: the log, as it is written. Three fingers or ` open and close it;");
         console.print("tap it to type, drag it to scroll, hold the input row to paste");
+        // Crash reports: the last run's is shown now; this run's is kept for
+        // the next, in the app's private files.
+        if (const char* private_files = native->activity->internalDataPath;
+            private_files != nullptr) {
+            std::snprintf(crash_path.data(), crash_path.size(), "%s/crash.txt", private_files);
+            std::snprintf(crash_previous_path.data(), crash_previous_path.size(),
+                          "%s/crash-previous.txt", private_files);
+            static_cast<void>(sq::console::show_crash_file(console, crash_path.data(),
+                                                           crash_previous_path.data()));
+            if (!sq::console::install_crash_file(crash_path.data(), &console)) {
+                SQ_LOGW("console: crash reports will not be kept");
+            }
+        }
         add_console_commands();
         console.show();
 #endif
@@ -480,6 +494,7 @@ struct Platform {
     Platform& operator=(const Platform&) = delete;
 #ifdef SQUARED_CONSOLE
     ~Platform() {
+        sq::console::remove_crash_file();
 #ifdef SQUARED_DEV_LOG
         sq::dev::set_log_listener(nullptr, nullptr);
 #else
@@ -507,6 +522,9 @@ struct Platform {
     sq::console::Renderer console_renderer;
     int dpi{160};
     int console_cell_pixels{8};
+    /// Where a crash writes its report, and where the last one is kept once shown.
+    std::array<char, 512> crash_path{};
+    std::array<char, 512> crash_previous_path{};
     /// Wrapped rows the view is moved back from the newest, by dragging.
     int console_scroll{0};
     /// Typing goes to the Console: it was opened, or tapped, and not closed since.
@@ -744,6 +762,11 @@ struct Platform {
         std::size_t refused = sq::console::add_system_commands(console);
         refused += sq::console::add_gl_command(console) != Added::added ? 1 : 0;
         refused += sq::console::add_copy_command(console, clipboard_writer) != Added::added ? 1 : 0;
+        refused += crash_previous_path[0] != '\0' &&
+                           sq::console::add_crash_command(console, crash_previous_path.data()) !=
+                               Added::added
+                       ? 1
+                       : 0;
         refused += console.add("app", "app [stop | start | restart]: the application, in this process",
                                app_command, this) != Added::added ? 1 : 0;
         refused += console.add("quit", "quit: close the application and the console",

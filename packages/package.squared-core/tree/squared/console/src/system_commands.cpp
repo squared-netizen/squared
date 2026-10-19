@@ -4,6 +4,7 @@
 // mallinfo2), so that is what the two #if blocks test, not the platform:
 // Termux is the posix platform on bionic.
 
+#include <squared/console/line_reader.hpp>
 #include <squared/console/system_commands.hpp>
 
 #include <dlfcn.h>
@@ -317,53 +318,32 @@ void smaps( Console &console, const Args &, void * ) noexcept
     Usage total{};
     // Streamed through 4 KB on the stack: the file is a few hundred KB.
     std::array<char, 4096> buffer{};
-    std::size_t held = 0;
     Kind current = Kind::other;
-    bool reading = true;
-    while( reading ) {
-        const ssize_t got = ::read( fd, buffer.data() + held, buffer.size() - held );
-        reading = got > 0;
-        held += reading ? static_cast<std::size_t>( got ) : 0;
-        std::size_t start = 0;
-        for( ;; ) {
-            const auto end = std::string_view( buffer.data() + start, held - start ).find( '\n' );
-            if( end == std::string_view::npos ) {
-                break;
-            }
-            const std::string_view line( buffer.data() + start, end );
-            start += end + 1;
-            std::string_view name;
-            if( header_name( line, name ) ) {
-                current = kind_of( name, self_path );
-                continue;
-            }
-            Usage &kind = usage[static_cast<std::size_t>( current )];
-            if( line.starts_with( "Rss:" ) ) {
-                const long long value = field( line, "Rss:" );
-                kind.rss += value;
-                total.rss += value;
-            } else if( line.starts_with( "Pss:" ) ) {
-                const long long value = field( line, "Pss:" );
-                kind.pss += value;
-                total.pss += value;
-            } else if( line.starts_with( "Private_Dirty:" ) ) {
-                const long long value = field( line, "Private_Dirty:" );
-                kind.dirty += value;
-                total.dirty += value;
-            } else if( line.starts_with( "SwapPss:" ) ) {
-                const long long value = field( line, "SwapPss:" );
-                kind.swap += value;
-                total.swap += value;
-            }
+    for_each_line( fd, buffer, [&]( std::string_view line ) {
+        std::string_view name;
+        if( header_name( line, name ) ) {
+            current = kind_of( name, self_path );
+            return;
         }
-        // Keep the unfinished line; a line longer than the buffer is dropped.
-        if( start == 0 && held == buffer.size() ) {
-            held = 0;
-        } else {
-            std::memmove( buffer.data(), buffer.data() + start, held - start );
-            held -= start;
+        Usage &kind = usage[static_cast<std::size_t>( current )];
+        if( line.starts_with( "Rss:" ) ) {
+            const long long value = field( line, "Rss:" );
+            kind.rss += value;
+            total.rss += value;
+        } else if( line.starts_with( "Pss:" ) ) {
+            const long long value = field( line, "Pss:" );
+            kind.pss += value;
+            total.pss += value;
+        } else if( line.starts_with( "Private_Dirty:" ) ) {
+            const long long value = field( line, "Private_Dirty:" );
+            kind.dirty += value;
+            total.dirty += value;
+        } else if( line.starts_with( "SwapPss:" ) ) {
+            const long long value = field( line, "SwapPss:" );
+            kind.swap += value;
+            total.swap += value;
         }
-    }
+    } );
     ::close( fd );
 
     std::array<char, 24> pss{};

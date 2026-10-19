@@ -28,6 +28,10 @@ all: $(TARGET)
 # the crash path is exercised and not just compiled.
 TEST_BINARY := $(BUILD_DIR)/dev_log_test
 
+# Every test is rebuilt when a header of the module changes: crash_trace.hpp is
+# header-only, and a change to it must not leave a stale test passing.
+HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp)
+
 # Counts allocations inline, inside the shared C++ library, over-aligned and on
 # another thread, and reads the report lines back over loopback. Built at -O1,
 # where the optimiser could elide an unobserved new/delete pair; the test keeps
@@ -44,19 +48,18 @@ test: $(TEST_BINARY) $(FRAME_TEST) $(LISTENER_TEST)
 	@$(LISTENER_TEST)
 
 $(LISTENER_TEST): $(MODULE_DIR)/test/log_listener_test.cpp \
-                  $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp \
-                  $(MODULE_DIR)/dev_log.hpp $(MODULE_DIR)/frame_allocations.hpp
+                  $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
-$(TEST_BINARY): $(MODULE_DIR)/test/dev_log_test.cpp $(MODULE_DIR)/src/dev_log.cpp
+$(TEST_BINARY): $(MODULE_DIR)/test/dev_log_test.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -o $@
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -o $@
 
 $(FRAME_TEST): $(MODULE_DIR)/test/frame_allocations_test.cpp \
-               $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp
+               $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $^ -ldl -pthread -o $@
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

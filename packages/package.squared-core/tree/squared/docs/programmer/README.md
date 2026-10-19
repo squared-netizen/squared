@@ -12,7 +12,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 
 - [app](app.md) &mdash; the platform-neutral lifecycle, event and text-input boundary
 - [assets](assets.md) &mdash; typed asset cache with dependency tracking
-- [console](console.md) &mdash; the Console, compiled in with `CONSOLE=app`: commands and the built-ins, input, history, scrollback, and drawing it (the keyboard on the device comes next)
+- [console](console.md) &mdash; the Console, compiled in with `CONSOLE=app`: commands and the built-ins, input, history, scrollback, crash reports, and drawing it
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
 - [dev](dev.md) &mdash; development aids: a loopback log sink and its listener, crash reporter and frame-allocation counter (not in release builds)
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles
@@ -27,9 +27,9 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 |---|---:|---:|---|
 | `app` | 4 | 7 | `squared/app/application.hpp` |
 | `assets` | 1 | 8 | `squared/assets/assets.hpp` |
-| `console` | 9 | 9 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`, `copy_command.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
+| `console` | 11 | 9 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`, `copy_command.hpp`, `crash_file.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
 | `data` | 2 | 6 | `squared/data/json.hpp` |
-| `dev` | 2 | 0 | none: `dev_log.hpp` and `frame_allocations.hpp` are independent |
+| `dev` | 3 | 1 | none: `dev_log.hpp`, `frame_allocations.hpp` and `crash_trace.hpp` (header-only) are independent |
 | `files` | 4 | 5 | `squared/files/files.hpp` |
 | `gles` | 5 | 11 | `squared/gles/gles.hpp` |
 | `graphics` | 11 | 19 | `squared/graphics/graphics.hpp` |

@@ -80,7 +80,21 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 
 The native heap is still one figure for everyone who calls `malloc`: squared, the application, libc++, and the GPU driver's CPU side. The `alloc` command splits it: in `DEV_LOG` builds the replacement `operator new` keeps what it holds now (each block by `malloc_usable_size`, relaxed atomics, two counters and a peak), so heap less that figure is everyone else's. Cost: three atomic operations per allocation and free, in development builds only.
 
-**Left for later.** `crash` needs the crash file (4.6); `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
+**Left for later.** `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
+
+## Crash file
+
+`console/crash_file.hpp`, `src/crash_file.cpp`; the trace itself is `sq::dev::write_crash_trace` (`dev/crash_trace.hpp`, header-only, so a Console build without `DEV_LOG` does not link `dev`, whose replacement `operator new` must stay out of release builds).
+
+**In the handler**, in this order: `open` the file (`O_CREAT | O_TRUNC`, 0600; made at the crash, so an earlier report survives until the next one); the trace through a sink that `write`s each line; then "log: the last N lines" and the newest N lines of the scrollback, walked with the ordinary iterator. The log comes last on purpose: if the crash caught the scrollback mid-write, walking it may fault again, and then only that part is lost (the signal is blocked inside its handler, so a second fault kills the process instead of recursing). Everything it touches is static: the path (512 bytes), the Console pointer, the count, the six earlier `sigaction`s, a 16 KB alternate stack (installed for the calling thread only if it has none: `sigaltstack` is per thread).
+
+**Handing it on.** The earlier handler (in a dev build, the dev log's; under it, Android's) is put back, then: a fault (`si_code > 0`) simply returns, so the instruction faults again and the earlier handler gets the real fault address; a sent signal (`abort`, `raise`, `si_code <= 0`) is raised again and arrives when the handler returns. This is the order breakpad uses; calling the earlier handler directly would hand it our stack and a stale context.
+
+**At launch** the template shows the report before installing the handler, then `rename`s it to `crash-previous.txt`, so a report is shown once and kept for `crash`; a crash during the next run overwrites `crash.txt`, never the kept one.
+
+**Tested** (`test/crash_file_test.cpp`, `make -C console test`) with real crashes in child processes: a null write (SIGSEGV, code 1, address 0; frames #0 and #1, so the unwinder got past the handler; END; the log lines) with a handler installed before ours, which ran (a marker file); `abort()` (SIGABRT, raised again); shown once, moved, then `crash`; no report kept; empty and over-long paths refused; `remove_crash_file` puts the earlier handler back.
+
+**`line_reader.hpp`.** `for_each_line` reads a descriptor through a caller's buffer, a line at a time, the last line counting without a newline, a line longer than the buffer in pieces. `smaps` and the crash file use it; a template, so each caller's lambda inlines.
 
 ## Drawing
 

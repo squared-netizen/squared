@@ -118,6 +118,9 @@ int main()
     assert( report[0] == "about to crash" );
     assert( report[1].rfind( "CRASH SIGSEGV (11)", 0 ) == 0 );
     assert( report[2].rfind( "  #0 pc ", 0 ) == 0 );
+    // The unwinder got past the handler: a trace of frame 0 alone is the
+    // failure a noexcept callback caused once (crash_trace.hpp).
+    assert( report.size() >= 5 && report[3].rfind( "  #1 pc ", 0 ) == 0 );
     assert( report.back() == "END" );
 
     std::printf( "dev log: all assertions passed\n" );

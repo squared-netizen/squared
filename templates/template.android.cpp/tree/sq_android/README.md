@@ -69,6 +69,14 @@ cleared under the Console. In a Console build a `create()` that fails no
 longer leaves a black window: the Console opens and `app start` tries again.
 `quit` finishes the activity, the same way your `quit_requested()` does.
 
+**Crash reports.** In a Console build a fatal signal (a segfault, an abort)
+writes a report to the app's private files, `files/crash.txt`: the trace,
+each frame as a library and an offset for `addr2line`, then the last 40 lines
+of the log. The next launch shows it in the Console, in red, once, and moves
+it to `crash-previous.txt`; `crash` shows it again. The signal then goes on
+to the dev log's handler (with `DEV_LOG`) and to Android's own crash report,
+so nothing else is lost.
+
 ## `AndroidManifest.xml`
 
 Two deliberate absences:

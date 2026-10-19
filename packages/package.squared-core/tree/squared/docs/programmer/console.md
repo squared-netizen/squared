@@ -85,6 +85,31 @@ Three commands are built in: `help` (all commands, or `help <name>` for one), `c
 |---|---|
 | `show()`, `hide()`, `shown()` | Whether it should be drawn. A new Console is hidden; `close` and the close button hide it. The drawing code reads it |
 
+## Crash reports
+
+`#include <squared/console/crash_file.hpp>`. The Android template does all of this in a Console build: a crash writes `files/crash.txt` in the app's private files, the next launch shows it in the Console in red, once, and `crash` shows it again.
+
+```text
+the last run crashed; its report follows, and `crash` shows it again
+CRASH SIGSEGV (11) code 1 addr 0x0
+  #0 pc 0x4a5f0 libdemo.so
+  #1 pc 0x51c2c libdemo.so
+END
+log: the last 40 lines
+  show settings: content x 0 y 53 w 720 h 1417
+```
+
+Each frame is an offset into a library, which is what `addr2line -C -f -e build/libdemo.so 0x4a5f0` turns into a function and a line (use the unstripped library in `build/`, not the APK's).
+
+| Call | Does |
+|---|---|
+| `install_crash_file(path, console, log_lines = 40)` | On a fatal signal (SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGTRAP), write the trace and the newest `log_lines` of `console` to `path`, then hand the signal on to the handler before it. The file is made at the crash, never before. False if `path` is empty or over 511 bytes, or a handler would not install |
+| `remove_crash_file()` | Put the earlier handlers back; before the Console goes away |
+| `show_crash_file(console, path, previous_path)` | Print a report an earlier run left, as error lines, then move it to `previous_path`. False when there is none |
+| `add_crash_command(console, previous_path)` | The `crash` command; `crash segv` and `crash abort` crash on purpose, to see a report made. `previous_path` is kept, not copied |
+
+`squared/console/line_reader.hpp` has the reader these use: `for_each_line(fd, buffer, line)` calls `line(std::string_view)` for each line of a descriptor, through a buffer you give it, with no allocation.
+
 ## Built-in commands
 
 ```cpp
@@ -105,6 +130,7 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
 | `alloc` | the frame-allocation counter's figures, what `operator new` holds now (your code and squared's, apart from the GPU driver's and the C library's own `malloc`), and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
 | `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
+| `crash` | the last crash report again (above). Added by the Android template |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
 

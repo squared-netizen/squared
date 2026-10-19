@@ -41,6 +41,8 @@ handler builds its packets with `send_line` and never calls it: the Console
 is not async-signal-safe. `LogLevel` travels with the line to the listener;
 the UDP packet stays the bare text, so `nc` shows what it always did.
 
+The trace itself is `write_crash_trace` in `crash_trace.hpp`, header-only since 4.6 so the Console's crash file shares it without linking `dev`. Its unwind callback is deliberately not `noexcept`: with it, `_Unwind_Backtrace` stopped at the first frame, with g++ and clang alike, and the trace lost every frame but #0 (found 2026-10-19 moving the code; `dev_log_test` now requires frame #1).
+
 The crash handler runs on an alternate signal stack (so a stack overflow can be
 reported) and builds its packets with fixed-size character appends. It sends:
 
