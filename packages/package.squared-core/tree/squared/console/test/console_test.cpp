@@ -246,7 +246,7 @@ int main()
 
     // --- the system commands: real /proc, real libc ----------------------------------------
     assert( add_system_commands( *console ) == 0 );
-    assert( add_system_commands( *console ) == 5 ); // the second time, every name is taken
+    assert( add_system_commands( *console ) == 6 ); // the second time, every name is taken
     const auto starts = []( const std::string &text, const char *prefix ) {
         return text.rfind( prefix, 0 ) == 0;
     };
@@ -268,6 +268,33 @@ int main()
         console->run( "fds" );
         assert( std::stoi( newest( *console ).substr( 12 ) ) == open_before + 1 );
         ::close( extra );
+    }
+    // smaps: a total, then kinds largest first; this test binary's own code and
+    // the heap are among them.
+    console->run( "smaps" );
+    {
+        std::vector<std::string> rows;
+        for( auto it = console->lines().last( 12 ); it != console->lines().end(); ++it ) {
+            rows.emplace_back( ( *it ).text );
+        }
+        std::size_t at = 0;
+        while( at < rows.size() && rows[at].rfind( "memory by kind: PSS ", 0 ) != 0 ) {
+            ++at;
+        }
+        assert( at < rows.size() );
+        bool code = false;
+        bool heap = false;
+        for( std::size_t i = at + 1; i < rows.size(); ++i ) {
+            assert( starts( rows[i], "  " ) && rows[i].find( " pss " ) != std::string::npos );
+            code = code || starts( rows[i], "  this program" );
+            heap = heap || starts( rows[i], "  native heap" );
+        }
+        assert( code && heap );
+        std::printf( "smaps:" );
+        for( std::size_t i = at; i < rows.size(); ++i ) {
+            std::printf( " %s |", rows[i].c_str() );
+        }
+        std::printf( "\n" );
     }
     console->run( "device" );
     const std::string kernel = newest( *console );

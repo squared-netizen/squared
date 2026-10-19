@@ -41,7 +41,9 @@ FrameAllocations frame_end() noexcept;
 /**
  * @brief Report every frame counted so far through log_line(): one summary
  * line (frames counted, how many allocated, allocations, bytes, the most in
- * one frame), then every site found, as the `site` lines name them.
+ * one frame); what operator new holds now on every thread (KB and blocks,
+ * by the allocator's measure, and the peak); then every site found, as the
+ * `site` lines name them.
  *
  * What the Console's `alloc` command runs. Call it on the thread that counts
  * frames. Allocates nothing.

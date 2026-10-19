@@ -201,11 +201,14 @@ thread.
 void report_allocations() noexcept;
 ```
 
-Reports every frame counted so far through `log_line()`: one summary line,
-then a `site` line for every site found.
+Reports every frame counted so far through `log_line()`: one summary line;
+what `operator new` holds now, on every thread (squared's and your own heap,
+apart from the GPU driver's and the C library's direct `malloc`); then a
+`site` line for every site found.
 
 ```text
 alloc: 1840 frames counted, 3 allocated: 6 allocations, 288 bytes; most in one frame: 2
+alloc: operator new holds 4120 KB in 1873 blocks now (peak 6212 KB), every thread
 alloc: site 1 (frame 3): libdemo.so 0x4a5f0 < libdemo.so 0x51c2c < ...
 ```
 

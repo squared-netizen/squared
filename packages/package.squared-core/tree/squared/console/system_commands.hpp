@@ -18,6 +18,7 @@ namespace sq::console
  * | `threads` | the process's thread count |
  * | `fds` | the open file descriptors |
  * | `device` | maker, model, Android version, API level and ABI (system properties), and the kernel (`uname`) |
+ * | `smaps` | memory by kind (this program, native heap, GPU driver, Java runtime, stacks, other libraries, files, anonymous): PSS, RSS and private dirty, from `/proc/self/smaps` |
  *
  * Each reads into the stack and prints through the Console: nothing is
  * allocated, nothing is kept.

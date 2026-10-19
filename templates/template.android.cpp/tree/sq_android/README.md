@@ -55,6 +55,15 @@ scroll back, hold the input row for half a second to paste, `[x]` or Back
 to close. `copy` puts lines on the clipboard. Every other touch, and every
 key while it is closed, reaches your `App` as before.
 
+`app stop` disposes your `App` and puts a fresh, uncreated one in its place;
+`app start` creates it and hands it the surface again, as at launch;
+`app restart` does both. The process, the window, the graphics context and
+the Console stay, so this recovers from a stuck screen or bad state, not from
+a crash. While stopped, no method of your `App` is called and the screen is
+cleared under the Console. In a Console build a `create()` that fails no
+longer leaves a black window: the Console opens and `app start` tries again.
+`quit` finishes the activity, the same way your `quit_requested()` does.
+
 ## `AndroidManifest.xml`
 
 Two deliberate absences:

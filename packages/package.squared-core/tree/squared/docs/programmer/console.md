@@ -35,6 +35,17 @@ With `CONSOLE=app` the Android template draws the Console over the upper half of
 | paste | hold the input row for half a second, or Ctrl+V on a keyboard |
 | copy | `copy`, `copy errors` or `copy 20` |
 | close it | `[x]`, Back, or `close` |
+| stop, start or restart your app | `app stop`, `app start`, `app restart` (`app` says which it is) |
+| quit, app and Console together | `quit` |
+
+`app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included; that is what the monitor process, Sprint 4.7, is for). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
+
+**Making it stick.** `CONSOLE` and `DEV_LOG` are read on each `make`, so a later plain `make install` builds without them. Put them in `local.mk` in your project, which git ignores, to keep them until you delete the lines:
+
+```make
+CONSOLE := app
+DEV_LOG := 1
+```
 
 While it is open, a gesture that starts on it is the Console's, and while it has the keyboard, so are the keys (but not the volume keys); everything else reaches your app. The three-finger tap is taken before your app sees it: the fingers already down are released far off screen, so nothing under them is clicked. Typed text is what the keyboard's keys map to: ASCII and the accented Latin letters a keyboard has keys for; an input method's composition (accents built from two keys, CJK input, emoji) does not arrive.
 
@@ -89,9 +100,11 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `threads` | `threads: 14` |
 | `fds` | `open files: 37` |
 | `device` | `device: <maker> <model>, Android 16 (API 36), arm64-v8a` (Android and Termux), then `kernel: Linux <release>, aarch64` |
+| `smaps` | memory by kind, largest first: this program's code, the native heap, the GPU driver, the Java runtime, stacks, other libraries, other files, other anonymous memory. Each with PSS (this process's fair share of pages it shares with others), RSS (every page it touches, shared ones whole) and private dirty (pages only it has written: what it alone costs the device) |
 | `gl` | the driver's version, renderer and vendor; the GLSL version; texture, renderbuffer and viewport limits, vertex attributes, texture units; the extension count. With the gles backend: `add_gl_command(console)`, from `renderer.hpp` |
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
-| `alloc` | the frame-allocation counter's figures and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
+| `alloc` | the frame-allocation counter's figures, what `operator new` holds now (your code and squared's, apart from the GPU driver's and the C library's own `malloc`), and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
+| `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
 

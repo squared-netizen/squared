@@ -434,6 +434,9 @@ struct Platform {
     int console_scroll{0};
     /// Typing goes to the Console: it was opened, or tapped, and not closed since.
     bool console_focused{false};
+    /// Frames until the keyboard is asked for again after Enter, which some
+    /// keyboards take as "done" and hide themselves on; 0 when not waiting.
+    int keyboard_reshow_frames{0};
 
     /// A gesture that started on the Console: all of it is the Console's.
     struct ConsoleTouch {
@@ -528,6 +531,7 @@ struct Platform {
             paste_into_console();
             return true;
         }
+        if (translate_key(code) == Key::enter) keyboard_reshow_frames = 6;  // about 100 ms
         if (!console.key(translate_key(code), translate_modifiers(meta))) {
             const char32_t typed = text.character(device, code, meta);
             if (typed >= 0x20 && typed != 0x7F) {
@@ -663,6 +667,13 @@ struct Platform {
         std::size_t refused = sq::console::add_system_commands(console);
         refused += sq::console::add_gl_command(console) != Added::added ? 1 : 0;
         refused += sq::console::add_copy_command(console, clipboard_writer) != Added::added ? 1 : 0;
+        refused += console.add("app", "app [stop | start | restart]: the application, in this process",
+                               app_command, this) != Added::added ? 1 : 0;
+        refused += console.add("quit", "quit: close the application and the console",
+                               [](sq::console::Console&, const sq::console::Args&, void* self) {
+                                   static_cast<Platform*>(self)->quit_asked = true;
+                               },
+                               this) != Added::added ? 1 : 0;
         refused += console.add("display",
                                "display: pixels, density, the console's cells and the safe area",
                                display_command, this) != Added::added ? 1 : 0;
@@ -674,6 +685,67 @@ struct Platform {
 #endif
         if (refused != 0) {
             SQ_LOGW("console: %zu built-in commands did not fit; raise CONSOLE_COMMANDS", refused);
+        }
+    }
+
+    /// Stop the application: its surface and its dispose(), then a fresh,
+    /// uncreated object in its place, so a later start is a first start. The
+    /// process, the window, the graphics context and the Console stay.
+    void stop_app() {
+        if (!created) {
+            app_stopped = true;
+            return;
+        }
+        if (surface_ready) app.surface_destroyed();
+        app.dispose();
+        if (text_input.active()) text_input.stop();
+        std::destroy_at(&app);
+        std::construct_at(&app);
+        created = false;
+        app_stopped = true;
+        SQ_LOGI("app: stopped");
+        if (console_focused) text.show_keyboard();
+    }
+
+    /// Start it again: create(), the surface, the size. Waits for a window if
+    /// there is none.
+    void start_stopped_app() {
+        if (created) {
+            SQ_LOGI("app: already running");
+            return;
+        }
+        app_stopped = false;
+        if (!surface_ready) {
+            SQ_LOGI("app: starts when the window returns");
+            return;
+        }
+        // A create() that failed may have left the object half made.
+        std::destroy_at(&app);
+        std::construct_at(&app);
+        if (!start_app()) {
+            app_stopped = true;
+            return;
+        }
+        app.surface_created(graphics);
+        sync_size(true);
+        SQ_LOGI("app: started");
+    }
+
+    static void app_command(sq::console::Console& out, const sq::console::Args& args,
+                            void* context) noexcept {
+        auto& self = *static_cast<Platform*>(context);
+        const std::string_view verb = args.text(1);
+        if (verb == "stop") {
+            self.stop_app();
+        } else if (verb == "start") {
+            self.start_stopped_app();
+        } else if (verb == "restart") {
+            self.stop_app();
+            self.start_stopped_app();
+        } else if (verb.empty()) {
+            out.printf(sq::console::Level::info, "app: %s", self.created ? "running" : "stopped");
+        } else {
+            out.print("app: app, app stop, app start or app restart", sq::console::Level::error);
         }
     }
 
@@ -707,7 +779,6 @@ struct Platform {
 
     bool has_focus{false};
     bool surface_ready{false};
-    bool created{false};
 
     /// Set once the application has asked to quit and ANativeActivity_finish
     /// has been called. From then on nothing is drawn, and the loop only waits
@@ -719,7 +790,32 @@ struct Platform {
     int reported_width{0};
     int reported_height{0};
 
-    void send(const Event& event) { app.handle_event(event); }
+    /// The application has been created and not stopped since: only then is
+    /// any of its methods but create() called.
+    bool created{false};
+    /// The Console stopped it (`app stop`), or its create() failed in a
+    /// Console build: a new window does not start it again; `app start` does.
+    bool app_stopped{false};
+    /// The Console's `quit`: finish the activity, as the application's own
+    /// quit_requested() does.
+    bool quit_asked{false};
+
+    void send(const Event& event) {
+        if (created) app.handle_event(event);
+    }
+
+    /// Create the application and hand it the text-input service. False, and
+    /// logged, if its create() failed.
+    bool start_app() {
+        if (!app.create(runtime)) {
+            SQ_LOGW("app: create() failed");
+            return false;
+        }
+        created = true;
+        last_frame = Clock::now();
+        app.set_text_input_service(&text_input);
+        return true;
+    }
 
     /// The JNI environment for this thread. Attached once on first use and
     /// kept: attaching and detaching around every query would allocate a Java
@@ -760,7 +856,7 @@ struct Platform {
         SQ_LOGI("safe area (px): left %d top %d right %d bottom %d",
                 static_cast<int>(measured.left), static_cast<int>(measured.top),
                 static_cast<int>(measured.right), static_cast<int>(measured.bottom));
-        notify_safe_area(app, measured);
+        if (created) notify_safe_area(app, measured);
     }
 
     /// Re-measure the surface, and tell the application if its size changed.
@@ -783,7 +879,7 @@ struct Platform {
         }
         reported_width = width;
         reported_height = height;
-        app.resize(width, height);
+        if (created) app.resize(width, height);
 
         Event resized;
         resized.type = Event::Type::Resize;
@@ -834,18 +930,18 @@ struct Platform {
         }
 #endif
 
-        if (!created) {
-            if (!app.create(runtime)) {
-                SQ_LOGW("app: create() failed");
-                surface_ready = false;
-                return;
-            }
-            created = true;
-            last_frame = Clock::now();
-            app.set_text_input_service(&text_input);
+        if (!created && !app_stopped && !start_app()) {
+#ifdef SQUARED_CONSOLE
+            // The Console stays up to say so; `app start` tries again.
+            app_stopped = true;
+            console.show();
+#else
+            surface_ready = false;
+            return;
+#endif
         }
 
-        app.surface_created(graphics);
+        if (created) app.surface_created(graphics);
 
         // Always, even at an unchanged size: a new surface is a new
         // application state, and the application re-lays out from here.
@@ -895,7 +991,7 @@ struct Platform {
     /// The window is going away. Suspend rather than destroy: the context and
     /// its GPU objects often survive, and resume() is what finds out.
     void detach() {
-        if (surface_ready) app.surface_destroyed();
+        if (surface_ready && created) app.surface_destroyed();
         graphics.suspend();
         surface_ready = false;
     }
@@ -929,9 +1025,18 @@ struct Platform {
         // summary every 120 frames. A frame should allocate nothing.
         sq::dev::frame_begin();
 #endif
-        app.update(delta);
-        app.render(graphics);
+        if (created) {
+            app.update(delta);
+            app.render(graphics);
+        } else {
+            // Nothing else draws: a plain background under the Console.
+            graphics.clear({0.0F, 0.0F, 0.0F, 1.0F});
+        }
 #ifdef SQUARED_CONSOLE
+        if (keyboard_reshow_frames > 0 && --keyboard_reshow_frames == 0 && console_focused &&
+            console.shown()) {
+            text.show_keyboard();
+        }
         if (console.shown()) {
             console_renderer.draw(console, console_frame(), graphics.pixel_width(),
                                   graphics.pixel_height());
@@ -948,7 +1053,7 @@ struct Platform {
         // Android kills the process.
         if (!graphics.present()) {
             SQ_LOGI("graphics: surface lost during present");
-            app.surface_destroyed();
+            if (created) app.surface_destroyed();
             surface_ready = false;
         }
     }
@@ -984,7 +1089,7 @@ void on_command(android_app* app, int32_t command) {
 
         case APP_CMD_GAINED_FOCUS: {
             platform.has_focus = true;
-            platform.app.resume();
+            if (platform.created) platform.app.resume();
             // The clock stopped meaning anything while backgrounded.
             platform.last_frame = Clock::now();
             Event event;
@@ -995,7 +1100,7 @@ void on_command(android_app* app, int32_t command) {
 
         case APP_CMD_LOST_FOCUS: {
             platform.has_focus = false;
-            platform.app.pause();
+            if (platform.created) platform.app.pause();
             Event event;
             event.type = Event::Type::Pause;
             platform.send(event);
@@ -1178,7 +1283,7 @@ void android_main(android_app* app) {
     const auto shut_down = [&] {
         SQ_LOGI("shutting down");
         platform->detach();
-        platform->app.dispose();
+        if (platform->created) platform->app.dispose();
         platform->text.destroy();
         platform->release_jni();
         app->userData = nullptr;
@@ -1196,7 +1301,8 @@ void android_main(android_app* app) {
         // then runs the ordinary teardown - pause, window gone, stop, destroy -
         // and the glue reports destroyRequested at the end of it. Only then is
         // it safe to return. Called once; finishing guards it.
-        if (!platform->finishing && platform->app.quit_requested()) {
+        if (!platform->finishing &&
+            (platform->quit_asked || (platform->created && platform->app.quit_requested()))) {
             SQ_LOGI("finishing");
             platform->finishing = true;
             ANativeActivity_finish(app->activity);

@@ -51,8 +51,10 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 | `threads` | same | `/proc/self/status` (`Threads`) |
 | `fds` | same | `/proc/self/fd`, through `getdents64` |
 | `device` | same | system properties (`ro.product.manufacturer`, `.model`, `ro.build.version.release`, `.sdk`, `ro.product.cpu.abi`) on bionic; `uname` everywhere |
+| `smaps` | same | `/proc/self/smaps`, streamed through 4 KB on the stack: `Rss`, `Pss`, `Private_Dirty`, `SwapPss` summed by kind of mapping |
 | `gl` | `src/gles/gl_command.cpp`, gles backend | `glGetString` (version, renderer, vendor, GLSL), `glGetIntegerv` (texture, renderbuffer and viewport limits, attributes, texture units, extension count) |
 | `display` | the Android template | its own state: pixels, dpi, the Console's cell and grid, the safe area |
+| `app`, `quit` | the Android template | stop, start, restart the `App` in place; finish the activity |
 | `alloc` | the Android template, `DEV_LOG` only | `sq::dev::report_allocations()`, which arrives through the dev log's listener |
 
 `add_system_commands()` and `add_gl_command()` register them; the template adds `display` and `alloc` itself, because only it holds what they read (and `dev` is linked only with `DEV_LOG`; the Console must not depend on it). A table too small for them refuses the rest, and the template logs how many once.
@@ -62,6 +64,21 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 **One file for Android, Termux and desktop Linux.** The interfaces are Linux's. What differs is the C library: bionic has system properties and `mallinfo`; glibc deprecated `mallinfo` for `mallinfo2` in 2.33. The two `#if` blocks test the C library (`__BIONIC__`, `__GLIBC__`), not the platform, because Termux is the posix platform on bionic: a Makefile switch on `SQUARED_PLATFORM` would pick the wrong branch there. Priority 2 (one file) over 4.
 
 **`copy`** (`src/copy_command.cpp`) selects lines (all, the error lines, the last *n*; never its own echo, which is the newest line when it runs) and streams them to a `ClipboardWriter`: three function pointers and a context, the same shape as the command table's entries, not a virtual interface, since there is one writer per program (§5). The template's writer builds a Java string through JNI in 512-unit pieces, so the whole scrollback is never copied into a second buffer: a 64 KB buffer for a command run a few times a session would be priority 1 spent on nothing. Tested with a collecting writer: all, errors, last 2 (the echo excluded), more than there are, bad arguments, no clipboard, a refusal, an empty scrollback.
+
+**`smaps`, and why** (asked for 2026-10-19: the demo showed 146 MB resident and 28 MB of heap, which looked high for what it does). RSS counts every page a process touches, shared ones whole: on Android that includes the zygote's Java runtime and framework, mapped into every app. PSS divides shared pages among the processes sharing them, and private dirty is what this process alone costs the device. So the command sums the three by kind of mapping, judged by name, first match winning:
+
+| Kind | Mapping names |
+|---|---|
+| this program | the library holding `add_system_commands` (`dladdr`), so the app's own code and data |
+| native heap | `[anon:scudo:*]`, `[anon:libc_malloc*]`, `[anon:jemalloc*]`, `[anon:GWP-ASan*]`, `[heap]` |
+| GPU driver | anything naming `mali`, `kgsl`, `adreno`, `dmabuf`, `gralloc` or `/egl/`, and `/dev/dri*`, `/dev/ion` |
+| Java runtime | `[anon:dalvik-*]`, `*.art`, `*.oat`, `*.vdex`, `*.odex`, `*.jar`, `/apex/com.android.art/` |
+| stacks | `[stack]`, `[anon:stack_and_tls*]`, `[anon:thread signal stack*]` |
+| other .so | `*.so`, `*.so.*` |
+| other files | any other path |
+| other anon | the rest |
+
+The native heap is still one figure for everyone who calls `malloc`: squared, the application, libc++, and the GPU driver's CPU side. The `alloc` command splits it: in `DEV_LOG` builds the replacement `operator new` keeps what it holds now (each block by `malloc_usable_size`, relaxed atomics, two counters and a peak), so heap less that figure is everyone else's. Cost: three atomic operations per allocation and free, in development builds only.
 
 **Left for later.** `crash` needs the crash file (4.6); `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
 
@@ -133,6 +150,8 @@ The Android template's `entry.cpp` holds the Console under `#ifdef SQUARED_CONSO
   - **A gesture that starts on the Console** is all the Console's, down to the up, so nothing leaks to the application (4.2's `[x]` sent the application an unpaired up). Under the slop it is a tap: `[x]` closes, a hold of 500 ms on the input row pastes, anything else focuses (shows the keyboard). Past it, a drag: one row per cell of vertical movement, clamped with `scroll_limit`. Other fingers in the same event still go to the application.
   - **Keys:** backtick (no Ctrl, Alt or Meta) toggles it from anywhere. While it has focus every key is its own except volume and power: Back closes; Ctrl+V pastes; `Console::key` takes editing keys; anything else is turned into the character it types (`KeyCharacterMap`, through JNI) and inserted.
   - **Keyboard:** opening it, or tapping it, shows the soft keyboard; closing hides it unless the application's text field still wants it.
+  - **The application's lifecycle** (asked for 2026-10-19). `app stop` calls `surface_destroyed()` and `dispose()`, then destroys the `App` and constructs a fresh one in place (`std::destroy_at`, `std::construct_at`), so a later start is a first start; `app start` runs the launch path (`create()`, the text-input service, `surface_created()`, the size). A `created` flag gates every call into the `App`, so a stopped one is never called; the frame clears the screen instead of rendering it. A failed `create()` in a Console build opens the Console rather than leaving a black window. `quit` sets a flag the main loop reads beside `quit_requested()`. All in-process: a crash still ends everything. The monitor (4.7) gives the same verbs across processes.
+  - **The keyboard after Enter:** some keyboards take Enter as "done" and hide, since there is no text view to stay for; the Console asks for it again six frames (about 100 ms) after an Enter, once the keyboard's own hide has gone through. Asking when it is still up does nothing.
   - **State:** about 70 bytes in `Platform` (the touch, the three fingers, the scroll, the focus flag), and the `ClipboardWriter`. Nothing allocates per event; JNI runs per key press and per paste or copy.
 
 ### Tested

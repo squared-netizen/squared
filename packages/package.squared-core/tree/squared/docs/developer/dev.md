@@ -28,6 +28,8 @@ dev/
 One UDP socket, non-blocking, `SOCK_CLOEXEC`, with its destination fixed to
 `127.0.0.1:<port>`. `log_line` is one `sendto`, then the listener, if any.
 
+**What operator new holds.** Every block the replacement `operator new` hands out is added, at the size the allocator reports for it (`malloc_usable_size`, so slack included), to a live byte count, a block count and a peak; `operator delete` subtracts. Relaxed atomics: the figures are read by `report_allocations()`, not synchronised on. It separates the heap squared and the application keep from the GPU driver's and the C library's own `malloc`, which the system's heap figures lump together. Cost: three atomic operations per allocation and free, in development builds only.
+
 **The listener** is a function pointer, a context and the thread that set it
 (`set_log_listener`). `log_line` calls it only on that thread: the flag and
 the owner are atomics any thread may read, while the pointer and context are
@@ -138,6 +140,7 @@ is allocated at run time, in `open_log_sink` or anywhere else.
 | per-crash line buffer | on the alternate stack, 1001 |
 | counter state (flags, tallies, report window, totals since the start) | about 130 |
 | listener (flag, owner thread, function, context) | 32 |
+| what operator new holds: bytes, blocks, peak (atomics) | 24 |
 | site table: 64 sites of 56 bytes (4 frames, 2 counts, 2 flags) | 3584 |
 | report line | on the frame thread's stack, 256 |
 

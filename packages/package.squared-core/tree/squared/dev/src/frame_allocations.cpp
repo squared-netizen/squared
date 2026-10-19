@@ -2,6 +2,7 @@
 #include <squared/dev/frame_allocations.hpp>
 
 #include <dlfcn.h>
+#include <malloc.h>
 #include <pthread.h>
 #include <unwind.h>
 
@@ -35,6 +36,14 @@ std::uint64_t g_window_frames = 0;
 std::uint64_t g_window_allocating = 0;
 FrameAllocations g_window{};
 std::uint64_t g_window_worst = 0;
+
+// What operator new holds now, on every thread, by the allocator's own
+// measure of each block (malloc_usable_size): what squared and the application
+// keep on the heap, told apart from the GPU driver's and the C library's
+// direct malloc. Relaxed atomics: a figure to read, not to synchronise on.
+std::atomic<std::uint64_t> g_live_bytes{ 0 };
+std::atomic<std::uint64_t> g_live_blocks{ 0 };
+std::atomic<std::uint64_t> g_peak_bytes{ 0 };
 
 // Since the start, for report_allocations().
 std::uint64_t g_allocating_frames = 0;
@@ -321,13 +330,28 @@ void report( const FrameAllocations &frame ) noexcept
 // forbid it elsewhere are suppressed here, and only here.
 // NOLINTBEGIN(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
 
+/// Count a block operator new hands out; returns it.
+void *hold( void *memory ) noexcept
+{
+    if( memory != nullptr ) {
+        const std::uint64_t size = ::malloc_usable_size( memory );
+        const std::uint64_t now = g_live_bytes.fetch_add( size, std::memory_order_relaxed ) + size;
+        g_live_blocks.fetch_add( 1, std::memory_order_relaxed );
+        std::uint64_t peak = g_peak_bytes.load( std::memory_order_relaxed );
+        while( now > peak &&
+               !g_peak_bytes.compare_exchange_weak( peak, now, std::memory_order_relaxed ) ) {
+        }
+    }
+    return memory;
+}
+
 void *allocate( std::size_t bytes, std::uintptr_t caller )
 {
     count( bytes, caller );
     const std::size_t asked = bytes == 0 ? 1 : bytes;
     for( ;; ) {
         if( void *memory = std::malloc( asked ) ) {
-            return memory;
+            return hold( memory );
         }
         const std::new_handler handler = std::get_new_handler();
         if( handler == nullptr ) {
@@ -345,7 +369,7 @@ void *allocate( std::size_t bytes, std::size_t alignment, std::uintptr_t caller 
     for( ;; ) {
         void *memory = nullptr;
         if( ::posix_memalign( &memory, align, asked ) == 0 ) {
-            return memory;
+            return hold( memory );
         }
         const std::new_handler handler = std::get_new_handler();
         if( handler == nullptr ) {
@@ -358,7 +382,7 @@ void *allocate( std::size_t bytes, std::size_t alignment, std::uintptr_t caller 
 void *allocate_nothrow( std::size_t bytes, std::uintptr_t caller ) noexcept
 {
     count( bytes, caller );
-    return std::malloc( bytes == 0 ? 1 : bytes );
+    return hold( std::malloc( bytes == 0 ? 1 : bytes ) );
 }
 
 void *allocate_nothrow( std::size_t bytes, std::size_t alignment, std::uintptr_t caller ) noexcept
@@ -366,11 +390,16 @@ void *allocate_nothrow( std::size_t bytes, std::size_t alignment, std::uintptr_t
     count( bytes, caller );
     void *memory = nullptr;
     const std::size_t align = alignment < sizeof( void * ) ? sizeof( void * ) : alignment;
-    return ::posix_memalign( &memory, align, bytes == 0 ? 1 : bytes ) == 0 ? memory : nullptr;
+    return hold( ::posix_memalign( &memory, align, bytes == 0 ? 1 : bytes ) == 0 ? memory
+                                                                                 : nullptr );
 }
 
 void release( void *memory ) noexcept
 {
+    if( memory != nullptr ) {
+        g_live_bytes.fetch_sub( ::malloc_usable_size( memory ), std::memory_order_relaxed );
+        g_live_blocks.fetch_sub( 1, std::memory_order_relaxed );
+    }
     std::free( memory );
 }
 
@@ -413,6 +442,15 @@ void report_allocations() noexcept
     line.add( " bytes; most in one frame: " );
     line.add( g_worst );
     line.send();
+    Report held;
+    held.add( "alloc: operator new holds " );
+    held.add( g_live_bytes.load( std::memory_order_relaxed ) / 1024 );
+    held.add( " KB in " );
+    held.add( g_live_blocks.load( std::memory_order_relaxed ) );
+    held.add( " blocks now (peak " );
+    held.add( g_peak_bytes.load( std::memory_order_relaxed ) / 1024 );
+    held.add( " KB), every thread" );
+    held.send();
     for( std::size_t index = 0; index < kSites; ++index ) {
         if( g_sites[index].used ) {
             report_site( index );

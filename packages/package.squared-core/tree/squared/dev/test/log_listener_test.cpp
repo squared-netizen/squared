@@ -70,16 +70,33 @@ int main()
     const std::size_t before = heard.lines.size(); // frame_end() reported the new site
     assert( before >= 4 && starts_with( heard.lines[3], "alloc: site 1 (frame 2):" ) );
     sq::dev::report_allocations();
-    assert( heard.lines.size() == before + 2 );
+    assert( heard.lines.size() == before + 3 );
     assert( heard.lines[before] ==
             "alloc: 2 frames counted, 1 allocated: 1 allocations, 8 bytes; most in one frame: 1" );
-    assert( heard.lines[before + 1] == heard.lines[3] );
+    assert( starts_with( heard.lines[before + 1], "alloc: operator new holds " ) );
+    assert( heard.lines[before + 2] == heard.lines[3] );
+
+    // What operator new holds rises by a megabyte with a megabyte held, and
+    // falls back when it is freed.
+    const auto held_kb = []( const std::string &line ) {
+        return std::stoull( line.substr( std::string( "alloc: operator new holds " ).size() ) );
+    };
+    const unsigned long long base = held_kb( heard.lines[before + 1] );
+    {
+        auto megabyte = std::make_unique<char[]>( std::size_t{ 1024 } * 1024 );
+        g_sink = megabyte.get();
+        sq::dev::report_allocations();
+        assert( held_kb( heard.lines[heard.lines.size() - 2] ) >= base + 1024 );
+    }
+    sq::dev::report_allocations();
+    assert( held_kb( heard.lines[heard.lines.size() - 2] ) < base + 1024 );
+    const std::size_t reports = heard.lines.size();
 
     // Cleared: nothing more arrives.
     sq::dev::set_log_listener( nullptr, nullptr );
     sq::dev::log_line( "after" );
     sq::dev::report_allocations();
-    assert( heard.lines.size() == before + 2 );
+    assert( heard.lines.size() == reports );
 
     std::printf( "log listener: all assertions passed\n" );
     return 0;

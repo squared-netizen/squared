@@ -6,6 +6,7 @@
 
 #include <squared/console/system_commands.hpp>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <sys/syscall.h>
@@ -18,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
@@ -180,6 +182,197 @@ void device( Console &console, const Args &, void * ) noexcept
     }
 }
 
+// --- smaps: memory by kind ---------------------------------------------------------
+
+/// What a mapping is, judged by its name in /proc/self/smaps. The first that
+/// matches wins; the order is the order printed when two weigh the same.
+enum class Kind : std::uint8_t {
+    code,   // this program's own library
+    heap,   // the C allocator's arenas
+    gpu,    // the GPU driver: its device mappings, its libraries, graphics buffers
+    java,   // the Java runtime every Android process carries from the zygote
+    stacks, // thread stacks
+    libs,   // every other shared library
+    files,  // every other mapped file: fonts, APKs, resources
+    other,  // anonymous memory with no better name
+    count
+};
+
+constexpr std::array<const char *, static_cast<std::size_t>( Kind::count )> kind_names = {
+    "this program", "native heap", "GPU driver",  "Java runtime",
+    "stacks",       "other .so",   "other files", "other anon"
+};
+
+bool contains( std::string_view text, std::string_view part ) noexcept
+{
+    return text.find( part ) != std::string_view::npos;
+}
+
+Kind kind_of( std::string_view name, std::string_view self ) noexcept
+{
+    if( !self.empty() && name == self ) {
+        return Kind::code;
+    }
+    if( name.starts_with( "[anon:scudo:" ) || name.starts_with( "[anon:libc_malloc" ) ||
+        name.starts_with( "[anon:jemalloc" ) || name.starts_with( "[anon:GWP-ASan" ) ||
+        name == "[heap]" ) {
+        return Kind::heap;
+    }
+    if( contains( name, "mali" ) || contains( name, "kgsl" ) || contains( name, "adreno" ) ||
+        contains( name, "dmabuf" ) || contains( name, "/egl/" ) || name.starts_with( "/dev/dri" ) ||
+        name.starts_with( "/dev/ion" ) || contains( name, "gralloc" ) ) {
+        return Kind::gpu;
+    }
+    if( name.starts_with( "[anon:dalvik-" ) || name.ends_with( ".art" ) ||
+        name.ends_with( ".oat" ) || name.ends_with( ".vdex" ) || name.ends_with( ".odex" ) ||
+        name.ends_with( ".jar" ) || contains( name, "/apex/com.android.art/" ) ) {
+        return Kind::java;
+    }
+    if( name == "[stack]" || name.starts_with( "[anon:stack_and_tls" ) ||
+        name.starts_with( "[anon:thread signal stack" ) ) {
+        return Kind::stacks;
+    }
+    if( name.ends_with( ".so" ) || contains( name, ".so." ) || contains( name, ".so " ) ) {
+        return Kind::libs;
+    }
+    if( name.starts_with( "/" ) ) {
+        return Kind::files;
+    }
+    return Kind::other;
+}
+
+struct Usage
+{
+        long long pss = 0;   // kB
+        long long rss = 0;   // kB
+        long long dirty = 0; // kB, Private_Dirty
+        long long swap = 0;  // kB, SwapPss
+};
+
+/// Whether a /proc/self/smaps line is a mapping's header ("start-end perms
+/// offset dev inode name"); if so, its name (empty for anonymous memory).
+bool header_name( std::string_view line, std::string_view &name ) noexcept
+{
+    const std::size_t dash = line.find( '-' );
+    const std::size_t space = line.find( ' ' );
+    if( line.empty() || dash == std::string_view::npos || space == std::string_view::npos ||
+        dash > space || std::isxdigit( static_cast<unsigned char>( line[0] ) ) == 0 ) {
+        return false;
+    }
+    std::size_t at = 0;
+    for( int field = 0; field < 5; ++field ) {
+        at = line.find( ' ', at );
+        if( at == std::string_view::npos ) {
+            name = {};
+            return true;
+        }
+        while( at < line.size() && line[at] == ' ' ) {
+            ++at;
+        }
+    }
+    name = line.substr( at );
+    if( name.ends_with( " (deleted)" ) ) {
+        name.remove_suffix( 10 );
+    }
+    return true;
+}
+
+void smaps( Console &console, const Args &, void * ) noexcept
+{
+    // This program's library, so its own mappings are told apart from the rest.
+    Dl_info self{};
+    const std::string_view self_path =
+        ::dladdr( reinterpret_cast<const void *>( &add_system_commands ), &self ) != 0 &&
+                self.dli_fname != nullptr
+            ? std::string_view( self.dli_fname )
+            : std::string_view();
+
+    const int fd = ::open( "/proc/self/smaps", O_RDONLY | O_CLOEXEC );
+    if( fd < 0 ) {
+        console.print( "smaps: /proc/self/smaps is not readable", Level::error );
+        return;
+    }
+    std::array<Usage, static_cast<std::size_t>( Kind::count )> usage{};
+    Usage total{};
+    // Streamed through 4 KB on the stack: the file is a few hundred KB.
+    std::array<char, 4096> buffer{};
+    std::size_t held = 0;
+    Kind current = Kind::other;
+    bool reading = true;
+    while( reading ) {
+        const ssize_t got = ::read( fd, buffer.data() + held, buffer.size() - held );
+        reading = got > 0;
+        held += reading ? static_cast<std::size_t>( got ) : 0;
+        std::size_t start = 0;
+        for( ;; ) {
+            const auto end = std::string_view( buffer.data() + start, held - start ).find( '\n' );
+            if( end == std::string_view::npos ) {
+                break;
+            }
+            const std::string_view line( buffer.data() + start, end );
+            start += end + 1;
+            std::string_view name;
+            if( header_name( line, name ) ) {
+                current = kind_of( name, self_path );
+                continue;
+            }
+            Usage &kind = usage[static_cast<std::size_t>( current )];
+            if( line.starts_with( "Rss:" ) ) {
+                const long long value = field( line, "Rss:" );
+                kind.rss += value;
+                total.rss += value;
+            } else if( line.starts_with( "Pss:" ) ) {
+                const long long value = field( line, "Pss:" );
+                kind.pss += value;
+                total.pss += value;
+            } else if( line.starts_with( "Private_Dirty:" ) ) {
+                const long long value = field( line, "Private_Dirty:" );
+                kind.dirty += value;
+                total.dirty += value;
+            } else if( line.starts_with( "SwapPss:" ) ) {
+                const long long value = field( line, "SwapPss:" );
+                kind.swap += value;
+                total.swap += value;
+            }
+        }
+        // Keep the unfinished line; a line longer than the buffer is dropped.
+        if( start == 0 && held == buffer.size() ) {
+            held = 0;
+        } else {
+            std::memmove( buffer.data(), buffer.data() + start, held - start );
+            held -= start;
+        }
+    }
+    ::close( fd );
+
+    std::array<char, 24> pss{};
+    std::array<char, 24> rss{};
+    std::array<char, 24> dirty{};
+    console.printf( Level::info, "memory by kind: PSS %s (RSS %s), private dirty %s",
+                    megabytes( total.pss, pss ), megabytes( total.rss, rss ),
+                    megabytes( total.dirty, dirty ) );
+    // Largest share first: a selection by repeated passes, no sort, no copy.
+    std::array<bool, static_cast<std::size_t>( Kind::count )> shown{};
+    for( std::size_t row = 0; row < usage.size(); ++row ) {
+        std::size_t best = usage.size();
+        for( std::size_t k = 0; k < usage.size(); ++k ) {
+            if( !shown[k] && ( best == usage.size() || usage[k].pss > usage[best].pss ) ) {
+                best = k;
+            }
+        }
+        shown[best] = true;
+        if( usage[best].pss == 0 && usage[best].rss == 0 ) {
+            continue;
+        }
+        console.printf( Level::info, "  %-12s pss %s, rss %s, dirty %s", kind_names[best],
+                        megabytes( usage[best].pss, pss ), megabytes( usage[best].rss, rss ),
+                        megabytes( usage[best].dirty, dirty ) );
+    }
+    if( total.swap > 0 ) {
+        console.printf( Level::info, "  swapped out (pss): %s", megabytes( total.swap, pss ) );
+    }
+}
+
 struct Builtin
 {
         const char *name;
@@ -187,12 +380,13 @@ struct Builtin
         Handler handler;
 };
 
-constexpr std::array<Builtin, 5> builtins = { {
+constexpr std::array<Builtin, 6> builtins = { {
     { "mem", "mem: resident and peak memory, and the system's available memory", mem },
     { "heap", "heap: the allocator's in-use, free and mapped bytes", heap },
     { "threads", "threads: how many threads the process runs", threads },
     { "fds", "fds: how many files the process has open", fds },
     { "device", "device: maker, model, Android version and ABI; the kernel", device },
+    { "smaps", "smaps: memory by kind: proportional (PSS), resident (RSS), private dirty", smaps },
 } };
 
 } // namespace

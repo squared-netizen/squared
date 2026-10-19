@@ -36,6 +36,16 @@ BUILD    ?= build
 # target it *sees*.
 .DEFAULT_GOAL := all
 
+# Your own settings, kept out of git (.gitignore lists it): what you would
+# otherwise type on every make. For example, to make every build a Console
+# build with the dev log until you delete the lines:
+#
+#   CONSOLE := app
+#   DEV_LOG := 1
+#
+# Read before everything else, so a value given on the command line still wins.
+-include local.mk
+
 include mk/squared_generated.mk
 -include $(wildcard mk/pkg_*.mk)
 -include $(wildcard mk/kit_*.mk)
