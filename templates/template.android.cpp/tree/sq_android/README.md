@@ -31,10 +31,15 @@ from the configuration NativeActivity already holds
 each separately); the GL
 driver is logged once as `driver: <version>; <renderer>; <vendor>` when the
 first context is current. Both reach logcat (`adb logcat -s <tag>`), which is
-how a device without Termux is read. Below API 23 the safe-area query is
-skipped: the bars sit outside the window there, and the Java method it calls
-does not exist. Each such check costs a comparison, cheaper than reading a
-cached answer from storage, so nothing is cached.
+how a device without Termux is read. Each such check costs a comparison,
+cheaper than reading a cached answer from storage, so nothing is cached.
+
+**The safe area** (the bars, the camera cut-out, the keyboard) is measured
+from the window's insets from API 23. Below that, those methods do not
+exist, and the window's visible frame (`getWindowVisibleDisplayFrame`, API 1)
+answers instead: some older devices lay the window out under translucent
+bars, and the Android 5.1 tablet does (found 2026-10-19: its clock and
+battery drew over the Console's `[x]`).
 
 **Typing.** NativeActivity gives native code key codes, never characters.
 `android_text.cpp` turns a key press into the character it types through

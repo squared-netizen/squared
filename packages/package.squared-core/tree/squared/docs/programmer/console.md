@@ -95,7 +95,7 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 
 | Command | Prints |
 |---|---|
-| `mem` | `memory: resident 52.3 MB (peak 60.1 MB); the system has 2140.0 MB of 7660.2 MB available` |
+| `mem` | `memory: resident 52.3 MB (peak 60.1 MB); the system has 2140.0 MB of 7660.2 MB available` ("about" on kernels before 3.14, which do not estimate it themselves) |
 | `heap` | the allocator's bytes in use, free in its arena, and mapped |
 | `threads` | `threads: 14` |
 | `fds` | `open files: 37` |

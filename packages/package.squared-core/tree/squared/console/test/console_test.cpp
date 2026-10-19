@@ -7,8 +7,10 @@
 #include <squared/console/system_commands.hpp>
 #include <squared/dev/frame_allocations.hpp>
 
+#include <sys/syscall.h>
 #include <unistd.h>
 
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <memory>
@@ -254,6 +256,14 @@ int main()
     const std::string mem = newest( *console );
     assert( starts( mem, "memory: resident " ) && mem.find( " MB (peak " ) != std::string::npos );
     assert( mem.find( '?' ) == std::string::npos ); // every figure was found
+    {
+        // The thread's own descriptor directory, the fallback for kernels
+        // before 3.17, counts the same table.
+        std::array<char, 48> path{};
+        std::snprintf( path.data(), path.size(), "/proc/self/task/%ld/fd",
+                       ::syscall( SYS_gettid ) );
+        assert( ::access( path.data(), R_OK ) == 0 );
+    }
     console->run( "heap" );
     assert( starts( newest( *console ), "heap: " ) &&
             newest( *console ).find( " MB mapped" ) != std::string::npos );

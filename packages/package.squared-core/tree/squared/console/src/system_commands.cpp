@@ -96,11 +96,21 @@ void mem( Console &console, const Args &, void * ) noexcept
     std::array<char, 24> peak{};
     std::array<char, 24> available{};
     std::array<char, 24> total{};
-    console.printf( Level::info, "memory: resident %s (peak %s); the system has %s of %s available",
-                    megabytes( field( status, "VmRSS:" ), resident ),
-                    megabytes( field( status, "VmHWM:" ), peak ),
-                    megabytes( field( meminfo, "MemAvailable:" ), available ),
-                    megabytes( field( meminfo, "MemTotal:" ), total ) );
+    // MemAvailable is the kernel's own estimate, from Linux 3.14. Before it
+    // (the Android 5.1 tablet's 3.10), free plus page cache is the usual
+    // stand-in, and is said to be one.
+    long long free_kb = field( meminfo, "MemAvailable:" );
+    const bool estimated = free_kb < 0;
+    if( estimated ) {
+        const long long unused = field( meminfo, "MemFree:" );
+        const long long cached = field( meminfo, "Cached:" );
+        free_kb = unused >= 0 && cached >= 0 ? unused + cached : -1;
+    }
+    console.printf(
+        Level::info, "memory: resident %s (peak %s); the system has %s%s of %s available",
+        megabytes( field( status, "VmRSS:" ), resident ),
+        megabytes( field( status, "VmHWM:" ), peak ), estimated ? "about " : "",
+        megabytes( free_kb, available ), megabytes( field( meminfo, "MemTotal:" ), total ) );
 }
 
 void heap( Console &console, const Args &, void * ) noexcept
@@ -128,9 +138,20 @@ void threads( Console &console, const Args &, void * ) noexcept
 
 void fds( Console &console, const Args &, void * ) noexcept
 {
-    const int directory = ::open( "/proc/self/fd", O_RDONLY | O_DIRECTORY | O_CLOEXEC );
+    int directory = ::open( "/proc/self/fd", O_RDONLY | O_DIRECTORY | O_CLOEXEC );
     if( directory < 0 ) {
-        console.print( "open files: /proc/self/fd is not readable", Level::error );
+        // Linux before 3.17 lets a process that is not dumpable (a release
+        // Android app) list its own descriptors only from the thread whose id
+        // is the process's: the main one. The thread's own directory shows the
+        // same, shared, table from any thread.
+        std::array<char, 48> path{};
+        std::snprintf( path.data(), path.size(), "/proc/self/task/%ld/fd",
+                       ::syscall( SYS_gettid ) );
+        directory = ::open( path.data(), O_RDONLY | O_DIRECTORY | O_CLOEXEC );
+    }
+    if( directory < 0 ) {
+        console.print( "open files: neither /proc/self/fd nor this thread's is readable",
+                       Level::error );
         return;
     }
     // getdents64 straight into the stack: opendir() would allocate its DIR.

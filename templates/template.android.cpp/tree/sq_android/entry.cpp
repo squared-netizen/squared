@@ -293,8 +293,8 @@ int console_cell(int dpi) {
 }
 #endif
 
-/// Read the insets of the activity's window, in pixels. Zero when unavailable,
-/// and without a single JNI call below kInsetsApi.
+/// Read the insets of the activity's window, in pixels, from API 23. Zero when
+/// unavailable; below kInsetsApi, measure_visible_frame() answers instead.
 ///
 /// The system-window insets already include a cut-out on current releases; the
 /// cut-out's own safe insets are folded in with max() for the releases where
@@ -329,6 +329,83 @@ sq::app::SafeArea measure_safe_area(JNIEnv* env, jobject activity, int api_level
         env->DeleteLocalRef(insets);
     }
     if (decor != nullptr) env->DeleteLocalRef(decor);
+    if (window != nullptr) env->DeleteLocalRef(window);
+    return area;
+}
+
+/// Below API 23: what the window shows, from View.getWindowVisibleDisplayFrame
+/// (API 1), as insets against the decor view's size. Some older devices lay the
+/// window out under translucent bars (the Android 5.1 tablet does: its status
+/// and navigation bars draw over the app); there this is where the bars are,
+/// and on the rest it is zero. It shrinks with the keyboard, as the newer
+/// insets do.
+///
+/// The class, method and field ids and one Rect are looked up and made once,
+/// on the first call, and kept: after that each measurement is five JNI calls
+/// and allocates nothing on either side.
+sq::app::SafeArea measure_visible_frame(JNIEnv* env, jobject activity) {
+    struct Ids {
+        bool tried{false};
+        jobject rect{nullptr};  // a global reference
+        jmethodID visible{nullptr};
+        jmethodID width{nullptr};
+        jmethodID height{nullptr};
+        jfieldID left{nullptr};
+        jfieldID top{nullptr};
+        jfieldID right{nullptr};
+        jfieldID bottom{nullptr};
+    };
+    static Ids ids;
+    sq::app::SafeArea area;
+    if (env == nullptr || activity == nullptr) return area;
+    if (!ids.tried) {
+        ids.tried = true;
+        jclass rect_class = env->FindClass("android/graphics/Rect");
+        jclass view_class = env->FindClass("android/view/View");
+        if (rect_class != nullptr && view_class != nullptr) {
+            jmethodID make = env->GetMethodID(rect_class, "<init>", "()V");
+            jobject rect = make != nullptr ? env->NewObject(rect_class, make) : nullptr;
+            if (rect != nullptr) {
+                ids.rect = env->NewGlobalRef(rect);
+                env->DeleteLocalRef(rect);
+            }
+            ids.left = env->GetFieldID(rect_class, "left", "I");
+            ids.top = env->GetFieldID(rect_class, "top", "I");
+            ids.right = env->GetFieldID(rect_class, "right", "I");
+            ids.bottom = env->GetFieldID(rect_class, "bottom", "I");
+            ids.visible = env->GetMethodID(view_class, "getWindowVisibleDisplayFrame",
+                                           "(Landroid/graphics/Rect;)V");
+            ids.width = env->GetMethodID(view_class, "getWidth", "()I");
+            ids.height = env->GetMethodID(view_class, "getHeight", "()I");
+        }
+        if (rect_class != nullptr) env->DeleteLocalRef(rect_class);
+        if (view_class != nullptr) env->DeleteLocalRef(view_class);
+        if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+    }
+    if (ids.rect == nullptr || ids.visible == nullptr || ids.width == nullptr ||
+        ids.height == nullptr || ids.left == nullptr || ids.top == nullptr ||
+        ids.right == nullptr || ids.bottom == nullptr) {
+        return area;
+    }
+
+    jobject window = call_object(env, activity, "getWindow", "()Landroid/view/Window;");
+    jobject decor = call_object(env, window, "getDecorView", "()Landroid/view/View;");
+    if (decor != nullptr) {
+        env->CallVoidMethod(decor, ids.visible, ids.rect);
+        const jint width = env->CallIntMethod(decor, ids.width);
+        const jint height = env->CallIntMethod(decor, ids.height);
+        if (env->ExceptionCheck() != JNI_FALSE) {
+            env->ExceptionClear();
+        } else if (width > 0 && height > 0) {
+            const jint left = env->GetIntField(ids.rect, ids.left);
+            const jint top = env->GetIntField(ids.rect, ids.top);
+            const jint right = env->GetIntField(ids.rect, ids.right);
+            const jint bottom = env->GetIntField(ids.rect, ids.bottom);
+            area = {to_pixels(left), to_pixels(top), to_pixels(width - right),
+                    to_pixels(height - bottom)};
+        }
+        env->DeleteLocalRef(decor);
+    }
     if (window != nullptr) env->DeleteLocalRef(window);
     return area;
 }
@@ -849,8 +926,9 @@ struct Platform {
     /// JNI calls and nothing else.
     void sync_safe_area() {
         frames_since_measure = 0;
-        if (api_level < kInsetsApi) return;
-        const sq::app::SafeArea measured = measure_safe_area(jni(), activity, api_level);
+        const sq::app::SafeArea measured = api_level >= kInsetsApi
+            ? measure_safe_area(jni(), activity, api_level)
+            : measure_visible_frame(jni(), activity);
         if (measured == reported_area) return;
         reported_area = measured;
         SQ_LOGI("safe area (px): left %d top %d right %d bottom %d",

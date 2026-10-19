@@ -46,10 +46,10 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 | Command | Where | Reads |
 |---|---|---|
 | `help`, `clear`, `close` | `src/console.cpp`, always | the table; the scrollback; the shown flag |
-| `mem` | `src/system_commands.cpp` | `/proc/self/status` (`VmRSS`, `VmHWM`), `/proc/meminfo` (`MemAvailable`, `MemTotal`) |
+| `mem` | `src/system_commands.cpp` | `/proc/self/status` (`VmRSS`, `VmHWM`), `/proc/meminfo` (`MemAvailable`, `MemTotal`); before Linux 3.14, which has no `MemAvailable`, `MemFree` plus `Cached`, printed as "about" |
 | `heap` | same | `mallinfo` (bionic, older glibc) or `mallinfo2` (glibc 2.33 and later): `uordblks`, `fordblks`, `hblkhd` |
 | `threads` | same | `/proc/self/status` (`Threads`) |
-| `fds` | same | `/proc/self/fd`, through `getdents64` |
+| `fds` | same | `/proc/self/fd`, through `getdents64`; on Linux before 3.17, where a release Android app may list it only from its main thread, `/proc/self/task/<tid>/fd` (found on the 5.1 tablet, 2026-10-19) |
 | `device` | same | system properties (`ro.product.manufacturer`, `.model`, `ro.build.version.release`, `.sdk`, `ro.product.cpu.abi`) on bionic; `uname` everywhere |
 | `smaps` | same | `/proc/self/smaps`, streamed through 4 KB on the stack: `Rss`, `Pss`, `Private_Dirty`, `SwapPss` summed by kind of mapping |
 | `gl` | `src/gles/gl_command.cpp`, gles backend | `glGetString` (version, renderer, vendor, GLSL), `glGetIntegerv` (texture, renderbuffer and viewport limits, attributes, texture units, extension count) |
