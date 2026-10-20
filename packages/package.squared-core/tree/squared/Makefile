@@ -4,6 +4,9 @@
 #   make BUILD=debug     unoptimised with symbols
 #   make headers         compile every public header on its own
 #   make lint            format, source-rule and clang-tidy checks
+#   make test            every module's tests; each runs only if it changed
+#                        since it last passed (build/common.mk, run_tests)
+#   make retest          every test again, changed or not
 #   make lint LINT_ARGS=--changed   options for tools/lint.sh (also --only tidy)
 #   make <module>        build one module
 #   make clean
@@ -23,7 +26,10 @@ MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
            gui messaging time dev console
 
-.PHONY: all clean headers lint $(MODULES)
+.PHONY: all clean headers lint test retest $(MODULES)
+
+# The modules with tests, in the order they are run.
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console
 
 all: $(MODULES)
 
@@ -38,6 +44,13 @@ $(MODULES):
 
 headers:
 	./tools/check_headers.sh
+
+# After `all`: graphics and gui tests link the archives.
+test: all
+	@for module in $(TESTED); do $(MAKE) --no-print-directory -C $$module test || exit 1; done
+
+retest:
+	@$(MAKE) --no-print-directory test RETEST=1
 
 # Everything about linting lives outside this file: the engine is
 # tools/lint.sh, and what it checks is in tools/lint-rules.txt and .clang-tidy

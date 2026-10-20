@@ -71,7 +71,9 @@ TESTS += $(RENDERER_TEST)
 endif
 
 test: $(TESTS)
-	@for t in $(TESTS); do $$t || exit 1; done
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(CRASH_TEST): $(MODULE_DIR)/test/crash_file_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) $(HEADERS)
 	@mkdir -p $(dir $@)

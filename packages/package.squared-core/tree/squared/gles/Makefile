@@ -44,14 +44,18 @@ all: $(TARGET)
 # what a real driver accepts.
 TEST_BINARY := $(BUILD_DIR)/gles_test
 
-test: $(TEST_BINARY)
-	@$(TEST_BINARY)
+TESTS := $(TEST_BINARY)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(TEST_BINARY): $(MODULE_DIR)/test/gles_test.cpp \
                 $(MODULE_DIR)/test/gl_stub.cpp \
                 $(wildcard $(MODULE_DIR)/src/*.cpp)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ -o $@
+	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $(filter-out %.hpp,$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

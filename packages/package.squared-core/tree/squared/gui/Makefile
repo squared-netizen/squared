@@ -83,11 +83,12 @@ SKIN_LOADER_TEST := $(BUILD_DIR)/skin_loader_test
 KEYS_TEST := $(BUILD_DIR)/ui_keys_test
 
 .PHONY: test
-test: $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST)
-	@$(PAINTER_TEST)
-	@$(SAFE_AREA_TEST)
-	@$(SKIN_LOADER_TEST)
-	@$(KEYS_TEST)
+TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
@@ -119,7 +120,7 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(MODULE_DIR)/src/font_resource.cpp \
                  $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $^ \
+	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $(filter-out %.hpp,$^) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 

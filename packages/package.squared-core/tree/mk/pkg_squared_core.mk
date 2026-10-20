@@ -77,19 +77,25 @@ endif
 #   CONSOLE_COMMANDS=<n>           its command table, default 64
 #
 # CONSOLE=0, the default, carries none of it: the archive is not linked and no
-# flag reaches the compiler. Otherwise the sizes reach the framework's build
-# and the application's alike, as -D flags, so the two always agree, and the
-# flags stamp below rebuilds the framework when they change.
+# flag reaches the application. Otherwise the sizes reach the application as
+# -D flags, beside SQUARED_CONSOLE itself.
+#
+# The framework always gets the sizes, whatever CONSOLE is. Its Console
+# archive is built in every build, and only linked when CONSOLE asks for it,
+# so switching CONSOLE on or off changes nothing the framework compiles: the
+# flags stamp below stays the same and nothing is rebuilt. Only the sizes
+# change what the archive holds, and changing them rebuilds it (with the rest
+# of the framework: the stamp is one for the whole tree).
 CONSOLE            ?= 0
 CONSOLE_SCROLLBACK ?= 65536
 CONSOLE_COMMANDS   ?= 64
 ifeq ($(filter 0 app monitor,$(CONSOLE)),)
   $(error CONSOLE must be 0, app or monitor, not '$(CONSOLE)')
 endif
+SQ_CONSOLE_SIZES := -DSQUARED_CONSOLE_SCROLLBACK=$(CONSOLE_SCROLLBACK) \
+                    -DSQUARED_CONSOLE_COMMANDS=$(CONSOLE_COMMANDS)
 ifneq ($(CONSOLE),0)
-  SQ_CONSOLE_FLAGS := -DSQUARED_CONSOLE=$(if $(filter monitor,$(CONSOLE)),2,1) \
-                      -DSQUARED_CONSOLE_SCROLLBACK=$(CONSOLE_SCROLLBACK) \
-                      -DSQUARED_CONSOLE_COMMANDS=$(CONSOLE_COMMANDS)
+  SQ_CONSOLE_FLAGS := -DSQUARED_CONSOLE=$(if $(filter monitor,$(CONSOLE)),2,1) $(SQ_CONSOLE_SIZES)
   SQ_CPPFLAGS += $(SQ_CONSOLE_FLAGS)
 endif
 
@@ -150,7 +156,7 @@ SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 # change) the framework is cleaned before it is built: archives compiled for
 # one API level or one libc++ linked into a library for another would link
 # without complaint and fail on the device.
-SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) $(SQ_CONSOLE_FLAGS) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
+SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
 SQ_SQUARED_STAMP := $(SQ_SQUARED_DIR)/build/release/.project-flags
 
 .PHONY: squared-core squared-core-clean squared-core-status
@@ -165,7 +171,7 @@ squared-core:
 	fi
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) \
 	    CXX="$(strip $(CXX) $(SQ_TARGET))" \
-	    CXXFLAGS_EXTRA="$(strip $(SQ_CXX_INC) $(SQ_CONSOLE_FLAGS))" \
+	    CXXFLAGS_EXTRA="$(strip $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES))" \
 	    SQUARED_GRAPHICS_BACKEND=$(SQUARED_GRAPHICS_BACKEND) \
 	    SQUARED_PLATFORM=$(SQUARED_PLATFORM) \
 	    SQUARED_EXTERNAL_INCLUDES="$(if $(strip $(SQ_GL_LIBS)),-idirafter $(SQ_NDK_INC),)"

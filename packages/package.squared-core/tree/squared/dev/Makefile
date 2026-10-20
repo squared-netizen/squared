@@ -42,10 +42,12 @@ FRAME_TEST := $(BUILD_DIR)/frame_allocations_test
 # clearing, and report_allocations() arriving through it. No socket.
 LISTENER_TEST := $(BUILD_DIR)/log_listener_test
 
-test: $(TEST_BINARY) $(FRAME_TEST) $(LISTENER_TEST)
-	@$(TEST_BINARY)
-	@$(FRAME_TEST)
-	@$(LISTENER_TEST)
+TESTS := $(TEST_BINARY) $(FRAME_TEST) $(LISTENER_TEST)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(LISTENER_TEST): $(MODULE_DIR)/test/log_listener_test.cpp \
                   $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)

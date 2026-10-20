@@ -38,8 +38,12 @@ all: $(TARGET)
 # exists for and the one a device would only reveal intermittently.
 TEST_BINARY := $(BUILD_DIR)/android_asset_test
 
-test: $(TEST_BINARY)
-	@$(TEST_BINARY)
+TESTS := $(TEST_BINARY)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/test/asset_stub.cpp \
@@ -49,7 +53,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) \
-	    -I$(MODULE_DIR)/test $^ -o $@
+	    -I$(MODULE_DIR)/test $(filter-out %.hpp,$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

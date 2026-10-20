@@ -71,7 +71,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/image_decode_test.cpp \
                 $(MODULE_DIR)/src/detail/image_decode.cpp \
                 $(STB_OBJECT)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src $^ -o $@
+	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src $(filter-out %.hpp,$^) -o $@
 
 # Texture against the headless backend. Recovery runs once per context loss on
 # a device; here every branch of it runs in microseconds.
@@ -79,8 +79,6 @@ TEXTURE_TEST := $(BUILD_DIR)/texture_test
 
 ATLAS_TEST := $(BUILD_DIR)/texture_atlas_test
 
-# Every test runs on every `make test`, not only when it was rebuilt: a suite
-# that quietly skips what is up to date reports green without having run.
 BATCH_TEST := $(BUILD_DIR)/sprite_batch_test
 
 # Laying the same text out again allocates nothing. Counted with the dev
@@ -90,13 +88,14 @@ GLYPH_TEST := $(BUILD_DIR)/glyph_layout_test
 # by the frame-allocation counter too.
 FONT_ERROR_TEST := $(BUILD_DIR)/bitmap_font_error_test
 
-test: $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST) $(FONT_ERROR_TEST)
-	@$(TEST_BINARY)
-	@$(TEXTURE_TEST)
-	@$(ATLAS_TEST)
-	@$(BATCH_TEST)
-	@$(GLYPH_TEST)
-	@$(FONT_ERROR_TEST)
+# A test runs again only when it was rebuilt since it last passed; why that is
+# honest, and how to run them all, is in build/common.mk (run_tests).
+TESTS := $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST) $(FONT_ERROR_TEST)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
 
 $(FONT_ERROR_TEST): $(MODULE_DIR)/test/bitmap_font_error_test.cpp \
                     $(MODULE_DIR)/src/glyph_layout.cpp \
@@ -104,7 +103,7 @@ $(FONT_ERROR_TEST): $(MODULE_DIR)/test/bitmap_font_error_test.cpp \
                     $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
                     $(SQUARED_ROOT)/dev/src/dev_log.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $^ -ldl -pthread -o $@
+	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $(filter-out %.hpp,$^) -ldl -pthread -o $@
 
 $(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
                $(MODULE_DIR)/src/glyph_layout.cpp \
@@ -112,7 +111,7 @@ $(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
                $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
                $(SQUARED_ROOT)/dev/src/dev_log.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $^ -ldl -pthread -o $@
+	$(CXX) $(STANDARD) -O1 -g -I$(MODULE_DIR)/src $(INCLUDES) $(filter-out %.hpp,$^) -ldl -pthread -o $@
 
 $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(MODULE_DIR)/src/common/sprite_batch_common.cpp \
@@ -125,7 +124,7 @@ $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(INCLUDES) $(filter-out %.hpp,$^) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
@@ -138,7 +137,7 @@ $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
                $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(INCLUDES) $(filter-out %.hpp,$^) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
@@ -150,7 +149,7 @@ $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $^ $(LIB_DIR)/libsquared_graphics.a \
+	    $(INCLUDES) $(filter-out %.hpp,$^) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TARGET): $(OBJECTS)

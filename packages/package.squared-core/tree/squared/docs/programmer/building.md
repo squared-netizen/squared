@@ -18,10 +18,20 @@ make                 # every module
 make gui             # one module
 make BUILD=debug
 make headers         # compile every public header on its own
+make test            # every module's tests, each only if it changed (below)
+make retest          # every test again
 make clean
 ```
 
 Archives land in `build/<release|debug>/lib/libsquared_<module>.a`.
+
+**Tests run only when something they cover changed.** A test binary is
+rebuilt when its sources, the archives it links or any header in the tree
+change, and `make test` runs it only when it was rebuilt since it last
+passed. Each module says how many ran: `console: 4 test(s) ran and passed, 0
+unchanged since they last passed`. With nothing changed `make test` takes
+about a second; `make retest` (or `make test RETEST=1`) runs all of them.
+A failed test is run again next time, changed or not.
 
 ## Modules outside this tree
 
@@ -81,7 +91,7 @@ make android-status       # the NDK, the API level, the C++ runtime it found
 | The C++ runtime is linked **into** your library | One `.so`, nothing beside it to get out of step; the APK carries no `libc++_shared.so` |
 | The link fails if the library could not load on Android before 6.0 | It must carry the `DT_HASH` symbol table; the build adds it |
 | Changing `SQ_MIN_SDK` or the NDK rebuilds the framework | Archives built for one level must not link into another |
-| `CONSOLE=app` (or `monitor`) links the Console in; the default, `0`, carries none of it | See [console.md](console.md) |
+| `CONSOLE=app` (or `monitor`) links the Console in; the default, `0`, carries none of it | See [console.md](console.md). Switching it rebuilds nothing in the framework: its Console archive is built every time and only linked when asked for |
 | `DEV_LOG` and `CONSOLE` builds are **debuggable**; plain builds never are | `run-as` reaches a debuggable app's private files; `SQ_DEBUGGABLE=` turns it off, `SQ_DEBUGGABLE=1` on |
 | `make install` uses `adb install -r` when adb reaches **this phone**, and Android's installer otherwise | No prompt with adb; a second device (a tablet) only when named, `DEVICE=<serial>` |
 

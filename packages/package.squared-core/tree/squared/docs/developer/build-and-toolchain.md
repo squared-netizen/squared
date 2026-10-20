@@ -115,6 +115,43 @@ The demo APK already carries a v1 signature, which Android 5.1 needs.
 `squared-core` target writes the flags it builds with to
 `build/release/.project-flags` and cleans the tree when they change, so
 archives for one level or one libc++ never link into a library for another.
+Since 2026-10-19 the Console's sizes are in it whatever `CONSOLE` is, and
+`SQUARED_CONSOLE` itself never is (no framework code reads it): switching
+`CONSOLE` on or off left the stamp different and cleaned the whole tree,
+though only the Console module reads a size and its archive is built in every
+build anyway. Now only a change of size does.
+
+## Building only what changed
+
+Three things made a package round on the phone rebuild everything, and each
+is fixed (2026-10-19):
+
+1. **Vendoring replaced the example's `squared/` whole,** build output
+   included, so the next `make` compiled the framework from nothing and every
+   application file that includes it. `vendor_framework.sh` (examples repo)
+   now writes only the files that differ from the commit, removes the ones the
+   commit dropped, leaves the rest untouched (timestamps included), and keeps
+   `build/release` and `build/debug`. A written file gets the current time,
+   not the commit's: `git archive` dates files at their commit, which can be
+   older than objects built from the previous version, and make would keep
+   those. Checked on clones: a one-line change to `console/src/args.cpp`
+   vendored as "1 changed, 404 unchanged", and the next `make` compiled one
+   file where it had compiled 74.
+2. **Switching `CONSOLE` cleaned the framework** (the stamp, above).
+3. **Every test ran on every `make test`.** Each module's `test` target is now
+   `$(call run_tests,$(TESTS))` (`build/common.mk`): a test runs when its
+   binary is newer than its `<binary>.passed` mark, which only a pass writes.
+   Every test binary depends on all of the tree's headers
+   (`SQUARED_HEADERS`), its sources and the archives it links, so an
+   unchanged binary means unchanged inputs; the tests read nothing that
+   varies between runs except the host's `/proc`, whose answers they check
+   for shape. This reverses graphics' earlier rule ("every test runs on
+   every `make test`"), which was right while tests did not depend on their
+   headers: then an unchanged binary could hide a changed header. Recipes that
+   passed `$^` to the compiler now pass `$(filter-out %.hpp,$^)`. Checked:
+   nothing changed, all 18 kept in under a second; a console `.cpp` touched,
+   only console's 4 ran; a header touched, all ran; a failing test left no
+   mark and ran again.
 
 **The link check** (template `Makefile`, `verify-link`) refuses a library that
 needs `libc++_shared.so` (the runtime was not linked in) and, when

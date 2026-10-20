@@ -57,3 +57,33 @@ SQUARED_EXTERNAL_INCLUDES ?=
 -include $(SQUARED_ROOT)/local.mk
 
 DEPFLAGS = -MMD -MP
+
+# --- tests: run again only when something they cover changed ---------------
+#
+# Every test binary depends on its sources, the archives it links, and every
+# header in the tree (SQUARED_HEADERS), so it is rebuilt whenever anything it
+# could include changes. A test that passed leaves <binary>.passed beside the
+# binary; `make test` runs a test only when its binary is newer than that
+# mark, so with nothing changed it runs none, and after a change to one
+# module's .cpp it runs only the tests built from it. The same binary on the
+# same inputs gives the same answer, which is what makes skipping it honest;
+# the line each module prints says how many ran and how many were kept.
+# `make test RETEST=1` (or `make retest` at the top) runs every one.
+#
+# Reversed 2026-10-19, from "every test runs on every make test" (graphics):
+# that rule was right while a test did not depend on its headers, so an
+# unchanged binary could hide a changed header. Now it cannot.
+SQUARED_HEADERS := $(shell find $(SQUARED_ROOT) \( -path $(SQUARED_ROOT)/build -o -path $(SQUARED_ROOT)/third_party \) -prune -o -name '*.hpp' -print)
+
+# $(call run_tests,<test binaries>): the recipe of a module's `test` target.
+define run_tests
+@ran=0; kept=0; \
+for t in $(1); do \
+  if [ -z "$(RETEST)" ] && [ -f "$$t.passed" ] && [ "$$t.passed" -nt "$$t" ]; then \
+    kept=$$((kept + 1)); \
+  else \
+    rm -f "$$t.passed"; "$$t" || exit 1; touch "$$t.passed"; ran=$$((ran + 1)); \
+  fi; \
+done; \
+echo "  $(MODULE): $$ran test(s) ran and passed, $$kept unchanged since they last passed"
+endef
