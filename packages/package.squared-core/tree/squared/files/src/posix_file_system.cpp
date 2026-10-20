@@ -172,22 +172,19 @@ Target target( const PosixFileSystem &files, FileType type, std::string_view pat
 
 bool PosixFileSystem::exists( FileType type, std::string_view path ) const noexcept
 {
-    struct stat status
-    {};
+    struct stat status{};
     return stat_of( resolve_platform_path( type, path ), status );
 }
 
 bool PosixFileSystem::is_directory( FileType type, std::string_view path ) const noexcept
 {
-    struct stat status
-    {};
+    struct stat status{};
     return stat_of( resolve_platform_path( type, path ), status ) && S_ISDIR( status.st_mode );
 }
 
 std::uint64_t PosixFileSystem::length( FileType type, std::string_view path ) const noexcept
 {
-    struct stat status
-    {};
+    struct stat status{};
     if( !stat_of( resolve_platform_path( type, path ), status ) || S_ISDIR( status.st_mode ) ) {
         return 0U;
     }
@@ -201,8 +198,7 @@ FileReadResult PosixFileSystem::read( FileType type, std::string_view path ) con
         return { .bytes = {}, .error = std::move( to.error ) };
     }
     const Descriptor file{ ::open( to.path.c_str(), O_RDONLY | O_CLOEXEC ) };
-    struct stat status
-    {};
+    struct stat status{};
     if( file.fd < 0 || ::fstat( file.fd, &status ) != 0 ) {
         return { .bytes = {}, .error = from_errno( std::move( to.path ) ) };
     }
@@ -308,8 +304,7 @@ FileError PosixFileSystem::make_directories( FileType type, std::string_view pat
         }
     }
     // EEXIST was accepted for every part; the whole must be a directory.
-    struct stat status
-    {};
+    struct stat status{};
     if( !stat_of( whole, status ) || !S_ISDIR( status.st_mode ) ) {
         return make_error( FileErrorCode::NotADirectory, std::strerror( ENOTDIR ),
                            std::move( whole ) );
