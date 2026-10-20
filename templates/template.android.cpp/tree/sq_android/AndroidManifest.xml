@@ -12,8 +12,9 @@
   project without editing a file. Declaring them here as well would create two
   sources of truth, and aapt2 would take this one.
 
-  android:debuggable — set by the build (aapt2 link --debug-mode) for DEV_LOG
-  and CONSOLE builds, never for plain ones. Committing it would ship a
+  android:debuggable — set by the build (aapt2's debug mode) for DEV_LOG and
+  CONSOLE builds, never for plain ones. (Not spelled out here: two hyphens in
+  a row end an XML comment early, and aapt2 rejects the file.) Committing it would ship a
   debuggable release.
 
   There is no Java in this project. android.app.NativeActivity is a framework
