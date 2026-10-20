@@ -5,6 +5,12 @@
 //                                                        you type is a command
 //   sqconsole [--conf FILE] [--into DIR] --run CMD ...   run each command, print its
 //                                                        output, exit
+//             [--wait SECONDS]                           how long to wait for the app
+//                                                        to start (30; 0: not at all)
+//             [--until-closed]                           then wait for the app to close
+//                                                        the connection: `--run quit
+//                                                        --until-closed` returns once
+//                                                        the app has gone
 //
 // FILE (default build/dev/bridge.conf, which a CONSOLE build writes) holds
 // `port=`, `secret=` and `package=` lines. The app's end is
@@ -56,7 +62,8 @@ struct Settings
         std::string conf = "build/dev/bridge.conf";
         std::string into = "build/pulled";
         std::vector<std::string> run;
-        int wait_seconds = 30; // --run only: how long to wait for the app
+        int wait_seconds = 30;     // --run only: how long to wait for the app to start
+        bool until_closed = false; // --run only: success is the app closing the connection
 };
 
 struct Bridge
@@ -445,17 +452,19 @@ class Session
 int usage()
 {
     std::fprintf( stderr, "usage: sqconsole [--conf FILE] [--into DIR] [--run COMMAND]... "
-                          "[--wait SECONDS]\n" );
+                          "[--wait SECONDS] [--until-closed]\n" );
     return 2;
 }
 
 /// --run: connect (waiting up to wait_seconds), run each command, print its
-/// output, and exit 0; 1 if the app could not be reached.
+/// output, and exit 0; 1 if the app could not be reached. With until_closed,
+/// keep printing until the app closes the connection, and exit 0 when it does.
 int run_commands( const Bridge &bridge, const Settings &settings )
 {
+    constexpr int answer_seconds = 30; // the app is running; it answers or is stuck
     const int announce = listen_for_announce( bridge.port );
     int fd = connect_to( bridge, true );
-    if( fd < 0 && announce >= 0 ) {
+    if( fd < 0 && announce >= 0 && settings.wait_seconds > 0 ) {
         std::fprintf( stderr, "sqconsole: %s is not running; waiting up to %d s for it to start\n",
                       bridge.package.empty() ? "the app" : bridge.package.c_str(),
                       settings.wait_seconds );
@@ -479,10 +488,11 @@ int run_commands( const Bridge &bridge, const Settings &settings )
     std::size_t finished = 0;
     bool greeted = false;
     bool failed = false;
-    while( !failed && ( !greeted || finished < expected ) ) {
+    bool closed = false;
+    while( !failed && !closed && ( !greeted || finished < expected || settings.until_closed ) ) {
         pollfd ready{ fd, POLLIN, 0 };
-        if( ::poll( &ready, 1, settings.wait_seconds * 1000 ) <= 0 ) {
-            std::fprintf( stderr, "sqconsole: no answer for %d s\n", settings.wait_seconds );
+        if( ::poll( &ready, 1, answer_seconds * 1000 ) <= 0 ) {
+            std::fprintf( stderr, "sqconsole: no answer for %d s\n", answer_seconds );
             failed = true;
             break;
         }
@@ -508,7 +518,9 @@ int run_commands( const Bridge &bridge, const Settings &settings )
                 print_line( type, text );
             }
         } );
-        if( !open ) {
+        if( !open && greeted && settings.until_closed ) {
+            closed = true; // what was asked for
+        } else if( !open ) {
             std::fprintf( stderr, greeted ? "sqconsole: the app closed the connection\n"
                                           : "sqconsole: refused: is build/dev/bridge.conf from "
                                             "the build that is installed?\n" );
@@ -637,6 +649,8 @@ int main( int argc, char **argv )
             settings.run.emplace_back( argv[++i] );
         } else if( argument == "--wait" && i + 1 < argc ) {
             settings.wait_seconds = std::atoi( argv[++i] );
+        } else if( argument == "--until-closed" ) {
+            settings.until_closed = true;
         } else {
             return usage();
         }

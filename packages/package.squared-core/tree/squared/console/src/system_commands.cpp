@@ -403,8 +403,10 @@ Mapping mapping_of( std::string_view line ) noexcept
     if( dash == std::string_view::npos || space == std::string_view::npos || dash > space ) {
         return out;
     }
-    std::from_chars( line.data(), line.data() + dash, start, 16 );
-    std::from_chars( line.data() + dash + 1, line.data() + space, end, 16 );
+    const std::string_view first = line.substr( 0, dash );
+    const std::string_view last = line.substr( dash + 1, space - dash - 1 );
+    std::from_chars( first.data(), first.data() + first.size(), start, 16 );
+    std::from_chars( last.data(), last.data() + last.size(), end, 16 );
     out.bytes = end > start ? end - start : 0;
     const auto slash = line.find( '/' );
     if( slash != std::string_view::npos ) {

@@ -52,6 +52,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `graphics::BitmapFontError` | 32 | 8 |
 | `app::Event` | 88 | 8 |
 | `files::FileHandle` | 48 | 8 |
+| `files::PosixFileSystem` | 104 | 8 |
 | `files::FileError` | 72 | 8 |
 | `data::JsonValue` | 56 | 8 |
 | `data::JsonError` | 64 | 8 |

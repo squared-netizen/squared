@@ -26,10 +26,13 @@ the existing state, not of choices made during the file split.
 
 ## Passed over
 
-Nothing in this tree passes over a standard facility in favour of a hand-
-rolled one. `sq::Result`, an interned string table, a flat hash map, and a
-handle pool are all named in the project rules and none exist yet. That is the
-gap between the rules and the code, and it is tracked in the priority audit.
+| Facility | Site | Why |
+|---|---|---|
+| `<filesystem>`, `<fstream>` | `files::PosixFileSystem` (2026-10-19) | Measured on the phone: +613 KB in the demo's stripped `libdemo.so` (+55%), 79 allocations per iteration of everyday file work against 9, for a third fewer statements; and libc++ and libstdc++ answered one `create_directories` case differently. POSIX calls kept. Tools and tests may use both. The numbers: [files.md](files.md#posixfilesystem) |
+
+`sq::Result`, an interned string table, a flat hash map, and a handle pool are
+all named in the project rules and none exist yet. That is the gap between the
+rules and the code, and it is tracked in the priority audit.
 
 ## `NinePatchDrawable` is worth a note
 

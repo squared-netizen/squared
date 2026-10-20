@@ -233,7 +233,17 @@ devices:
 # A CONSOLE build, started with only its Console: your App is not created
 # until `app start`, so an App that crashes at start can still be reached
 # (`make console`, then `crash`, `log previous`, `app start`).
-console-only:
+#
+# Android only brings a running app to the front, and the extra never reaches
+# it, so a running CONSOLE build is asked to quit first, through the bridge,
+# and this waits until it has gone (the connection closing says so). With no
+# app running, sqconsole fails at once (--wait 0) and nothing is waited for.
+console-only: $(if $(SQ_BRIDGE_CONF),$(SQ_SQCONSOLE),)
+	@if [ -f '$(SQ_BRIDGE_CONF)' ] && \
+	   '$(SQ_SQCONSOLE)' --conf '$(SQ_BRIDGE_CONF)' --wait 0 --run quit --until-closed \
+	     >/dev/null 2>&1; then \
+	  printf '  %-14s %s\n' "quit" "the running app, so it starts again with only the Console"; \
+	fi
 	@$(SQ_DEVICE_TOOL) console-only '$(SQ_PACKAGE)'
 
 uninstall:

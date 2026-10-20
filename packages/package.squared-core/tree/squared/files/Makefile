@@ -38,7 +38,11 @@ all: $(TARGET)
 # exists for and the one a device would only reveal intermittently.
 TEST_BINARY := $(BUILD_DIR)/android_asset_test
 
-TESTS := $(TEST_BINARY)
+# The POSIX backend against real directories under $TMPDIR, with a count of
+# the allocations its everyday calls make.
+POSIX_TEST := $(BUILD_DIR)/posix_file_system_test
+
+TESTS := $(TEST_BINARY) $(POSIX_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -54,6 +58,13 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) \
 	    -I$(MODULE_DIR)/test $(filter-out %.hpp,$^) -o $@
+
+$(POSIX_TEST): $(MODULE_DIR)/test/posix_file_system_test.cpp \
+               $(MODULE_DIR)/src/posix_file_system.cpp \
+               $(MODULE_DIR)/src/file_handle.cpp \
+               $(MODULE_DIR)/src/file_system.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

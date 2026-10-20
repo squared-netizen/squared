@@ -638,6 +638,44 @@ void client_tests()
         ::unlink( bad );
     }
 
+    // --until-closed: the app closing the connection after `bye` is the
+    // success asked for (make console-only quits a running app this way).
+    {
+        static bool bye = false;
+        console.add( "bye", "bye",
+                     []( sq::console::Console &c, const sq::console::Args &, void * ) {
+                         bye = true;
+                         c.print( "bye then" );
+                     } );
+        Child quitting = spawn(
+            { SQCONSOLE_PATH, "--conf", conf, "--wait", "0", "--run", "bye", "--until-closed" } );
+        std::string said;
+        assert( await( loop, quitting, said, "bye then" ) );
+        assert( bye );
+        int status = 0;
+        for( int i = 0; i < 30 && ::waitpid( quitting.pid, &status, WNOHANG ) == 0; ++i ) {
+            loop.pump( 10 ); // the command's end mark arrives; it keeps waiting
+        }
+        assert( ::waitpid( quitting.pid, &status, WNOHANG ) == 0 );
+        bridge.close(); // as the app does when it has finished
+        for( int i = 0; i < 300 && ::waitpid( quitting.pid, &status, WNOHANG ) == 0; ++i ) {
+            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+        }
+        assert( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 );
+        assert( await( loop, interactive, seen, "the app went away" ) );
+
+        // No app, --wait 0: fails at once rather than waiting.
+        const auto started = std::chrono::steady_clock::now();
+        Child none = spawn(
+            { SQCONSOLE_PATH, "--conf", conf, "--wait", "0", "--run", "bye", "--until-closed" } );
+        status = 0;
+        for( int i = 0; i < 300 && ::waitpid( none.pid, &status, WNOHANG ) == 0; ++i ) {
+            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+        }
+        assert( WIFEXITED( status ) && WEXITSTATUS( status ) == 1 );
+        assert( std::chrono::steady_clock::now() - started < std::chrono::seconds( 2 ) );
+    }
+
     ::close( interactive.in ); // Ctrl-D
     int status = 0;
     for( int i = 0; i < 300 && ::waitpid( interactive.pid, &status, WNOHANG ) == 0; ++i ) {
@@ -826,7 +864,10 @@ void transfer_tests( const std::string &home )
     assert( shown.size() >= 3 && shown[1].rfind( "libs: ", 0 ) == 0 );
     bool libc = false;
     for( const std::string &line : shown ) {
-        libc = libc || line.find( "libc" ) != std::string::npos;
+        if( line.find( "libc" ) != std::string::npos ) {
+            libc = true;
+            assert( std::strtoull( line.c_str(), nullptr, 10 ) > 0 ); // the size was parsed
+        }
     }
     assert( libc );
 

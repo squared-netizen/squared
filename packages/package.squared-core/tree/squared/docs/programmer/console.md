@@ -147,7 +147,8 @@ push build/x.lua game.lua      under another name
 - **Start it before or after the app.** It waits for the app without asking again and again: the app sends one datagram when it starts, and `sqconsole` connects then. When the app quits or crashes it says so and waits; when the app starts again it reconnects by itself.
 - **It shows the history first:** the newest 200 lines the Console already held. `CMD=` runs skip that and print only the command's own lines.
 - **One at a time.** A second `make console` takes over, and the first is told so.
-- **`make console-only`** starts the app with the Console running and your `App` not created, so an app that crashes at start can still be reached: `crash`, `log previous`, then `app start`. If the app was already running it carries on as it was; `quit` it first. It goes through Termux's `am` (`pkg install termux-am`) or adb.
+- **`sqconsole` by itself** (`build/host/sqconsole --conf build/dev/bridge.conf ...`): `--run CMD` (repeatable) runs commands and exits; `--wait SECONDS` is how long `--run` waits for the app to start (30; `0` not at all); `--until-closed` makes the app closing the connection the success, so `--run quit --until-closed` returns once the app has gone; `--into DIR` is where pulls are saved. Exit 0 on success, 1 when the app could not be reached or refused it.
+- **`make console-only`** starts the app with the Console running and your `App` not created, so an app that crashes at start can still be reached: `crash`, `log previous`, then `app start`. If a `CONSOLE` build is already running it is asked to `quit` first, through the bridge, and started again once it has gone (Android would only bring it to the front, and it would carry on as it was). It goes through Termux's `am` (`pkg install termux-am`) or adb.
 - **Private enough for a dev build, not more.** The port is on `127.0.0.1`, so nothing off the phone reaches it, and a client must give a secret made by your build (in `build/dev/bridge.conf`; `make clean` makes a new one). The secret is inside the APK, which other apps can read, so it keeps out any app that isn't looking for it, not one that reads your APK. A build without `CONSOLE` has none of it.
 - **The port** comes from your package name (20000 to 39999), so two projects do not collide. `make status` shows it.
 - A `CONSOLE` build carries the `INTERNET` permission, like a `DEV_LOG` build: the bridge is a socket.
@@ -155,6 +156,7 @@ push build/x.lua game.lua      under another name
 | `sqconsole` says | Meaning |
 |---|---|
 | `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
+| `the app closed the connection` | It quit or crashed during a `CMD=` run; `log previous` after it starts again |
 | `refused: is build/dev/bridge.conf from the build that is installed?` | The secret did not match: install the build you just made |
 | `saved build/pulled/<name> (N bytes)` | A pull arrived whole |
 | `<name> came short (N bytes); kept as …part` | The file shrank while it was read, or the app went away mid-file |

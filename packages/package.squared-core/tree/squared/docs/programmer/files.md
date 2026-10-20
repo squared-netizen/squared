@@ -78,6 +78,20 @@ if (!bytes) {
 use(bytes.bytes);
 ```
 
+What each operation returns when it fails, on `PosixFileSystem`:
+
+| Operation | Fails with |
+|---|---|
+| any, on a path with `..` or a leading `/`, or a type with no root | `NotSupported` |
+| `write`, `make_directories`, `remove` on `Internal` | `ReadOnly` |
+| `read` of a missing file | `NotFound` |
+| `read` of a directory | `IsADirectory` |
+| `write` into a missing directory | `NotFound` (`write_bytes` on a handle makes the directories first) |
+| `write` onto a directory | `IsADirectory` |
+| `list` of a missing path, or of a file | `NotFound`, `NotADirectory` |
+| `make_directories` where a file is in the way, or is the path | `NotADirectory` |
+| `remove` of a missing path, or of a directory that is not empty | `NotFound`, `IoFailure` |
+
 `exists()`, `is_directory()` and `length()` return plain values, because there
 is no useful difference between "missing" and "could not tell". `length()`
 returns zero for a missing file, a directory, and an empty file alike; use
@@ -132,7 +146,9 @@ Two things to know:
 - Keep `sq_android/assets/SQ-INF/index` in your `.gitignore`. It is a
   build product.
 - Do not put assets under `assets/SQ-INF/`. It is the bundle's metadata
-  directory, excluded from the index and hidden from listings.
+  directory, excluded from the index and hidden from listings &mdash; from
+  `Internal`'s root listing in Termux and on a desktop too, so every platform
+  lists the same names.
 
 The details, and why it works this way rather than any of the obvious
 alternatives, are in

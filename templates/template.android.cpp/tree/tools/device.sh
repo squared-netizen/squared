@@ -244,7 +244,9 @@ cmd_uninstall() {
 # The launcher activity with one extra: a CONSOLE build reads it at start and
 # leaves your App uncreated (`app start` creates it). Through adb when it
 # reaches the device, else through Termux's own `am` (termux-am), which needs
-# no adb: Termux is in front, so Android lets it start an activity.
+# no adb: Termux is in front, so Android lets it start an activity. An app
+# that is still running only comes to the front and never sees the extra;
+# `make console-only` quits a running CONSOLE build first, through the bridge.
 cmd_console_only() {
   local package=$1 serial
   local intent=(start -n "$package/android.app.NativeActivity" --ez squared.console_only true)
@@ -258,7 +260,6 @@ cmd_console_only() {
   else
     die "console-only needs adb or Termux's am: pkg install termux-am"
   fi
-  say "" "(if it was already running it carries on as it was: quit it first, or app stop)"
 }
 
 usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
