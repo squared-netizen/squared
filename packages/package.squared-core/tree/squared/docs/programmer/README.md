@@ -20,7 +20,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing
-- [messaging](messaging.md) &mdash; addressed, queued message passing between decoupled parts of a program
+- [messaging](messaging.md) &mdash; the Telegraph's parts: names, addresses, keys, the 32-byte telegram and its text form
 - [math](math.md) &mdash; small value types used across the framework
 - [time](time.md) &mdash; clock domains and a bounded deadline queue
 
@@ -35,7 +35,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `gles` | 5 | 11 | `squared/gles/gles.hpp` |
 | `graphics` | 11 | 19 | `squared/graphics/graphics.hpp` |
 | `gui` | 29 | 43 | `squared/gui/gui.hpp` |
-| `messaging` | 4 | 20 | `squared/messaging/messaging.hpp` |
+| `messaging` | 7 | 3 | `squared/messaging/messaging.hpp` |
 | `math` | 2 | 0 | `squared/math/math.hpp` |
 | `time` | 5 | 1 | `squared/time/time.hpp` |
 

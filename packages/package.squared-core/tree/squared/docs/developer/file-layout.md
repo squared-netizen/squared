@@ -32,9 +32,10 @@ made of or report: styles, error codes, options structs, small value types.
 
 **Every supporting header is reachable** through the includes of some
 workhorse header, so a user never has to know `src/` exists to get a type.
-The exception is deliberate extension surface: `messaging/src/telegram_provider.hpp`,
-with `provider_result.hpp` and `provider_status.hpp` behind it, is for
-someone writing a provider, and no everyday header pulls it in.
+The exception would be deliberate extension surface: a header only someone
+extending squared needs, listed in `tools/check_headers.sh`. There is none
+today; the old dispatcher's provider interface was the only one, and went with
+it (2026-10-20).
 
 This is checked, not asserted. The first step of `tools/check_headers.sh`
 follows the `#include <squared/...>` lines out from every workhorse header and

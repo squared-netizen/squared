@@ -37,7 +37,6 @@ all: $(MODULES)
 
 graphics: math files
 gui: graphics math data files
-messaging: time data
 assets: files
 gles: graphics
 

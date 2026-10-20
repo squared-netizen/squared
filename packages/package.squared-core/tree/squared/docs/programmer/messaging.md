@@ -1,8 +1,9 @@
 # messaging
 
-Addressed, queued message passing between decoupled parts of a program:
-endpoints register with a dispatcher, messages are delivered immediately or on
-a deadline, and pending traffic can be snapshotted and restored.
+The Telegraph's parts: names and addresses, keys, the 32-byte telegram and its
+one line of text. The Telegraph itself (the rings between the UI and the model
+thread, the latest-value cache) is being built in Sprint 6 on these; this page
+grows with it.
 
 Every type below lives in its own header. Include exactly the ones a
 translation unit names; `squared/messaging/messaging.hpp` pulls in all of them
@@ -10,13 +11,10 @@ and exists for convenience, not for use inside headers of your own.
 
 Developer counterpart: [../developer/messaging.md](../developer/messaging.md)
 
-> [!note] Being replaced (Sprint 6)
-> The Telegraph is being rebuilt to the app model's design: a 32-byte binary
-> envelope, two lock-free rings between the UI and the model thread, and no
-> allocation per telegram. Names, addresses and the name table below are its
-> first part (6.1). The dispatcher, endpoints and `Telegram` further
-> down are the old design; nothing in squared uses them, and they go when the
-> new Telegraph replaces them.
+> [!note] The old dispatcher is gone (2026-10-20)
+> `MessageDispatcher`, `EndpointId`, `MessageId`, the JSON-payload `Telegram`
+> and the providers were removed: nothing used them, and the app model replaces
+> them. Scheduled delivery became the model's timers (`sq::time::DeadlineQueue`).
 
 ## Names and addresses
 
@@ -91,66 +89,141 @@ std::size_t n = names.format( { "item.name", 17 }, line );  // "item[17].name"
 allocates; the storage is yours (the Telegraph's, later) and must outlive the
 table. Register names before the threads start.
 
-## Envelope
+## Keys
 
-| Type | Header | Purpose |
-|---|---|---|
-| `MessageId` | `squared/messaging/src/message_id.hpp` | Stable namespaced identifier for one Telegram kind |
-| `EndpointId` | `squared/messaging/src/endpoint_id.hpp` | Stable namespaced address for one directed Telegraph endpoint |
-| `CorrelationId` | `squared/messaging/src/correlation_id.hpp` | Application-owned correlation tag echoed by queued receipts |
-| `Telegram` | `squared/messaging/telegram.hpp` | Owned immutable-access message envelope |
-| `ReceiptStatus` | `squared/messaging/src/receipt_status.hpp` | Outcome of delivering one Telegram to its subscribers |
+**Every address in an app is a key:** a name with the type of its value, the
+verbs it carries, and whether it takes a uid.
 
-## Receiving
+```cpp
+#include <squared/messaging/key.hpp>
 
-| Type | Header | Purpose |
-|---|---|---|
-| `Telegraph` | `squared/messaging/telegraph.hpp` | Receiver of Telegram values on the dispatcher's calling thread |
-| `TelegramProvider` | `squared/messaging/src/telegram_provider.hpp` | Generates authoritative current state for a new subscriber |
-| `ProviderStatus` | `squared/messaging/src/provider_status.hpp` | Outcome category of one authoritative current-state request |
-| `ProviderResult` | `squared/messaging/src/provider_result.hpp` | Owned result of one authoritative current-state request |
+namespace names {
+using namespace sq::messaging;
+inline constexpr Key<std::int64_t, state>                  counter_ticks{ "counter.ticks" };
+inline constexpr Key<bool, state | set>                    settings_sound{ "settings.sound" };
+inline constexpr Key<std::string_view, do_>                file_open{ "file.open" };
+inline constexpr Key<void, event>                          game_over{ "game.over" };
+inline constexpr Key<std::string_view, state, with_uid>    item_name{ "item.name" };
+}
+```
 
-## Subscribing
+Write them by hand in a header, or let `names.json` generate them (Sprint 9e):
+the same type either way. A dot in the name becomes an underscore in the
+identifier.
 
-| Type | Header | Purpose |
-|---|---|---|
-| `Subscription` | `squared/messaging/subscription.hpp` | Move-only scoped endpoint registration or broadcast subscription |
-| `SubscriptionStatus` | `squared/messaging/src/subscription_status.hpp` | Outcome category of one registration operation |
-| `SubscriptionResult` | `squared/messaging/src/subscription_result.hpp` | Owned result of one register/subscribe/provider operation |
-
-## Dispatching
-
-| Type | Header | Purpose |
-|---|---|---|
-| `DispatchHandle` | `squared/messaging/src/dispatch_handle.hpp` | Stable handle for one queued or delayed Telegram |
-| `DispatchStatus` | `squared/messaging/src/dispatch_status.hpp` | Outcome category of one dispatch operation |
-| `DispatchResult` | `squared/messaging/src/dispatch_result.hpp` | Owned result of one send/schedule operation |
-| `DeliveryReport` | `squared/messaging/src/delivery_report.hpp` | Compressed outcome describing one immediate delivery pass |
-| `MessageDispatcherConfig` | `squared/messaging/src/message_dispatcher_config.hpp` | Capacity limits that bound every dispatcher queue |
-| `MessageDispatcher` | `squared/messaging/message_dispatcher.hpp` | Bounded deterministic Telegram router for one time domain |
-
-## Snapshot and restore
-
-| Type | Header | Purpose |
-|---|---|---|
-| `PendingMessageView` | `squared/messaging/src/pending_message_view.hpp` | Non-owning view valid only during pending-message inspection |
-| `PendingSnapshotStatus` | `squared/messaging/src/pending_snapshot_status.hpp` | Outcome category of one pending-queue snapshot |
-| `PendingSnapshotResult` | `squared/messaging/src/pending_snapshot_result.hpp` | Owned result of one pending-queue snapshot |
-| `PendingRestoreStatus` | `squared/messaging/src/pending_restore_status.hpp` | Outcome category of one pending-queue restore |
-| `PendingRestoreResult` | `squared/messaging/src/pending_restore_result.hpp` | Owned result of one pending-queue restore |
-
-## Free functions
-
-`squared/messaging/src/receipt.hpp` declares the two framework constants used for
-queued return receipts:
-
-| Function | Returns |
+| Value type | Spelled |
 |---|---|
-| `receipt_message_id()` | the `MessageId` the framework uses for receipts |
-| `receipt_status_name(ReceiptStatus)` | the stable lowercase name used in JSON payloads |
+| none | `void` |
+| bool | `bool` |
+| integer | `std::int64_t` |
+| number | `double` |
+| two to four floats | `std::array<float, 2>` to `std::array<float, 4>` |
+| text | `std::string_view` |
+| a list of uids | `std::span<const std::uint32_t>` |
+
+| Verbs | Direction |
+|---|---|
+| `state` | model to UI: a value is now this |
+| `event` | model to UI: something happened |
+| `set` | UI to model: the user changed a value |
+| `do_` | UI to model: an intent (`do` in text) |
+
+Combine with `|`: `state | set` is a value both sides change, like a check
+box's.
+
+**The compiler checks every send against the key.** The Telegraph's calls are
+constrained by `sendable<Key, Verb, Value>`, so these do not compile:
+
+| Mistake | Example |
+|---|---|
+| the wrong type | text to `counter_ticks` |
+| a bool for an integer | `true` to `counter_ticks` |
+| a verb the key does not carry | `set` on `counter_ticks`, `state` on `file_open` |
+| a value for an address with none | anything to `game_over` |
+
+A key is 16 bytes: the name (8) and a pointer to its text (8), for the name
+table. Keys are constants; a telegram carries only the 8-byte name.
+
+## The telegram
+
+`sq::messaging::Telegram` (`squared/messaging/telegram.hpp`) is one message,
+32 bytes: the name, the uid, a correlation (which pairs a `do` with the `event`
+that answers it, 0 for none), the verb and value type, and 16 bytes of value.
+Apps send through the Telegraph with keys; this is what travels underneath,
+and what a replay file or a test makes by hand.
+
+```cpp
+using namespace sq::messaging;
+const Telegram ticks = Telegram::integer( Verb::state, { "counter.ticks" }, 42 );
+const Telegram open  = Telegram::data( Verb::do_, { "file.open" }, ValueType::text, where )
+                           .with_correlation( 12 );
+```
+
+| Factory | Value |
+|---|---|
+| `empty(verb, to)` | none |
+| `boolean(verb, to, b)` | a bool |
+| `integer(verb, to, i)` | a 64-bit integer |
+| `number(verb, to, d)` | a double; not a NaN (asserted: a NaN has no text form) |
+| `floats(verb, to, span)` | two to four floats; no NaN |
+| `data(verb, to, type, where)` | text or a uid list, by where it is in the data area (`DataRef`: offset and length in bytes, 4 per uid) |
+
+Read it with `verb()`, `type()`, `address()`, `correlation()`, and
+`as_boolean()`, `as_integer()`, `as_number()`, `as_floats()`, `as_data()` for
+its type. `valid()` says whether 32 bytes that came from elsewhere
+(`TelegramBytes::from`) are a telegram; the factories only make valid ones,
+with every byte a value does not use zero, so equal telegrams are equal byte
+for byte.
+
+## Telegrams as text
+
+Every telegram has one canonical line, the same on every device:
+
+```text
+set settings.sound false
+do file.open "notes.txt" @12
+state item[17].name "fur coat"
+state player.pos (1.5 2)
+state counter.ticks 2.0
+state inventory [17 4 22]
+event game.over @12
+```
+
+| Part | Written |
+|---|---|
+| the verb | `set`, `do`, `state`, `event` |
+| the address | as in [the text form](#the-text-form) of an address: `item[17].name` |
+| a bool | `true`, `false` |
+| an integer | decimal |
+| a number | the shortest form that reads back to the same bits, always with a `.` or an exponent so it is not an integer: `2.0`, `0.1`, `1e+21`, `-0.0`, `inf` |
+| floats | `(1.5 2 0 1)` |
+| text | in double quotes; `\\`, `\"`, `\n`, `\t`, and `\xNN` for any other byte below 0x20 or 0x7F; other bytes as they are, so UTF-8 reads as itself |
+| uids | `[17 4 22]`; none: `[]` |
+| a correlation | ` @12` at the end, when not 0 |
+
+```cpp
+std::array<std::byte, 4096> storage;
+sq::messaging::TelegramData data{ storage };        // where text and uid lists go
+auto telegram = sq::messaging::read_telegram( "do file.open \"notes.txt\" @12", data );
+
+std::array<char, 512> line;
+std::size_t n = sq::messaging::write_telegram( *telegram, data.bytes(), names, line );
+```
+
+| Call | Does | Fails with |
+|---|---|---|
+| `write_telegram(t, data, names, out)` | the line, into `out`; the length | 0: `out` too small, `t` not valid, or its data outside `data` |
+| `read_telegram(line, data)` | the telegram; text and uids appended to `data` | nothing: not a telegram, or `data` full; nothing is left in `data` |
+
+`read_telegram` needs no name table: names are hashed. It reads more than the
+canonical form (more spaces, `[0]`, `1.50`, `007`), and writing what it read
+gives the canonical line. It refuses a NaN, an integer out of range, a
+correlation past 65,535, two to four floats only, and anything after the value.
+
+`TelegramData` is a data area over storage you give it, filled from the front:
+`append(bytes)`, `at(where)`, `bytes()`, `clear()`. Nothing in this module
+allocates.
 
 ## Dependencies
 
-`sq::time` for the deadline queue and clock domain, and `sq::data`
-for the `JsonValue` message payload. `sq::data` lives outside this
-archive; see [building.md](building.md).
+None outside the standard library.

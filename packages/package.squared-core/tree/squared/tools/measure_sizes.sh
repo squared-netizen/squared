@@ -57,7 +57,7 @@ int main() {
   P(graphics::GlyphPlacement) P(graphics::BitmapFontError)
   P(app::Event) P(files::FileHandle) P(files::FileError)
   P(data::JsonValue) P(data::JsonError) P(assets::AssetError)
-  P(messaging::Telegram) P(messaging::DispatchResult) P(console::Scrollback) P(console::InputLine) P(console::Commands) P(console::Console)
+  P(messaging::Name) P(messaging::Address) P(messaging::NameTable) P(messaging::Telegram) P(console::Scrollback) P(console::InputLine) P(console::Commands) P(console::Console)
   P(console::Quad) P(console::Frame) P(console::Renderer)
   P(std::string) P(std::function<void()>)
   return 0;

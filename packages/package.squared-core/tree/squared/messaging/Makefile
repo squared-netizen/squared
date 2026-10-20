@@ -11,13 +11,10 @@ MODULE_DIR := $(SQUARED_ROOT)/messaging
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/address.cpp \
-    src/endpoint_id.cpp \
-    src/message_dispatcher.cpp \
-    src/message_id.cpp \
     src/name_table.cpp \
-    src/receipt.cpp \
-    src/subscription.cpp \
-    src/telegram.cpp
+    src/telegram.cpp \
+    src/telegram_data.cpp \
+    src/telegram_text.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -29,7 +26,10 @@ all: $(TARGET)
 # Telegraph v2's names and addresses (Sprint 6.1), with no allocation counted.
 ADDRESS_TEST := $(BUILD_DIR)/address_test
 
-TESTS := $(ADDRESS_TEST)
+# The telegram, its text form both ways (a fuzz test) and the keys (6.1b, 6.2).
+TELEGRAM_TEST := $(BUILD_DIR)/telegram_test
+
+TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -39,6 +39,15 @@ $(TESTS): $(SQUARED_HEADERS)
 $(ADDRESS_TEST): $(MODULE_DIR)/test/address_test.cpp \
                  $(MODULE_DIR)/src/address.cpp \
                  $(MODULE_DIR)/src/name_table.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
+
+$(TELEGRAM_TEST): $(MODULE_DIR)/test/telegram_test.cpp \
+                  $(MODULE_DIR)/src/address.cpp \
+                  $(MODULE_DIR)/src/name_table.cpp \
+                  $(MODULE_DIR)/src/telegram.cpp \
+                  $(MODULE_DIR)/src/telegram_data.cpp \
+                  $(MODULE_DIR)/src/telegram_text.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
 

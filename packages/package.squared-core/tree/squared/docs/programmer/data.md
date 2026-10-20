@@ -1,8 +1,8 @@
 # data
 
 Strict RFC 8259 JSON: an owned value type independent of the parser backend,
-plus one parse function and one write function. Used by the skin loader and by
-`sq::messaging` for telegram payloads.
+plus one parse function and one write function. Used by the skin loader, and
+for saves and layouts.
 
 Developer counterpart: [../developer/data.md](../developer/data.md)
 

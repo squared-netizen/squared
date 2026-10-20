@@ -1,25 +1,33 @@
 # messaging &mdash; internals
 
-Addressed, queued message passing. Endpoints, broadcasts and providers share
-one registry; delivery is either immediate or deferred through
-`sq::time::DeadlineQueue`.
+The Telegraph's parts, rebuilt in Sprint 6 to the app model: names and
+addresses (6.1), keys (6.1b), the 32-byte telegram and its text form (6.2).
+Nothing here allocates.
 
 Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
-
-- Public types: 23
-- Translation units: 6
 
 ## Layout
 
 ```
 messaging/
-  message_dispatcher.hpp subscription.hpp telegram.hpp telegraph.hpp messaging.hpp
-  src/          the 20 supporting headers: ids, results, statuses, receipts,
-                and the provider extension surface (telegram_provider.hpp);
-                one translation unit per type with definitions
-  src/detail/   private, not installed
-  Makefile
+  name.hpp address.hpp name_table.hpp key.hpp telegram.hpp telegram_data.hpp
+  telegram_text.hpp messaging.hpp
+  src/   verb.hpp value_type.hpp data_ref.hpp (supporting); address.cpp,
+         name_table.cpp, telegram.cpp, telegram_data.cpp, telegram_text.cpp
+  test/  address_test.cpp, telegram_test.cpp
 ```
+
+**The old dispatcher was removed (2026-10-20),** 34 files: `MessageDispatcher`,
+`Subscription`, `EndpointId`, `MessageId`, the receipts, the providers (the
+module's extension surface, so `tools/check_headers.sh` lists none now) and a
+208-byte `Telegram` carrying a `JsonValue` and two `std::string` ids. Nothing
+outside the module used it, it had no tests, and the new `Telegram` needed its
+name. Its fates, as the app model decided: scheduled delivery is the model's
+timers (`time::DeadlineQueue`, moved to the module root, since nothing in
+`src/` reached it any more); correlation ids are in the envelope; providers
+become the latest-value cache; snapshots become persistence in `background()`;
+receipts are dropped; JSON payloads are for saves and the network only. The
+module no longer depends on `time` or `data`.
 
 ## Names, addresses and the name table (Sprint 6.1)
 
@@ -66,40 +74,98 @@ allocation.
   `add`, `text`, `format` or `parse_address`. An invalid literal was checked
   by hand not to compile, with g++ and clang.
 
-The old dispatcher below stays until the new Telegraph replaces it; nothing in
-squared uses it.
+## Keys (6.1b)
 
-## Notes
+`Key<T, Verbs, Uid>` is a name, a `const char*` to the literal (for the name
+table: the text is already in the binary, so registering a key copies nothing
+until the Telegraph does it once), and three things only the compiler sees.
+16 bytes; keys are constants and never travel.
 
-`Subscription::Registry` is the module's shared implementation type: it holds
-every binding, its capacity limit, and the token counter. Both `subscription.cpp`
-and `message_dispatcher.cpp` need its definition, so the out-of-line member
-definition lives in `src/detail/messaging_detail.hpp` rather than being
-duplicated. That header also carries `detail::valid_stable_id`, the identifier
-validator shared by `MessageId` and `EndpointId`.
+- **`Verbs`** is a structural struct of four bits, so it can be a template
+  argument and be combined with `|` (`state | set`).
+- **`sendable<K, Verb, Value>`** is the concept every sending call will be
+  constrained by: the key carries the verb, and the value converts as the
+  type says. Deliberately narrow: an integer takes any integer but never a
+  bool; a number takes any arithmetic type but a bool; text takes anything a
+  `string_view` can be made from. A narrower concept makes the compile error
+  the place a mistake is found.
+- `decltype` of an `inline constexpr` key is `const Key<...>`, so the concept
+  strips cv and references first (the first build's tests caught it).
+- Pattern: none beyond a type tag. Nothing virtual, nothing at run time.
 
-`dispatcher_endpoint_id` stayed in `message_dispatcher.cpp`'s anonymous
-namespace, because only that translation unit uses it. The rule is simple: a
-helper leaves the anonymous namespace only when a second translation unit
-needs it.
+## The telegram (6.2)
 
-`receipt_message_id()` and `receipt_status_name()` belong to neither `Telegram`
-nor `ReceiptStatus`, so they have a header and a translation unit of their own
-rather than being attached to whichever type they happened to sit near.
+| Bytes | Field |
+|---|---|
+| 0&ndash;7 | name id |
+| 8&ndash;11 | uid |
+| 12&ndash;13 | correlation |
+| 14&ndash;15 | kind: verb in bits 0&ndash;1, value type in bits 2&ndash;5, the rest 0 |
+| 16&ndash;31 | value |
 
-## Known warning
+No padding, so the 32 bytes are the telegram: `memcpy` in, `memcpy` out, and
+`operator==` is the bytes. The value is a `std::array<std::byte, 16>` read and
+written with `memcpy`, not a union, so there is no type punning to argue
+about. The factories zero the bytes a type does not use, which is what makes
+"equal" mean "equal bytes"; `valid()` checks it for bytes that arrive from a
+file, along with the spare bits, the type range, a bool being 0 or 1, no NaN,
+and a uid list being whole uids. The class is trivially copyable, which the
+rings (6.3) rely on.
 
-`detail::valid_stable_id` iterates a `std::string_view` as `const unsigned
-char`, which `-Wsign-conversion` flags. The code is unchanged from before the
-split, but the warning is now emitted once per including translation unit
-rather than once overall. The fix is a `static_cast<unsigned char>` in the
-range-for; it changes no behaviour, and it was left out of the split so the
-diff stays purely structural.
+**Why no NaN:** the text form must give back the same bits, and NaN has many
+bit patterns and one word. A NaN is a programmer error (asserted in the
+factories); `read_telegram` refuses `nan`.
+
+**Text and uid lists live in a data area,** and the telegram holds where
+(`DataRef`: 32-bit offset and length). `TelegramData` is the simple one, a
+span filled from the front, for reading lines and for tests; the Telegraph's
+rings keep their own data rings (6.3). "Bit for bit" for these types means
+everything but the offset, which depends on where the data area put them;
+the tests compare the bytes instead.
+
+## The text form (6.2)
+
+`write_telegram` and `read_telegram`, in `telegram_text.cpp`.
+
+- **Numbers:** `std::to_chars` and `std::from_chars`, so no locale and the
+  shortest form that reads back to the same bits (doubles and floats). A
+  double always shows a `.`, an exponent or `inf`, or `.0` is added, so `2.0`
+  is a number and `2` an integer. `-0.0` survives.
+- **Text:** escapes for `\`, `"`, newline and tab, `\xNN` for other control
+  bytes and 0x7F; bytes from 0x80 up are written as they are, so UTF-8 stays
+  readable. Reading decodes in two passes: the first checks and counts, the
+  second writes straight into the data area at its final place
+  (`TelegramData::reserve`, `writable`), so nothing is copied twice and
+  nothing is allocated.
+- **Refusal leaves nothing behind:** a line that fails after its text or uids
+  were read rewinds the data area (`TelegramData::rewind`).
+- **Cost to note:** `to_chars` for doubles carries tables (Ryu) into any app
+  that writes telegrams as text; to be measured when the dev log uses it.
+
+**Tested** (`test/telegram_test.cpp`): the key concept both ways (7 sends that
+compile, 8 that must not, with `static_assert`, so a regression is a build
+failure); the telegram's layout, byte equality, and `valid()` refusing a stray
+value byte, a spare bit, an unknown type; 16 exact lines, each read back;
+8 non-canonical lines read and written canonically; 25 lines refused,
+3 of them after their data was read, with the data area left empty; a data
+area too small; 20,000 random telegrams (every type, random uids,
+correlations, text bytes 0&ndash;255, floats including infinities, &minus;0
+and denormals, doubles from random bits) written, read and written again,
+identical; 20,000 damaged lines, read or refused but never crashing, and
+every one read written canonically and read again to the same line; no
+allocation in reading or writing. Four planted bugs (no `.0` on a whole
+double, 0x7F unescaped, the spare bits unchecked, no rewind on failure) each
+fail it. g++ and clang.
 
 ## Memory
 
-`Telegram` carries a `sq::data::JsonValue` payload by value and two
-`std::string`-backed identifier types. `MessageId` and `EndpointId` each hold a
-`std::string` plus a validity flag, so every telegram carries at least two
-heap-capable strings. Interning identifiers would apply here for the same
-reason it applies to `gui::Skin`; see [priority-audit.md](priority-audit.md).
+| Type | Bytes |
+|---|---|
+| `Name` | 8 |
+| `Address` | 16 |
+| `NameTable` | 24, plus the storage it is given |
+| `Key` | 16 (a constant) |
+| `Telegram` | 32 |
+| `TelegramData` | 24, plus the storage it is given |
+
+Nothing allocates; the rings and caches of 6.3 to 6.5 are sized at init.

@@ -11,7 +11,7 @@ Developer counterpart: [../developer/time.md](../developer/time.md)
 | Type | Header | Purpose |
 |---|---|---|
 | `Clock` | `squared/time/clock.hpp` | Read-only view of one application time domain |
-| `DeadlineQueue` | `squared/time/src/deadline_queue.hpp` | Bounded deterministic queue used by higher-level schedulers |
+| `DeadlineQueue` | `squared/time/deadline_queue.hpp` | Bounded deterministic queue: the model's timers (until 2026-10-20 the old dispatcher's scheduled delivery, which reached it from `src/`) |
 | `Duration` | `squared/time/duration.hpp` |  |
 | `ManualTimepiece` | `squared/time/manual_timepiece.hpp` | Explicitly controlled Timepiece for simulations, editors, and tests |
 | `TimePoint` | `squared/time/time_point.hpp` |  |

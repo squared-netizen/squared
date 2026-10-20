@@ -41,11 +41,9 @@ fi
 # Supporting headers that no workhorse header includes, on purpose: only
 # someone extending squared needs them, and no everyday include should pull
 # them in. Each entry is a decision recorded in docs/developer/file-layout.md.
-extension_surface="
-squared/messaging/src/telegram_provider.hpp
-squared/messaging/src/provider_result.hpp
-squared/messaging/src/provider_status.hpp
-"
+# None today: the three were the old dispatcher's provider interface, removed
+# with it (2026-10-20).
+extension_surface=""
 
 # Pick up local.mk the way build/common.mk does, so this script and the build
 # see the same external modules.
