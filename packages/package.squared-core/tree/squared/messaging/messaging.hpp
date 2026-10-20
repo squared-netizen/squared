@@ -3,7 +3,10 @@
 // Every public type in sq::messaging.
 // Prefer a narrower include in headers of your own.
 
+#include <squared/messaging/address.hpp>
 #include <squared/messaging/message_dispatcher.hpp>
+#include <squared/messaging/name.hpp>
+#include <squared/messaging/name_table.hpp>
 #include <squared/messaging/src/correlation_id.hpp>
 #include <squared/messaging/src/delivery_report.hpp>
 #include <squared/messaging/src/dispatch_handle.hpp>

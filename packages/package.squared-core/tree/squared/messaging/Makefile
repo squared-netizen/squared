@@ -10,9 +10,11 @@ MODULE_DIR := $(SQUARED_ROOT)/messaging
 
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/endpoint_id.cpp \
+SOURCES := src/address.cpp \
+    src/endpoint_id.cpp \
     src/message_dispatcher.cpp \
     src/message_id.cpp \
+    src/name_table.cpp \
     src/receipt.cpp \
     src/subscription.cpp \
     src/telegram.cpp
@@ -21,8 +23,24 @@ OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
 TARGET := $(LIB_DIR)/libsquared_messaging.a
 
-.PHONY: all clean
+.PHONY: all clean test
 all: $(TARGET)
+
+# Telegraph v2's names and addresses (Sprint 6.1), with no allocation counted.
+ADDRESS_TEST := $(BUILD_DIR)/address_test
+
+TESTS := $(ADDRESS_TEST)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS)
+
+$(ADDRESS_TEST): $(MODULE_DIR)/test/address_test.cpp \
+                 $(MODULE_DIR)/src/address.cpp \
+                 $(MODULE_DIR)/src/name_table.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

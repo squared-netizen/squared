@@ -54,6 +54,20 @@ public static const int actor_interface_id
 
 ### actor_interface
 
+*public void * actor_interface(int id)*
+
+*Defined at [gui/group.hpp:33](../../../../gui/group.hpp#L33)*
+
+
+
+**brief** Publish the Group interface to actor_cast().
+
+**id** Identifier of the requested interface.
+
+**return** This group for the Group identifier, otherwise the base answer.
+
+### actor_interface
+
 *public const void * actor_interface(int id)*
 
 *Defined at [gui/group.hpp:43](../../../../gui/group.hpp#L43)*
@@ -73,20 +87,6 @@ public static const int actor_interface_id
 ### act
 
 *public void act(double delta_seconds)*
-
-### actor_interface
-
-*public void * actor_interface(int id)*
-
-*Defined at [gui/group.hpp:33](../../../../gui/group.hpp#L33)*
-
-
-
-**brief** Publish the Group interface to actor_cast().
-
-**id** Identifier of the requested interface.
-
-**return** This group for the Group identifier, otherwise the base answer.
 
 ### hit
 

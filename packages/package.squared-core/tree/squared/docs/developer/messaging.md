@@ -21,6 +21,54 @@ messaging/
   Makefile
 ```
 
+## Names, addresses and the name table (Sprint 6.1)
+
+The first part of the new Telegraph, as the app model specifies it (an
+address is a name plus a uid). Three types, two translation units, no
+allocation.
+
+- **`Name`** is a 64-bit FNV-1a hash (offset basis `0xcbf29ce484222325`, prime
+  `0x100000001b3`). `name_hash` takes a seed so a name can be hashed in
+  pieces: `item[17].name` is parsed by hashing `item`, then `.name` continuing
+  from it, with nothing copied. The literal constructor is `consteval`; an
+  invalid literal calls `detail::not_a_valid_name()`, which is declared and
+  never defined or constexpr, so the program does not compile (no `throw`,
+  which the source rules count). 64 bits, decided in Sprint 5: one in about 37
+  trillion for 1,000 names to collide, where 32 bits gives one in 8,600, and
+  mods register names on users' phones.
+- **`Address`** is a `Name` and a `std::uint32_t` uid: 16 bytes with padding.
+  The envelope (6.2) packs it into 12.
+- **`NameTable`** is one span of bytes its owner supplies. Entries (16 bytes:
+  id, text offset, length) sit sorted by id at the front; text grows from the
+  back; they meet in the middle, and `full` is the gap closing. Lookup is a
+  binary search, O(log n); `add` is O(n) for the shift, fine for a few
+  thousand names registered at start. Entries are read and written with
+  `memcpy`, so the storage needs no alignment. A collision (same id, other
+  text) is refused and the first name kept; it can only be tested through a
+  friend (`NameTableProbe`), since no two real names are known to collide.
+- **Text form:** the uid goes after the first segment (`item[17].name`), as the
+  app model's list protocol writes it. An unregistered name is `#` and 16 hex
+  digits, so a line can always be written and read back.
+- **Standard library:** `std::span`, `std::string_view`, `std::from_chars`,
+  `std::to_chars`, `std::optional` for the parse result; none allocates. A
+  hash map was passed over for the sorted array: smaller (no buckets, no
+  load factor) and the lookups are not on a per-frame path.
+- **Patterns:** the table is a Flyweight store for name text: every telegram
+  carries 8 bytes, and the text exists once.
+- **Memory:** `sizeof(Name)` 8, `sizeof(Address)` 16, `sizeof(NameTable)` 24,
+  plus the storage it is given (`TELEGRAPH_NAMES`, 8 KB by default, when the
+  Telegraph owns it). Measured: 203 names in 5,649 bytes, about 28 bytes each.
+- **Tested** (`test/address_test.cpp`): the published FNV-1a vectors and
+  hashing in pieces at compile time; valid and invalid names; parsing 9 forms
+  and refusing 16; registration (added, known, invalid, collision, full,
+  nothing half-written); 200 names in no order all found again; every address
+  written and read back to itself; a buffer too small; and no allocation in
+  `add`, `text`, `format` or `parse_address`. An invalid literal was checked
+  by hand not to compile, with g++ and clang.
+
+The old dispatcher below stays until the new Telegraph replaces it; nothing in
+squared uses it.
+
 ## Notes
 
 `Subscription::Registry` is the module's shared implementation type: it holds

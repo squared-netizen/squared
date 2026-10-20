@@ -31,7 +31,7 @@ MODULES := math data files assets graphics \
 .PHONY: all clean docs docs-check headers lint test retest $(MODULES)
 
 # The modules with tests, in the order they are run.
-TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console messaging
 
 all: $(MODULES)
 
