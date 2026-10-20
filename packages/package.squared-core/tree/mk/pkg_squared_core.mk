@@ -104,6 +104,10 @@ endif
 #   make console                    the app's Console in this terminal: its log
 #                                   as it is written, and what you type runs
 #   make console CMD='app restart'  one command, its output, and back
+#   make console CMD='pull files/log.txt'   a file of the app's, into $(BUILD)/pulled
+#
+# Typed in it: `pull <path>` (`ls` to look first) brings one of the app's files
+# here, `push <file> [name]` puts one of yours in the app's files/.
 #
 # A CONSOLE build listens on 127.0.0.1 (this device only), on a port made from
 # the package name, so two projects do not collide, for a client that knows a
@@ -148,7 +152,7 @@ console: $(SQ_SQCONSOLE)
 	  echo "make console: this is not a CONSOLE build; build and install one first:" >&2; \
 	  echo "  make CONSOLE=app install   (or CONSOLE := app in local.mk)" >&2; exit 1; \
 	fi
-	@$(SQ_SQCONSOLE) --conf '$(SQ_BRIDGE_CONF)' $(if $(CMD),--run '$(CMD)',)
+	@$(SQ_SQCONSOLE) --conf '$(SQ_BRIDGE_CONF)' --into '$(BUILD)/pulled' $(if $(CMD),--run '$(CMD)',)
 
 # --- the framework ----------------------------------------------------------
 

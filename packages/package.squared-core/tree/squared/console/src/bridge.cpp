@@ -1,12 +1,14 @@
 #include <squared/console/bridge.hpp>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <cstdio>
 #include <cstring>
 
@@ -17,6 +19,10 @@ namespace
 {
 
 namespace protocol = bridge_protocol;
+
+/// File chunks sent in one go before the bridge waits for the socket again,
+/// so a large file does not hold up the frame: 64 KB.
+constexpr int chunks_per_turn = 16;
 
 [[nodiscard]] bool good_secret( std::string_view secret ) noexcept
 {
@@ -57,6 +63,28 @@ bool write_now( int fd, std::string_view bytes ) noexcept
     return wrote == static_cast<ssize_t>( bytes.size() );
 }
 
+/// All of `bytes` to a file; false on any failure.
+bool write_file( int fd, std::string_view bytes ) noexcept
+{
+    while( !bytes.empty() ) {
+        const ssize_t wrote = ::write( fd, bytes.data(), bytes.size() );
+        if( wrote < 0 && errno == EINTR ) {
+            continue;
+        }
+        if( wrote <= 0 ) {
+            return false;
+        }
+        bytes.remove_prefix( static_cast<std::size_t>( wrote ) );
+    }
+    return true;
+}
+
+[[nodiscard]] bool parse_size( std::string_view text, std::uint64_t &out ) noexcept
+{
+    const auto [end, error] = std::from_chars( text.data(), text.data() + text.size(), out );
+    return error == std::errc{} && end == text.data() + text.size() && !text.empty();
+}
+
 } // namespace
 
 BridgeStatus Bridge::open( const BridgeConfig &config, const BridgeHandlers &handlers ) noexcept
@@ -86,6 +114,10 @@ BridgeStatus Bridge::open( const BridgeConfig &config, const BridgeHandlers &han
     handlers_ = handlers;
     std::copy( config.secret.begin(), config.secret.end(), secret_.begin() );
     secret_size_ = config.secret.size();
+    const std::size_t directory =
+        std::min( config.push_directory.size(), push_directory_.size() - 1 );
+    std::copy_n( config.push_directory.begin(), directory, push_directory_.begin() );
+    push_directory_[directory] = '\0';
     dropped_ = 0;
     unreported_ = 0;
     if( handlers_.watch != nullptr ) {
@@ -117,8 +149,36 @@ void Bridge::close_socket( int &fd ) noexcept
     fd = -1;
 }
 
+void Bridge::abandon_push() noexcept
+{
+    if( push_ < 0 ) {
+        return;
+    }
+    // Half a file is not the file: the part is removed.
+    ::close( push_ );
+    push_ = -1;
+    std::array<char, 400> part{};
+    if( std::snprintf( part.data(), part.size(), "%s/%s.part", push_directory_.data(),
+                       push_name_.data() ) > 0 ) {
+        ::unlink( part.data() );
+    }
+}
+
+void Bridge::end_transfers() noexcept
+{
+    if( file_ >= 0 ) {
+        ::close( file_ );
+        file_ = -1;
+    }
+    abandon_push();
+    file_left_ = 0;
+    push_left_ = 0;
+    done_after_file_ = false;
+}
+
 void Bridge::close() noexcept
 {
+    end_transfers();
     close_socket( pending_ );
     close_socket( client_ );
     close_socket( listener_ );
@@ -211,39 +271,18 @@ bool Bridge::read_hello() noexcept
         close_socket( pending_ ); // no answer: a wrong secret learns nothing
         return false;
     }
-    // Bytes after the hello are the first commands.
-    const std::string_view rest = held.substr( end + 1 );
+    // Bytes after the hello are the first commands; kept aside while the
+    // hello buffer is reused.
+    std::array<char, 160> rest{};
+    const std::size_t rest_size = hello_size_ - ( end + 1 );
+    std::copy_n( hello_.begin() + static_cast<std::ptrdiff_t>( end + 1 ), rest_size, rest.begin() );
     const int fd = pending_;
     take_over();
-    command_size_ = std::min( rest.size(), command_.size() );
-    std::copy_n( rest.begin(), command_size_, command_.begin() );
     if( handlers_.connected != nullptr ) {
         handlers_.connected( handlers_.context, replay );
     }
-    if( command_size_ != 0 && client_ == fd ) {
-        // Run what came with the hello, as if it had just arrived.
-        const std::size_t held_bytes = command_size_;
-        command_size_ = 0;
-        std::array<char, command_bytes> copy{};
-        std::copy_n( command_.begin(), held_bytes, copy.begin() );
-        for( std::size_t start = 0; start < held_bytes; ) {
-            const std::string_view chunk( copy.data() + start, held_bytes - start );
-            const auto newline = chunk.find( '\n' );
-            if( newline == std::string_view::npos ) {
-                std::copy( chunk.begin(), chunk.end(), command_.begin() );
-                command_size_ = chunk.size();
-                break;
-            }
-            std::string_view command = chunk.substr( 0, newline );
-            if( !command.empty() && command.back() == '\r' ) {
-                command.remove_suffix( 1 );
-            }
-            if( handlers_.command != nullptr ) {
-                handlers_.command( handlers_.context, command );
-            }
-            queue( protocol::done, {} );
-            start += newline + 1;
-        }
+    if( client_ == fd && rest_size != 0 ) {
+        static_cast<void>( consume( { rest.data(), rest_size } ) );
     }
     return client_ == fd; // the same socket, now the client's, unless a command closed it
 }
@@ -255,6 +294,7 @@ void Bridge::take_over() noexcept
         static_cast<void>( write_now( client_, "w bridge: another connection took over\n" ) );
         close_socket( client_ );
     }
+    end_transfers();
     client_ = pending_;
     pending_ = -1;
     hello_size_ = 0;
@@ -271,57 +311,203 @@ void Bridge::take_over() noexcept
 bool Bridge::read_commands() noexcept
 {
     const int fd = client_;
+    std::array<char, protocol::chunk_bytes> in{};
     for( ;; ) {
-        const ssize_t got =
-            ::recv( client_, command_.data() + command_size_, command_.size() - command_size_, 0 );
+        const ssize_t got = ::recv( client_, in.data(), in.size(), 0 );
         if( got < 0 && ( errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR ) ) {
             return true;
         }
         if( got <= 0 ) {
+            end_transfers();
             close_socket( client_ );
             return false;
         }
-        command_size_ += static_cast<std::size_t>( got );
-        std::size_t start = 0;
-        for( ;; ) {
-            const std::string_view held( command_.data() + start, command_size_ - start );
-            const auto end = held.find( '\n' );
-            if( end == std::string_view::npos ) {
-                break;
-            }
-            std::string_view command = held.substr( 0, end );
-            if( !command.empty() && command.back() == '\r' ) {
-                command.remove_suffix( 1 );
-            }
-            start += end + 1;
-            if( cutting_ ) {
-                cutting_ = false; // the end of a line that was too long: dropped
-                continue;
-            }
-            if( handlers_.command != nullptr ) {
-                handlers_.command( handlers_.context, command );
-            }
-            if( client_ != fd ) {
-                return false; // the command closed the bridge
-            }
-            queue( protocol::done, {} );
-        }
-        if( start == 0 && command_size_ == command_.size() ) {
-            // A command longer than the buffer: run what fits, drop the rest.
-            if( !cutting_ && handlers_.command != nullptr ) {
-                handlers_.command( handlers_.context, { command_.data(), command_size_ } );
-                if( client_ != fd ) {
-                    return false;
-                }
-                queue( protocol::done, {} );
-            }
-            cutting_ = true;
-            command_size_ = 0;
-        } else {
-            std::memmove( command_.data(), command_.data() + start, command_size_ - start );
-            command_size_ -= start;
+        if( !consume( { in.data(), static_cast<std::size_t>( got ) } ) || client_ != fd ) {
+            return false;
         }
     }
+}
+
+bool Bridge::consume( std::string_view bytes ) noexcept
+{
+    const int fd = client_;
+    while( !bytes.empty() && client_ == fd ) {
+        if( push_left_ != 0 ) {
+            // File bytes of a push, straight to the file.
+            const std::size_t take =
+                static_cast<std::size_t>( std::min<std::uint64_t>( push_left_, bytes.size() ) );
+            if( push_ >= 0 && !write_file( push_, bytes.substr( 0, take ) ) ) {
+                note( Level::error, "push: could not write the file (is the storage full?)" );
+                abandon_push(); // the rest of its bytes are still coming: skipped
+            }
+            push_left_ -= take;
+            bytes.remove_prefix( take );
+            if( push_left_ == 0 ) {
+                finish_push();
+            }
+            continue;
+        }
+        const auto newline = bytes.find( '\n' );
+        const std::string_view piece = bytes.substr( 0, newline );
+        if( !cutting_ ) {
+            const std::size_t room = command_.size() - command_size_;
+            const std::size_t take = std::min( room, piece.size() );
+            std::copy_n( piece.begin(), take,
+                         command_.begin() + static_cast<std::ptrdiff_t>( command_size_ ) );
+            command_size_ += take;
+            if( take < piece.size() ) {
+                // Longer than a command may be: run what fits, drop the rest.
+                if( !run_line( { command_.data(), command_size_ } ) ) {
+                    return false;
+                }
+                command_size_ = 0;
+                cutting_ = true;
+            }
+        }
+        if( newline == std::string_view::npos ) {
+            return true; // the rest of this line comes later
+        }
+        bytes.remove_prefix( newline + 1 );
+        if( cutting_ ) {
+            cutting_ = false; // the end of a line that was too long: dropped
+            command_size_ = 0;
+            continue;
+        }
+        std::string_view line( command_.data(), command_size_ );
+        if( !line.empty() && line.back() == '\r' ) {
+            line.remove_suffix( 1 );
+        }
+        command_size_ = 0;
+        if( !run_line( line ) ) {
+            return false;
+        }
+    }
+    return client_ == fd;
+}
+
+bool Bridge::run_line( std::string_view line ) noexcept
+{
+    const int fd = client_;
+    if( line.substr( 0, protocol::push.size() ) == protocol::push ) {
+        start_push( line.substr( protocol::push.size() ) );
+        return client_ == fd;
+    }
+    const bool sending = file_ >= 0;
+    if( handlers_.command != nullptr ) {
+        handlers_.command( handlers_.context, line );
+    }
+    if( client_ != fd ) {
+        return false; // the command closed the bridge
+    }
+    if( !sending && file_ >= 0 ) {
+        done_after_file_ = true; // this command started a file: its end mark follows the file
+    } else {
+        queue( protocol::done, {} );
+    }
+    return true;
+}
+
+void Bridge::start_push( std::string_view request ) noexcept
+{
+    // "<size> <name>"
+    const auto space = request.find( ' ' );
+    std::uint64_t size = 0;
+    const std::string_view name =
+        space == std::string_view::npos ? std::string_view{} : request.substr( space + 1 );
+    if( space == std::string_view::npos || !parse_size( request.substr( 0, space ), size ) ) {
+        note( Level::error, "push: the client sent a malformed push" );
+        queue( protocol::done, {} );
+        return;
+    }
+    push_size_ = size;
+    push_left_ = size;
+    push_ = -1;
+    const std::size_t length = std::min( name.size(), push_name_.size() - 1 );
+    std::copy_n( name.begin(), length, push_name_.begin() );
+    push_name_[length] = '\0';
+    if( push_directory_[0] == '\0' ) {
+        note( Level::error, "push: this app takes no files" );
+    } else if( !protocol::good_name( name ) ) {
+        note( Level::error, "push: not a plain file name (no '/', not . or ..)" );
+    } else {
+        std::array<char, 400> part{};
+        const int written = std::snprintf( part.data(), part.size(), "%s/%s.part",
+                                           push_directory_.data(), push_name_.data() );
+        push_ = written > 0 && static_cast<std::size_t>( written ) < part.size()
+                    ? ::open( part.data(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600 )
+                    : -1;
+        if( push_ < 0 ) {
+            note( Level::error, "push: could not create the file" );
+        }
+    }
+    // A refused push still has its bytes on the way: they are skipped
+    // (push_ stays -1) and the command ends after them.
+    if( size == 0 ) {
+        finish_push();
+    }
+}
+
+void Bridge::finish_push() noexcept
+{
+    push_left_ = 0;
+    if( push_ >= 0 ) {
+        const bool closed = ::close( push_ ) == 0;
+        push_ = -1;
+        std::array<char, 400> part{};
+        std::array<char, 400> final{};
+        std::snprintf( part.data(), part.size(), "%s/%s.part", push_directory_.data(),
+                       push_name_.data() );
+        std::snprintf( final.data(), final.size(), "%s/%s", push_directory_.data(),
+                       push_name_.data() );
+        if( closed && ::rename( part.data(), final.data() ) == 0 ) {
+            std::array<char, 512> line{};
+            const int length =
+                std::snprintf( line.data(), line.size(), "push: %s, %llu bytes", final.data(),
+                               static_cast<unsigned long long>( push_size_ ) );
+            note( Level::info, { line.data(), static_cast<std::size_t>( std::max( length, 0 ) ) } );
+        } else {
+            ::unlink( part.data() );
+            note( Level::error, "push: could not finish the file" );
+        }
+    }
+    queue( protocol::done, {} );
+}
+
+void Bridge::note( Level level, std::string_view line ) noexcept
+{
+    if( handlers_.note != nullptr ) {
+        handlers_.note( handlers_.context, level,
+                        line ); // the Console, and back out through its mirror
+    } else {
+        send( level, line );
+    }
+}
+
+bool Bridge::send_file( int fd, std::string_view name, std::uint64_t size ) noexcept
+{
+    if( client_ < 0 || file_ >= 0 || fd < 0 || !protocol::good_name( name ) ) {
+        return false;
+    }
+    std::array<char, 160> header{};
+    const int length = size == unknown_size
+                           ? std::snprintf( header.data(), header.size(), "? %.*s",
+                                            static_cast<int>( name.size() ), name.data() )
+                           : std::snprintf( header.data(), header.size(), "%llu %.*s",
+                                            static_cast<unsigned long long>( size ),
+                                            static_cast<int>( name.size() ), name.data() );
+    if( length <= 0 ||
+        !queue( protocol::file, { header.data(), static_cast<std::size_t>( length ) } ) ) {
+        return false;
+    }
+    file_ = fd;
+    file_left_ = size;
+    done_after_file_ = false; // set by run_line when a command sent it
+    if( !writing_ ) {
+        writing_ = true;
+        watch_client();
+    }
+    flush();
+    return true;
 }
 
 void Bridge::send( Level level, std::string_view line ) noexcept
@@ -336,6 +522,15 @@ void Bridge::send( Level level, std::string_view line ) noexcept
 }
 
 bool Bridge::queue( char type, std::string_view text ) noexcept
+{
+    if( !append( type, text ) ) {
+        return false;
+    }
+    flush();
+    return true;
+}
+
+bool Bridge::append( char type, std::string_view text ) noexcept
 {
     if( client_ < 0 ) {
         return false;
@@ -354,7 +549,7 @@ bool Bridge::queue( char type, std::string_view text ) noexcept
         }
         const std::uint64_t lost = unreported_;
         unreported_ = 0;
-        if( !queue( protocol::warning, { notice.data(), need - 3 } ) ) {
+        if( !append( protocol::warning, { notice.data(), need - 3 } ) ) {
             unreported_ += lost;
         }
     }
@@ -381,40 +576,100 @@ bool Bridge::queue( char type, std::string_view text ) noexcept
         put( c == '\n' || c == '\r' ? ' ' : c ); // one line stays one line
     }
     put( '\n' );
-    flush();
+    return true;
+}
+
+void Bridge::append_bytes( std::string_view bytes ) noexcept
+{
+    for( const char c : bytes ) {
+        output_[( output_head_ + output_size_ ) % output_.size()] = c;
+        ++output_size_;
+    }
+}
+
+bool Bridge::pump_file() noexcept
+{
+    // "d <n>\n" and n bytes, only when they fit whole.
+    constexpr std::size_t header_room = 16;
+    if( output_.size() - output_size_ < protocol::chunk_bytes + header_room ) {
+        return false;
+    }
+    std::array<char, protocol::chunk_bytes> chunk{};
+    const std::size_t want =
+        static_cast<std::size_t>( std::min<std::uint64_t>( file_left_, chunk.size() ) );
+    ssize_t got = 0;
+    if( want != 0 ) {
+        do {
+            got = ::read( file_, chunk.data(), want );
+        } while( got < 0 && errno == EINTR );
+    }
+    const bool unknown = file_left_ == unknown_size;
+    if( want != 0 && got > 0 ) {
+        std::array<char, header_room> header{};
+        const int length =
+            std::snprintf( header.data(), header.size(), "%c %zd\n", protocol::data, got );
+        append_bytes( { header.data(), static_cast<std::size_t>( length ) } );
+        append_bytes( { chunk.data(), static_cast<std::size_t>( got ) } );
+        if( !unknown ) {
+            file_left_ -= static_cast<std::uint64_t>( got );
+        }
+    }
+    if( file_left_ != 0 && got > 0 ) {
+        return true;
+    }
+    // The end: all of it, or the file ended early (it shrank) or failed. A
+    // file of unknown size ends when it reads nothing more.
+    if( file_left_ != 0 && !unknown ) {
+        append( protocol::error, "pull: the file ended before its size; the copy is short" );
+    }
+    ::close( file_ );
+    file_ = -1;
+    file_left_ = 0;
+    if( done_after_file_ ) {
+        done_after_file_ = false;
+        append( protocol::done, {} );
+    }
     return true;
 }
 
 void Bridge::flush() noexcept
 {
-    while( client_ >= 0 && output_size_ != 0 ) {
-        const std::size_t contiguous = std::min( output_size_, output_.size() - output_head_ );
-        const ssize_t wrote = ::send( client_, output_.data() + output_head_, contiguous,
-                                      MSG_NOSIGNAL | MSG_DONTWAIT );
-        if( wrote < 0 && ( errno == EAGAIN || errno == EWOULDBLOCK ) ) {
-            if( !writing_ ) {
-                writing_ = true;
-                watch_client();
+    int chunks = 0;
+    while( client_ >= 0 ) {
+        while( output_size_ != 0 ) {
+            const std::size_t contiguous = std::min( output_size_, output_.size() - output_head_ );
+            const ssize_t wrote = ::send( client_, output_.data() + output_head_, contiguous,
+                                          MSG_NOSIGNAL | MSG_DONTWAIT );
+            if( wrote < 0 && ( errno == EAGAIN || errno == EWOULDBLOCK ) ) {
+                if( !writing_ ) {
+                    writing_ = true;
+                    watch_client();
+                }
+                return;
             }
-            return;
+            if( wrote < 0 && errno == EINTR ) {
+                continue;
+            }
+            if( wrote <= 0 ) {
+                end_transfers();
+                close_socket( client_ );
+                output_size_ = 0;
+                return;
+            }
+            output_head_ = ( output_head_ + static_cast<std::size_t>( wrote ) ) % output_.size();
+            output_size_ -= static_cast<std::size_t>( wrote );
         }
-        if( wrote < 0 && errno == EINTR ) {
-            continue;
-        }
-        if( wrote <= 0 ) {
-            close_socket( client_ );
-            output_size_ = 0;
-            return;
-        }
-        output_head_ = ( output_head_ + static_cast<std::size_t>( wrote ) ) % output_.size();
-        output_size_ -= static_cast<std::size_t>( wrote );
-    }
-    if( output_size_ == 0 ) {
         output_head_ = 0;
-        if( writing_ ) {
-            writing_ = false;
-            watch_client();
+        // The buffer is empty: the next chunk of a file being sent, a few at a
+        // time, then the socket is waited for again (writing stays watched).
+        if( file_ < 0 || chunks == chunks_per_turn || !pump_file() ) {
+            break;
         }
+        ++chunks;
+    }
+    if( client_ >= 0 && output_size_ == 0 && file_ < 0 && writing_ ) {
+        writing_ = false;
+        watch_client();
     }
 }
 

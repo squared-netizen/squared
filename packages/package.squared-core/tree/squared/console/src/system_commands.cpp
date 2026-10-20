@@ -12,6 +12,7 @@
 #include <malloc.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #if defined( __BIONIC__ )
@@ -21,6 +22,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
@@ -374,6 +376,118 @@ void smaps( Console &console, const Args &, void * ) noexcept
     }
 }
 
+/// FNV-1a: a library's path, as a number, to count it once without storing it.
+std::uint64_t path_hash( std::string_view text ) noexcept
+{
+    std::uint64_t hash = 0xcbf29ce484222325ULL;
+    for( const char c : text ) {
+        hash = ( hash ^ static_cast<unsigned char>( c ) ) * 0x100000001b3ULL;
+    }
+    return hash;
+}
+
+/// One line of /proc/self/maps: its span in bytes and the mapped path ("" for none).
+struct Mapping
+{
+        std::uint64_t bytes;
+        std::string_view path;
+};
+
+Mapping mapping_of( std::string_view line ) noexcept
+{
+    Mapping out{ 0, {} };
+    std::uint64_t start = 0;
+    std::uint64_t end = 0;
+    const auto dash = line.find( '-' );
+    const auto space = line.find( ' ' );
+    if( dash == std::string_view::npos || space == std::string_view::npos || dash > space ) {
+        return out;
+    }
+    std::from_chars( line.data(), line.data() + dash, start, 16 );
+    std::from_chars( line.data() + dash + 1, line.data() + space, end, 16 );
+    out.bytes = end > start ? end - start : 0;
+    const auto slash = line.find( '/' );
+    if( slash != std::string_view::npos ) {
+        out.path = line.substr( slash );
+    }
+    return out;
+}
+
+[[nodiscard]] bool is_library( std::string_view path ) noexcept
+{
+    return path.size() > 3 && ( path.substr( path.size() - 3 ) == ".so" ||
+                                path.find( ".so." ) != std::string_view::npos );
+}
+
+void libs( Console &console, const Args &, void * ) noexcept
+{
+    // Two passes over the maps, so nothing but numbers is kept: the first adds
+    // up each library's spans (up to 256 libraries), the second prints each
+    // at its first line, where its path is at hand.
+    struct Library
+    {
+            std::uint64_t hash;
+            std::uint64_t bytes;
+            bool printed;
+    };
+    std::array<Library, 256> table{};
+    std::size_t count = 0;
+    std::uint64_t total = 0;
+    std::array<char, 1024> buffer{};
+    const auto find = [&]( std::uint64_t hash ) -> Library * {
+        for( std::size_t i = 0; i < count; ++i ) {
+            if( table[i].hash == hash ) {
+                return &table[i];
+            }
+        }
+        return nullptr;
+    };
+    int fd = ::open( "/proc/self/maps", O_RDONLY | O_CLOEXEC );
+    if( fd < 0 ) {
+        console.print( "libs: /proc/self/maps is not readable", Level::error );
+        return;
+    }
+    for_each_line( fd, buffer, [&]( std::string_view line ) {
+        const Mapping m = mapping_of( line );
+        if( !is_library( m.path ) ) {
+            return;
+        }
+        const std::uint64_t hash = path_hash( m.path );
+        Library *library = find( hash );
+        if( library == nullptr && count < table.size() ) {
+            library = &table[count++];
+            *library = { hash, 0, false };
+        }
+        if( library != nullptr ) {
+            library->bytes += m.bytes;
+            total += m.bytes;
+        }
+    } );
+    ::close( fd );
+    console.printf( Level::info, "libs: %zu libraries, %.1f MB of address space%s", count,
+                    static_cast<double>( total ) / ( 1024.0 * 1024.0 ),
+                    count == table.size() ? " (the first 256)" : "" );
+    fd = ::open( "/proc/self/maps", O_RDONLY | O_CLOEXEC );
+    if( fd < 0 ) {
+        return;
+    }
+    for_each_line( fd, buffer, [&]( std::string_view line ) {
+        const Mapping m = mapping_of( line );
+        if( !is_library( m.path ) ) {
+            return;
+        }
+        Library *library = find( path_hash( m.path ) );
+        if( library == nullptr || library->printed ) {
+            return;
+        }
+        library->printed = true;
+        console.printf( Level::info, "  %7llu KB  %.*s",
+                        static_cast<unsigned long long>( library->bytes / 1024 ),
+                        static_cast<int>( m.path.size() ), m.path.data() );
+    } );
+    ::close( fd );
+}
+
 struct Builtin
 {
         const char *name;
@@ -381,16 +495,58 @@ struct Builtin
         Handler handler;
 };
 
-constexpr std::array<Builtin, 6> builtins = { {
+constexpr std::array<Builtin, 7> builtins = { {
     { "mem", "mem: resident and peak memory, and the system's available memory", mem },
     { "heap", "heap: the allocator's in-use, free and mapped bytes", heap },
     { "threads", "threads: how many threads the process runs", threads },
     { "fds", "fds: how many files the process has open", fds },
     { "device", "device: maker, model, Android version and ABI; the kernel", device },
     { "smaps", "smaps: memory by kind: proportional (PSS), resident (RSS), private dirty", smaps },
+    { "libs", "libs: the shared libraries the process has loaded, and their size", libs },
 } };
 
 } // namespace
+
+bool run_program( Console &console, const char *const *argv, std::size_t max_lines ) noexcept
+{
+    std::array<int, 2> pipe{};
+    if( argv == nullptr || argv[0] == nullptr || ::pipe2( pipe.data(), O_CLOEXEC ) != 0 ) {
+        return false;
+    }
+    const pid_t child = ::fork();
+    if( child < 0 ) {
+        ::close( pipe[0] );
+        ::close( pipe[1] );
+        return false;
+    }
+    if( child == 0 ) {
+        // In the child only what is safe between fork and exec: dup2, exec, _exit.
+        ::dup2( pipe[1], STDOUT_FILENO );
+        ::dup2( pipe[1], STDERR_FILENO );
+        // execv's argv is char *const[]; the strings are not written to.
+        ::execv( argv[0], const_cast<char *const *>( argv ) );
+        ::_exit( 127 );
+    }
+    ::close( pipe[1] );
+    std::size_t shown = 0;
+    std::size_t total = 0;
+    std::array<char, 2048> buffer{};
+    for_each_line( pipe[0], buffer, [&]( std::string_view line ) {
+        ++total;
+        if( shown < max_lines ) {
+            console.print( line );
+            ++shown;
+        }
+    } );
+    ::close( pipe[0] );
+    int status = 0;
+    while( ::waitpid( child, &status, 0 ) < 0 && errno == EINTR ) {
+    }
+    if( total > shown ) {
+        console.printf( Level::info, "... and %zu more lines", total - shown );
+    }
+    return !( WIFEXITED( status ) && WEXITSTATUS( status ) == 127 );
+}
 
 std::size_t add_system_commands( Console &console ) noexcept
 {

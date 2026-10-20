@@ -55,6 +55,7 @@
 #include <cmath>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 
 // Development builds only (`make DEV_LOG=1`): every log line below is also sent
@@ -81,6 +82,7 @@
 #include <squared/console/crash_file.hpp>
 #include <squared/console/system_commands.hpp>
 #include <squared/console/bridge.hpp>
+#include <squared/console/file_commands.hpp>
 #include <squared/console/log_file.hpp>
 #endif
 
@@ -514,6 +516,10 @@ struct Platform {
             }
             // The end of every run is kept for the next, not only a crash's:
             // saved when the app stops (leaves the screen) and when it ends.
+            // The app's data directory, where `ls` and `pull` start: files/'s parent.
+            std::snprintf(data_path.data(), data_path.size(), "%s", private_files);
+            if (char* slash = std::strrchr(data_path.data(), '/'); slash != nullptr) *slash = '\0';
+            std::snprintf(push_path.data(), push_path.size(), "%s", private_files);
             std::snprintf(log_path.data(), log_path.size(), "%s/log.txt", private_files);
             std::snprintf(log_previous_path.data(), log_previous_path.size(), "%s/log-previous.txt",
                           private_files);
@@ -579,6 +585,9 @@ struct Platform {
     /// Where the end of this run's log is saved, and where the last run's is kept.
     std::array<char, 512> log_path{};
     std::array<char, 512> log_previous_path{};
+    /// Where `ls` and `pull` start (the app's data directory), and where a push lands (files/).
+    std::array<char, 512> data_path{};
+    std::array<char, 512> push_path{};
 #ifdef SQUARED_BRIDGE_PORT
     /// The Console from Termux: `make console` (about 17 KB, no allocation).
     sq::console::Bridge bridge;
@@ -826,6 +835,17 @@ struct Platform {
                                Added::added
                        ? 1
                        : 0;
+        if (data_path[0] != '\0') {
+#ifdef SQUARED_BRIDGE_PORT
+            refused += sq::console::add_file_commands(console, data_path.data(), &bridge);
+#else
+            refused += sq::console::add_file_commands(console, data_path.data(), nullptr);
+#endif
+        }
+        refused += console.add("logcat", "logcat [lines]: the app's own system log, the newest 200",
+                               logcat_command) != Added::added
+                       ? 1
+                       : 0;
         refused +=
             log_previous_path[0] != '\0' &&
                     sq::console::add_log_command(console, log_previous_path.data()) != Added::added
@@ -913,6 +933,22 @@ struct Platform {
         }
     }
 
+    /// `logcat [lines]`: Android's log as this app may read it, which is its
+    /// own lines only (a library that failed to load, a Java exception, the
+    /// crash summary among them). `logcat -d` dumps and exits.
+    static void logcat_command(sq::console::Console& out, const sq::console::Args& args,
+                               void*) noexcept {
+        const long long wanted = args.size() > 1 ? args.integer(1, 200) : 200;
+        const long long lines = std::clamp<long long>(wanted, 1, 2000);
+        std::array<char, 8> count{};
+        std::snprintf(count.data(), count.size(), "%lld", lines);
+        const char* const argv[] = {
+            "/system/bin/logcat", "-d", "-t", count.data(), "-v", "brief", nullptr};
+        if (!sq::console::run_program(out, argv, static_cast<std::size_t>(lines) + 8)) {
+            out.print("logcat: /system/bin/logcat could not be run", sq::console::Level::error);
+        }
+    }
+
     /// The newest 200 lines, for the next run's `log previous`. One small
     /// file write; when the app leaves the screen, and when it ends.
     void save_console_log() {
@@ -932,12 +968,14 @@ struct Platform {
         std::snprintf(secret.data(), secret.size(), "%016llx%016llx",
                       static_cast<unsigned long long>(SQUARED_BRIDGE_SECRET_HIGH),
                       static_cast<unsigned long long>(SQUARED_BRIDGE_SECRET_LOW));
-        const sq::console::BridgeStatus status =
-            bridge.open({.port = SQUARED_BRIDGE_PORT, .secret = {secret.data(), 32}},
-                        {.watch = bridge_watch,
-                         .command = bridge_command,
-                         .connected = bridge_connected,
-                         .context = this});
+        const sq::console::BridgeStatus status = bridge.open({.port = SQUARED_BRIDGE_PORT,
+                                                              .secret = {secret.data(), 32},
+                                                              .push_directory = push_path.data()},
+                                                             {.watch = bridge_watch,
+                                                              .command = bridge_command,
+                                                              .connected = bridge_connected,
+                                                              .note = bridge_note,
+                                                              .context = this});
         std::fill(secret.begin(), secret.end(), '\0');
         if (status == sq::console::BridgeStatus::listening) {
             console.set_mirror(
@@ -973,6 +1011,10 @@ struct Platform {
         ALooper_addFd(self.looper, fd, ALOOPER_POLL_CALLBACK,
                       (read ? ALOOPER_EVENT_INPUT : 0) | (write ? ALOOPER_EVENT_OUTPUT : 0),
                       bridge_ready, &self);
+    }
+    static void bridge_note(void* context, sq::console::Level level,
+                            std::string_view line) noexcept {
+        static_cast<Platform*>(context)->console.print(line, level);
     }
     static void bridge_command(void* context, std::string_view line) noexcept {
         static_cast<Platform*>(context)->console.run(line);

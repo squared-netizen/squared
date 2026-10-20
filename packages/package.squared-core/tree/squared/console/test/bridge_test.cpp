@@ -6,7 +6,9 @@
 
 #include <squared/console/bridge.hpp>
 #include <squared/console/console.hpp>
+#include <squared/console/file_commands.hpp>
 #include <squared/console/log_file.hpp>
+#include <squared/console/system_commands.hpp>
 #include <squared/dev/frame_allocations.hpp>
 
 #include <arpa/inet.h>
@@ -14,6 +16,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -22,7 +25,9 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -79,6 +84,15 @@ struct Loop
                 self.console->run( line );
             }
         }
+        static void note( void *context, Level level, std::string_view line ) noexcept
+        {
+            auto &self = *static_cast<Loop *>( context );
+            if( self.console != nullptr ) {
+                self.console->print( line, level );
+            } else {
+                self.bridge->send( level, line );
+            }
+        }
         static void connected( void *context, bool replay ) noexcept
         {
             auto &self = *static_cast<Loop *>( context );
@@ -93,7 +107,11 @@ struct Loop
 
         [[nodiscard]] sq::console::BridgeHandlers handlers()
         {
-            return { .watch = watch, .command = command, .connected = connected, .context = this };
+            return { .watch = watch,
+                     .command = command,
+                     .connected = connected,
+                     .note = note,
+                     .context = this };
         }
 
         /// One round: wait up to `ms` for a watched socket, hand each ready one on.
@@ -192,6 +210,15 @@ std::string hello( std::string_view given, bool quiet = false )
 {
     return std::string( "squared-bridge 1 " ) + std::string( given ) + ( quiet ? " quiet" : "" ) +
            "\n";
+}
+
+/// A mkdtemp/mkstemp pattern in the temporary directory: $TMPDIR, as Termux
+/// sets it (Android has no /tmp), else /tmp.
+std::string temporary( std::string_view name )
+{
+    const char *directory = std::getenv( "TMPDIR" );
+    return std::string( directory != nullptr && *directory != '\0' ? directory : "/tmp" ) + "/" +
+           std::string( name ) + "_XXXXXX";
 }
 
 bool contains( const std::string &text, std::string_view part )
@@ -362,8 +389,8 @@ void console_tests()
 void log_file_tests()
 {
     static sq::console::Console console;
-    char directory[] = "/tmp/sq_log_test_XXXXXX";
-    assert( ::mkdtemp( directory ) != nullptr );
+    std::string directory = temporary( "sq_log_test" );
+    assert( ::mkdtemp( directory.data() ) != nullptr );
     const std::string log = std::string( directory ) + "/log.txt";
     const std::string previous = std::string( directory ) + "/log-previous.txt";
     for( int i = 0; i < 50; ++i ) {
@@ -393,7 +420,41 @@ void log_file_tests()
     console.run( "log previous" );
     assert( ( *console.lines().last( 1 ) ).text == "log: no earlier run's log is kept" );
     assert( !sq::console::save_log( console, "/nonexistent-dir/x/log.txt", 5 ) );
-    ::rmdir( directory );
+    ::rmdir( directory.c_str() );
+}
+
+std::string random_bytes( std::size_t size )
+{
+    std::string bytes( size, '\0' );
+    std::uint32_t state = 12345;
+    for( char &c : bytes ) {
+        state = state * 1664525U + 1013904223U;
+        c = static_cast<char>( state >> 24 );
+    }
+    return bytes;
+}
+
+void write_whole( const std::string &path, const std::string &bytes )
+{
+    const int fd = ::open( path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600 );
+    assert( fd >= 0 );
+    assert( ::write( fd, bytes.data(), bytes.size() ) == static_cast<ssize_t>( bytes.size() ) );
+    ::close( fd );
+}
+
+std::string read_whole( const std::string &path )
+{
+    std::string bytes;
+    const int fd = ::open( path.c_str(), O_RDONLY | O_CLOEXEC );
+    if( fd < 0 ) {
+        return "<missing>";
+    }
+    std::array<char, 8192> buffer{};
+    for( ssize_t n = 0; ( n = ::read( fd, buffer.data(), buffer.size() ) ) > 0; ) {
+        bytes.append( buffer.data(), static_cast<std::size_t>( n ) );
+    }
+    ::close( fd );
+    return bytes;
 }
 
 /// A child process with its stdin and stdout piped to us.
@@ -471,9 +532,17 @@ void client_tests()
         },
         &bridge );
 
+    std::string home = temporary( "sq_client_home" );
+    assert( ::mkdtemp( home.data() ) != nullptr );
+    const std::string files = home + "/files";
+    const std::string pulled = home + "/pulled";
+    ::mkdir( files.c_str(), 0700 );
+    assert( sq::console::add_file_commands( console, home.c_str(), &bridge ) == 0 );
+
     const std::uint16_t port = free_port();
-    char conf[] = "/tmp/sq_bridge_conf_XXXXXX";
-    const int conf_fd = ::mkstemp( conf );
+    std::string conf_path = temporary( "sq_bridge_conf" );
+    const int conf_fd = ::mkstemp( conf_path.data() );
+    const char *conf = conf_path.c_str();
     assert( conf_fd >= 0 );
     const std::string text = "port=" + std::to_string( port ) +
                              "\nsecret=" + std::string( secret ) + "\npackage=com.example.test\n";
@@ -486,8 +555,8 @@ void client_tests()
     std::string seen;
     assert( await( loop, interactive, seen, "waiting for the app to start" ) );
     console.print( "the app's first line" );
-    assert( bridge.open( { .port = port, .secret = secret }, loop.handlers() ) ==
-            BridgeStatus::listening );
+    assert( bridge.open( { .port = port, .secret = secret, .push_directory = files },
+                         loop.handlers() ) == BridgeStatus::listening );
     assert( await( loop, interactive, seen, "connected to com.example.test" ) );
     assert( await( loop, interactive, seen, "the app's first line" ) ); // the replay
     type_into( interactive.in, "say hello\n" );
@@ -497,8 +566,8 @@ void client_tests()
     bridge.close();
     assert( await( loop, interactive, seen, "the app went away" ) );
     seen.clear();
-    assert( bridge.open( { .port = port, .secret = secret }, loop.handlers() ) ==
-            BridgeStatus::listening );
+    assert( bridge.open( { .port = port, .secret = secret, .push_directory = files },
+                         loop.handlers() ) == BridgeStatus::listening );
     assert( await( loop, interactive, seen, "connected to com.example.test" ) );
     type_into( interactive.in, "say again\n" );
     assert( await( loop, interactive, seen, "said again" ) );
@@ -523,10 +592,37 @@ void client_tests()
     assert( !contains( ran, "the app's first line" ) ); // quiet: no replay
     assert( await( loop, interactive, seen, "another connection took over" ) );
 
+    // pull and push through sqconsole: --run, then the files are compared.
+    const std::string blob = random_bytes( 70001 );
+    write_whole( files + "/blob.bin", blob );
+    const std::string local = home + "/mine.bin";
+    const std::string mine = random_bytes( 12345 );
+    write_whole( local, mine );
+    Child files_run =
+        spawn( { SQCONSOLE_PATH, "--conf", conf, "--into", pulled, "--run", "pull files/blob.bin",
+                 "--run", "push " + local + " theirs.bin", "--wait", "5" } );
+    std::string moved;
+    assert( await( loop, files_run, moved, "theirs.bin, 12345 bytes" ) );
+    for( int i = 0; i < 300; ++i ) {
+        loop.pump( 10 );
+        int status = 0;
+        if( ::waitpid( files_run.pid, &status, WNOHANG ) == files_run.pid ) {
+            assert( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 );
+            files_run.pid = -1;
+            break;
+        }
+    }
+    assert( files_run.pid == -1 );
+    assert( contains( moved, "saved " + pulled + "/blob.bin (70001 bytes)" ) );
+    assert( read_whole( pulled + "/blob.bin" ) == blob );
+    assert( read_whole( files + "/theirs.bin" ) == mine );
+    std::printf( "bridge: pulled 70001 and pushed 12345 bytes through sqconsole, both exact\n" );
+
     // A wrong secret in the conf: refused, exit 1.
     {
-        char bad[] = "/tmp/sq_bridge_bad_XXXXXX";
-        const int fd = ::mkstemp( bad );
+        std::string bad_path = temporary( "sq_bridge_bad" );
+        const int fd = ::mkstemp( bad_path.data() );
+        const char *bad = bad_path.c_str();
         const std::string wrong =
             "port=" + std::to_string( port ) + "\nsecret=ffffffffffffffffffffffffffffffff\n";
         assert( ::write( fd, wrong.data(), wrong.size() ) == static_cast<ssize_t>( wrong.size() ) );
@@ -551,6 +647,211 @@ void client_tests()
     console.set_mirror( nullptr, nullptr );
     bridge.close();
     ::unlink( conf );
+    for( const std::string &path :
+         { files + "/blob.bin", files + "/theirs.bin", pulled + "/blob.bin", local } ) {
+        ::unlink( path.c_str() );
+    }
+    ::rmdir( files.c_str() );
+    ::rmdir( pulled.c_str() );
+    ::rmdir( home.c_str() );
+}
+
+/// What came over the wire, frames understood: lines, and a pulled file.
+struct Heard
+{
+        std::vector<std::string> lines; // "<type> <text>", "." and "ok" as they came
+        std::string file_header;        // "<size> <name>" of the last "p"
+        std::string file;               // its bytes
+        int done = 0;
+};
+
+/// Pump and read until `dones` end marks have arrived (or 5 s), parsing frames.
+Heard listen( Loop &loop, int fd, int dones, const std::function<void()> &between = {} )
+{
+    Heard heard;
+    std::string held;
+    std::uint64_t data_left = 0;
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+    while( heard.done < dones && std::chrono::steady_clock::now() < until ) {
+        loop.pump( 5 );
+        if( between ) {
+            between();
+        }
+        std::array<char, 8192> buffer{};
+        const ssize_t n = ::recv( fd, buffer.data(), buffer.size(), MSG_DONTWAIT );
+        if( n > 0 ) {
+            held.append( buffer.data(), static_cast<std::size_t>( n ) );
+        }
+        for( ;; ) {
+            if( data_left != 0 ) {
+                const std::size_t take = std::min<std::size_t>( data_left, held.size() );
+                heard.file.append( held, 0, take );
+                held.erase( 0, take );
+                data_left -= take;
+                if( data_left != 0 ) {
+                    break;
+                }
+                continue;
+            }
+            const auto end = held.find( '\n' );
+            if( end == std::string::npos ) {
+                break;
+            }
+            const std::string line = held.substr( 0, end );
+            held.erase( 0, end + 1 );
+            if( line.rfind( "p ", 0 ) == 0 ) {
+                heard.file_header = line.substr( 2 );
+                heard.file.clear();
+            } else if( line.rfind( "d ", 0 ) == 0 ) {
+                data_left = std::stoull( line.substr( 2 ) );
+                assert( data_left > 0 && data_left <= 4096 );
+            } else {
+                if( line == "." ) {
+                    ++heard.done;
+                }
+                heard.lines.push_back( line );
+            }
+        }
+    }
+    return heard;
+}
+
+bool heard_line( const Heard &heard, std::string_view part )
+{
+    for( const std::string &line : heard.lines ) {
+        if( line.find( part ) != std::string::npos ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// pull and push through raw sockets; ls, libs, run_program in the Console.
+void transfer_tests( const std::string &home )
+{
+    static sq::console::Console console;
+    Bridge bridge;
+    Loop loop;
+    loop.bridge = &bridge;
+    loop.console = &console;
+    assert( sq::console::add_file_commands( console, home.c_str(), &bridge ) == 0 );
+    console.set_mirror(
+        []( void *b, Level level, std::string_view text ) noexcept {
+            static_cast<Bridge *>( b )->send( level, text );
+        },
+        &bridge );
+    const std::string files = home + "/files";
+    ::mkdir( files.c_str(), 0700 );
+    assert(
+        bridge.open( { .port = 0, .secret = secret, .announce = false, .push_directory = files },
+                     loop.handlers() ) == BridgeStatus::listening );
+
+    // Without a client, pull says so.
+    console.run( "pull files/none" );
+    assert( ( *console.lines().last( 1 ) ).text.find( "needs Termux connected" ) !=
+            std::string_view::npos );
+
+    const int fd = connect_client( bridge.port() );
+    say( fd, hello( secret, true ) );
+    hear( loop, fd );
+
+    // A 100,003-byte file, in chunks, with Console lines between them; the
+    // end mark only after its last byte.
+    const std::string big = random_bytes( 100003 );
+    write_whole( files + "/big.bin", big );
+    say( fd, "pull files/big.bin\n" );
+    int sent_between = 0;
+    Heard heard = listen( loop, fd, 1, [&] {
+        if( sent_between < 3 && bridge.transferring() ) {
+            bridge.send( Level::warning, "between chunks" );
+            ++sent_between;
+        }
+    } );
+    assert( heard.done == 1 && heard.file_header == "100003 big.bin" );
+    assert( heard.file == big );
+    assert( sent_between > 0 && heard_line( heard, "w between chunks" ) );
+    assert( heard.lines.back() == "." && !bridge.transferring() );
+
+    // A /proc file says size 0: it is sent until it ends, size "?".
+    say( fd, "pull /proc/self/status\n" );
+    heard = listen( loop, fd, 1 );
+    assert( heard.file_header == "? status" && heard.file.find( "Pid:" ) != std::string::npos );
+
+    // Errors are lines, then the end mark; nothing is sent.
+    say( fd, "pull files/none\npull files\npull\n" );
+    heard = listen( loop, fd, 3 );
+    assert( heard.done == 3 && heard.file_header.empty() );
+    assert( heard_line( heard, "e pull: " ) && heard_line( heard, "not a regular file" ) );
+
+    // push: the bytes land in the push directory, through a .part file.
+    const std::string up = random_bytes( 9000 );
+    say( fd, "push 9000 up.bin\n" + up );
+    heard = listen( loop, fd, 1 );
+    assert( read_whole( files + "/up.bin" ) == up );
+    assert( ::access( ( files + "/up.bin.part" ).c_str(), F_OK ) != 0 );
+    assert( heard_line( heard, "push: " + files + "/up.bin, 9000 bytes" ) );
+    // A name that is a path is refused, its bytes skipped, the next command whole.
+    say( fd, "push 5 ../x\nhello" + std::string( "ls files\n" ) );
+    heard = listen( loop, fd, 2 );
+    assert( heard_line( heard, "e push: not a plain file name" ) );
+    assert( ::access( ( home + "/x" ).c_str(), F_OK ) != 0 );
+    assert( heard_line( heard, "i ls: " + files ) && heard_line( heard, "big.bin" ) &&
+            heard_line( heard, "100003" ) && heard_line( heard, "ls: 2 entries" ) );
+    // An empty push, and a malformed one.
+    say( fd, "push 0 empty.bin\npush x y\n" );
+    heard = listen( loop, fd, 2 );
+    assert( read_whole( files + "/empty.bin" ).empty() && heard_line( heard, "malformed" ) );
+    // The client leaving mid-push: the part file is removed.
+    say( fd, "push 100000 cut.bin\n" + std::string( 100, 'z' ) );
+    hear( loop, fd, nullptr, 2 );
+    ::close( fd );
+    hear( loop, -1, nullptr, 3 );
+    assert( ::access( ( files + "/cut.bin.part" ).c_str(), F_OK ) != 0 &&
+            ::access( ( files + "/cut.bin" ).c_str(), F_OK ) != 0 );
+
+    // libs: this test's own libraries, the C library among them. ls, libs
+    // and a pull's start allocate nothing.
+    console.lines().clear();
+    static_cast<void>( sq::console::add_system_commands( console ) );
+    sq::dev::frame_begin();
+    console.run( "ls files" );
+    console.run( "pull files/up.bin" ); // no client now: says so
+    console.lines().clear();
+    console.run( "libs" );
+    assert( sq::dev::frame_end().count == 0 );
+    std::vector<std::string> shown;
+    for( const auto line : console.lines() ) {
+        shown.emplace_back( line.text );
+    }
+    assert( shown.size() >= 3 && shown[1].rfind( "libs: ", 0 ) == 0 );
+    bool libc = false;
+    for( const std::string &line : shown ) {
+        libc = libc || line.find( "libc" ) != std::string::npos;
+    }
+    assert( libc );
+
+    // run_program: its lines, at most max_lines, then a count; a missing one fails.
+    console.lines().clear();
+    const char *const lines[] = { "/bin/sh", "-c", "printf 'one\\ntwo\\nthree\\n'; echo err >&2",
+                                  nullptr };
+    sq::dev::frame_begin();
+    assert( sq::console::run_program( console, lines, 2 ) );
+    assert( sq::dev::frame_end().count == 0 );
+    shown.clear();
+    for( const auto line : console.lines() ) {
+        shown.emplace_back( line.text );
+    }
+    assert( shown.size() == 3 && shown[0] == "one" && shown[1] == "two" &&
+            shown[2] == "... and 2 more lines" );
+    const char *const missing[] = { "/nonexistent/program", nullptr };
+    assert( !sq::console::run_program( console, missing, 5 ) );
+
+    console.set_mirror( nullptr, nullptr );
+    bridge.close();
+    for( const char *name : { "/big.bin", "/up.bin", "/empty.bin" } ) {
+        ::unlink( ( files + name ).c_str() );
+    }
+    ::rmdir( files.c_str() );
 }
 
 } // namespace
@@ -560,6 +861,12 @@ int main()
     protocol_tests();
     console_tests();
     log_file_tests();
+    {
+        std::string home = temporary( "sq_bridge_home" );
+        assert( ::mkdtemp( home.data() ) != nullptr );
+        transfer_tests( home );
+        ::rmdir( home.c_str() );
+    }
     client_tests();
     std::printf( "bridge: all assertions passed  sizeof(Bridge)=%zu\n", sizeof( Bridge ) );
     return 0;

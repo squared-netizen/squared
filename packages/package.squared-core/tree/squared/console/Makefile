@@ -22,6 +22,7 @@ SOURCES := src/args.cpp \
     src/console.cpp \
     src/copy_command.cpp \
     src/crash_file.cpp \
+    src/file_commands.cpp \
     src/font8x8.cpp \
     src/input_line.cpp \
     src/log_file.cpp \

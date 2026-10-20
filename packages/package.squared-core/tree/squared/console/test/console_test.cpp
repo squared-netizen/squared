@@ -248,7 +248,7 @@ int main()
 
     // --- the system commands: real /proc, real libc ----------------------------------------
     assert( add_system_commands( *console ) == 0 );
-    assert( add_system_commands( *console ) == 6 ); // the second time, every name is taken
+    assert( add_system_commands( *console ) == 7 ); // the second time, every name is taken
     const auto starts = []( const std::string &text, const char *prefix ) {
         return text.rfind( prefix, 0 ) == 0;
     };

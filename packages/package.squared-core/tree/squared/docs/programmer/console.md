@@ -1,6 +1,6 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. Files through the bridge (`ls`, `pull`, `push`, `logcat`, `libs`) come next, and the monitor app after that.
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. the **app's own files** through it (`ls`, `pull`, `push`), and its **own system log** and **libraries** (`logcat`, `libs`). The monitor app comes later.
 
 Developer side: [../developer/console.md](../developer/console.md).
 
@@ -40,6 +40,10 @@ With `CONSOLE=app` the Android template draws the Console over the upper half of
 | see how the last run ended (a `quit`, a swipe away) | `log previous` |
 | use it from Termux instead | `make console` in the project (below) |
 | start with only the Console, your app not created | `make console-only`, then `app start` when ready |
+| look at the app's files | `ls`, `ls files`, `ls cache` (relative to the app's data directory) |
+| copy one to Termux / from Termux | `pull files/crash.txt` (lands in `build/pulled/`), `push <file> [name]` typed in `make console` (lands in the app's `files/`) |
+| read the app's own system log | `logcat`, `logcat 500`: Android's lines about this app, a library that failed to load or a Java exception among them |
+| see what it loaded | `libs` |
 
 `app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included: the next launch shows its report, and `make console` waits for the app to come back). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
 
@@ -120,8 +124,25 @@ A `CONSOLE` build also listens for Termux, so the Console can be used from a ter
 make console                       # interactive; Ctrl-D (or Ctrl-C) ends it
 make console CMD='mem'             # one command: its output, then back to the shell
 make console CMD='app restart'
+make console CMD='pull files/log-previous.txt'   # a file of the app's, into build/pulled/
 make console-only                  # start the app with only the Console running
 ```
+
+**Files, both ways.** Typed in `make console`:
+
+```text
+ls files                       the app's files/: type, size, name
+pull files/crash-previous.txt  sqconsole: saved build/pulled/crash-previous.txt (1840 bytes)
+pull apk                       the installed APK (unzip -l it to see the assets)
+pull /proc/self/smaps          anything the app may read
+push sprites.png               into the app's files/, as sprites.png
+push build/x.lua game.lua      under another name
+```
+
+- A relative path starts at the app's data directory (`files/`, `cache/`, `lib/` are in it); an absolute one is used as it is; `apk` is the installed APK. The app reads them, so it reaches what the app may, nothing more.
+- A pushed file arrives whole or not at all: it is written to `<name>.part` and renamed when the last byte is in. Its name must be a plain file name, no `/`.
+- Large files are fine. They travel in 4 KB pieces as the connection takes them, so neither end holds the whole file and the app keeps drawing meanwhile. Log lines still arrive between the pieces.
+- `pull` typed in the app's own Console sends the file to a connected `make console` too.
 
 - **Start it before or after the app.** It waits for the app without asking again and again: the app sends one datagram when it starts, and `sqconsole` connects then. When the app quits or crashes it says so and waits; when the app starts again it reconnects by itself.
 - **It shows the history first:** the newest 200 lines the Console already held. `CMD=` runs skip that and print only the command's own lines.
@@ -135,6 +156,8 @@ make console-only                  # start the app with only the Console running
 |---|---|
 | `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
 | `refused: is build/dev/bridge.conf from the build that is installed?` | The secret did not match: install the build you just made |
+| `saved build/pulled/<name> (N bytes)` | A pull arrived whole |
+| `<name> came short (N bytes); kept as …part` | The file shrank while it was read, or the app went away mid-file |
 | `another connection took over` | A second `make console` started |
 | `bridge: N lines dropped (the client read too slowly)` | Termux fell behind (a huge burst of log); the Console itself kept every line |
 
@@ -144,7 +167,7 @@ To wire it yourself (another template), `#include <squared/console/bridge.hpp>`:
 sq::console::Bridge bridge;   // about 17 KB; hold it beside the Console
 const auto status = bridge.open(
     {.port = 30123, .secret = secret},                // 16 to 64 letters and digits
-    {.watch = watch, .command = run_line, .connected = replay, .context = this});
+    {.watch = watch, .command = run_line, .connected = replay, .note = print, .context = this});
 console.set_mirror([](void* b, sq::console::Level level, std::string_view line) noexcept {
     static_cast<sq::console::Bridge*>(b)->send(level, line); }, &bridge);
 // in your event loop, when a socket watch() named is ready:
@@ -157,12 +180,26 @@ bridge.ready(fd, readable, writable);
 | `handlers.watch(context, fd, read, write)` | Yours: watch `fd` in your event loop, for reading and (when `write`) writing; both false: stop watching it. The template uses Android's looper |
 | `handlers.command(context, line)` | Yours: a line from Termux; the template runs it with `console.run(line)` |
 | `handlers.connected(context, replay)` | Yours: a client gave the secret; `replay` when it wants the history |
+| `handlers.note(context, level, line)` | Optional, yours: what the bridge says about a push (written, refused); the template prints it into the Console, from where the mirror sends it on. Without it, notes go to the client only |
+| `config.push_directory` | Where a client's `push` is written (copied, up to 255 bytes); empty refuses pushes |
 | `ready(fd, readable, writable)` | Call it when a watched socket is ready. False when that socket is now closed |
 | `send(level, line)` | To the client, if one is connected; else nothing. A line is at most 1 KB; a newline inside becomes a space |
+| `send_file(fd, name, size)` | Send an open file to the client as `name`, `size` bytes or `Bridge::unknown_size` (read until it ends, as a `/proc` file must be). The bridge reads and closes it. Called from a command, that command's end mark follows the file. False, `fd` left open, with no client, a file already on its way, or a name that is not plain |
+| `transferring()` | A file is going out or coming in |
 | `close()` | Close everything; `watch` is told to stop watching each socket |
 | `listening()`, `connected()`, `port()`, `dropped()` | State; `dropped()` counts lines lost to a slow client since `open` |
 
 Nothing allocates, and it never waits on a timer: it acts only when `ready` is called.
+
+## Files
+
+`#include <squared/console/file_commands.hpp>`
+
+```cpp
+static_cast<void>(sq::console::add_file_commands(console, "/data/user/0/<package>", &bridge));
+```
+
+`ls [path]`, `pull <path>` and `push` (which says how to push: it is typed in `make console`). Paths as above: relative to `home`, absolute, or `apk`. `bridge` may be null, and then `pull` says it needs one. `home` and `bridge` are kept, not copied. Returns how many did not fit in the table. Nothing allocates: `ls` reads the directory straight into the stack (`getdents64`), `pull` hands the file to the bridge.
 
 ## The last run's log
 
@@ -192,6 +229,7 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `threads` | `threads: 14` |
 | `fds` | `open files: 37` |
 | `device` | `device: <maker> <model>, Android 16 (API 36), arm64-v8a` (Android and Termux), then `kernel: Linux <release>, aarch64` |
+| `libs` | `libs: <n> libraries, <size> MB of address space`, then each library with the space it maps, from `/proc/self/maps` (the first 256) |
 | `smaps` | memory by kind, largest first: this program's code, the native heap, the GPU driver, the Java runtime, stacks, other libraries, other files, other anonymous memory. Each with PSS (this process's fair share of pages it shares with others), RSS (every page it touches, shared ones whole) and private dirty (pages only it has written: what it alone costs the device) |
 | `gl` | the driver's version, renderer and vendor; the GLSL version; texture, renderbuffer and viewport limits, vertex attributes, texture units; the extension count. With the gles backend: `add_gl_command(console)`, from `renderer.hpp` |
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
@@ -199,8 +237,17 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
 | `crash` | the last crash report again (above). Added by the Android template |
 | `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
+| `ls`, `pull`, `push` | the app's files ([Files](#files)); added by the Android template |
+| `logcat` | `logcat [lines]`: the app's own system log, newest 200 by default (`/system/bin/logcat -d`). Added by the Android template, through `run_program` |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
+
+**`run_program(console, argv, max_lines)`** (`system_commands.hpp`) runs a program to its end and prints what it writes, stdout and stderr, at most `max_lines` lines and then how many more there were. `argv` is its path, its arguments, `nullptr`; no `PATH` search. It runs as the app does. False when it could not run. The template's `logcat` is one call:
+
+```cpp
+const char* const argv[] = {"/system/bin/logcat", "-d", "-t", "200", "-v", "brief", nullptr};
+sq::console::run_program(console, argv, 208);
+```
 
 `add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` and `add_copy_command` return the table's `AddResult`. None of them allocates or keeps anything.
 

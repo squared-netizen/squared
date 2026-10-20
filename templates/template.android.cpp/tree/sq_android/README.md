@@ -76,6 +76,11 @@ written and runs what you type, `make console CMD='mem'` runs one command.
 It waits for the app, and reconnects when the app restarts. `make
 console-only` starts the app with only the Console running: your `App` is
 created by `app start`, so an app that crashes at start can still be reached.
+The app's own files go through it both ways: `ls files`, `pull
+files/crash-previous.txt` (saved in `build/pulled/`), `pull apk`, and `push
+<file> [name]` typed in `make console` (into the app's `files/`); `logcat`
+shows the app's own system log (a library that failed to load, a Java
+exception) and `libs` what it loaded, no adb needed.
 The secret is in the APK, which other apps can read, so this keeps out apps
 that are not looking for it, no more: dev builds only. A Console build
 carries the `INTERNET` permission, as a `DEV_LOG` build does.
