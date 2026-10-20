@@ -49,21 +49,24 @@ TESTS := $(TEST_BINARY)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS)
+$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
 
 $(TEST_BINARY): $(MODULE_DIR)/test/gles_test.cpp \
                 $(MODULE_DIR)/test/gl_stub.cpp \
                 $(wildcard $(MODULE_DIR)/src/*.cpp)
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $(filter-out %.hpp,$^) -o $@
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
+	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/gles/%.o: $(MODULE_DIR)/%.cpp
+$(OBJ_DIR)/gles/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(call say,cc,$(MODULE)/$*.cpp)
+	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/gles $(TARGET)

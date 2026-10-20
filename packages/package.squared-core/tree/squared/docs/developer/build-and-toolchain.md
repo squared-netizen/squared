@@ -16,11 +16,97 @@ make BUILD=debug     # -O0 -g
 make gui             # one module
 make headers         # compile every public header standalone
 make lint            # format, source-rule and clang-tidy checks
+make V=1             # every command in full
 make clean
 ```
 
 Module dependency order is declared in the top-level `Makefile`, so `make -j`
 is safe.
+
+## What a build prints
+
+Since 2026-10-20 (sq-quiet-build) a build prints one short line as each step
+starts, not make's echo of every command. On the phone that echo was most of
+the screen: each compile repeated the full flag list and two absolute paths,
+each test link every source and archive, and each module make two "Entering
+directory" lines and a "Nothing to be done". The same build now prints:
+
+```
+squared release: flags as before
+  cc   gui/src/stage.cpp
+  ar   libsquared_gui.a
+  bin  gui/ui_keys_test
+  test gui/ui_keys_test
+       ok
+  dev: 3 unchanged since they passed
+```
+
+How, all in `build/common.mk`, with no filter and no pipe:
+
+- `MAKEFLAGS += -s` unless `V=1`. Every module make inherits it: no command
+  echo, no "Entering directory", no "Nothing to be done". Errors (`make:
+  *** ... Error 1`) still print.
+- `$(call say,<step>,<what>)` before each compile, archive and test link: one
+  `printf` as the step starts, so no step is silent however long it takes.
+  The path is from `squared/` (`$(MODULE)/$*.cpp`). Every line names its
+  module because `make -j` interleaves modules; a heading per module would be
+  wrong as soon as two build at once.
+- The flags, said once (below).
+- `run_tests` prints the test's name, runs it with its output in
+  `<binary>.log`, then `ok`, or `FAIL (exit N)` / `FAIL (signal N)` and the
+  whole log. Under `V=1` the output prints as the test runs.
+
+Why not a filter script (`make 2>&1 | tools/quiet`): a pipe hides make's exit
+status unless every caller sets `pipefail`, the compiler stops colouring
+diagnostics when its output is not a terminal, and a filter that buffers
+makes a long compile look hung. Printing from make costs one `printf` per step
+(well under a millisecond against a compile of a second or more on the
+phone). Measured on this host, once each: a clean `make -j8` took 35 s
+before and 33.5 s after (the same, within noise), and a clean build plus
+`make test` printed 7 KB where the build alone had printed 62 KB and the
+tests 35 KB more.
+
+Compiler diagnostics still carry absolute paths: the rules pass absolute
+paths to the compiler, and the paths in `.d` files depend on that.
+
+With the echo gone a warning stands out, so the three g++ printed and clang
+does not were fixed in the same change: a `-Wsign-conversion` in
+`console/src/file_commands.cpp` (a `? 1 : 0` added to a `std::size_t`, now an
+`if` and `++`), and two `-Wunused-result` in tests, where g++ ignores a cast
+to `void` and a `[[maybe_unused]]` named value now holds the result. g++ and
+clang both build the tree and its tests without a warning.
+
+**The flags stamp.** `build/<BUILD>/flags` holds the compiler and its flags
+(`$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES)`); every object and
+test binary depends on it, and it is rewritten only when they change. Before,
+make compared timestamps only, so `make SQUARED_ABI=-fno-rtti` after a normal
+build did nothing. The first make to read `common.mk` (the root `Makefile`
+now includes it, or a module's when built alone) compares the stamp and says
+`squared release: flags as before`, or lists every flag one to a line with
+`(new)` and `(gone)` marks; it exports `SQUARED_FLAGS_SAID` so the module
+makes say nothing more. Only a make whose goal builds or tests (`all`,
+`test`, `retest`, a module) reads or writes the stamp: `tools/lint.sh` asks
+the Makefiles for variables with other flags, and must not rewrite it. For
+the screen only, an option keeps its path on its line (`-idirafter <dir>`)
+and `$PREFIX` and `~` shorten paths.
+
+`CXXFLAGS_EXTRA` is no longer appended to `CXXFLAGS`: compiles use
+`SQUARED_CXXFLAGS = $(CXXFLAGS) $(CXXFLAGS_EXTRA)`. With the root Makefile
+reading `common.mk`, a `CXXFLAGS` from the environment would otherwise reach
+the module makes with the extra flags already in it and get them twice.
+
+Tests and tools build with `TESTFLAGS = -std=c++20 -O1 -g $(SQUARED_ABI)`. The
+`$(SQUARED_ABI)` is new: before, `make SQUARED_ABI=-fno-rtti test` failed to
+link `gui`'s tests, built with RTTI against archives without it (`undefined
+reference to typeinfo for sq::gui::Widget`).
+
+Checked on this host, g++ and clang: clean build, `make test`, nothing
+changed (two lines per make), `CXX=clang++ SQUARED_ABI=-fno-rtti` (listed as
+`clang++ (new)`, `-fno-rtti (new)`, `g++ (gone)`; all 76 compiles and every
+test rebuilt; all 22 tests pass), a planted compile error (the `cc` line, then
+the compiler's message in full, then make's error), a planted failing test
+(`FAIL (exit 3)`, its log, make's error), `V=1`, and the lint's variable
+reads (no line printed, the stamp untouched).
 
 ## Flags
 
@@ -111,9 +197,12 @@ library linked this way carries both hash tables, needs only `liblog`,
 `memfd_create`, weakly (from the runtime; resolved as null on older releases).
 The demo APK already carries a v1 signature, which Android 5.1 needs.
 
-**Flags stamp.** This tree's build does not track flags. The project's
-`squared-core` target writes the flags it builds with to
-`build/release/.project-flags` and cleans the tree when they change, so
+**Flags stamp.** The project's `squared-core` target writes the flags it
+builds with to `build/release/.project-flags` and cleans the tree when they
+change. It predates this tree's own stamp (above), which now rebuilds every
+object when the compiler or a flag changes; the project's clean is kept
+because its stamp also holds the backend and platform, which change which
+files are compiled, not how. It exists so
 archives for one level or one libc++ never link into a library for another.
 Since 2026-10-19 the Console's sizes are in it whatever `CONSOLE` is, and
 `SQUARED_CONSOLE` itself never is (no framework code reads it): switching
@@ -148,7 +237,9 @@ is fixed (2026-10-19):
    for shape. This reverses graphics' earlier rule ("every test runs on
    every `make test`"), which was right while tests did not depend on their
    headers: then an unchanged binary could hide a changed header. Recipes that
-   passed `$^` to the compiler now pass `$(filter-out %.hpp,$^)`. Checked:
+   passed `$^` to the compiler now pass `$(filter-out %.hpp
+   $(SQUARED_FLAGS_STAMP),$^)` (the flags stamp is a prerequisite too, since
+   2026-10-20). Checked:
    nothing changed, all 18 kept in under a second; a console `.cpp` touched,
    only console's 4 ran; a header touched, all ran; a failing test left no
    mark and ran again.
@@ -219,10 +310,11 @@ and `adb`.
 
 `SQUARED_ABI` carries the ABI-shrinking flags.
 
-`-fno-rtti` builds clean for this tree and is verified:
+`-fno-rtti` builds clean for this tree and is verified, tests included
+(since 2026-10-20 they build with `SQUARED_ABI` too; clang, all 22 pass):
 
 ```sh
-make SQUARED_ABI=-fno-rtti
+make SQUARED_ABI=-fno-rtti test
 ```
 
 It is not the default because `sq::app` and `sq::data` live

@@ -32,7 +32,9 @@ void previous_handler( int, siginfo_t *, void * )
 {
     const int fd = ::open( g_marker.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600 );
     if( fd >= 0 ) {
-        static_cast<void>( ::write( fd, "previous", 8 ) );
+        // Checked through the file's contents, not here. (A cast to void does not
+        // quiet g++'s -Wunused-result; a named value does.)
+        [[maybe_unused]] const ssize_t written = ::write( fd, "previous", 8 );
         ::close( fd );
     }
     // Back to the default: returning re-runs the faulting instruction, which

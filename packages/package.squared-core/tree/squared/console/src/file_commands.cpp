@@ -213,19 +213,19 @@ std::size_t add_file_commands( Console &console, const char *home, Bridge *bridg
 {
     files = { home, bridge };
     using Added = Commands::AddResult;
+    constexpr const char *ls_help = "ls [path]: a directory's entries (relative to the app's data)";
+    constexpr const char *pull_help = "pull <path>: a file to Termux (make console saves it)";
+    constexpr const char *push_help_text = "push: from make console: push <file> [name]";
     std::size_t refused = 0;
-    refused += console.add( "ls", "ls [path]: a directory's entries (relative to the app's data)",
-                            ls ) != Added::added
-                   ? 1
-                   : 0;
-    refused += console.add( "pull", "pull <path>: a file to Termux (make console saves it)",
-                            pull ) != Added::added
-                   ? 1
-                   : 0;
-    refused += console.add( "push", "push: from make console: push <file> [name]", push_help ) !=
-                       Added::added
-                   ? 1
-                   : 0;
+    if( console.add( "ls", ls_help, ls ) != Added::added ) {
+        ++refused;
+    }
+    if( console.add( "pull", pull_help, pull ) != Added::added ) {
+        ++refused;
+    }
+    if( console.add( "push", push_help_text, push_help ) != Added::added ) {
+        ++refused;
+    }
     return refused;
 }
 

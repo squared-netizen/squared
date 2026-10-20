@@ -24,6 +24,20 @@ make android-status   # what the build found on this host
 make android-help     # every target and override
 ```
 
+A build prints one short line as each step starts and says the flags once:
+
+```
+{{project_name}}: flags as before
+squared release: flags as before
+  cc   sq_app/src/app.cpp
+  link lib{{project_name}}.so
+```
+
+When the flags changed (another `SQ_MIN_SDK`, `DEV_LOG=1`, `CONSOLE=app`) it
+lists every one, a line each, marking what is `(new)` or `(gone)`, and
+rebuilds what they affect. Warnings and errors print in full. `make V=1`
+prints every command instead.
+
 ## adb on the phone itself
 
 Without adb, `make install` hands the APK to Android's installer, which asks

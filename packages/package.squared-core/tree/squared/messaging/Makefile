@@ -34,13 +34,14 @@ TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS)
+$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
 
 $(ADDRESS_TEST): $(MODULE_DIR)/test/address_test.cpp \
                  $(MODULE_DIR)/src/address.cpp \
                  $(MODULE_DIR)/src/name_table.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TELEGRAM_TEST): $(MODULE_DIR)/test/telegram_test.cpp \
                   $(MODULE_DIR)/src/address.cpp \
@@ -49,15 +50,18 @@ $(TELEGRAM_TEST): $(MODULE_DIR)/test/telegram_test.cpp \
                   $(MODULE_DIR)/src/telegram_data.cpp \
                   $(MODULE_DIR)/src/telegram_text.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
+	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/messaging/%.o: $(MODULE_DIR)/%.cpp
+$(OBJ_DIR)/messaging/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(call say,cc,$(MODULE)/$*.cpp)
+	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/messaging $(TARGET)

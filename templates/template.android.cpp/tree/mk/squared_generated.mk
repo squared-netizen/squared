@@ -190,6 +190,77 @@ SQ_KIT_SRC      ?=
 SQ_KITS_PRESENT ?=
 
 # ---------------------------------------------------------------------------
+# What the build prints
+#
+# One short line as each step starts, so a long compile is never silent:
+#
+#   {{project_name}}: flags as before
+#   squared release: flags as before
+#     cc   sq_app/src/app.cpp
+#     link lib{{project_name}}.so
+#
+# The flags are said once per make: all of them, one to a line, when they
+# changed since the last build, else that one line. Warnings and errors print
+# in full. make's own chatter (each command, "Nothing to be done") does not:
+# -s, which the framework's build inherits. `make V=1` prints every command in
+# full instead.
+# ---------------------------------------------------------------------------
+
+ifneq ($(V),1)
+MAKEFLAGS += -s
+endif
+
+# $(call sq_say,<step>,<what>): that line. Nothing under V=1, which prints the
+# command itself.
+sq_say = $(if $(filter 1,$(V)),,@printf '  %-4s %s\n' '$(1)' '$(2)')
+
+# The goals that build. The flags are said for these and no others: `make
+# console` or `make logcat` has nothing to say about them.
+SQ_BUILD_GOALS := all apk install run
+
+# $(eval $(call sq_flags_said,<name>,<stamp file>,<compiler and flags>)):
+# for a make that builds, rewrite the stamp when the flags differ from what it
+# holds, so everything that depends on it is rebuilt and nothing else is, and
+# say what they are. Another goal leaves it alone: a tool that asks the
+# Makefile for a variable with DEV_LOG=1 must not make the next plain build
+# rebuild. The Makefile calls it once, after the last flag is added.
+define sq_flags_said
+sq_flags_now := $$(strip $(3))
+sq_flags_before := $$(file <$(2))
+ifneq ($$(filter $$(SQ_BUILD_GOALS),$$(or $$(MAKECMDGOALS),all)),)
+  ifneq ($$(sq_flags_now),$$(sq_flags_before))
+    $$(shell mkdir -p '$$(dir $(2))')
+    $$(file >$(2),$$(sq_flags_now))
+  endif
+  ifeq ($$(sq_flags_now),$$(sq_flags_before))
+    $$(info $(1): flags as before)
+  else
+    $$(info $(1): flags $$(if $$(sq_flags_before),changed,(first build)))
+    $$(foreach w,$$(call sq_join,$$(sq_flags_now)),$$(info $$(sq_nothing)    $$(call sq_word,$$(w))$$(if $$(sq_flags_before),$$(if $$(filter $$(w),$$(call sq_join,$$(sq_flags_before))),,  (new)))))
+    $$(foreach w,$$(filter-out $$(call sq_join,$$(sq_flags_now)),$$(call sq_join,$$(sq_flags_before))),$$(info $$(sq_nothing)    $$(call sq_word,$$(w))  (gone)))
+  endif
+endif
+
+# Another goal that compiles anyway (an object asked for by name) writes it
+# here when there is none yet.
+$(2):
+	@mkdir -p $$(dir $$@)
+	$$(file >$$@,$$(sq_flags_now))
+endef
+
+# $(sq_nothing) starts an indented $(info) line: make drops the spaces before
+# the first character of a function's argument, and this is one.
+sq_nothing :=
+
+# The flags one to a line, for the screen only: an option that takes a path
+# keeps it on its line (sq_join marks that space with ^), and a long path is
+# shortened, Termux's $PREFIX and ~.
+sq_join = $(subst -idirafter ,-idirafter^,$(subst -isystem ,-isystem^,$(subst -include ,-include^,$(1))))
+sq_word = $(subst ^, ,$(call sq_show,$(1)))
+sq_show = $(if $(HOME),$(subst $(HOME),~,$(sq_show_prefix)),$(sq_show_prefix))
+sq_show_prefix = $(if $(PREFIX),$(subst $(PREFIX),$$PREFIX,$(1)),$(1))
+
+# ---------------------------------------------------------------------------
 # Packaging
 # ---------------------------------------------------------------------------
 

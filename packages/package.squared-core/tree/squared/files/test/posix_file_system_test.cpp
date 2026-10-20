@@ -51,7 +51,9 @@ std::vector<std::byte> bytes_of( std::size_t count, unsigned char fill )
 void remove_tree( const std::string &path )
 {
     const std::string command = "rm -rf '" + path + "'";
-    static_cast<void>( std::system( command.c_str() ) );
+    // The tree may be gone already; what rm says does not matter. (A cast to void
+    // does not quiet g++'s -Wunused-result; a named value does.)
+    [[maybe_unused]] const int status = std::system( command.c_str() );
 }
 
 } // namespace

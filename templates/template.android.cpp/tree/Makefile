@@ -22,6 +22,8 @@
 #   make squared-core    build the vendored framework
 #   make android-help    every target and override
 #   make clean
+#   make V=1             every command in full (a build prints one short line
+#                        per step: mk/squared_generated.mk)
 #
 #   make DEV_LOG=1 apk   a development build that sends its log lines, and a
 #                        crash report, to UDP port 5555 on this device
@@ -118,11 +120,12 @@ include mk/squared_android_package.mk
 # make compares timestamps, not flags. Without this, objects compiled for a
 # DEV_LOG=1 build were reused by the next plain build, which then linked
 # without the dev library and failed on a symbol that was only ever meant to
-# exist in the other kind of build. The stamp is rewritten only when the flags
-# change; every object, and the packaged resources (whose manifest differs
-# between the two kinds of build), depend on it.
+# exist in the other kind of build. The stamp is rewritten only when the
+# compiler or the flags change; every object, and the packaged resources (whose
+# manifest differs between the two kinds of build), depend on it. The build
+# says the flags once: in full when they changed, else one line.
 SQ_FLAGS_STAMP := $(BUILD)/.flags
-$(shell mkdir -p '$(BUILD)'; [ "$$(cat '$(SQ_FLAGS_STAMP)' 2>/dev/null)" = '$(CPPFLAGS) $(CXXFLAGS)' ] || printf '%s' '$(CPPFLAGS) $(CXXFLAGS)' > '$(SQ_FLAGS_STAMP)')
+$(eval $(call sq_flags_said,$(SQ_PROJECT),$(SQ_FLAGS_STAMP),$(CXX) $(CPPFLAGS) $(CXXFLAGS)))
 $(SQ_APK_DIR)/base.apk: $(SQ_FLAGS_STAMP)
 
 .PHONY: all clean help
@@ -132,6 +135,7 @@ all: require-ndk squared-core $(SQ_SO)
 # included, may call into it.
 $(SQ_SO): $(OBJ) $(SQ_SQUARED_LIBS)
 	@mkdir -p $(dir $@)
+	$(call sq_say,link,$(notdir $@))
 	$(CXX) $(CXXFLAGS) -shared $(OBJ) $(LDFLAGS) $(LDLIBS) $(SQ_CXX_RUNTIME) -o $@
 	@$(MAKE) --no-print-directory verify-link
 
@@ -192,6 +196,7 @@ verify-link:
 
 $(BUILD)/%.o: %.cpp $(SQ_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
+	$(call sq_say,cc,$<)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 # The native-app-glue is compiled from the NDK rather than vendored into the
@@ -204,6 +209,7 @@ $(GLUE_OBJ): $(SQ_GLUE_SRC) $(SQ_FLAGS_STAMP)
 	  echo "run 'make android-status' to see what the build found" >&2; \
 	  exit 1; \
 	fi
+	$(call sq_say,cc,$(notdir $<) (NDK))
 	$(CC) $(SQ_CPPFLAGS) $(OPT) -fPIC -c $< -o $@
 
 clean:

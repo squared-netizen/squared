@@ -56,11 +56,13 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
+	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp
+$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(call say,cc,$(MODULE)/$*.cpp)
+	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/gui $(TARGET)
@@ -88,12 +90,13 @@ TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS)
+$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< $(TARGET) \
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -102,7 +105,8 @@ $(SKIN_LOADER_TEST): $(MODULE_DIR)/test/skin_loader_test.cpp $(TARGET) \
                      $(LIB_DIR)/libsquared_data.a $(LIB_DIR)/libsquared_time.a \
                      $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< $(TARGET) \
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
 	    $(LIB_DIR)/libsquared_data.a $(LIB_DIR)/libsquared_time.a \
 	    $(LIB_DIR)/libsquared_math.a -o $@
@@ -110,7 +114,8 @@ $(SKIN_LOADER_TEST): $(MODULE_DIR)/test/skin_loader_test.cpp $(TARGET) \
 $(SAFE_AREA_TEST): $(MODULE_DIR)/test/ui_safe_area_test.cpp $(TARGET) \
                    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< $(TARGET) \
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -120,7 +125,8 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(MODULE_DIR)/src/font_resource.cpp \
                  $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $(filter-out %.hpp,$^) \
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -146,7 +152,8 @@ $(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
               $(LIB_DIR)/libsquared_time.a \
               $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(INCLUDES) $< \
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< \
 	    $(LIB_DIR)/libsquared_gui.a \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \

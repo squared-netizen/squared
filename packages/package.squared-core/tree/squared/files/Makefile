@@ -47,7 +47,7 @@ TESTS := $(TEST_BINARY) $(POSIX_TEST)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS)
+$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
 
 $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/test/asset_stub.cpp \
@@ -56,23 +56,27 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/src/file_handle.cpp \
                 $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) \
-	    -I$(MODULE_DIR)/test $(filter-out %.hpp,$^) -o $@
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) \
+	    -I$(MODULE_DIR)/test $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(POSIX_TEST): $(MODULE_DIR)/test/posix_file_system_test.cpp \
                $(MODULE_DIR)/src/posix_file_system.cpp \
                $(MODULE_DIR)/src/file_handle.cpp \
                $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $(filter-out %.hpp,$^) -o $@
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
+	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/files/%.o: $(MODULE_DIR)/%.cpp
+$(OBJ_DIR)/files/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(call say,cc,$(MODULE)/$*.cpp)
+	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/files $(TARGET)

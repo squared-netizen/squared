@@ -25,13 +25,39 @@ make clean
 
 Archives land in `build/<release|debug>/lib/libsquared_<module>.a`.
 
+**What a build prints.** One short line as each step starts, and the flags
+once:
+
+```
+squared release: flags as before
+  cc   messaging/src/telegram.cpp
+  ar   libsquared_messaging.a
+  bin  messaging/telegram_test
+  test messaging/telegram_test
+       ok
+  gui: 4 unchanged since they passed
+```
+
+`cc` compiles one file (its path from `squared/`), `ar` makes a module's
+archive, `bin` builds a test or tool, and `test` runs one: `ok` or `FAIL` is
+the line after. The first line says the flags are what they were; when they
+are not (another `CXX`, `SQUARED_ABI`, `BUILD`'s optimisation, or a first
+build) it lists every flag, one to a line, marking each `(new)` or `(gone)`,
+and everything they affect is rebuilt. Warnings and errors print in full, as
+the compiler wrote them. A failed test prints its whole output after `FAIL`;
+a passing test's output is in `build/<release|debug>/<test>.log`.
+
+```sh
+make V=1             # every command, and every test's output, in full
+```
+
 **Tests run only when something they cover changed.** A test binary is
-rebuilt when its sources, the archives it links or any header in the tree
-change, and `make test` runs it only when it was rebuilt since it last
-passed. Each module says how many ran: `console: 4 test(s) ran and passed, 0
-unchanged since they last passed`. With nothing changed `make test` takes
-about a second; `make retest` (or `make test RETEST=1`) runs all of them.
-A failed test is run again next time, changed or not.
+rebuilt when its sources, the archives it links, any header in the tree or
+the flags change, and `make test` runs it only when it was rebuilt since it
+last passed. A module whose tests were all kept says how many: `gui: 4
+unchanged since they passed`. With nothing changed `make test` takes about a
+second; `make retest` (or `make test RETEST=1`) runs all of them. A failed
+test is run again next time, changed or not.
 
 ## Modules outside this tree
 
@@ -129,6 +155,7 @@ Defaults are `-std=c++20 -O2 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
 -fvisibility=hidden` so the linker can drop what an application does not use.
 The tree builds warning-free at that level.
 
-`SQUARED_ABI` is reserved for `-fno-exceptions -fno-rtti`. It does not build
-today; see [../developer/build-and-toolchain.md](
+`SQUARED_ABI` carries `-fno-rtti`, which builds and passes every test
+(`make SQUARED_ABI=-fno-rtti test`); `-fno-exceptions` does not build yet.
+See [../developer/build-and-toolchain.md](
 ../developer/build-and-toolchain.md).
