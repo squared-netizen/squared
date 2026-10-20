@@ -33,9 +33,12 @@ using CrashSink = void ( * )( void *context, const char *text, std::size_t lengt
  *
  * Frame 0 is the faulting program counter, read from the saved registers
  * (unwinding out of a handler does not always reach it); up to 23 unwound
- * frames follow. Each is an offset from its library's load address, which is
- * what `addr2line -e lib.so` takes. Header-only, so the in-app Console's crash
- * file uses it without linking this module.
+ * frames follow. The unwinder starts inside the handler, so its first frames
+ * are the handler, any signal chain and the kernel's return trampoline, and
+ * then frame 0 again; those are dropped when frame 0 is found among them, and
+ * kept when it isn't. Each frame is an offset from its library's load address,
+ * which is what `addr2line -e lib.so` takes. Header-only, so the in-app
+ * Console's crash file uses it without linking this module.
  *
  * Call it only from a signal handler, for a process that is about to die: it
  * allocates nothing and takes no lock, but `dladdr` and the unwinder are not
@@ -94,11 +97,13 @@ inline void write_frame( int index, std::uintptr_t pc, CrashSink sink, void *con
     sink( context, line.text, line.length );
 }
 
+/// The unwound program counters, collected before any is written so the
+/// handler's own frames can be dropped (crash_trace.hpp, frame 0).
 struct UnwindState
 {
-        int index;
-        CrashSink sink;
-        void *context;
+        static constexpr int capacity = 32;
+        std::uintptr_t pcs[capacity];
+        int count;
 };
 
 // Not noexcept, on purpose: a noexcept callback stops _Unwind_Backtrace at
@@ -108,11 +113,25 @@ inline _Unwind_Reason_Code unwind_step( _Unwind_Context *unwind, void *argument 
 {
     auto *state = static_cast<UnwindState *>( argument );
     const std::uintptr_t pc = _Unwind_GetIP( unwind );
-    if( pc == 0 || state->index >= 24 ) {
+    if( pc == 0 || state->count >= UnwindState::capacity ) {
         return _URC_END_OF_STACK;
     }
-    write_frame( state->index++, pc, state->sink, state->context );
+    state->pcs[state->count++] = pc;
     return _URC_NO_REASON;
+}
+
+/// Where the frames below the fault start: just past frame 0's program
+/// counter when the unwinder reached it, else at the first unwound frame.
+[[nodiscard]] inline int first_caller( const UnwindState &state, std::uintptr_t fault ) noexcept
+{
+    if( fault != 0 ) {
+        for( int i = 0; i < state.count; ++i ) {
+            if( state.pcs[i] == fault ) {
+                return i + 1;
+            }
+        }
+    }
+    return 0;
 }
 
 /// The program counter that faulted, from the signal's saved registers; 0 on
@@ -152,10 +171,15 @@ inline void write_crash_trace( int signal, const siginfo_t *info, void *ucontext
     head.add_hex( info != nullptr ? reinterpret_cast<std::uintptr_t>( info->si_addr ) : 0 );
     sink( context, head.text, head.length );
 
-    detail::write_frame( 0, detail::fault_pc( ucontext ), sink, context );
+    const std::uintptr_t fault = detail::fault_pc( ucontext );
+    detail::write_frame( 0, fault, sink, context );
 
-    detail::UnwindState state{ 1, sink, context };
+    detail::UnwindState state{ .pcs = {}, .count = 0 };
     _Unwind_Backtrace( detail::unwind_step, &state );
+    int index = 1;
+    for( int i = detail::first_caller( state, fault ); i < state.count && index < 24; ++i ) {
+        detail::write_frame( index++, state.pcs[i], sink, context );
+    }
 
     sink( context, "END", 3 );
 }

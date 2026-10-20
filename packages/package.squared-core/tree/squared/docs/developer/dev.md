@@ -48,7 +48,7 @@ reported) and builds its packets with fixed-size character appends. It sends:
 
 1. `CRASH <name> (<number>) code <si_code> addr <si_addr>`
 2. frame 0: the faulting program counter, read from the saved registers
-3. frames 1 to 23: `_Unwind_Backtrace` from inside the handler
+3. frames 1 to 23: the callers below the fault, from `_Unwind_Backtrace`
 4. `END`
 
 Each frame is printed as an offset from its library's load address
@@ -56,7 +56,17 @@ Each frame is printed as an offset from its library's load address
 sets the default action and re-raises the signal.
 
 The faulting pc is read directly because unwinding out of a signal handler does
-not always reach the faulting frame. Frame 1 is normally the handler itself.
+not always reach the faulting frame. The unwinder starts inside the handler, so
+its first frames are the handler, any signal chain (ART's `libsigchain.so` on
+Android), the kernel's return trampoline (`[vdso]` on Android,
+`__restore_rt` in glibc), and then the faulting pc again. Up to 32 unwound
+pcs are collected into a stack array (256 bytes, on the alternate stack) before
+any is printed; when frame 0's pc is among them, everything up to and including
+it is dropped, so frame 1 is the faulting function's caller. When it isn't (the
+unwinder could not cross the signal frame), every unwound frame is kept: noise
+beats a lost trace. Found on the phone 2026-10-19, where the first report read
+`#0 X`, three handler frames, `[vdso]`, then `#5 X`; `dev_log_test` now fails
+if frame 0's address appears again below it.
 
 ## The frame-allocation counter
 

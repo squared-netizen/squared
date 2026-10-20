@@ -120,6 +120,64 @@ archives for one level or one libc++ never link into a library for another.
 needs `libc++_shared.so` (the runtime was not linked in) and, when
 `SQ_MIN_SDK` is below 23, one without `DT_HASH`.
 
+## Android: debuggable builds and adb
+
+Both live in the template's generated `mk/squared_android_package.mk` and its
+`tools/device.sh`, not in this tree; they are recorded here because they
+decide how every squared app is installed and read during development
+(Sprint 4, tasks 4.8 and 4.8b, 2026-10-19).
+
+**Debuggable.** `SQ_DEBUGGABLE` defaults to on when `DEV_LOG` is set or
+`CONSOLE` is not `0`, and adds `--debug-mode` to `aapt2 link`, which writes
+`android:debuggable="true"` into the linked manifest. The project's manifest
+is never edited, so a release cannot inherit it. The link rule reads the
+manifest back (`aapt2 dump xmltree`) and fails the build when the attribute
+is missing; an `aapt2` that cannot print the manifest only says so. The
+setting is stamped (`build/apk/.link-flags`), so switching it relinks the APK
+and recompiles nothing. Why: `run-as`, and later a native debugger or
+simpleperf, reach only debuggable apps. The cost is in the Java runtime,
+which keeps its debugging support on for such a process; this app's code is
+the same machine code. Memory is measured on builds that are not debuggable.
+
+**Which device.** `tools/device.sh` decides, so every target (`install`,
+`run`, `logcat`, `uninstall`, `devices`) agrees:
+
+1. `DEVICE=<serial>`, when set, and it must be attached; otherwise an error
+   listing what is.
+2. Otherwise **this phone**: the attached device whose
+   `ro.build.fingerprint` equals the one Termux reads with `getprop`. A
+   Wireless Debugging connection shows up under several serials
+   (`localhost:<port>`, the Wi-Fi address, an mDNS name), so the serial is no
+   test; the fingerprint is the same for all of them and differs on the
+   tablet. Two phones of one model on one build would look alike; accepted.
+3. Only when adb's server is already running. Asking `adb devices` would
+   start one, which wakes whatever is plugged in; a bash `/dev/tcp`
+   connection to the server's port (`ANDROID_ADB_SERVER_PORT`, 5037) asks
+   without starting anything. `connect` and a named `DEVICE` start it,
+   because they were asked to.
+4. Off Android (no `getprop`), the one attached device, as plain
+   `adb install` would.
+
+With no device, `install` falls back to the package installer (`termux-open`),
+exactly as before 4.8b; `run`, `logcat` and `run-as` refuse with the steps to
+connect. `run` starts the app with the launcher's own intent (`monkey -p
+<package> -c LAUNCHER 1`), so it needs no activity name and starts whichever
+activity a monitor build makes the launcher. `logcat` filters to the app's tag
+plus `AndroidRuntime` (a library that failed to load is a Java exception
+there), `DEBUG` (the crash summary) and `libc` (an abort's message): Termux's
+own `logcat` sees only Termux's lines, so the old `make logcat` showed
+nothing.
+
+**Checked** (here, 2026-10-19): shellcheck clean; 29 scenarios against a fake
+`adb`, `getprop` and `termux-open` (no adb, server down, this phone among two,
+only the tablet, a named device, a named device that is absent, desktop with
+one and with two devices, run, logcat, run-as, connect by mDNS and by port,
+uninstall); two planted bugs (any device taken as this phone; the server not
+checked) each failed several. The link rule against a fake `aapt2`: the
+attribute found, missing (build fails, APK removed), unprintable (noted,
+build goes on); toggling relinks only. Not checkable here: the real `aapt2`
+and `adb`.
+
 ## `SQUARED_ABI`
 
 `SQUARED_ABI` carries the ABI-shrinking flags.

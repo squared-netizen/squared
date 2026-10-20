@@ -30,7 +30,7 @@ from the configuration NativeActivity already holds
 `device: API <n>, process <name>` (an app with a `:console` process logs
 each separately); the GL
 driver is logged once as `driver: <version>; <renderer>; <vendor>` when the
-first context is current. Both reach logcat (`adb logcat -s <tag>`), which is
+first context is current. Both reach logcat (`make logcat`, through adb), which is
 how a device without Termux is read. Each such check costs a comparison,
 cheaper than reading a cached answer from storage, so nothing is cached.
 
@@ -88,8 +88,11 @@ would take this one. `SQ_MIN_SDK` (default 22) is also what the code is
 compiled and linked for, so the manifest cannot claim a level the library was
 not built for.
 
-**No `android:debuggable`.** Set by the build for debug APKs. Committing it
-would ship a debuggable release.
+**No `android:debuggable`.** The build sets it for `DEV_LOG` and `CONSOLE`
+builds (`aapt2 link --debug-mode`, read back from the linked manifest to
+check), so `run-as` reaches their private files; plain builds never carry it.
+`SQ_DEBUGGABLE=` turns it off for one build, `SQ_DEBUGGABLE=1` on. Committing
+it here would ship a debuggable release.
 
 `android:hasCode="false"` and `android.app.NativeActivity` are what let this
 project have no Java: the APK carries no `classes.dex`, and the build needs a

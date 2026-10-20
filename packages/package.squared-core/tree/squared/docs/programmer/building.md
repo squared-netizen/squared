@@ -82,9 +82,27 @@ make android-status       # the NDK, the API level, the C++ runtime it found
 | The link fails if the library could not load on Android before 6.0 | It must carry the `DT_HASH` symbol table; the build adds it |
 | Changing `SQ_MIN_SDK` or the NDK rebuilds the framework | Archives built for one level must not link into another |
 | `CONSOLE=app` (or `monitor`) links the Console in; the default, `0`, carries none of it | See [console.md](console.md) |
+| `DEV_LOG` and `CONSOLE` builds are **debuggable**; plain builds never are | `run-as` reaches a debuggable app's private files; `SQ_DEBUGGABLE=` turns it off, `SQ_DEBUGGABLE=1` on |
+| `make install` uses `adb install -r` when adb reaches **this phone**, and Android's installer otherwise | No prompt with adb; a second device (a tablet) only when named, `DEVICE=<serial>` |
 
 The NDK must have libraries for the level you ask for; `make` says which levels
 it has if not. NDK r29 has 21 to 35.
+
+### Installing, starting, the log
+
+```sh
+make install      # adb install -r on this phone when adb reaches it, else the installer
+make run          # install, then start it (adb)
+make logcat       # the app's lines, a library that failed to load, the crash summary (adb)
+make devices      # what adb reaches, which is this phone, and how to connect
+```
+
+On the phone itself adb comes from Termux's `android-tools` and Wireless
+Debugging (Android 11 and later, on Wi-Fi): pair once, then connect each time
+it is turned on. The project's README walks through it. Without adb,
+`make install` hands the APK to Android's installer, as before, and Termux
+cannot read the app's log at all; the dev log (`DEV_LOG`, [dev.md](dev.md))
+and the Console ([console.md](console.md)) work without either.
 
 ## Flags
 

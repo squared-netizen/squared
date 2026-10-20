@@ -10,7 +10,11 @@
 #
 #   make                 build lib{{project_name}}.so
 #   make apk             package and sign an installable APK
-#   make install         hand it to the package installer
+#   make install         install it: with adb on this phone, no prompt; else the
+#                        package installer
+#   make run             install, then start it (needs adb)
+#   make logcat          its log, and Android's crash lines (needs adb)
+#   make devices         what adb reaches, and how to connect it to this phone
 #   make status          what the build found on this host
 #   make squared-core    build the vendored framework
 #   make android-help    every target and override
@@ -18,6 +22,9 @@
 #
 #   make DEV_LOG=1 apk   a development build that sends its log lines, and a
 #                        crash report, to UDP port 5555 on this device
+#
+# DEV_LOG and CONSOLE builds are debuggable, so `run-as` reaches their private
+# files; plain builds never are (SQ_DEBUGGABLE in mk/squared_android_package.mk).
 #
 # Overridable, e.g. `make SQ_MIN_SDK=24 OPT=-O3 apk`. SQ_MIN_SDK is what the
 # library is compiled and linked for (default 22, Android 5.1), not only what

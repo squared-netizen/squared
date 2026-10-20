@@ -23,9 +23,33 @@ SQ_APK_DIR      := $(BUILD)/apk
 SQ_APK_UNSIGNED := $(SQ_APK_DIR)/unsigned.apk
 SQ_APK          := $(BUILD)/$(SQ_PROJECT).apk
 
-.PHONY: apk install uninstall android-status android-help keystore
+.PHONY: apk install run devices uninstall android-status android-help keystore
 
 apk: $(SQ_APK)
+
+# ---------------------------------------------------------------------------
+# Debuggable development builds
+#
+# DEV_LOG and Console builds are linked with aapt2's --debug-mode, which writes
+# android:debuggable="true" into the APK's manifest. Plain builds never are.
+# A debuggable app is one `run-as` reaches (adb shell run-as <package> ...,
+# the app's private files without root), and one a native debugger or
+# simpleperf may attach to. Your manifest is not edited: a committed
+# debuggable would ship in a release.
+#
+#   make SQ_DEBUGGABLE= install    a Console or DEV_LOG build that is not
+#   make SQ_DEBUGGABLE=1 install   a plain build that is
+#
+# The cost is in the Java runtime, which runs a debuggable process with its
+# debugging support on; this app's own code is the same machine code either
+# way. Measure memory on a build that is not debuggable.
+#
+# The setting is stamped like the compiler flags, so switching it relinks the
+# APK and rebuilds nothing else.
+SQ_DEBUGGABLE ?= $(if $(or $(DEV_LOG),$(filter-out 0,$(CONSOLE))),1,)
+SQ_AAPT2_LINK_FLAGS := $(if $(strip $(SQ_DEBUGGABLE)),--debug-mode,)
+SQ_LINK_STAMP := $(SQ_APK_DIR)/.link-flags
+$(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = 'link $(SQ_AAPT2_LINK_FLAGS)' ] || printf '%s' 'link $(SQ_AAPT2_LINK_FLAGS)' > '$(SQ_LINK_STAMP)')
 
 $(SQ_APK_DIR)/resources.zip: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null)
 	@mkdir -p $(SQ_APK_DIR)
@@ -115,19 +139,31 @@ $(SQ_ASSET_STAMP): $(SQ_ASSET_INDEX) FORCE
 	 old=$$(cat $(SQ_ASSET_STAMP) 2>/dev/null || true); \
 	 if [ "$$old" != "$$list" ]; then printf '%s\n' "$$list" > $@; fi
 
-$(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_STAMP)
+# A debuggable link is checked, not assumed: the line below reads the linked
+# manifest back. An aapt2 that cannot print it says so and the build goes on;
+# one that prints a manifest without the attribute fails the build.
+$(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_STAMP) $(SQ_LINK_STAMP)
 	@if [ -z "$(SQ_ANDROID_JAR)" ]; then \
 	  echo "no android.jar found. Set SQ_ANDROID_JAR, or see 'make android-help'." >&2; \
 	  exit 1; \
 	fi
-	@echo "  aapt2 link     $(notdir $@)"
+	@echo "  aapt2 link     $(notdir $@)$(if $(SQ_AAPT2_LINK_FLAGS), (debuggable),)"
 	@$(SQ_AAPT2) link -o $@ \
 	    -I $(SQ_ANDROID_JAR) \
 	    --manifest $(SQ_MANIFEST) \
 	    --min-sdk-version $(SQ_MIN_SDK) \
 	    --target-sdk-version $(SQ_TARGET_SDK) \
+	    $(SQ_AAPT2_LINK_FLAGS) \
 	    $(if $(strip $(SQ_ASSET_FILES)),-A $(SQ_ASSETS_DIR),) \
 	    $(SQ_APK_DIR)/resources.zip
+	@if [ -n "$(SQ_AAPT2_LINK_FLAGS)" ]; then \
+	  manifest=$$($(SQ_AAPT2) dump xmltree --file AndroidManifest.xml $@ 2>/dev/null) || { \
+	    echo "  debuggable     asked for; this aapt2 cannot print the manifest to check"; exit 0; }; \
+	  case "$$manifest" in \
+	    *debuggable*) echo "  debuggable     yes: run-as reaches it (SQ_DEBUGGABLE= for a build that is not)" ;; \
+	    *) echo "aapt2 link --debug-mode left android:debuggable out of the manifest" >&2; rm -f $@; exit 1 ;; \
+	  esac; \
+	fi
 
 # The one library the APK carries. The C++ runtime is linked into it (see
 # SQ_CXX_RUNTIME in mk/squared_generated.mk), so there is no libc++_shared.so to
@@ -170,20 +206,32 @@ $(SQ_APK): $(SQ_APK_UNSIGNED) $(SQ_KEYSTORE)
 	    --ks-key-alias $(SQ_KEY_ALIAS) --out $@ $(SQ_APK_UNSIGNED)
 	@$(SQ_APKSIGNER) verify $@ >/dev/null && echo "  verified       $@ ($$(wc -c < $@) bytes)"
 
+# ---------------------------------------------------------------------------
+# Installing, starting, reading the log
+#
+# tools/device.sh decides where an APK goes; these targets only hand it the
+# names. With adb connected to this phone (Wireless Debugging, see
+# `make devices`), `make install` uses `adb install -r`: no installer prompt.
+# Without it, the package installer, as before. Another device (the tablet) is
+# used only when named: `make install DEVICE=<serial>`, as `make devices`
+# lists it. SQ_ADB picks the adb (`SQ_ADB=termux-adb` for a USB device).
+SQ_ADB ?= adb
+DEVICE ?=
+SQ_DEVICE_TOOL = SQ_ADB='$(SQ_ADB)' DEVICE='$(DEVICE)' bash tools/device.sh
+
 install: $(SQ_APK)
-	@if command -v termux-open >/dev/null 2>&1; then \
-	  echo "  handing $(SQ_APK) to the package installer"; \
-	  termux-open $(SQ_APK); \
-	elif command -v adb >/dev/null 2>&1; then \
-	  adb install -r $(SQ_APK); \
-	else \
-	  echo "no installer found. The APK is at $(SQ_APK)." >&2; \
-	fi
+	@$(SQ_DEVICE_TOOL) install '$(SQ_APK)'
+
+# Install, then start it: needs adb, since the installer's prompt cannot be
+# waited for.
+run: $(SQ_APK)
+	@$(SQ_DEVICE_TOOL) run '$(SQ_APK)' '$(SQ_PACKAGE)'
+
+devices:
+	@$(SQ_DEVICE_TOOL) devices
 
 uninstall:
-	@if command -v pm >/dev/null 2>&1; then pm uninstall $(SQ_PACKAGE); \
-	elif command -v adb >/dev/null 2>&1; then adb uninstall $(SQ_PACKAGE); \
-	else echo "no uninstaller available" >&2; fi
+	@$(SQ_DEVICE_TOOL) uninstall '$(SQ_PACKAGE)'
 
 android-status:
 	@echo "toolchain"
@@ -198,6 +246,8 @@ android-status:
 	@printf '  %-14s %s\n' "aapt2" "$$(command -v $(SQ_AAPT2) || echo 'NOT FOUND')"
 	@printf '  %-14s %s\n' "apksigner" "$$(command -v $(SQ_APKSIGNER) || echo 'NOT FOUND')"
 	@printf '  %-14s %s\n' "keystore" "$(if $(wildcard $(SQ_KEYSTORE)),$(SQ_KEYSTORE),will be generated)"
+	@printf '  %-14s %s\n' "debuggable" "$(if $(SQ_AAPT2_LINK_FLAGS),yes (a DEV_LOG or Console build; SQ_DEBUGGABLE= for no),no)"
+	@printf '  %-14s %s\n' "adb" "$$(command -v $(SQ_ADB) || echo 'not found (make devices)')"
 	@echo "target"
 	@printf '  %-14s %s\n' "abi" "$(SQ_ABI) ($(SQ_TRIPLE))"
 	@printf '  %-14s %s\n' "sdk" "min $(SQ_MIN_SDK) (compiled and linked for it), target $(SQ_TARGET_SDK)"
@@ -209,10 +259,13 @@ android-help:
 	@echo
 	@echo "  make                build lib$(SQ_PROJECT).so"
 	@echo "  make apk            package and sign"
-	@echo "  make install        hand the APK to the package installer"
+	@echo "  make install        adb install -r on this phone when adb reaches it,"
+	@echo "                      else hand the APK to the package installer"
+	@echo "  make run            install, then start it (needs adb)"
+	@echo "  make logcat         this app's log, and Android's crash lines (needs adb)"
+	@echo "  make devices        what adb reaches, which is this phone, how to connect"
 	@echo "  make uninstall      remove $(SQ_PACKAGE)"
 	@echo "  make android-status what the build found on this host"
-	@echo "  make logcat         follow this app's log"
 	@echo
 	@echo "overrides"
 	@echo "  SQ_MIN_SDK=24       build for another level, without regenerating"
@@ -220,11 +273,18 @@ android-help:
 	@echo "  SQ_ABI=armeabi-v7a  a different ABI (needs a toolchain that targets it)"
 	@echo "  SQ_ANDROID_JAR=...  a specific platform jar"
 	@echo "  SQ_NDK=...          a specific NDK"
+	@echo "  DEVICE=<serial>     install, run or read the log on that device (make devices)"
+	@echo "  SQ_ADB=termux-adb   another adb, e.g. for a device on USB"
+	@echo "  SQ_DEBUGGABLE=      a DEV_LOG or Console build that is not debuggable"
 	@echo
 	@echo "This host builds one ABI: $(SQ_ABI). Termux's clang targets aarch64"
 	@echo "only. A desktop NDK can build others by overriding SQ_ABI, one"
 	@echo "invocation each, then merging the lib/ directories before signing."
 
+# Termux's own logcat shows only Termux's lines (an app reads only its own
+# log), so this needs adb. The app's tag, plus where Android reports what the
+# app could not: AndroidRuntime (a library that failed to load), DEBUG (the
+# crash summary) and libc (an abort's message).
 .PHONY: logcat
 logcat:
-	@logcat -s $(SQ_PROJECT)
+	@$(SQ_DEVICE_TOOL) logcat '$(SQ_PROJECT)'

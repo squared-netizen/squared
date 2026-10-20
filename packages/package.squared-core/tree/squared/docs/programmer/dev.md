@@ -9,8 +9,10 @@ Headers: `squared/dev/dev_log.hpp` (the log sink),
 
 ## Why it exists
 
-On a phone with no computer attached there is no `adb logcat`, and Android
-shows a crashed app as "keeps stopping" with no reason. The log sink sends each
+On a phone with no computer attached, and without Wireless Debugging (which
+needs Wi-Fi; see [building.md](building.md#installing-starting-the-log)), there
+is no `adb logcat`, and Android shows a crashed app as "keeps stopping" with no
+reason. The log sink sends each
 log line, and a backtrace if the app dies, to a UDP port on the same device.
 You read it in a terminal on that device. It uses the loopback address only: no
 network, no Wi-Fi, and nothing leaves the device.
@@ -117,7 +119,7 @@ void write_crash_trace(int signal, const siginfo_t* info, void* ucontext,
                        CrashSink sink, void* context) noexcept;
 ```
 
-From inside a fatal-signal handler: hands `sink` the report a line at a time (`CRASH <name> (<n>) code <c> addr <a>`, frame 0 from the saved registers, up to 23 unwound frames as `  #n pc 0xOFFSET library`, `END`). The sink must be async-signal-safe (`write`, `sendto`). The dev log's crash report and the Console's crash file both use it.
+From inside a fatal-signal handler: hands `sink` the report a line at a time (`CRASH <name> (<n>) code <c> addr <a>`, frame 0 from the saved registers, then up to 23 of its callers as `  #n pc 0xOFFSET library`, the handler's own frames left out, `END`). The sink must be async-signal-safe (`write`, `sendto`). The dev log's crash report and the Console's crash file both use it.
 
 ## close_log_sink
 

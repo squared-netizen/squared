@@ -121,6 +121,12 @@ int main()
     // The unwinder got past the handler: a trace of frame 0 alone is the
     // failure a noexcept callback caused once (crash_trace.hpp).
     assert( report.size() >= 5 && report[3].rfind( "  #1 pc ", 0 ) == 0 );
+    // The handler's own frames are dropped: frame 0's address (after "#0 ")
+    // is not unwound a second time below it.
+    const std::string fault = report[2].substr( 5 );
+    for( std::size_t i = 3; i + 1 < report.size(); ++i ) {
+        assert( report[i].find( fault ) == std::string::npos );
+    }
     assert( report.back() == "END" );
 
     std::printf( "dev log: all assertions passed\n" );
