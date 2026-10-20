@@ -12,6 +12,7 @@ make apk          # package and sign
 make install      # install it (with adb on this phone: no prompt)
 make run          # install, then start it (adb)
 make logcat       # its log, and Android's crash lines (adb)
+make console      # a CONSOLE build's Console, here in Termux (no adb)
 ```
 
 No Gradle, no Android Studio, no `classes.dex`, no Java in the build. A

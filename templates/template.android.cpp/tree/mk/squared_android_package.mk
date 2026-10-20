@@ -23,7 +23,7 @@ SQ_APK_DIR      := $(BUILD)/apk
 SQ_APK_UNSIGNED := $(SQ_APK_DIR)/unsigned.apk
 SQ_APK          := $(BUILD)/$(SQ_PROJECT).apk
 
-.PHONY: apk install run devices uninstall android-status android-help keystore
+.PHONY: apk install run devices uninstall console-only android-status android-help keystore
 
 apk: $(SQ_APK)
 
@@ -230,6 +230,12 @@ run: $(SQ_APK)
 devices:
 	@$(SQ_DEVICE_TOOL) devices
 
+# A CONSOLE build, started with only its Console: your App is not created
+# until `app start`, so an App that crashes at start can still be reached
+# (`make console`, then `crash`, `log previous`, `app start`).
+console-only:
+	@$(SQ_DEVICE_TOOL) console-only '$(SQ_PACKAGE)'
+
 uninstall:
 	@$(SQ_DEVICE_TOOL) uninstall '$(SQ_PACKAGE)'
 
@@ -264,6 +270,8 @@ android-help:
 	@echo "  make run            install, then start it (needs adb)"
 	@echo "  make logcat         this app's log, and Android's crash lines (needs adb)"
 	@echo "  make devices        what adb reaches, which is this phone, how to connect"
+	@echo "  make console        a CONSOLE build's Console in this terminal; CMD='...' runs one"
+	@echo "  make console-only   start it with only the Console; app start starts your App"
 	@echo "  make uninstall      remove $(SQ_PACKAGE)"
 	@echo "  make android-status what the build found on this host"
 	@echo

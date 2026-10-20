@@ -1,6 +1,6 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; and the **drawing** parts, for drawing it yourself. Crash reports (4.6) and the monitor process (4.7) come next.
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. Files through the bridge (`ls`, `pull`, `push`, `logcat`, `libs`) come next, and the monitor app after that.
 
 Developer side: [../developer/console.md](../developer/console.md).
 
@@ -37,8 +37,11 @@ With `CONSOLE=app` the Android template draws the Console over the upper half of
 | close it | `[x]`, Back, or `close` |
 | stop, start or restart your app | `app stop`, `app start`, `app restart` (`app` says which it is) |
 | quit, app and Console together | `quit` |
+| see how the last run ended (a `quit`, a swipe away) | `log previous` |
+| use it from Termux instead | `make console` in the project (below) |
+| start with only the Console, your app not created | `make console-only`, then `app start` when ready |
 
-`app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included; that is what the monitor process, Sprint 4.7, is for). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
+`app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included: the next launch shows its report, and `make console` waits for the app to come back). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
 
 **Making it stick.** `CONSOLE` and `DEV_LOG` are read on each `make`, so a later plain `make install` builds without them. Put them in `local.mk` in your project, which git ignores, to keep them until you delete the lines:
 
@@ -78,6 +81,7 @@ console->run("spawn goblin 3");          // or typed: text("spawn goblin 3"), th
 | `key(Key, KeyModifiers)` | Left, Right, Home, End, Up and Down (history), Backspace, Delete, Enter (`submit`), Tab (`complete`), Escape (clear the line). Returns false for keys it leaves alone, Space among them: typed characters, a space included, come through `text()` |
 | `text(utf8)` | Typed text, inserted at the cursor |
 | `lines()`, `input()`, `commands()` | The scrollback, the input line, the table |
+| `set_mirror(mirror, context)` | Hand every printed line to `mirror(context, level, line)` too, a call a line, the echo of a command and its output included; `nullptr` stops it. The bridge uses it |
 
 Three commands are built in: `help` (all commands, or `help <name>` for one), `clear` and `close`. More come from the calls below, and the Android template adds them all.
 
@@ -108,6 +112,69 @@ Each frame is an offset into a library, which is what `addr2line -C -f -e build/
 | `show_crash_file(console, path, previous_path)` | Print a report an earlier run left, as error lines, then move it to `previous_path`. False when there is none |
 | `add_crash_command(console, previous_path)` | The `crash` command; `crash segv` and `crash abort` crash on purpose, to see a report made. `previous_path` is kept, not copied |
 
+## From Termux: the bridge
+
+A `CONSOLE` build also listens for Termux, so the Console can be used from a terminal on the same phone: everything it prints appears there as it is written (errors in red, warnings in amber), and every line you type runs as a command, exactly as if typed into the Console. No adb, no Wi-Fi, no computer.
+
+```sh
+make console                       # interactive; Ctrl-D (or Ctrl-C) ends it
+make console CMD='mem'             # one command: its output, then back to the shell
+make console CMD='app restart'
+make console-only                  # start the app with only the Console running
+```
+
+- **Start it before or after the app.** It waits for the app without asking again and again: the app sends one datagram when it starts, and `sqconsole` connects then. When the app quits or crashes it says so and waits; when the app starts again it reconnects by itself.
+- **It shows the history first:** the newest 200 lines the Console already held. `CMD=` runs skip that and print only the command's own lines.
+- **One at a time.** A second `make console` takes over, and the first is told so.
+- **`make console-only`** starts the app with the Console running and your `App` not created, so an app that crashes at start can still be reached: `crash`, `log previous`, then `app start`. If the app was already running it carries on as it was; `quit` it first. It goes through Termux's `am` (`pkg install termux-am`) or adb.
+- **Private enough for a dev build, not more.** The port is on `127.0.0.1`, so nothing off the phone reaches it, and a client must give a secret made by your build (in `build/dev/bridge.conf`; `make clean` makes a new one). The secret is inside the APK, which other apps can read, so it keeps out any app that isn't looking for it, not one that reads your APK. A build without `CONSOLE` has none of it.
+- **The port** comes from your package name (20000 to 39999), so two projects do not collide. `make status` shows it.
+- A `CONSOLE` build carries the `INTERNET` permission, like a `DEV_LOG` build: the bridge is a socket.
+
+| `sqconsole` says | Meaning |
+|---|---|
+| `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
+| `refused: is build/dev/bridge.conf from the build that is installed?` | The secret did not match: install the build you just made |
+| `another connection took over` | A second `make console` started |
+| `bridge: N lines dropped (the client read too slowly)` | Termux fell behind (a huge burst of log); the Console itself kept every line |
+
+To wire it yourself (another template), `#include <squared/console/bridge.hpp>`:
+
+```cpp
+sq::console::Bridge bridge;   // about 17 KB; hold it beside the Console
+const auto status = bridge.open(
+    {.port = 30123, .secret = secret},                // 16 to 64 letters and digits
+    {.watch = watch, .command = run_line, .connected = replay, .context = this});
+console.set_mirror([](void* b, sq::console::Level level, std::string_view line) noexcept {
+    static_cast<sq::console::Bridge*>(b)->send(level, line); }, &bridge);
+// in your event loop, when a socket watch() named is ready:
+bridge.ready(fd, readable, writable);
+```
+
+| Call | Does |
+|---|---|
+| `open(config, handlers)` | Listen on `127.0.0.1:config.port` (0 picks a free one) and, unless `config.announce` is false, send the one datagram a waiting `sqconsole` connects on. Returns `listening`, `already_open`, `bad_secret` (not 16 to 64 letters and digits) or `refused` (the port is taken; on Android, no `INTERNET` permission) |
+| `handlers.watch(context, fd, read, write)` | Yours: watch `fd` in your event loop, for reading and (when `write`) writing; both false: stop watching it. The template uses Android's looper |
+| `handlers.command(context, line)` | Yours: a line from Termux; the template runs it with `console.run(line)` |
+| `handlers.connected(context, replay)` | Yours: a client gave the secret; `replay` when it wants the history |
+| `ready(fd, readable, writable)` | Call it when a watched socket is ready. False when that socket is now closed |
+| `send(level, line)` | To the client, if one is connected; else nothing. A line is at most 1 KB; a newline inside becomes a space |
+| `close()` | Close everything; `watch` is told to stop watching each socket |
+| `listening()`, `connected()`, `port()`, `dropped()` | State; `dropped()` counts lines lost to a slow client since `open` |
+
+Nothing allocates, and it never waits on a timer: it acts only when `ready` is called.
+
+## The last run's log
+
+`#include <squared/console/log_file.hpp>`. The Android template keeps the end of every run, not only a crash's: the newest 200 lines are saved to `files/log.txt` when the app leaves the screen and when it ends; the next launch moves them to `files/log-previous.txt`, and `log previous` shows them. A swipe from the recent apps, a `quit` and Android closing the app for memory are all covered, because the app leaves the screen first.
+
+| Call | Does |
+|---|---|
+| `save_log(console, path, count)` | Write the newest `count` lines to `path`, through `path.tmp` and a rename, so a reader never sees half a file. Allocates nothing. False if it could not be written (the old file is kept) |
+| `keep_previous_log(path, previous_path)` | At start: move the last run's log aside before this run saves over it. False when there was none |
+| `show_log(console, path, title)` | Print a saved log into the Console after a title line. False when there is no file |
+| `add_log_command(console, previous_path)` | The `log` command: `log previous`. `previous_path` is kept, not copied |
+
 `squared/console/line_reader.hpp` has the reader these use: `for_each_line(fd, buffer, line)` calls `line(std::string_view)` for each line of a descriptor, through a buffer you give it, with no allocation.
 
 ## Built-in commands
@@ -131,6 +198,7 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `alloc` | the frame-allocation counter's figures, what `operator new` holds now (your code and squared's, apart from the GPU driver's and the C library's own `malloc`), and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
 | `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
 | `crash` | the last crash report again (above). Added by the Android template |
+| `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
 

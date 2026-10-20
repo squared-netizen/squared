@@ -17,12 +17,14 @@ MODULE_DIR := $(SQUARED_ROOT)/console
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/args.cpp \
+    src/bridge.cpp \
     src/commands.cpp \
     src/console.cpp \
     src/copy_command.cpp \
     src/crash_file.cpp \
     src/font8x8.cpp \
     src/input_line.cpp \
+    src/log_file.cpp \
     src/scrollback.cpp \
     src/system_commands.cpp
 
@@ -65,7 +67,15 @@ HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/
 # still reached the handler before it and killed the child.
 CRASH_TEST := $(BUILD_DIR)/crash_file_test
 
-TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST) $(CRASH_TEST)
+# The bridge to Termux against real sockets, and its Termux end, sqconsole,
+# run for real (--run, and interactive with its reconnect).
+BRIDGE_TEST := $(BUILD_DIR)/bridge_test
+
+# sqconsole, built for the machine running the tests: here the same compiler.
+# A project builds it for Termux with `make console` (mk/pkg_squared_core.mk).
+SQCONSOLE := $(BUILD_DIR)/sqconsole
+
+TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST) $(CRASH_TEST) $(BRIDGE_TEST)
 ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
 TESTS += $(RENDERER_TEST)
 endif
@@ -74,6 +84,15 @@ test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
 $(TESTS): $(SQUARED_HEADERS)
+
+$(SQCONSOLE): $(MODULE_DIR)/client/sqconsole.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) $< -o $@
+
+$(BRIDGE_TEST): $(MODULE_DIR)/test/bridge_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+                $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(SQCONSOLE)
+	@mkdir -p $(dir $@)
+	$(CXX) $(STANDARD) -O1 -g $(SQUARED_INCLUDE) -DSQCONSOLE_PATH='"$(SQCONSOLE)"' $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(CRASH_TEST): $(MODULE_DIR)/test/crash_file_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) $(HEADERS)
 	@mkdir -p $(dir $@)

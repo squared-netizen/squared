@@ -15,6 +15,13 @@ namespace sq::console
 {
 
 /**
+ * @brief Called with every line the Console prints, after it is in the
+ * scrollback: the bridge to Termux uses it (bridge.hpp). Function pointer and
+ * context, no allocation; it must not print into the same Console.
+ */
+using Mirror = void ( * )( void *context, Level level, std::string_view line ) noexcept;
+
+/**
  * @brief Text in, text out: the escape hatch for when the rest is broken.
  *
  * This is the Console's state and behaviour, with no drawing: the scrollback,
@@ -49,6 +56,16 @@ class Console final
                                  void *context = nullptr ) noexcept
         {
             return commands_.add( name, help, handler, context );
+        }
+
+        /**
+         * @brief Hand every printed line to `mirror` as well, the echo of a
+         * command and its output included; nullptr stops it. One at a time.
+         */
+        void set_mirror( Mirror mirror, void *context ) noexcept
+        {
+            mirror_ = mirror;
+            mirror_context_ = context;
         }
 
         /** @brief Add text to the scrollback, one line per `\n` part. */
@@ -109,6 +126,8 @@ class Console final
         InputLine input_;
         Commands commands_;
         Args args_;
+        Mirror mirror_{ nullptr };
+        void *mirror_context_{ nullptr };
         bool shown_{ false };
 };
 

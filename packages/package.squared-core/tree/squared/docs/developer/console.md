@@ -25,8 +25,9 @@ It was planned as its own package, `package.squared-console` (decided 2026-10-15
 | the copy of the line being run | 256 |
 | `Args` (16 views and a count) | 264 |
 | the scrollback's own `Scrollback` | 56 |
+| the mirror: a function pointer and its context (2026-10-19, for the bridge) | 16 |
 | the shown flag, padded | 8 |
-| **`sizeof(Console)`** | **71,336** |
+| **`sizeof(Console)`** | **71,352** |
 
 Owned by its user, constructed once and long-lived; 70 KB is too much for a stack. Whether it is shown is a flag in the model (`show`, `hide`, `shown`), not in the view: the `close` command and the close button change the same state, and whoever draws it reads it. Nothing it does allocates (checked: 200 rounds of running, printing, completing and editing make no allocation, by the frame counter).
 
@@ -96,6 +97,34 @@ The native heap is still one figure for everyone who calls `malloc`: squared, th
 
 **`line_reader.hpp`.** `for_each_line` reads a descriptor through a caller's buffer, a line at a time, the last line counting without a newline, a line longer than the buffer in pieces. `smaps` and the crash file use it; a template, so each caller's lambda inlines.
 
+## Bridge
+
+`console/bridge.hpp`, `src/bridge.cpp`, the wire format in `src/bridge_protocol.hpp`; the Termux end in `client/sqconsole.cpp`; the template's wiring in `sq_android/entry.cpp` and the build's in `mk/pkg_squared_core.mk` (Sprint 4, 4.7t part 1, 2026-10-19). Decided with you that day: no adb on the phone (Wireless Debugging needs Wi-Fi it rarely has), Termux is the monitor first, the `:console` monitor app comes later for where Termux is not.
+
+**Why TCP on 127.0.0.1.** Two apps must talk: the dev app and Termux, each its own Linux user. A file-system socket needs a directory both can reach, and none exists (each app's private directory is its own; shared storage is any app's). An abstract-namespace Unix socket is subject to SELinux's per-app categories since Android 9, and the dev log already proved loopback inet sockets work between the two. Loopback cannot be reached from off the device. The cost is the `INTERNET` permission in CONSOLE builds, as in DEV_LOG builds; plain builds keep none.
+
+**The secret, and what it does not do.** The build makes 16 random bytes once per build directory (`od -N16 /dev/urandom`, hex, in `build/dev/bridge.conf` beside the port) and compiles them in as two 64-bit numbers (`SQUARED_BRIDGE_SECRET_HIGH`/`_LOW`: no quotes through make and the shell). The client sends it first; a mismatch is closed with no answer, compared in constant time. Any app can read any installed APK, so an app that goes looking can find the secret: this keeps out the merely curious, which is what a dev build on your own phone needs, and it is said so in the programmer docs. A per-install pairing code shown in the Console was the stronger alternative; it needs the Console and Termux on screen together, and was not worth it for dev builds.
+
+**Waiting on events.** The bridge does nothing by itself: `open` asks the owner to watch the listening socket (`BridgeHandlers::watch`), and the owner calls `ready(fd, readable, writable)`. The template maps `watch` to `ALooper_addFd` with a callback on the glue's looper, so the sockets are served inside the `ALooper_pollOnce` the loop already blocks in, costing nothing while idle. A callback makes `pollOnce` return `ALOOPER_POLL_CALLBACK` (-2), which ends the template's inner poll loop; the outer loop then calls `frame()`, which returns at once without a surface, and polls again: no spin, no change to the loop needed. Writing is watched only while output waits.
+
+**The client waits on an event too.** `sqconsole` binds UDP on the same port number before trying to connect; `Bridge::open` sends one datagram there ("squared-bridge up"). So a client started first, or one whose app restarted, connects when the app is up, with no retry timer. `--run` (`make console CMD=`) waits at most `--wait` seconds (30), saying so at once.
+
+**Connections.** At most one client and one pending connection. The newest connection is the pending one (an earlier silent one is dropped); when it gives the secret it becomes the client, and the old client is told "another connection took over" directly (past its queue) and closed. Bytes after the hello are its first commands, so a scripted client sends hello and commands in one write. Each command runs through `handlers.command` (the template: `console.run`), then `.` marks its end: `--run` counts those to know when to exit. Commands are at most 256 bytes (`input_bytes`); longer ones run cut, the rest dropped.
+
+**Output.** `send` formats `<type> <text>\n` into a 16 KB ring and writes immediately (`MSG_NOSIGNAL | MSG_DONTWAIT`, so a vanished client is an error, not a SIGPIPE). A full ring drops the line and counts it; once there is room, a "bridge: N lines dropped" warning goes first. The Console's own scrollback keeps everything regardless. A newline inside a sent line becomes a space, so one line stays one protocol line; the Console's mirror already splits on newlines. Lines over 1 KB are cut.
+
+**Memory.** `sizeof(Bridge)` is 16,968 bytes (`static_assert` at 17 KB): the 16 KB ring, 256 bytes of command, 160 of hello, 64 of secret, and bookkeeping. Inside the template's `Platform`, so no allocation; nothing at run time allocates (the test sends until 100 lines drop, counting allocations: none). The mirror adds 16 bytes to `Console` (now 71,352). On the client side, `sqconsole` is a tool, so `std::string` and `std::vector` are used freely (priority 1 does not apply).
+
+**The template.** Opens it in the `Platform` constructor of a CONSOLE build, sets the Console's mirror to it, logs `bridge: listening on 127.0.0.1:<port>`; on connect replays the newest 200 lines and logs `bridge: Termux connected`; closes it first in the destructor. `make console-only` passes the extra `squared.console_only=true`; the constructor reads it (`getIntent().getBooleanExtra`, JNI) and sets `app_stopped`, so `attach` creates nothing until `app start`.
+
+**Patterns.** The mirror is an Observer with one slot, a function pointer and a context (no `std::function`, no list). The `watch` handler is the Strategy the event loop supplies, again a function pointer. Both called per printed line, not per frame.
+
+**Tested** (`test/bridge_test.cpp`, real sockets, `poll` standing in for the looper): secrets of the wrong form refused; the announcement arrives; a wrong secret and a non-hello closed with no answer and nothing run; "ok", the replay flag, a command and its `.`, the three line types, a newline flattened; a 300-byte command cut then the next whole; a quiet client with hello and command in one write taking over, the first told and closed; a non-reading client: lines dropped and counted with no allocation, then the drop notice; the client leaving; `close` stopping every watch. With a real Console: the replay, a command's echo, its error and its end. Then `sqconsole` itself, as a child process: started before the app, it waits, connects on the announcement, shows the replay, runs a typed command; the app's bridge closes and reopens, and it notices both and reconnects; `--run` takes over, runs two commands, prints only their lines (no replay), exits 0, and the interactive one is told; a wrong secret exits 1; Ctrl-D ends it. Planted bugs (any secret accepted, no announcement, `quiet` ignored) each fail it.
+
+## Log file
+
+`console/log_file.hpp`, `src/log_file.cpp`. `save_log` writes the newest N lines with `write(2)` straight from the scrollback to `path.tmp`, then `rename`s it over `path`: a reader (the next run) never sees half a file, and a crash mid-write leaves the last good one. No allocation (tested). The template saves 200 lines on `APP_CMD_STOP` (the app leaves the screen: before a swipe away or a kill for memory) and in the `Platform` destructor; at start, `keep_previous_log` renames `log.txt` to `log-previous.txt` before anything saves over it, and `log previous` shows it. Plain text: the levels are not kept (an error line is shown as info), which keeps the file readable when pulled off the device.
+
 ## Drawing
 
 Three parts, from data to pixels: the **font** and its atlas (`console/src/font8x8.*`), the **layout** (`console/layout.hpp`, headless), and the **renderer** (`console/renderer.hpp`, `console/src/gles/renderer.cpp`, gles backend only). The template's entry point puts them on screen (below).
@@ -154,7 +183,7 @@ Transient, in `create()` only: the atlas texels (8 KB) and the indices (6 KB), o
 
 The Android template's `entry.cpp` holds the Console under `#ifdef SQUARED_CONSOLE`, so a `CONSOLE=0` build has none of this:
 
-- **Ownership.** `Console` and `Renderer` are members of the entry's `Platform`, which is allocated once: about 88 KB inside that one allocation, nothing more. They come after `graphics` in it, so the renderer's GL objects go before the context.
+- **Ownership.** `Console` and `Renderer` are members of the entry's `Platform`, which is allocated once: about 88 KB inside that one allocation, nothing more; the `Bridge` adds 17 KB in a CONSOLE build (about 105 KB in all). They come after `graphics` in it, so the renderer's GL objects go before the context.
 - **The log.** `SQ_LOGI` and `SQ_LOGW` format a line once into the stack. With `DEV_LOG`, it goes to the dev log with its level, and the dev log's listener, set to the Console while the platform exists, prints it: so every dev log line of the main thread reaches the Console, the application's own (`sq::dev::log_line`) and the allocation reports included. Without `DEV_LOG`, the template prints its lines into the Console directly; the application's lines then have nowhere to go but logcat. Warnings and errors keep their colour. Lines logged before the platform exists (the first, "starting") are not shown, nor are lines from other threads.
 - **Commands.** The platform's constructor registers the built-ins (above) and shows the Console.
 - **When.** The renderer is made as soon as the surface is ready, before the application's `create()`, because the Console is for when that goes wrong; after a resume that lost resources it is invalidated and made again. It draws after `App::render`, inside the frame-allocation count, so a console frame that allocated would be reported.

@@ -69,6 +69,22 @@ cleared under the Console. In a Console build a `create()` that fails no
 longer leaves a black window: the Console opens and `app start` tries again.
 `quit` finishes the activity, the same way your `quit_requested()` does.
 
+**From Termux.** A Console build also listens for Termux on this phone
+(`127.0.0.1`, a port made from the package name, and a secret your build
+makes): `make console` in the project shows the Console's lines as they are
+written and runs what you type, `make console CMD='mem'` runs one command.
+It waits for the app, and reconnects when the app restarts. `make
+console-only` starts the app with only the Console running: your `App` is
+created by `app start`, so an app that crashes at start can still be reached.
+The secret is in the APK, which other apps can read, so this keeps out apps
+that are not looking for it, no more: dev builds only. A Console build
+carries the `INTERNET` permission, as a `DEV_LOG` build does.
+
+**The last run's log.** The newest 200 lines are saved to `files/log.txt`
+when the app leaves the screen and when it ends; the next launch moves them
+to `log-previous.txt`, and `log previous` shows how that run ended (a
+`quit`, a swipe away).
+
 **Crash reports.** In a Console build a fatal signal (a segfault, an abort)
 writes a report to the app's private files, `files/crash.txt`: the trace,
 each frame as a library and an offset for `addr2line`, then the last 40 lines

@@ -53,6 +53,16 @@ Console::Console() noexcept
 void Console::print( std::string_view text, Level level ) noexcept
 {
     lines_.push( level, text );
+    if( mirror_ == nullptr ) {
+        return;
+    }
+    // One call a line, as the scrollback splits them.
+    while( !text.empty() ) {
+        const auto end = text.find( '\n' );
+        const auto line = text.substr( 0, end );
+        mirror_( mirror_context_, level, line );
+        text.remove_prefix( end == std::string_view::npos ? text.size() : end + 1 );
+    }
 }
 
 void Console::printf( Level level, const char *format, ... ) noexcept
@@ -65,7 +75,7 @@ void Console::printf( Level level, const char *format, ... ) noexcept
         return;
     }
     const auto length = std::min( static_cast<std::size_t>( written ), format_.size() - 1 );
-    lines_.push( level, { format_.data(), length } );
+    print( { format_.data(), length }, level );
 }
 
 void Console::run( std::string_view line ) noexcept

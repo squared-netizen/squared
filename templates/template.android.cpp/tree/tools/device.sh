@@ -11,6 +11,8 @@
 #   tools/device.sh run-as PACKAGE CMD...   a command as the app, in its private
 #                                           directory (debuggable builds only)
 #   tools/device.sh uninstall PACKAGE
+#   tools/device.sh console-only PACKAGE    start it with only the Console running
+#                                           (a CONSOLE build; adb, or Termux's am)
 #
 # Which device: DEVICE=<serial> when set, as `devices` lists it; otherwise
 # this phone, and only when adb's server is already running and lists it.
@@ -239,7 +241,27 @@ cmd_uninstall() {
   fi
 }
 
-usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
+# The launcher activity with one extra: a CONSOLE build reads it at start and
+# leaves your App uncreated (`app start` creates it). Through adb when it
+# reaches the device, else through Termux's own `am` (termux-am), which needs
+# no adb: Termux is in front, so Android lets it start an activity.
+cmd_console_only() {
+  local package=$1 serial
+  local intent=(start -n "$package/android.app.NativeActivity" --ez squared.console_only true)
+  serial=$(pick)
+  if [ -n "$serial" ]; then
+    say "adb am start" "$package, with only the Console"
+    "$ADB" -s "$serial" shell am "${intent[@]}"
+  elif command -v am >/dev/null 2>&1; then
+    say "am start" "$package, with only the Console"
+    am "${intent[@]}"
+  else
+    die "console-only needs adb or Termux's am: pkg install termux-am"
+  fi
+  say "" "(if it was already running it carries on as it was: quit it first, or app stop)"
+}
+
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
 
 [ $# -ge 1 ] || {
   usage
@@ -275,6 +297,10 @@ case $command in
   uninstall)
     args 1 "uninstall PACKAGE" $#
     cmd_uninstall "$1"
+    ;;
+  console-only)
+    args 1 "console-only PACKAGE" $#
+    cmd_console_only "$1"
     ;;
   -h | --help | help) usage ;;
   *)

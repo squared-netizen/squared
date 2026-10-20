@@ -99,6 +99,57 @@ ifneq ($(CONSOLE),0)
   SQ_CPPFLAGS += $(SQ_CONSOLE_FLAGS)
 endif
 
+# --- the bridge: the Console from Termux -------------------------------------
+#
+#   make console                    the app's Console in this terminal: its log
+#                                   as it is written, and what you type runs
+#   make console CMD='app restart'  one command, its output, and back
+#
+# A CONSOLE build listens on 127.0.0.1 (this device only), on a port made from
+# the package name, so two projects do not collide, for a client that knows a
+# secret. The secret is made once per build directory, kept in
+# $(BUILD)/dev/bridge.conf beside the port, and compiled into the app; `make
+# clean` makes a new one. The app's APK holds it, so it keeps out other apps
+# that are not looking for it, not one that reads this app's APK: dev builds
+# only. sqconsole, the client, is built for this machine (HOST_CXX) from
+# squared/console/client/.
+ifneq ($(CONSOLE),0)
+  SQ_BRIDGE_CONF := $(BUILD)/dev/bridge.conf
+  SQ_BRIDGE_PORT := $(shell printf '%s' '$(SQ_PACKAGE)' | cksum | awk '{ print 20000 + $$1 % 20000 }')
+  $(shell mkdir -p '$(BUILD)/dev'; \
+    grep -qx 'port=$(SQ_BRIDGE_PORT)' '$(SQ_BRIDGE_CONF)' 2>/dev/null || { \
+      secret=$$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n'); \
+      printf 'port=%s\nsecret=%s\npackage=%s\n' '$(SQ_BRIDGE_PORT)' "$$secret" '$(SQ_PACKAGE)' \
+        > '$(SQ_BRIDGE_CONF)'; })
+  SQ_BRIDGE_SECRET := $(shell sed -n 's/^secret=//p' '$(SQ_BRIDGE_CONF)')
+  ifneq ($(words $(SQ_BRIDGE_SECRET)) $(shell printf '%s' '$(SQ_BRIDGE_SECRET)' | wc -c | tr -d ' '),1 32)
+    $(error the bridge secret in $(SQ_BRIDGE_CONF) is not 32 hex digits; delete the file and build again)
+  endif
+  # As two 64-bit numbers, so no quotes travel through make and the shell.
+  SQ_CPPFLAGS += -DSQUARED_BRIDGE_PORT=$(SQ_BRIDGE_PORT) \
+                 -DSQUARED_BRIDGE_SECRET_HIGH=0x$(shell printf '%s' '$(SQ_BRIDGE_SECRET)' | cut -c1-16)ULL \
+                 -DSQUARED_BRIDGE_SECRET_LOW=0x$(shell printf '%s' '$(SQ_BRIDGE_SECRET)' | cut -c17-32)ULL
+endif
+
+SQ_BRIDGE_STATUS = 127.0.0.1:$(SQ_BRIDGE_PORT) (secret in $(SQ_BRIDGE_CONF)); make console
+
+HOST_CXX ?= c++
+SQ_SQCONSOLE := $(BUILD)/host/sqconsole
+
+$(SQ_SQCONSOLE): $(SQ_SQUARED_DIR)/console/client/sqconsole.cpp \
+                 $(wildcard $(SQ_SQUARED_DIR)/console/line_reader.hpp $(SQ_SQUARED_DIR)/console/src/bridge_protocol.hpp)
+	@mkdir -p $(dir $@)
+	@echo "  host c++       sqconsole, for this machine"
+	@$(HOST_CXX) -std=c++20 -O2 -I$(SQ_SQUARED_DIR)/.. $< -o $@
+
+.PHONY: console
+console: $(SQ_SQCONSOLE)
+	@if [ ! -f '$(SQ_BRIDGE_CONF)' ]; then \
+	  echo "make console: this is not a CONSOLE build; build and install one first:" >&2; \
+	  echo "  make CONSOLE=app install   (or CONSOLE := app in local.mk)" >&2; exit 1; \
+	fi
+	@$(SQ_SQCONSOLE) --conf '$(SQ_BRIDGE_CONF)' $(if $(CMD),--run '$(CMD)',)
+
 # --- the framework ----------------------------------------------------------
 
 # Modules that publish headers. A module with no sources still publishes
@@ -199,6 +250,7 @@ squared-core-status:
 	@printf '  %-14s %s\n' "backend" "$(SQUARED_GRAPHICS_BACKEND)"
 	@printf '  %-14s %s\n' "platform" "$(SQUARED_PLATFORM)"
 	@printf '  %-14s %s\n' "console" "$(if $(filter-out 0,$(CONSOLE)),$(CONSOLE) (scrollback $(CONSOLE_SCROLLBACK) bytes, $(CONSOLE_COMMANDS) commands),off (CONSOLE=0))"
+	@printf '  %-14s %s\n' "bridge" "$(if $(filter-out 0,$(CONSOLE)),$(SQ_BRIDGE_STATUS),none (a CONSOLE build has one))"
 	@printf '  %-14s %s\n' "compiled for" "$(if $(strip $(SQ_TARGET)),$(SQ_TARGET),the compiler's default target)"
 	@printf '  %-14s %s\n' "headers" \
 	    "$(if $(strip $(SQ_GL_LIBS)),$(SQ_NDK_INC)  (via idirafter),not needed for the null backend)"

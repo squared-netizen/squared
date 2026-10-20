@@ -43,6 +43,7 @@
 #include <android/configuration.h>
 #include <android/log.h>
 #include <android/keycodes.h>
+#include <android/looper.h>
 #include <android_native_app_glue.h>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -66,6 +67,7 @@
 #endif
 
 // The in-app Console (`make CONSOLE=app`): drawn over the application's frame,
+// and reachable from Termux through its bridge (`make console`; below),
 // showing the log - with DEV_LOG, every dev log line of the main thread, the
 // application's included; without, the lines below. Nothing of it exists in a
 // CONSOLE=0 build. For now it only shows: the keyboard and the gesture that
@@ -78,6 +80,8 @@
 #include <squared/console/copy_command.hpp>
 #include <squared/console/crash_file.hpp>
 #include <squared/console/system_commands.hpp>
+#include <squared/console/bridge.hpp>
+#include <squared/console/log_file.hpp>
 #endif
 
 #if defined(SQUARED_DEV_LOG) || defined(SQUARED_CONSOLE)
@@ -253,6 +257,30 @@ jint call_int(JNIEnv* env, jobject target, const char* name, jint fallback) {
     }
     return result;
 }
+
+#ifdef SQUARED_CONSOLE
+/// The boolean extra `name` of the intent that started the activity; false
+/// when there is none or anything fails. `make console-only` sets
+/// squared.console_only.
+bool intent_flag(JNIEnv* env, jobject activity, const char* name) {
+    if (env == nullptr) return false;
+    jobject intent = call_object(env, activity, "getIntent", "()Landroid/content/Intent;");
+    if (intent == nullptr) return false;
+    jclass type = env->GetObjectClass(intent);
+    jmethodID get = type != nullptr
+                        ? env->GetMethodID(type, "getBooleanExtra", "(Ljava/lang/String;Z)Z")
+                        : nullptr;
+    jstring key = env->NewStringUTF(name);
+    const jboolean value = get != nullptr && key != nullptr
+                               ? env->CallBooleanMethod(intent, get, key, JNI_FALSE)
+                               : JNI_FALSE;
+    if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+    if (key != nullptr) env->DeleteLocalRef(key);
+    if (type != nullptr) env->DeleteLocalRef(type);
+    env->DeleteLocalRef(intent);
+    return value == JNI_TRUE;
+}
+#endif
 
 std::int16_t to_pixels(jint value) {
     return static_cast<std::int16_t>(std::clamp<jint>(value, 0, 4096));
@@ -484,9 +512,27 @@ struct Platform {
             if (!sq::console::install_crash_file(crash_path.data(), &console)) {
                 SQ_LOGW("console: crash reports will not be kept");
             }
+            // The end of every run is kept for the next, not only a crash's:
+            // saved when the app stops (leaves the screen) and when it ends.
+            std::snprintf(log_path.data(), log_path.size(), "%s/log.txt", private_files);
+            std::snprintf(log_previous_path.data(), log_previous_path.size(), "%s/log-previous.txt",
+                          private_files);
+            if (sq::console::keep_previous_log(log_path.data(), log_previous_path.data())) {
+                console.print("console: `log previous` shows how the last run ended");
+            }
         }
         add_console_commands();
         console.show();
+        // `make console-only`: the Console runs, the App waits for `app start`,
+        // so an App that crashes at start can still be reached.
+        if (intent_flag(jni(), activity, "squared.console_only")) {
+            app_stopped = true;
+            SQ_LOGI("console only: your App is not started; app start starts it");
+        }
+#ifdef SQUARED_BRIDGE_PORT
+        looper = native->looper;
+        open_bridge();
+#endif
 #endif
     }
 
@@ -494,6 +540,11 @@ struct Platform {
     Platform& operator=(const Platform&) = delete;
 #ifdef SQUARED_CONSOLE
     ~Platform() {
+#ifdef SQUARED_BRIDGE_PORT
+        console.set_mirror(nullptr, nullptr);
+        bridge.close();
+#endif
+        save_console_log();
         sq::console::remove_crash_file();
 #ifdef SQUARED_DEV_LOG
         sq::dev::set_log_listener(nullptr, nullptr);
@@ -525,6 +576,14 @@ struct Platform {
     /// Where a crash writes its report, and where the last one is kept once shown.
     std::array<char, 512> crash_path{};
     std::array<char, 512> crash_previous_path{};
+    /// Where the end of this run's log is saved, and where the last run's is kept.
+    std::array<char, 512> log_path{};
+    std::array<char, 512> log_previous_path{};
+#ifdef SQUARED_BRIDGE_PORT
+    /// The Console from Termux: `make console` (about 17 KB, no allocation).
+    sq::console::Bridge bridge;
+    ALooper* looper{nullptr};
+#endif
     /// Wrapped rows the view is moved back from the newest, by dragging.
     int console_scroll{0};
     /// Typing goes to the Console: it was opened, or tapped, and not closed since.
@@ -767,6 +826,11 @@ struct Platform {
                                Added::added
                        ? 1
                        : 0;
+        refused +=
+            log_previous_path[0] != '\0' &&
+                    sq::console::add_log_command(console, log_previous_path.data()) != Added::added
+                ? 1
+                : 0;
         refused += console.add("app", "app [stop | start | restart]: the application, in this process",
                                app_command, this) != Added::added ? 1 : 0;
         refused += console.add("quit", "quit: close the application and the console",
@@ -848,6 +912,83 @@ struct Platform {
             out.print("app: app, app stop, app start or app restart", sq::console::Level::error);
         }
     }
+
+    /// The newest 200 lines, for the next run's `log previous`. One small
+    /// file write; when the app leaves the screen, and when it ends.
+    void save_console_log() {
+        if (log_path[0] == '\0') return;
+        if (!sq::console::save_log(console, log_path.data(), 200)) {
+            __android_log_print(ANDROID_LOG_WARN, kTag, "console: could not save the log");
+        }
+    }
+
+#ifdef SQUARED_BRIDGE_PORT
+    /// Listen for Termux's sqconsole on this project's port (mk/pkg_squared_core.mk
+    /// makes the port and the secret; build/dev/bridge.conf holds them), and
+    /// mirror every Console line to it. Its sockets are watched by this
+    /// thread's looper, so it costs nothing while nobody talks to it.
+    void open_bridge() {
+        std::array<char, 33> secret{};
+        std::snprintf(secret.data(), secret.size(), "%016llx%016llx",
+                      static_cast<unsigned long long>(SQUARED_BRIDGE_SECRET_HIGH),
+                      static_cast<unsigned long long>(SQUARED_BRIDGE_SECRET_LOW));
+        const sq::console::BridgeStatus status =
+            bridge.open({.port = SQUARED_BRIDGE_PORT, .secret = {secret.data(), 32}},
+                        {.watch = bridge_watch,
+                         .command = bridge_command,
+                         .connected = bridge_connected,
+                         .context = this});
+        std::fill(secret.begin(), secret.end(), '\0');
+        if (status == sq::console::BridgeStatus::listening) {
+            console.set_mirror(
+                [](void* b, sq::console::Level level, std::string_view line) noexcept {
+                    static_cast<sq::console::Bridge*>(b)->send(level, line);
+                },
+                &bridge);
+            SQ_LOGI("bridge: listening on 127.0.0.1:%d; make console in Termux reaches it",
+                    static_cast<int>(bridge.port()));
+        } else {
+            SQ_LOGW("bridge: not open (%s)",
+                    status == sq::console::BridgeStatus::refused
+                        ? "the port is taken, or the INTERNET permission is missing"
+                        : "the build's secret is malformed");
+        }
+    }
+
+    /// Android's looper calls this when a bridge socket is ready.
+    static int bridge_ready(int fd, int events, void* data) {
+        auto& self = *static_cast<Platform*>(data);
+        static_cast<void>(self.bridge.ready(
+            fd, (events & (ALOOPER_EVENT_INPUT | ALOOPER_EVENT_HANGUP | ALOOPER_EVENT_ERROR)) != 0,
+            (events & ALOOPER_EVENT_OUTPUT) != 0));
+        return 1;  // the bridge stops watching a socket itself, through bridge_watch
+    }
+    static void bridge_watch(void* context, int fd, bool read, bool write) noexcept {
+        auto& self = *static_cast<Platform*>(context);
+        if (self.looper == nullptr) return;
+        if (!read && !write) {
+            ALooper_removeFd(self.looper, fd);
+            return;
+        }
+        ALooper_addFd(self.looper, fd, ALOOPER_POLL_CALLBACK,
+                      (read ? ALOOPER_EVENT_INPUT : 0) | (write ? ALOOPER_EVENT_OUTPUT : 0),
+                      bridge_ready, &self);
+    }
+    static void bridge_command(void* context, std::string_view line) noexcept {
+        static_cast<Platform*>(context)->console.run(line);
+    }
+    static void bridge_connected(void* context, bool replay) noexcept {
+        auto& self = *static_cast<Platform*>(context);
+        // A scripted client (make console CMD=...) asks for no replay, and
+        // gets only its command's lines: no note of its coming either.
+        if (!replay) return;
+        const sq::console::Scrollback& lines = self.console.lines();
+        for (auto at = lines.last(200); at != lines.end(); ++at) {
+            self.bridge.send((*at).level, (*at).text);
+        }
+        SQ_LOGI("bridge: Termux connected");
+    }
+#endif
 
     static void display_command(sq::console::Console& out, const sq::console::Args&,
                                 void* context) noexcept {
@@ -1217,6 +1358,14 @@ void on_command(android_app* app, int32_t command) {
         case APP_CMD_DESTROY:
             SQ_LOGI("destroy");
             break;
+
+#ifdef SQUARED_CONSOLE
+        case APP_CMD_STOP:
+            // Off the screen: it may never come back (swiped away, killed for
+            // memory), so the log is saved now for the next run.
+            platform.save_console_log();
+            break;
+#endif
 
         default:
             break;

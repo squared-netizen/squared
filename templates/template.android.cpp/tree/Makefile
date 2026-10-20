@@ -15,6 +15,9 @@
 #   make run             install, then start it (needs adb)
 #   make logcat          its log, and Android's crash lines (needs adb)
 #   make devices         what adb reaches, and how to connect it to this phone
+#   make console         a CONSOLE build's Console, in this terminal (Termux)
+#   make console-only    start it with only the Console running; `app start` in it
+#                        starts your App
 #   make status          what the build found on this host
 #   make squared-core    build the vendored framework
 #   make android-help    every target and override
@@ -64,13 +67,17 @@ include mk/squared_generated.mk
 #
 #   nc -klu 5555
 #
-# Android refuses sockets without the INTERNET permission, so a DEV_LOG build
+# Android refuses sockets without the INTERNET permission, so a DEV_LOG build,
+# and a CONSOLE build (its bridge to Termux is a socket too: `make console`),
 # uses a copy of the manifest with that one line added. Your manifest is not
 # edited, and a normal build never carries the permission. Resolve a crash
 # address with: addr2line -f -C -e build/lib$(SQ_PROJECT).so <offset>
 ifdef DEV_LOG
 DEV_LOG_PORT ?= 5555
 SQ_CPPFLAGS  += -DSQUARED_DEV_LOG=$(DEV_LOG_PORT)
+endif
+
+ifneq ($(or $(DEV_LOG),$(filter-out 0,$(CONSOLE))),)
 SQ_MANIFEST  := $(BUILD)/dev/AndroidManifest.xml
 
 $(SQ_MANIFEST): sq_android/AndroidManifest.xml
@@ -78,7 +85,7 @@ $(SQ_MANIFEST): sq_android/AndroidManifest.xml
 	@sed 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.INTERNET" />\n\1<application\2|' \
 	    $< > $@
 	@grep -q 'permission.INTERNET' $@ || { \
-	  echo "DEV_LOG: could not add the INTERNET permission: no '<application' line" >&2; \
+	  echo "dev build: could not add the INTERNET permission: no '<application' line" >&2; \
 	  rm -f $@; exit 1; }
 endif
 
