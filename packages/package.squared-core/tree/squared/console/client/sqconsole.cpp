@@ -492,7 +492,13 @@ int run_commands( const Bridge &bridge, const Settings &settings )
     while( !failed && !closed && ( !greeted || finished < expected || settings.until_closed ) ) {
         pollfd ready{ fd, POLLIN, 0 };
         if( ::poll( &ready, 1, answer_seconds * 1000 ) <= 0 ) {
-            std::fprintf( stderr, "sqconsole: no answer for %d s\n", answer_seconds );
+            // Connected, but nothing runs: Android can freeze an app left in
+            // the background, and its socket still accepts.
+            std::fprintf( stderr,
+                          "sqconsole: no answer for %d s; an app in the background can be "
+                          "frozen by Android: bring it to the front, or keep it on screen "
+                          "beside Termux\n",
+                          answer_seconds );
             failed = true;
             break;
         }

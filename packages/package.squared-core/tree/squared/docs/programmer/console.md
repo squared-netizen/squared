@@ -156,6 +156,7 @@ push build/x.lua game.lua      under another name
 | `sqconsole` says | Meaning |
 |---|---|
 | `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
+| `no answer for 30 s; an app in the background can be frozen by Android` | Connected, but the app did not answer: bring it to the front, or keep it on screen beside Termux (split screen) |
 | `the app closed the connection` | It quit or crashed during a `CMD=` run; `log previous` after it starts again |
 | `refused: is build/dev/bridge.conf from the build that is installed?` | The secret did not match: install the build you just made |
 | `saved build/pulled/<name> (N bytes)` | A pull arrived whole |

@@ -4,6 +4,7 @@
 
 #include <squared/console/console.hpp>
 #include <squared/console/copy_command.hpp>
+#include <squared/console/file_commands.hpp>
 #include <squared/console/system_commands.hpp>
 #include <squared/dev/frame_allocations.hpp>
 
@@ -13,6 +14,7 @@
 #include <array>
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
@@ -377,6 +379,21 @@ int main()
     }
 
     std::printf( "system commands: %s | %s | %s\n", mem.c_str(), fds.c_str(), kernel.c_str() );
+
+    // `apk`: the APK this library came from, extracted or loaded in place;
+    // not merely the first .apk mapped (that was framework-res.apk).
+    {
+        std::array<char, 128> apk{};
+        using sq::console::detail::apk_of_library;
+        assert( apk_of_library( "/data/app/~~a==/com.example.demo-b==/lib/arm64/libdemo.so",
+                                apk.data(), apk.size() ) );
+        assert( std::strcmp( apk.data(), "/data/app/~~a==/com.example.demo-b==/base.apk" ) == 0 );
+        assert( apk_of_library( "/data/app/x/base.apk!/lib/arm64-v8a/libdemo.so", apk.data(),
+                                apk.size() ) );
+        assert( std::strcmp( apk.data(), "/data/app/x/base.apk" ) == 0 );
+        assert( !apk_of_library( "/usr/bin/console_test", apk.data(), apk.size() ) );
+        assert( !apk_of_library( "/data/app/x/lib/arm64/libdemo.so", apk.data(), 8 ) );
+    }
 
     std::printf( "console: all assertions passed  sizeof(Console)=%zu (scrollback %zu)  "
                  "sizeof(InputLine)=%zu  sizeof(Commands)=%zu\n",

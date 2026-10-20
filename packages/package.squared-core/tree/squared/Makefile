@@ -4,6 +4,8 @@
 #   make BUILD=debug     unoptimised with symbols
 #   make headers         compile every public header on its own
 #   make lint            format, source-rule and clang-tidy checks
+#   make docs            write the API reference, docs/reference/ (clang-doc)
+#   make docs-check      say whether docs/reference/ is current
 #   make test            every module's tests; each runs only if it changed
 #                        since it last passed (build/common.mk, run_tests)
 #   make retest          every test again, changed or not
@@ -26,7 +28,7 @@ MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
            gui messaging time dev console
 
-.PHONY: all clean headers lint test retest $(MODULES)
+.PHONY: all clean docs docs-check headers lint test retest $(MODULES)
 
 # The modules with tests, in the order they are run.
 TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console
@@ -58,6 +60,13 @@ retest:
 # program name. Run through bash: a vendored copy can lose its executable bit.
 lint:
 	bash tools/lint.sh $(LINT_ARGS)
+
+# The API reference: committed, so it reads on GitHub; made only by this.
+docs:
+	bash tools/docs.sh
+
+docs-check:
+	bash tools/docs.sh --check
 
 clean:
 	@for module in $(MODULES); do $(MAKE) -C $$module clean; done

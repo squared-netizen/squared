@@ -41,6 +41,36 @@ Memory: none of this runs in the application, so priority 1 doesn't apply. The s
 
 The squared-pg repo keeps its own `tools/docs-archive.sh` for squared-pg's docs. The two are separate files on purpose. squared-pg's version reads `VERSION` from the squared-pg root, which a vendored framework doesn't have.
 
+## docs.sh
+
+Writes the API reference, `docs/reference/`, with clang-doc from the comments
+in the public headers. `make docs` runs it; `make docs-check` runs it with
+`--check`, which writes nothing and exits 1 when the committed pages are not
+what the headers say now. `--missing` lists the public functions and types
+with no comment (constructors, destructors and assignments are left out).
+
+- **Committed, on purpose** (decided 2026-10-19): the reference reads on
+  GitHub without building anything. So it is made again in the same commit as
+  any change to a public header's declarations or comments, and never edited.
+- **Input:** one generated translation unit per workhorse header (the `.hpp`
+  files at a module's root), each including just that header, so the reference
+  is what a user can include. The headers are self-contained (`make headers`),
+  so these compile anywhere with `-std=c++20 -I` the tree.
+- **Tidying:** "Defined at" becomes a link to the header's line; `_Bool` reads
+  `bool`, `basic_string` and `basic_string_view` read `std::string` and
+  `std::string_view`; lists, and a namespace page's enums and functions, are
+  sorted (clang-doc merges in parallel, and their order changed from run to
+  run: five runs in a row now match); the pages of anonymous
+  types and the global namespace are dropped, and a namespace page loses its
+  description (clang-doc reads every comment, `//` too, and gave `sq` the one
+  above `namespace sq::console::bridge_protocol`).
+- **Versions:** the pages depend on clang-doc's version, so `README.md` records
+  it and `--check` compares only with the same major version.
+- **Limits of clang-doc** (18 checked): a member variable's comment is not
+  shown; an override shows no text (its comment is on the base); enums appear
+  on the namespace page.
+- Memory: a tool, so priority 1 does not apply. About 25 s for 92 headers here.
+
 ## format.sh
 
 Runs clang-format over every `.hpp` and `.cpp` under `squared/`, skipping

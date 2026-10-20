@@ -18,6 +18,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [Build and toolchain](build-and-toolchain.md)
 - [Code style](code-style.md) &mdash; CDDA's formatting rules, as
   `squared/.clang-format`, and where squared differs
+- [API reference](../reference/README.md) &mdash; made from the public
+  headers' comments by `tools/docs.sh` ([tools.md](tools.md#docssh))
 - [Lint](lint.md) &mdash; `make lint`: clang-tidy, the source rules and their
   baseline, and the planned frame-allocation counter
 - [Refactor notes](refactor-notes.md) &mdash; how the split was done and how it

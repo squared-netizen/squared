@@ -1,0 +1,251 @@
+# namespace gui
+
+## Records
+
+* [Actor](Actor.md)
+* [BatchPainter](BatchPainter.md)
+* [ButtonGroup](ButtonGroup.md)
+* [ButtonStyle](ButtonStyle.md)
+* [Button](Button.md)
+* [Cell](Cell.md)
+* [CheckBoxStyle](CheckBoxStyle.md)
+* [CheckBox](CheckBox.md)
+* [ColorDrawable](ColorDrawable.md)
+* [Dialog](Dialog.md)
+* [Drawable](Drawable.md)
+* [FontResource](FontResource.md)
+* [Group](Group.md)
+* [Image](Image.md)
+* [InputEvent](InputEvent.md)
+* [Insets](Insets.md)
+* [LabelStyle](LabelStyle.md)
+* [Label](Label.md)
+* [LinearLayout](LinearLayout.md)
+* [MarginContainer](MarginContainer.md)
+* [NinePatchDrawable](NinePatchDrawable.md)
+* [NinePatchSplits](NinePatchSplits.md)
+* [Painter](Painter.md)
+* [PanelStyle](PanelStyle.md)
+* [Panel](Panel.md)
+* [PointerEvent](PointerEvent.md)
+* [ProgressBarStyle](ProgressBarStyle.md)
+* [ProgressBar](ProgressBar.md)
+* [RadioButton](RadioButton.md)
+* [Rectangle](Rectangle.md)
+* [RegionDrawable](RegionDrawable.md)
+* [ScrollPane](ScrollPane.md)
+* [Separator](Separator.md)
+* [SizeHints](SizeHints.md)
+* [Size](Size.md)
+* [SkinLoadIssue](SkinLoadIssue.md)
+* [SkinLoadLimits](SkinLoadLimits.md)
+* [SkinLoadReport](SkinLoadReport.md)
+* [Skin](Skin.md)
+* [SliderStyle](SliderStyle.md)
+* [Slider](Slider.md)
+* [Stack](Stack.md)
+* [Stage](Stage.md)
+* [Table](Table.md)
+* [TextFieldStyle](TextFieldStyle.md)
+* [TextField](TextField.md)
+* [ToggleButton](ToggleButton.md)
+* [TooltipConfig](TooltipConfig.md)
+* [Ui](Ui.md)
+* [Widget](Widget.md)
+* [WindowStyle](WindowStyle.md)
+* [Window](Window.md)
+
+
+## Functions
+
+### actor_cast
+
+*Interface * actor_cast(Actor * actor)*
+
+*Defined at [gui/actor.hpp:224](../../../../gui/actor.hpp#L224)*
+
+
+
+**brief** Downcast an actor to a derived interface without RTTI.
+
+**Interface** Type publishing a static `actor_interface_id` constant and overriding Actor::actor_interface().
+
+**actor** Actor to inspect; null is accepted and yields null.
+
+**return** Pointer to the interface, or null when the actor does not publish it.
+
+**note** One virtual call. This replaces dynamic_cast on every actor and GUI traversal, so the framework builds with `-fno-rtti`.
+
+### actor_cast
+
+*const Interface * actor_cast(const Actor * actor)*
+
+*Defined at [gui/actor.hpp:239](../../../../gui/actor.hpp#L239)*
+
+
+
+**brief** Downcast a read-only actor to a derived interface without RTTI.
+
+**Interface** Type publishing a static `actor_interface_id` constant.
+
+**actor** Actor to inspect; null is accepted and yields null.
+
+**return** Pointer to the interface, or null when the actor does not publish it.
+
+### load_libgdx_skin
+
+*bool load_libgdx_skin(Skin & destination, int json, const int & resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
+
+
+
+**brief** Load a skin while retaining fonts as descriptor-only resources.
+
+ This compatibility overload preserves existing Painter implementations. Font-aware applications should provide SkinFontResolver through the full overload.
+
+**destination** Skin replaced only after a successful complete import.
+
+**json** Complete relaxed libGDX skin JSON document.
+
+**resolver** Callback resolving drawable resource names.
+
+**report** Diagnostics and resource counts, replaced for this call.
+
+**limits** Explicit byte, depth, resource, and name bounds.
+
+**return** true when the skin committed; false with destination unchanged.
+
+### load_libgdx_skin
+
+*bool load_libgdx_skin(Skin & destination, int json, const int & resolver, const int & font_resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
+
+
+
+**brief** Load the supported libGDX skin subset transactionally from memory.
+
+ The relaxed libGDX JSON dialect is normalized under explicit limits. The destination is replaced only when every supported style validates and every referenced drawable resolves.
+
+**destination** Skin receiving the loaded colors, drawables, and styles; untouched byte-for-byte when the load fails.
+
+**json** Complete skin JSON document in the relaxed libGDX dialect.
+
+**resolver** Callback resolving every referenced resource name.
+
+**font_resolver** Callback resolving declared bitmap-font resources.
+
+**report** Diagnostics and counted resources collected during loading.
+
+**limits** Explicit resource limits applied to the document.
+
+**return** true when the load committed; false when any error occurred.
+
+**note** Threading: caller must own both the Skin and the resolver.
+
+### resolve_atlas_drawable
+
+*int resolve_atlas_drawable(const graphics::TextureAtlas & atlas, int resource_name)*
+
+
+
+**brief** Create a region or nine-patch drawable for one loaded atlas region.
+
+**atlas** Atlas owning the requested region; must outlive the result.
+
+**resource_name** Name and optional index of the atlas region.
+
+**return** Drawable referencing the atlas region, or an empty pointer when the region is absent or cannot be converted.
+
+## Enums
+
+| enum class Alignment |
+
+--
+
+| start |
+| center |
+| end |
+
+
+*Defined at [gui/src/alignment.hpp:9](../../../../gui/src/alignment.hpp#L9)*
+
+
+
+**brief** Per-cell alignment relative to the cell box. 
+
+| enum class Direction |
+
+--
+
+| horizontal |
+| vertical |
+
+
+*Defined at [gui/src/direction.hpp:9](../../../../gui/src/direction.hpp#L9)*
+
+
+
+**brief** Main stacking axis of a linear layout. 
+
+| enum class InputPhase |
+
+--
+
+| capture |
+| target |
+| bubble |
+
+
+*Defined at [gui/src/input_phase.hpp:9](../../../../gui/src/input_phase.hpp#L9)*
+
+
+
+**brief** Dispatch phase of an event inside a Stage. 
+
+| enum class InputType |
+
+--
+
+| pointer_move |
+| pointer_down |
+| pointer_up |
+| pointer_cancel |
+| key_down |
+| key_up |
+| navigation |
+
+
+*Defined at [gui/src/input_type.hpp:9](../../../../gui/src/input_type.hpp#L9)*
+
+
+
+**brief** Event kind carried by one InputEvent. 
+
+| enum class PointerAction |
+
+--
+
+| move |
+| down |
+| up |
+| cancel |
+
+
+*Defined at [gui/src/pointer_action.hpp:9](../../../../gui/src/pointer_action.hpp#L9)*
+
+
+
+**brief** Pointer action delivered to widgets. 
+
+| enum class SkinLoadSeverity |
+
+--
+
+| warning |
+| error |
+
+
+*Defined at [gui/src/skin_load_severity.hpp:11](../../../../gui/src/skin_load_severity.hpp#L11)*
+
+
+
+**brief** Severity of one skin-loading diagnostics entry.
+

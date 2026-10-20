@@ -1,11 +1,13 @@
 #include <squared/console/file_commands.hpp>
 #include <squared/console/line_reader.hpp>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <cstdint>
@@ -30,9 +32,18 @@ Files files{ nullptr, nullptr };
 
 using Path = std::array<char, 512>;
 
-/// The installed APK: the first mapping of a file ending in ".apk".
+/// The installed APK: the one this library came from (dladdr), else the
+/// first mapping of a `base.apk`. Not merely the first `.apk` mapped: that is
+/// the system's framework-res.apk (found on the phone, 2026-10-19).
 bool apk_path( Path &out ) noexcept
 {
+    Dl_info self{};
+    if( ::dladdr( reinterpret_cast<const void *>( &add_file_commands ), &self ) != 0 &&
+        self.dli_fname != nullptr &&
+        detail::apk_of_library( self.dli_fname, out.data(), out.size() ) &&
+        ::access( out.data(), R_OK ) == 0 ) {
+        return true;
+    }
     const int fd = ::open( "/proc/self/maps", O_RDONLY | O_CLOEXEC );
     if( fd < 0 ) {
         return false;
@@ -45,8 +56,7 @@ bool apk_path( Path &out ) noexcept
             return;
         }
         const std::string_view path = line.substr( slash );
-        if( path.size() > 4 && path.substr( path.size() - 4 ) == ".apk" &&
-            path.size() < out.size() ) {
+        if( path.ends_with( "/base.apk" ) && path.size() < out.size() ) {
             std::copy( path.begin(), path.end(), out.begin() );
             out[path.size()] = '\0';
             found = true;
@@ -218,5 +228,29 @@ std::size_t add_file_commands( Console &console, const char *home, Bridge *bridg
                    : 0;
     return refused;
 }
+
+namespace detail
+{
+
+bool apk_of_library( std::string_view library, char *out, std::size_t size ) noexcept
+{
+    std::string_view apk;
+    std::string_view tail;
+    if( const auto bang = library.find( ".apk!/" ); bang != std::string_view::npos ) {
+        apk = library.substr( 0, bang + 4 );
+    } else if( const auto lib = library.rfind( "/lib/" );
+               lib != std::string_view::npos &&
+               library.find( '/', lib + 5 ) != std::string_view::npos ) {
+        apk = library.substr( 0, lib );
+        tail = "/base.apk";
+    } else {
+        return false;
+    }
+    const int length = std::snprintf( out, size, "%.*s%.*s", static_cast<int>( apk.size() ),
+                                      apk.data(), static_cast<int>( tail.size() ), tail.data() );
+    return length > 0 && static_cast<std::size_t>( length ) < size;
+}
+
+} // namespace detail
 
 } // namespace sq::console

@@ -4,6 +4,22 @@ Scripts that ship with the framework in `squared/tools/`. In a generated project
 
 Developer side: [developer/tools.md](../developer/tools.md).
 
+## docs.sh
+
+`make docs` (or `squared/tools/docs.sh`) writes the API reference,
+[docs/reference/](../reference/README.md): a page for every public type, with
+each function's signature, its comment, and a link to the line in the header.
+It is made from the headers' comments by clang-doc (`pkg install clang` in
+Termux), and committed, so it reads on GitHub without a build.
+
+```sh
+make docs          # write docs/reference/
+make docs-check    # is it current? exit 1 if a header changed since
+squared/tools/docs.sh --missing   # what has no comment yet
+```
+
+Do not edit the pages: change the comment in the header and run it again.
+
 ## docs-archive.sh
 
 Zips documentation into one archive, for reading on another device or sharing.

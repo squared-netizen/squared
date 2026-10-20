@@ -7,6 +7,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [Include layout](include-layout.md) &mdash; which header to reach for
 - [Building](building.md) &mdash; g++ and make, on desktop Linux and Termux
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/`, and the workspace wrappers that run them
+- [API reference](../reference/README.md) &mdash; every public type and function with its comment, made from the headers by `make docs`
 
 ## Modules
 
