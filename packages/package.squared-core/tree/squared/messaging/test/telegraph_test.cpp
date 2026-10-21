@@ -295,7 +295,7 @@ void held_back()
     CHECK( t.state( names::ticks, 2 ) == SendResult::sent ); // flushed first, then sent
     CHECK( ui.drain() == 2 && ui.value( names::ticks ) == 2 );
 
-    // Distinct addresses: the pending table fills, then full (the model waits, 6.6c).
+    // Distinct addresses: the pending table fills, then full (at once inline; a thread waits first).
     for( std::int64_t i = 0; i < ring; ++i ) {
         CHECK( t.state( names::ticks, i ) == SendResult::sent );
     }

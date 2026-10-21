@@ -99,6 +99,28 @@ ifneq ($(CONSOLE),0)
   SQ_CPPFLAGS += $(SQ_CONSOLE_FLAGS)
 endif
 
+# --- the Telegraph's capacities ---------------------------------------------
+#
+#   TELEGRAPH_RING=<n>         telegrams each way (256)
+#   TELEGRAPH_DATA=<bytes>     text and uid lists each way (8192)
+#   TELEGRAPH_PENDING=<n>      states held back while the ring is full (256)
+#   TELEGRAPH_CACHE=<n>        latest values on the UI side (512)
+#   TELEGRAPH_CACHE_TEXT=<bytes>   their text over 16 bytes (8192)
+#   TELEGRAPH_LISTS=<n>        virtualized lists a model declares (16)
+#   TELEGRAPH_LIST_VIEW=<n>    the most rows a list's view holds (128)
+#   TELEGRAPH_WAIT_MS=<ms>     how long the model waits for room (100)
+#
+# The defaults are in squared/messaging/src/telegraph_config.hpp, one place;
+# only the ones set here are passed, so a default build adds no flags. They
+# reach the application and the framework alike (the application makes the
+# TelegraphLine, so both must agree on its layout), and the framework's stamp,
+# so changing one rebuilds both. RING, DATA, PENDING and CACHE must be powers
+# of two: the framework checks when it compiles.
+SQ_TELEGRAPH_KNOBS := RING DATA PENDING CACHE CACHE_TEXT LISTS LIST_VIEW WAIT_MS
+SQ_TELEGRAPH_SIZES := $(strip $(foreach k,$(SQ_TELEGRAPH_KNOBS),\
+    $(if $(TELEGRAPH_$(k)),-DSQUARED_TELEGRAPH_$(k)=$(TELEGRAPH_$(k)))))
+SQ_CPPFLAGS += $(SQ_TELEGRAPH_SIZES)
+
 # --- the bridge: the Console from Termux -------------------------------------
 #
 #   make console                    the app's Console in this terminal: its log
@@ -187,6 +209,10 @@ SQ_SQUARED_LIBS := \
 SQ_CPPFLAGS += $(SQ_SQUARED_INC)
 SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 
+# The model's thread (messaging's ModelRunner). Android's C library and glibc
+# 2.34 on have threads in libc and take this as a no-op; an older glibc needs it.
+SQ_LDLIBS   += -pthread
+
 # --- targets ----------------------------------------------------------------
 
 # Build the vendored framework with the same toolchain, backend and platform
@@ -211,7 +237,7 @@ SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 # change) the framework is cleaned before it is built: archives compiled for
 # one API level or one libc++ linked into a library for another would link
 # without complaint and fail on the device.
-SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
+SQ_SQUARED_FLAGS := $(CXX) $(SQ_TARGET) | $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES) $(SQ_TELEGRAPH_SIZES) | $(SQUARED_GRAPHICS_BACKEND) $(SQUARED_PLATFORM)
 SQ_SQUARED_STAMP := $(SQ_SQUARED_DIR)/build/release/.project-flags
 
 .PHONY: squared-core squared-core-clean squared-core-status
@@ -226,7 +252,7 @@ squared-core:
 	fi
 	@$(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) \
 	    CXX="$(strip $(CXX) $(SQ_TARGET))" \
-	    CXXFLAGS_EXTRA="$(strip $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES))" \
+	    CXXFLAGS_EXTRA="$(strip $(SQ_CXX_INC) $(SQ_CONSOLE_SIZES) $(SQ_TELEGRAPH_SIZES))" \
 	    SQUARED_GRAPHICS_BACKEND=$(SQUARED_GRAPHICS_BACKEND) \
 	    SQUARED_PLATFORM=$(SQUARED_PLATFORM) \
 	    SQUARED_EXTERNAL_INCLUDES="$(if $(strip $(SQ_GL_LIBS)),-idirafter $(SQ_NDK_INC),)"
@@ -254,6 +280,7 @@ squared-core-status:
 	@printf '  %-14s %s\n' "backend" "$(SQUARED_GRAPHICS_BACKEND)"
 	@printf '  %-14s %s\n' "platform" "$(SQUARED_PLATFORM)"
 	@printf '  %-14s %s\n' "console" "$(if $(filter-out 0,$(CONSOLE)),$(CONSOLE) (scrollback $(CONSOLE_SCROLLBACK) bytes, $(CONSOLE_COMMANDS) commands),off (CONSOLE=0))"
+	@printf '  %-14s %s\n' "telegraph" "$(if $(SQ_TELEGRAPH_SIZES),$(SQ_TELEGRAPH_SIZES),the defaults (squared/messaging/src/telegraph_config.hpp))"
 	@printf '  %-14s %s\n' "bridge" "$(if $(filter-out 0,$(CONSOLE)),$(SQ_BRIDGE_STATUS),none (a CONSOLE build has one))"
 	@printf '  %-14s %s\n' "compiled for" "$(if $(strip $(SQ_TARGET)),$(SQ_TARGET),the compiler's default target)"
 	@printf '  %-14s %s\n' "headers" \

@@ -3,8 +3,9 @@
 The Telegraph's parts, rebuilt in Sprint 6 to the app model: names and
 addresses (6.1), keys (6.1b), the 32-byte telegram and its text form (6.2),
 the ring between two threads (6.3), the latest-value cache (6.4), both ends
-of a virtualized list (6.5), and the Telegraph single-threaded (6.6a; its
-thread is 6.6c). Nothing here allocates.
+of a virtualized list (6.5), the Telegraph (6.6a) and the model's thread
+with its wakes (6.6c). Nothing here allocates but `std::thread`'s state, once
+at start.
 
 Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 
@@ -14,13 +15,15 @@ Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 messaging/
   name.hpp address.hpp name_table.hpp key.hpp telegram.hpp telegram_data.hpp
   telegram_ring.hpp telegram_text.hpp value_cache.hpp model_list.hpp
-  list_window.hpp telegraph.hpp messaging.hpp
-  src/   verb.hpp value_type.hpp data_ref.hpp telegraph_config.hpp (supporting); address.cpp,
-         name_table.cpp, telegram.cpp, telegram_data.cpp, telegram_ring.cpp,
-         telegram_text.cpp, value_cache.cpp, model_list.cpp, list_window.cpp,
-         telegraph.cpp
+  list_window.hpp telegraph.hpp model_runner.hpp messaging.hpp
+  src/   verb.hpp value_type.hpp data_ref.hpp telegraph_config.hpp wake.hpp
+         (supporting); address.cpp, name_table.cpp, telegram.cpp,
+         telegram_data.cpp, telegram_ring.cpp, telegram_text.cpp,
+         value_cache.cpp, model_list.cpp, list_window.cpp, telegraph.cpp,
+         wake.cpp, model_runner.cpp
   test/  address_test.cpp, telegram_test.cpp, telegram_ring_test.cpp,
-         value_cache_test.cpp, list_test.cpp, telegraph_test.cpp
+         value_cache_test.cpp, list_test.cpp, telegraph_test.cpp,
+         telegraph_thread_test.cpp
 ```
 
 **The old dispatcher was removed (2026-10-20),** 34 files: `MessageDispatcher`,
@@ -417,14 +420,15 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   `bound_from` (added to `ValueCache` with `bindings`; each flushed entry is
   unbound and left to be evicted). Pending text is as large as a ring's data,
   so whatever a ring takes the table can hold (both refuse over a quarter).
-  When every entry is held, `full`: the model waits (6.6c).
+  When every entry is held, `full`, after the model's thread waits for the
+  UI to drain (6.6c, below).
 - **Events never overtake states.** An `event` is not held back (each one
   counts); while states wait it is `full`. Single-threaded, this guard and
   the state's "same address waits behind" are reached only when the flush
   just failed, so the ring is full and the push would fail anyway; they
   matter once the UI drains between the flush and the push. So a planted bug
-  in the event guard passes the single-threaded test: the two-thread tests of
-  6.6c must catch it.
+  in the event guard passes the single-threaded test; the two-thread test of
+  6.6c catches it.
 - **Lifecycle as bits.** The UI end ORs a bit into one atomic word (low
   memory, background, foreground, quit) and stores whether the app is now
   visible and the time away. The model's turn takes the word and calls the
@@ -444,10 +448,14 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   cache (a value the cache cannot keep is counted there), events to the
   handler's `event` if it has one. `value(key)` reads the cache as the key's
   type; a uid list is read with `find` (its bytes may be unaligned).
-- **Not yet:** the model thread, the eventfd wakes, bounded waits, `tick` (6.6c);
-  a project's make variables for the knobs (6.6c); `set` coalesced per frame
-  (the Stage's frame, Sprint 7); names registered for the text form (the
-  dev-log tap, 6.7).
+- **Not yet:** `set` coalesced per frame (the Stage's frame, Sprint 7); the
+  looper watching `wake_fd` (Sprint 7); names registered for the text form
+  (the dev-log tap, 6.7).
+- **The knobs as make variables:** `mk/pkg_squared_core.mk` passes
+  `TELEGRAPH_<KNOB>=<n>` as `-DSQUARED_TELEGRAPH_<KNOB>=<n>` to the app, the
+  framework (`CXXFLAGS_EXTRA`) and the framework's flags stamp, only for the
+  ones set: the app makes the line, so both must agree on its layout, and a
+  change rebuilds both.
 - **Standard library:** `std::array`, `std::optional`, `std::atomic`,
   `std::span`, `std::unique_ptr` (in tests and the App only). Passed over:
   `std::function` for the model (a template and `requires`), a virtual base
@@ -471,7 +479,133 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   unbound, a list's view under the wrong name, a coalesced state counted as
   new, a refused `do` using a correlation, background and foreground in a
   fixed order. Not caught single-threaded, as above: an event overtaking held
-  states. g++ and clang.
+  states (caught on two threads, 6.6c). g++ and clang.
+
+## The model's thread (6.6c)
+
+`ModelRunner<M>` (`model_runner.hpp`, `src/model_runner.cpp`), the wakes
+(`src/wake.hpp`, `src/wake.cpp`) and the bounded waits (`telegraph.cpp`).
+Decided 2026-10-21 ("we go with these changes"): the model waits 100 ms for
+room, then `full`, counted; a `std::thread` named `model`, default stack; the
+eventfd logic tested with plain `poll` on two threads under ThreadSanitizer,
+the looper's wiring left to Sprint 7.
+
+- **Wakes.** `Wake` is one `eventfd` (`EFD_NONBLOCK | EFD_CLOEXEC`):
+  `signal` writes 1, `clear` reads the counter back to 0, `wait` polls it.
+  The line has two, the model's and the UI's. Chosen over a pipe (one
+  descriptor, not two, and signals coalesce in the counter), a
+  `std::condition_variable` (it needs a mutex the UI would take, and it
+  cannot be polled), and `std::atomic::wait` (it cannot be polled either):
+  the UI's wake must sit in the same `poll` as the looper's other
+  descriptors (`ALooper_addFd`, Sprint 7), and the model's may later share a
+  `poll` with a pty or a child's pipes. Priority 2: one wait for everything a
+  thread sleeps on. If `eventfd` fails, `fd()` is -1 and a wait only times
+  out: degraded, never stuck forever.
+- **No wakeup lost.** Three flags on the line: `model_sleeping_` (until the
+  UI sends or signals), `model_waiting_` (until the UI drains), and
+  `ui_sleeping_` (until the model sends). The sleeper stores its flag, fences
+  (`seq_cst`), looks for work, and sleeps only if there is none. The sender
+  pushes, fences, reads the flag, and signals if it is set. With a fence on
+  each side, one of them sees the other: either the sleeper's fence comes
+  first in the single total order, and the sender's read sees the flag, or
+  the sender's comes first, and the sleeper's look sees the push. The sender
+  takes the flag (`exchange(false)`) as it signals, so a burst of sends costs
+  one system call, not one each. A stale signal can only cause one extra
+  turn.
+- **Where the fences are.** The UI fences on every send and signal (input:
+  a few a frame) and once after a `drain` that took something. The model does
+  not fence per telegram: each push to the UI reads `ui_sleeping_` relaxed
+  and signals if it is set (the quick look), and the fenced look happens at
+  the end of every turn (`idle`) and before every wait. So a UI that fell
+  asleep a moment ago is woken at the turn's end at the latest. Priority 3: a
+  fence costs tens of nanoseconds, and a simulation's turn may send thousands
+  of states. Priority 1 is untouched either way.
+
+| Who | Wakes | When |
+|---|---|---|
+| UI `set`, `do_`, `view` | the model, if sleeping | after the push |
+| UI lifecycle (`background`, `foreground`, `low_memory`, `quit`) | the model, if sleeping or waiting for room | after the bit is set: quit ends a wait |
+| UI `drain` | the model, if waiting for room (or sleeping on held states) | after it took one or more |
+| model push to the UI | the UI, if sleeping | quick look on each push; fenced look at each turn's end and before each wait |
+
+- **`idle(timeout)`**, the model between turns: flush what is held; set
+  `model_sleeping_`, and `model_waiting_` too if states are still held;
+  fence; wake the UI for what this turn sent; then look for work: a
+  telegram from the UI, a lifecycle bit, or (if states are held) a flush that
+  now sends some. Sleep on the model's wake only if there is none, until
+  signalled or `timeout` (the next tick; -1 for none). Clear both flags.
+- **Bounded waits.** `send_state` and `send_event` try once (`try_state`,
+  `try_event`: the 6.6a bodies), and on `full` call `wait_for_room` with that
+  try as the attempt. Inline (no runner thread) or with `TELEGRAPH_WAIT_MS`
+  at 0, it returns at once. Otherwise it counts a wait and loops: set
+  `model_waiting_`, fence, wake the UI (room frees only when it drains), try;
+  stop on success, on a quit bit (peeked, not taken: the next turn takes
+  it), or at the deadline; else sleep on the model's wake for the time left
+  and clear it. A wait that ends unsuccessful is a `full`, counted
+  (`full_`); inline `full`s are counted too. Both counters are atomics
+  written by the model, read by `wait_stats()`. An event still never
+  overtakes held states: its attempt is the whole guarded try.
+- **`ModelRunner<M>`.** On its own thread: it claims the line (one runner
+  to a line, asserted), sets `threaded_` before the thread starts (the
+  thread's start orders it), and the thread's body names the thread, makes
+  `M` in the runner's `std::optional<M>` from copies of the arguments (an
+  init-capture pack: `std::thread`'s rule, `std::ref` for a reference), runs
+  `start`, then turns until `quitting()`: `deliver`, `tick` if due, `idle`
+  until the next tick. It destroys `M` on the same thread. The model lives in
+  the runner, not on the thread's stack: a large model cannot overflow the
+  stack, and its size is part of the App's footprint, known before `main`
+  (priority 1). The destructor calls `quit()` (which wakes the model, waiting
+  or sleeping) and joins. Inline: `M` is made in the constructor on the
+  calling thread and started; `turn()` is `deliver` then `tick` if due; the
+  destructor quits and runs one last turn, so the model saves either way.
+- **Ticks.** `detail::TickClock`, on the steady clock: the first tick comes
+  a whole interval after an interval is first seen or changed; each step is
+  the time since the last, clamped to 0.25 s (a debugger, a suspended app);
+  a clock that fell behind starts the cadence again instead of bursting to
+  catch up. A model without `tick` ignores `tick_every`.
+- **The thread's name** is set with `pthread_setname_np` (glibc and bionic
+  both; 15 characters at most), for `top -H`, `ps -T` and debuggers.
+- **Standard library:** `std::thread`, `std::optional` (the model in place),
+  `std::chrono::steady_clock`, `std::atomic` and `std::atomic_thread_fence`.
+  Passed over: `std::condition_variable` and `std::atomic::wait` (above),
+  `std::function` for the model's hooks (a template and `requires`), and raw
+  `pthread_create` (`std::thread` is the standard spelling, and its one
+  allocation, below, happens once at start).
+- **Patterns:** the runner with the ring is an Active Object: the model's
+  thread and its queue, the UI's sends as its requests. The line stays a
+  Mediator.
+- **Known limitations.** `eventfd` is Linux's, which Android is; another
+  platform needs only its own `Wake`, the one class to port. ThreadSanitizer
+  does not model standalone fences (GCC says so with `-Wtsan`): it checks the
+  data, which acquire and release on the ring counters order, while the
+  flags' protocol rests on the argument above and on the planted bugs below.
+  Android's clang ships no ThreadSanitizer runtime, so it runs on desktop
+  Linux. The flags share cache lines with the rest of the line: each is
+  written once a sleep, so 128 bytes of alignment would buy nothing
+  measurable.
+- **Tested** (`test/telegraph_thread_test.cpp`, every wait bounded so a lost
+  wakeup fails a `CHECK` instead of hanging): the tick clock alone (due,
+  clamped, no burst after a stall); 2,000 round trips, each a sleep and a
+  wake on both sides, with no allocation on either; an idle model using
+  under 50 ms of CPU in 200 ms; `ready_to_sleep` refusing while something
+  waits; ticks at 10 ms counted over 150 ms; the wait timing out (a ring's
+  worth sent, then `full` after at least 95 ms, counted); the wait ended by
+  drains (three rings' worth sent, none refused, well inside one deadline);
+  60 rounds of 300 held states and an event, the UI draining meanwhile, the
+  event never ahead of a state; 20 rounds of 300 states alone, the held ones
+  arriving with nothing sent after them; `low_memory` waking a sleeping
+  model; quit saving once, the model made and destroyed on its own thread,
+  named `model`; quit ending a wait for room (1,700 sends that would take
+  170 s, done within 60 ms); the inline runner (`full` at once, counted, no
+  wait; saving at its end). Clean under ThreadSanitizer, AddressSanitizer and
+  UndefinedBehaviorSanitizer (g++; this host's clang has no sanitizer
+  runtimes) and warning-free with g++ and clang, 40 runs serially and 32 four
+  at a time. Planted bugs caught, each by its own check: no wake on a
+  UI send, no wake on a drain, quit not ending a wait, a lifecycle signal
+  waking only a sleeper, an event overtaking held states (the 6.6a guard),
+  a model that spins, the UI never woken by the model, no wait for room, a
+  wait with no deadline, ticks unclamped, and `idle` forgetting what it
+  holds.
 
 ## Memory
 
@@ -487,7 +621,10 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
 | `ValueCache` | 88, plus the storage it is given |
 | `ModelList` | 96, plus 4 bytes a row of its window (and a shared scratch as large) |
 | `ListWindow` | 24 |
-| `TelegraphLine` | 87,936 at the default knobs, every array inside (the two ends are a reference each) |
+| `TelegraphLine` | 87,936 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and two descriptors fit its padding |
+| `Wake` | 4 (a descriptor) |
+| `WaitStats` | 8 |
+| `ModelRunner<M>` | 40 plus `std::optional<M>` (`M` and a flag, rounded to `M`'s alignment): the line's reference, the tick clock, the thread; 48 for an empty model |
 
 Nothing allocates. At the spec's defaults a ring's storage is 8 KB of slots
 (`TELEGRAPH_RING`, 256) and 8 KB of data (`TELEGRAPH_DATA`), 16 KB a
@@ -497,3 +634,9 @@ estimated 24; the index is the difference). The Telegraph (6.6) will own
 them. CDDA-sized (4,096 entries, 64 KB of text): 128 + 16 + 64 = 208 KB.
 Lists: 16 of 128 rows, 16 &times; (96 + 512) bytes and one 512-byte
 scratch, about 10 KB.
+
+The model's thread (6.6c) adds, once at start: `std::thread`'s one heap
+allocation (its state: the body and the copied arguments, tens of bytes),
+two `eventfd`s, and the thread's stack, a mapping (8 MB of address space on
+glibc, about 1 MB on bionic) of which only the pages the model touches are
+resident. Nothing after.

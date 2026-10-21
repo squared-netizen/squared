@@ -3,9 +3,16 @@
 ## Records
 
 * [Packed](Packed.md)
+* [TickClock](TickClock.md)
 
 
 ## Functions
+
+### name_this_thread
+
+*void name_this_thread(const char * name)*
+
+ Names the calling thread, as `top -H` and a debugger show it (15 characters at most).
 
 ### not_a_valid_name
 
@@ -17,5 +24,5 @@
 
 *Packed pack(Verb verb, Address to, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:57](../../../../../messaging/telegraph.hpp#L57)*
+*Defined at [messaging/telegraph.hpp:72](../../../../../messaging/telegraph.hpp#L72)*
 

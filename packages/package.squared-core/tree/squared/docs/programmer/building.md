@@ -118,6 +118,7 @@ make android-status       # the NDK, the API level, the C++ runtime it found
 | The link fails if the library could not load on Android before 6.0 | It must carry the `DT_HASH` symbol table; the build adds it |
 | Changing `SQ_MIN_SDK` or the NDK rebuilds the framework | Archives built for one level must not link into another |
 | `CONSOLE=app` (or `monitor`) links the Console in; the default, `0`, carries none of it | See [console.md](console.md). Switching it rebuilds nothing in the framework: its Console archive is built every time and only linked when asked for |
+| `TELEGRAPH_RING=512` (or another `TELEGRAPH_*`) sizes the Telegraph; unset ones keep their defaults | The app and the framework are built with the same ones, since the app makes the line; changing one rebuilds both. See [messaging.md](messaging.md#the-telegraph) |
 | `DEV_LOG` and `CONSOLE` builds are **debuggable**; plain builds never are | `run-as` reaches a debuggable app's private files; `SQ_DEBUGGABLE=` turns it off, `SQ_DEBUGGABLE=1` on |
 | `make install` uses `adb install -r` when adb reaches **this phone**, and Android's installer otherwise | No prompt with adb; a second device (a tablet) only when named, `DEVICE=<serial>` |
 

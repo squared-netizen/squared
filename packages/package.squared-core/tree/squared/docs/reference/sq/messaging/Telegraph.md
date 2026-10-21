@@ -1,6 +1,6 @@
 # class Telegraph
 
-*Defined at [messaging/telegraph.hpp:95](../../../../messaging/telegraph.hpp#L95)*
+*Defined at [messaging/telegraph.hpp:110](../../../../messaging/telegraph.hpp#L110)*
 
 
 
@@ -16,47 +16,47 @@
 
 *public void Telegraph(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:98](../../../../messaging/telegraph.hpp#L98)*
+*Defined at [messaging/telegraph.hpp:113](../../../../messaging/telegraph.hpp#L113)*
 
 ### operator=
 
 *public Telegraph & operator=(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:99](../../../../messaging/telegraph.hpp#L99)*
+*Defined at [messaging/telegraph.hpp:114](../../../../messaging/telegraph.hpp#L114)*
 
 ### Telegraph
 
 *public void Telegraph(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:100](../../../../messaging/telegraph.hpp#L100)*
+*Defined at [messaging/telegraph.hpp:115](../../../../messaging/telegraph.hpp#L115)*
 
 ### operator=
 
 *public Telegraph & operator=(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:101](../../../../messaging/telegraph.hpp#L101)*
+*Defined at [messaging/telegraph.hpp:116](../../../../messaging/telegraph.hpp#L116)*
 
 ### ~Telegraph
 
 *public void ~Telegraph()*
 
-*Defined at [messaging/telegraph.hpp:102](../../../../messaging/telegraph.hpp#L102)*
+*Defined at [messaging/telegraph.hpp:117](../../../../messaging/telegraph.hpp#L117)*
 
 ### state
 
 *public SendResult state(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:107](../../../../messaging/telegraph.hpp#L107)*
+*Defined at [messaging/telegraph.hpp:127](../../../../messaging/telegraph.hpp#L127)*
 
 
 
-**brief** `state <key> <value>`. When the ring is full it is held back, coalesced: `pending`. 
+**brief** `state <key> <value>`. When the ring is full it is held back, coalesced: `pending`. When the held-back table is full too, the model's thread waits up to `TELEGRAPH_WAIT_MS` for the UI to drain, then `full`.
 
 ### state
 
 *public SendResult state(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:117](../../../../messaging/telegraph.hpp#L117)*
+*Defined at [messaging/telegraph.hpp:137](../../../../messaging/telegraph.hpp#L137)*
 
 
 
@@ -66,17 +66,17 @@
 
 *public SendResult event(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:127](../../../../messaging/telegraph.hpp#L127)*
+*Defined at [messaging/telegraph.hpp:151](../../../../messaging/telegraph.hpp#L151)*
 
 
 
-**brief** `event <key>`, for a key with no value. Never held back: `full` when there is no room. 
+**brief** `event <key>`, for a key with no value. Never held back: with no room, the model's thread waits up to `TELEGRAPH_WAIT_MS`, then `full`.
 
 ### event
 
 *public SendResult event(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:135](../../../../messaging/telegraph.hpp#L135)*
+*Defined at [messaging/telegraph.hpp:159](../../../../messaging/telegraph.hpp#L159)*
 
 
 
@@ -86,7 +86,7 @@
 
 *public SendResult event(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:145](../../../../messaging/telegraph.hpp#L145)*
+*Defined at [messaging/telegraph.hpp:169](../../../../messaging/telegraph.hpp#L169)*
 
 
 
@@ -96,7 +96,7 @@
 
 *public SendResult answer(const Received & request, const K & key)*
 
-*Defined at [messaging/telegraph.hpp:155](../../../../messaging/telegraph.hpp#L155)*
+*Defined at [messaging/telegraph.hpp:179](../../../../messaging/telegraph.hpp#L179)*
 
 
 
@@ -106,7 +106,7 @@
 
 *public SendResult answer(const Received & request, const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:164](../../../../messaging/telegraph.hpp#L164)*
+*Defined at [messaging/telegraph.hpp:188](../../../../messaging/telegraph.hpp#L188)*
 
 
 
@@ -116,7 +116,7 @@
 
 *public bool list(const K & rows, S & source)*
 
-*Defined at [messaging/telegraph.hpp:180](../../../../messaging/telegraph.hpp#L180)*
+*Defined at [messaging/telegraph.hpp:204](../../../../messaging/telegraph.hpp#L204)*
 
 
 
@@ -126,7 +126,7 @@
 
 *public void changed(const K & rows)*
 
-*Defined at [messaging/telegraph.hpp:188](../../../../messaging/telegraph.hpp#L188)*
+*Defined at [messaging/telegraph.hpp:212](../../../../messaging/telegraph.hpp#L212)*
 
 
 
@@ -136,7 +136,7 @@
 
 *public void changed(const K & rows, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:196](../../../../messaging/telegraph.hpp#L196)*
+*Defined at [messaging/telegraph.hpp:220](../../../../messaging/telegraph.hpp#L220)*
 
 
 
@@ -148,7 +148,7 @@
 
 
 
-**brief** Ask for `tick` every `milliseconds` (0: no tick, the default). Run by the model thread (6.6c). 
+**brief** Ask for `tick` every `milliseconds` (0: no tick, the default). `ModelRunner` calls it. 
 
 ### tick_interval
 
@@ -158,7 +158,7 @@
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.hpp:468](../../../../messaging/telegraph.hpp#L468)*
+*Defined at [messaging/telegraph.hpp:542](../../../../messaging/telegraph.hpp#L542)*
 
 
 
@@ -170,7 +170,7 @@
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.hpp:476](../../../../messaging/telegraph.hpp#L476)*
+*Defined at [messaging/telegraph.hpp:550](../../../../messaging/telegraph.hpp#L550)*
 
 
 

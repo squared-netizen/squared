@@ -1,6 +1,8 @@
 #include <squared/messaging/telegraph.hpp>
 
+#include <atomic>
 #include <cassert>
+#include <chrono>
 
 namespace sq::messaging
 {
@@ -49,8 +51,115 @@ void Telegraph::mark_quitting() noexcept
     line_.quitting_ = true;
 }
 
+// How the two threads wake each other, with no wakeup lost. The sleeper
+// sets its flag, fences, then looks for work, and sleeps only if there is
+// none; the other side sends, fences, then reads the flag, and signals if it
+// is set. With a seq_cst fence on each side, one of the two sees the other:
+// the sleeper sees the work, or the sender sees the flag. A sender takes the
+// flag (exchange) as it signals, so a burst of sends costs one system call.
+
+RingResult Telegraph::push_to_ui( const Telegram &telegram,
+                                  std::span<const std::byte> data ) noexcept
+{
+    const RingResult result = line_.to_ui_.push( telegram, data );
+    // A quick look with no fence: idle() and the waits fence and look again,
+    // so a UI that fell asleep a moment ago is woken at the turn's end.
+    if( result == RingResult::sent ) {
+        wake_ui();
+    }
+    return result;
+}
+
+void Telegraph::wake_ui() noexcept
+{
+    if( line_.ui_sleeping_.load( std::memory_order_relaxed ) &&
+        line_.ui_sleeping_.exchange( false, std::memory_order_relaxed ) ) {
+        line_.ui_wake_.signal();
+    }
+}
+
+void Telegraph::count_full() noexcept
+{
+    line_.full_.fetch_add( 1, std::memory_order_relaxed );
+}
+
+template<typename F>
+bool Telegraph::wait_for_room( F attempt ) noexcept
+{
+    // Inline, the UI cannot drain while the model waits: `full` at once.
+    if( !line_.threaded_ || telegraph_size::wait_ms == 0 ) {
+        return false;
+    }
+    using Clock = std::chrono::steady_clock;
+    line_.waits_.fetch_add( 1, std::memory_order_relaxed );
+    const Clock::time_point deadline =
+        Clock::now() + std::chrono::milliseconds( telegraph_size::wait_ms );
+    bool done = false;
+    for( ;; ) {
+        line_.model_waiting_.store( true, std::memory_order_relaxed );
+        std::atomic_thread_fence( std::memory_order_seq_cst );
+        wake_ui(); // room frees only when the UI drains
+        done = attempt();
+        // Quit ends the wait: the UI is going, and may not drain again.
+        const std::uint32_t signals = line_.signals_.load( std::memory_order_relaxed );
+        const bool quit = ( signals & TelegraphLine::quit_bit ) != 0;
+        const Clock::duration left = deadline - Clock::now();
+        if( done || quit || left <= Clock::duration::zero() ) {
+            break;
+        }
+        const auto milliseconds = std::chrono::ceil<std::chrono::milliseconds>( left ).count();
+        line_.model_wake_.wait( static_cast<int>( milliseconds ) );
+        line_.model_wake_.clear();
+    }
+    line_.model_waiting_.store( false, std::memory_order_relaxed );
+    return done;
+}
+
+void Telegraph::idle( int timeout_ms ) noexcept
+{
+    if( line_.pending_count_ != 0 ) {
+        flush();
+    }
+    const std::uint32_t held = line_.pending_count_;
+    line_.model_sleeping_.store( true, std::memory_order_relaxed );
+    if( held != 0 ) {
+        line_.model_waiting_.store( true, std::memory_order_relaxed );
+    }
+    std::atomic_thread_fence( std::memory_order_seq_cst );
+    wake_ui(); // for everything this turn sent
+    bool work = line_.to_model_.front().has_value() ||
+                line_.signals_.load( std::memory_order_relaxed ) != 0;
+    if( !work && held != 0 ) {
+        flush(); // the UI drained since the first try
+        work = line_.pending_count_ < held;
+    }
+    if( !work ) {
+        line_.model_wake_.wait( timeout_ms );
+        line_.model_wake_.clear();
+    }
+    line_.model_sleeping_.store( false, std::memory_order_relaxed );
+    line_.model_waiting_.store( false, std::memory_order_relaxed );
+}
+
 SendResult Telegraph::send_state( const Telegram &telegram,
                                   std::span<const std::byte> data ) noexcept
+{
+    SendResult result = try_state( telegram, data );
+    if( result == SendResult::full ) {
+        // Every held-back entry holds a state still to send: wait for the UI.
+        const auto attempt = [&] {
+            result = try_state( telegram, data );
+            return result != SendResult::full;
+        };
+        if( !wait_for_room( attempt ) ) {
+            count_full();
+        }
+    }
+    return result;
+}
+
+SendResult Telegraph::try_state( const Telegram &telegram,
+                                 std::span<const std::byte> data ) noexcept
 {
     if( line_.pending_count_ != 0 ) {
         flush();
@@ -59,7 +168,7 @@ SendResult Telegraph::send_state( const Telegram &telegram,
     // latest is the one that arrives. Any other address may go first:
     // between addresses, the order of states does not matter.
     if( line_.pending_count_ == 0 || line_.pending_.bindings( telegram.address() ) == 0 ) {
-        const RingResult result = line_.to_ui_.push( telegram, data );
+        const RingResult result = push_to_ui( telegram, data );
         if( result == RingResult::sent ) {
             return SendResult::sent;
         }
@@ -76,7 +185,7 @@ SendResult Telegraph::hold( const Telegram &telegram, std::span<const std::byte>
     const bool fresh = line_.pending_.bindings( address ) == 0;
     // Bound, so the table never evicts it before it is sent.
     if( fresh && !line_.pending_.bind( address ) ) {
-        return SendResult::full; // every entry holds a state still to send: the model waits (6.6c)
+        return SendResult::full; // every entry holds a state still to send: send_state waits
     }
     const CacheResult stored = line_.pending_.store( telegram, data );
     if( stored != CacheResult::stored ) {
@@ -94,11 +203,27 @@ SendResult Telegraph::hold( const Telegram &telegram, std::span<const std::byte>
 SendResult Telegraph::send_event( const Telegram &telegram,
                                   std::span<const std::byte> data ) noexcept
 {
+    SendResult result = try_event( telegram, data );
+    if( result == SendResult::full ) {
+        const auto attempt = [&] {
+            result = try_event( telegram, data );
+            return result != SendResult::full;
+        };
+        if( !wait_for_room( attempt ) ) {
+            count_full();
+        }
+    }
+    return result;
+}
+
+SendResult Telegraph::try_event( const Telegram &telegram,
+                                 std::span<const std::byte> data ) noexcept
+{
     // An event never overtakes the states sent before it.
     if( line_.pending_count_ != 0 && !flush() ) {
         return SendResult::full;
     }
-    switch( line_.to_ui_.push( telegram, data ) ) {
+    switch( push_to_ui( telegram, data ) ) {
         case RingResult::sent:
             return SendResult::sent;
         case RingResult::too_large:
@@ -120,7 +245,7 @@ bool Telegraph::flush() noexcept
             break;
         }
         if( held->value ) {
-            const RingResult result = line_.to_ui_.push( held->value->telegram, held->value->data );
+            const RingResult result = push_to_ui( held->value->telegram, held->value->data );
             if( result == RingResult::full ) {
                 return false;
             }
@@ -225,10 +350,24 @@ void Telegraph::pop_from_ui() noexcept
 
 // ---- the UI's end --------------------------------------------------------------------------
 
+void TelegraphUi::wake_model( bool sleeping, bool waiting ) noexcept
+{
+    std::atomic_thread_fence( std::memory_order_seq_cst );
+    const auto take = []( std::atomic<bool> &flag ) noexcept {
+        return flag.load( std::memory_order_relaxed ) &&
+               flag.exchange( false, std::memory_order_relaxed );
+    };
+    const bool woken = sleeping && take( line_.model_sleeping_ );
+    if( woken || ( waiting && take( line_.model_waiting_ ) ) ) {
+        line_.model_wake_.signal();
+    }
+}
+
 SendResult TelegraphUi::push( const Telegram &telegram, std::span<const std::byte> data ) noexcept
 {
     switch( line_.to_model_.push( telegram, data ) ) {
         case RingResult::sent:
+            wake_model( true, false );
             return SendResult::sent;
         case RingResult::too_large:
             return SendResult::too_large;
@@ -304,6 +443,29 @@ void TelegraphUi::unbind( Address address ) noexcept
 void TelegraphUi::signal( std::uint32_t bit ) noexcept
 {
     line_.signals_.fetch_or( bit, std::memory_order_acq_rel );
+    wake_model( true, true ); // waiting too: quit ends a wait for room
+}
+
+int TelegraphUi::wake_fd() const noexcept
+{
+    return line_.ui_wake_.fd();
+}
+
+bool TelegraphUi::ready_to_sleep() noexcept
+{
+    line_.ui_sleeping_.store( true, std::memory_order_relaxed );
+    std::atomic_thread_fence( std::memory_order_seq_cst );
+    if( line_.to_ui_.front().has_value() ) {
+        line_.ui_sleeping_.store( false, std::memory_order_relaxed );
+        return false;
+    }
+    return true;
+}
+
+void TelegraphUi::woke() noexcept
+{
+    line_.ui_sleeping_.store( false, std::memory_order_relaxed );
+    line_.ui_wake_.clear();
 }
 
 void TelegraphUi::background() noexcept
@@ -342,6 +504,12 @@ RingStats TelegraphUi::to_model_stats() const noexcept
 RingStats TelegraphUi::to_ui_stats() const noexcept
 {
     return line_.to_ui_.stats();
+}
+
+WaitStats TelegraphUi::wait_stats() const noexcept
+{
+    return { line_.waits_.load( std::memory_order_relaxed ),
+             line_.full_.load( std::memory_order_relaxed ) };
 }
 
 } // namespace sq::messaging

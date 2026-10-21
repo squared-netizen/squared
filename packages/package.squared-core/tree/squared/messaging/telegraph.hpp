@@ -5,6 +5,7 @@
 #include <squared/messaging/list_window.hpp>
 #include <squared/messaging/model_list.hpp>
 #include <squared/messaging/src/telegraph_config.hpp>
+#include <squared/messaging/src/wake.hpp>
 #include <squared/messaging/telegram.hpp>
 #include <squared/messaging/telegram_ring.hpp>
 #include <squared/messaging/value_cache.hpp>
@@ -23,6 +24,8 @@ namespace sq::messaging
 {
 
 class TelegraphLine;
+template<typename M>
+class ModelRunner;
 
 /** @brief What a send did. */
 enum class SendResult : std::uint8_t {
@@ -34,6 +37,18 @@ enum class SendResult : std::uint8_t {
     full,
     /** The text or uid list is over a quarter of the data ring: it can never be sent. */
     too_large,
+};
+
+/**
+ * @brief How often the model found no room toward the UI: the `telegraph`
+ * command shows these, so a model that outpaces its UI is seen.
+ */
+struct WaitStats
+{
+        /** Times the model waited for the UI to drain (on its own thread only). */
+        std::uint32_t waits = 0;
+        /** Sends refused `full`: after the wait on its own thread, at once inline. */
+        std::uint32_t full = 0;
 };
 
 /** @brief What `TelegraphUi::do_` did, and the correlation the answering `event` will carry. */
@@ -101,7 +116,12 @@ class Telegraph final
         Telegraph &operator=( Telegraph && ) = delete;
         ~Telegraph() = default;
 
-        /** @brief `state <key> <value>`. When the ring is full it is held back, coalesced: `pending`. */
+        /**
+         * @brief `state <key> <value>`. When the ring is full it is held
+         * back, coalesced: `pending`. When the held-back table is full too,
+         * the model's thread waits up to `TELEGRAPH_WAIT_MS` for the UI to
+         * drain, then `full`.
+         */
         template<typename K, typename V>
             requires sendable<K, Verb::state, V> && ( !detail::key_type<K>::takes_uid )
         SendResult state( const K &key, const V &value ) noexcept
@@ -121,7 +141,11 @@ class Telegraph final
             return send_state( packed.telegram, packed.data );
         }
 
-        /** @brief `event <key>`, for a key with no value. Never held back: `full` when there is no room. */
+        /**
+         * @brief `event <key>`, for a key with no value. Never held back:
+         * with no room, the model's thread waits up to `TELEGRAPH_WAIT_MS`,
+         * then `full`.
+         */
         template<typename K>
             requires sendable<K, Verb::event, void> && ( !detail::key_type<K>::takes_uid )
         SendResult event( const K &key ) noexcept
@@ -198,7 +222,7 @@ class Telegraph final
             changed_item( rows.name(), uid );
         }
 
-        /** @brief Ask for `tick` every `milliseconds` (0: no tick, the default). Run by the model thread (6.6c). */
+        /** @brief Ask for `tick` every `milliseconds` (0: no tick, the default). `ModelRunner` calls it. */
         void tick_every( std::uint32_t milliseconds ) noexcept;
         [[nodiscard]] std::uint32_t tick_interval() const noexcept;
 
@@ -225,6 +249,8 @@ class Telegraph final
 
     private:
         friend class TelegraphLine;
+        template<typename M>
+        friend class ModelRunner;
         explicit Telegraph( TelegraphLine &line ) noexcept
             : line_( line )
         {}
@@ -240,9 +266,22 @@ class Telegraph final
         };
 
         SendResult send_state( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
+        SendResult try_state( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
         SendResult send_event( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
+        SendResult try_event( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
         SendResult hold( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
+        RingResult push_to_ui( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
         bool flush() noexcept;
+        // On the model's thread: wait for the UI to drain, `attempt` again
+        // each time it does, until it succeeds (true) or the wait ends.
+        template<typename F>
+        bool wait_for_room( F attempt ) noexcept;
+        // On the model's thread, between turns: send what is held back, wake
+        // the UI for what this turn sent, and sleep until the UI sends, a
+        // lifecycle signal, room for what is held, or `timeout_ms` (-1: none).
+        void idle( int timeout_ms ) noexcept;
+        void wake_ui() noexcept;
+        void count_full() noexcept;
         bool add_list( Name rows, ListSource source ) noexcept;
         void changed_list( Name rows ) noexcept;
         void changed_item( Name rows, std::uint32_t uid ) noexcept;
@@ -265,7 +304,8 @@ class Telegraph final
  * It sends `set` and `do`, asks lists for rows, takes what the model sent
  * into the latest-value cache (`drain`), reads values back, binds the ones
  * on screen, and passes Android's lifecycle to the model. It never waits: a
- * full ring is `full`.
+ * full ring is `full`. Each send wakes the model's thread if it sleeps; when
+ * the UI sleeps itself, `wake_fd` wakes it for what the model sends.
  */
 class TelegraphUi final
 {
@@ -369,9 +409,26 @@ class TelegraphUi final
         void low_memory() noexcept;
         void quit() noexcept;
 
+        /**
+         * @brief The descriptor that becomes readable when the model sends
+         * while the UI sleeps: poll it beside the others (Android's looper,
+         * a desktop event loop). -1 if it could not be made.
+         */
+        [[nodiscard]] int wake_fd() const noexcept;
+
+        /**
+         * @brief Before sleeping on `wake_fd`: false when the model has sent
+         * already (drain instead). True means sleep: the next send wakes it.
+         */
+        [[nodiscard]] bool ready_to_sleep() noexcept;
+
+        /** @brief After sleeping, woken or not: the model no longer wakes the UI. */
+        void woke() noexcept;
+
         [[nodiscard]] CacheStats cache_stats() const noexcept;
         [[nodiscard]] RingStats to_model_stats() const noexcept;
         [[nodiscard]] RingStats to_ui_stats() const noexcept;
+        [[nodiscard]] WaitStats wait_stats() const noexcept;
 
     private:
         friend class TelegraphLine;
@@ -390,6 +447,9 @@ class TelegraphUi final
         void pop_from_model() noexcept;
         void take_state( const Received &received ) noexcept;
         void signal( std::uint32_t bit ) noexcept;
+        // After the UI sent, signalled or drained: wake the model if it sleeps
+        // (`sleeping`) or waits for room (`waiting`).
+        void wake_model( bool sleeping, bool waiting ) noexcept;
 
         template<typename T>
         [[nodiscard]] static std::optional<T>
@@ -401,8 +461,9 @@ class TelegraphUi final
 /**
  * @brief The Telegraph's storage and its two ends: the line between the UI
  * station and the model's. The App owns one, made once at start (about
- * 90 KB at the default knobs, every array inside it); the model is handed
- * `model()`, the Stage `ui()`, and neither can reach the other's.
+ * 90 KB at the default knobs, every array inside it, and two `eventfd`s);
+ * the model is handed `model()`, the Stage `ui()`, and neither can reach the
+ * other's. A `ModelRunner` runs the model's end.
  */
 class TelegraphLine final
 {
@@ -420,6 +481,8 @@ class TelegraphLine final
     private:
         friend class Telegraph;
         friend class TelegraphUi;
+        template<typename M>
+        friend class ModelRunner;
 
         static constexpr std::uint32_t low_memory_bit = 1;
         static constexpr std::uint32_t background_bit = 2;
@@ -453,9 +516,20 @@ class TelegraphLine final
         std::atomic<std::uint64_t> elapsed_{ 0 };
         std::atomic<bool> visible_{ true };
 
+        // Who sleeps, for the other to wake (see idle() and ready_to_sleep()).
+        std::atomic<bool> model_sleeping_{ false }; // until the UI sends or signals
+        std::atomic<bool> model_waiting_{ false };  // until the UI drains
+        std::atomic<bool> ui_sleeping_{ false };    // until the model sends
+        std::atomic<std::uint32_t> waits_{ 0 };     // the model's, read by the UI
+        std::atomic<std::uint32_t> full_{ 0 };      // the model's, read by the UI
+        Wake model_wake_;
+        Wake ui_wake_;
+
         std::uint32_t pending_count_ = 0; // the model's
         std::uint32_t tick_ms_ = 0;       // the model's
         bool quitting_ = false;           // the model's
+        bool threaded_ = false;           // set by a ModelRunner before its thread starts
+        bool has_runner_ = false;         // the runner's: one to a line
         std::uint16_t correlation_ = 0;   // the UI's
 
         Telegraph model_;
@@ -546,6 +620,9 @@ std::uint32_t TelegraphUi::drain( H &handler ) noexcept
         }
         pop_from_model();
         ++taken;
+    }
+    if( taken != 0 ) {
+        wake_model( false, true ); // room, for a model waiting for it
     }
     return taken;
 }

@@ -3,8 +3,8 @@
 The Telegraph's parts: names and addresses, keys, the 32-byte telegram and its
 one line of text, the ring that carries telegrams from one thread to
 another, the latest-value cache, both ends of a virtualized list, and the
-Telegraph that joins them. The Telegraph runs single-threaded for now (6.6a);
-the model's own thread comes in 6.6c. This page grows with it.
+Telegraph that joins them, with the runner that gives the model its own
+thread. This page grows with the Telegraph.
 
 Every type below lives in its own header. Include exactly the ones a
 translation unit names; `squared/messaging/messaging.hpp` pulls in all of them
@@ -309,7 +309,8 @@ cache.unbind( name );                                 // the label is gone: may 
 What a model sees: `sq::messaging::Telegraph` (`squared/messaging/telegraph.hpp`),
 its end of the line to the UI. It sends `state` and `event` by key, declares
 lists, and runs the model's side of a turn. The UI's end, `TelegraphUi`, is
-the Stage's; both live in one `TelegraphLine`, which the App will own.
+the Stage's; both live in one `TelegraphLine`, which the App will own, and a
+`ModelRunner` runs the model, on its own thread or the UI's.
 
 ```cpp
 namespace names {
@@ -331,18 +332,16 @@ struct Counter {
 };
 
 auto line = std::make_unique<TelegraphLine>();  // about 86 KB, once
-Counter model;
-line->model().start( model );
+ModelRunner<Counter> runner( *line );            // Counter on its own thread, named "model"
 
 TelegraphUi &ui = line->ui();                    // the Stage's end
-ui.set( names::sound, false );
+ui.set( names::sound, false );                   // wakes the model
 ui.do_( names::reset );
-line->model().deliver( model );                  // the model's turn (inline here)
-ui.drain();                                      // the UI's: into the cache
-bool sound = *ui.value( names::sound );          // false
+ui.drain();                                      // each frame: into the cache
+std::optional<bool> sound = ui.value( names::sound );  // false, once the model has answered
 ```
 
-(The App, Sprint 7, does the last eight lines for you; a model writes only its
+(The App, Sprint 7, does all but the struct for you; a model writes only its
 struct.)
 
 **The model's end, `Telegraph`:**
@@ -354,37 +353,95 @@ struct.)
 | `answer(request, key[, value])` | an `event` answering a `do`, with its correlation |
 | `list(rows, source)` | a virtualized list (see [Lists](#lists)); its count is sent at once |
 | `changed(rows)`, `changed(rows, uid)` | the list changed, or one item: what changed on screen is sent |
-| `tick_every(ms)` | ask for `tick` every `ms` (0, the default: none); run by the model's thread, 6.6c |
+| `tick_every(ms)` | ask for `tick(t, seconds)` every `ms` (0, the default: none); `seconds` is the time since the last, at most 0.25 |
 | `start(model)` | calls `model.start(t)`, once |
 | `deliver(model)` | one turn: lifecycle hooks, held-back states, then each telegram from the UI to `model.receive(t, telegram)` (a list's `view` goes to its list) |
 | `pending()`, `quitting()` | states waiting; whether quit was asked for |
 
-A model is any type with `receive(Telegraph&, const Received&)`. Optional:
-`start(Telegraph&)`, `low_memory(Telegraph&)`, `background(Telegraph&)`,
-`foreground(Telegraph&, std::uint64_t elapsed_ms)`. On a turn they come in a
+A model is any type with `receive(Telegraph&, const Received&)` (the
+`TelegraphModel` concept). Optional: `start(Telegraph&)`,
+`tick(Telegraph&, double seconds)`, `low_memory(Telegraph&)`,
+`background(Telegraph&)`, `foreground(Telegraph&, std::uint64_t elapsed_ms)`. On a turn they come in a
 fixed order: low memory first; background and foreground in the order that
 ends where the app is now; quit last, after `background` (quit saves).
 
 **Sending mistakes do not compile:** a verb the key does not carry, a value
 of the wrong type, a uid where the key takes none or none where it does.
 
-**`SendResult`:** `sent`; `pending` (a state held back); `full` (no room now:
-a `set` or `do` from the UI, an `event`, or a state when the pending table is
-full, which in 6.6c makes the model wait); `too_large` (over a quarter of the
+**`SendResult`:** `sent`; `pending` (a state held back); `full` (no room: a
+`set` or `do` from the UI at once; from the model, an `event`, or a state when
+the pending table is full too, after its thread waited up to
+`TELEGRAPH_WAIT_MS` for the UI to drain); `too_large` (over a quarter of the
 data ring, never sendable).
 
 **The UI's end, `TelegraphUi`:** `set`, `do_` (returns the correlation), `view`
 (a list widget's rows), `drain` (states into the cache, events to a handler's
 `event`), `find` and `value` (typed; text valid until the next `drain`),
 `bind`/`unbind`, and `background`, `foreground(elapsed_ms)`, `low_memory`,
-`quit` for the model's next turn. It never waits.
+`quit` for the model's next turn. It never waits. Each send wakes a sleeping
+model.
 
-**Capacities** are compile-time knobs (`-DSQUARED_TELEGRAPH_RING=512` and so
-on; a project's make variables follow in 6.6c): `TELEGRAPH_RING` 256 telegrams
-each way, `TELEGRAPH_DATA` 8 KB of text each way, `TELEGRAPH_PENDING` 256 held
-states, `TELEGRAPH_CACHE` 512 values with `TELEGRAPH_CACHE_TEXT` 8 KB,
-`TELEGRAPH_LISTS` 16 of `TELEGRAPH_LIST_VIEW` 128 rows. Powers of two where
-counted; checked when the framework compiles.
+| Call | Does |
+|---|---|
+| `wake_fd()` | a descriptor that turns readable when the model sends while the UI sleeps: poll it with the others (the looper, an event loop); -1 if it could not be made |
+| `ready_to_sleep()` | before sleeping on it: `false` when the model has sent already (drain instead) |
+| `woke()` | after the sleep, woken or timed out |
+| `wait_stats()` | `waits` (times the model waited for room) and `full` (sends it had refused) |
+
+The Stage sleeps like this, when nothing is animating:
+
+```cpp
+if( ui.ready_to_sleep() ) {
+    pollfd fds[] = { { ui.wake_fd(), POLLIN, 0 }, /* input, ... */ };
+    poll( fds, 2, -1 );
+    ui.woke();
+}
+ui.drain( screens );
+```
+
+**Capacities** are compile-time knobs, set as make variables in a project
+(`make TELEGRAPH_RING=512`; the framework and the app are built with the same
+ones) or `-DSQUARED_TELEGRAPH_RING=512` by hand: `TELEGRAPH_RING` 256
+telegrams each way, `TELEGRAPH_DATA` 8 KB of text each way,
+`TELEGRAPH_PENDING` 256 held states, `TELEGRAPH_CACHE` 512 values with
+`TELEGRAPH_CACHE_TEXT` 8 KB, `TELEGRAPH_LISTS` 16 of `TELEGRAPH_LIST_VIEW`
+128 rows, `TELEGRAPH_WAIT_MS` 100 ms of waiting for room (0: never wait).
+`RING`, `DATA`, `PENDING` and `CACHE` are powers of two; checked when the
+framework compiles. `make status` shows the ones set.
+
+## The model's thread
+
+`sq::messaging::ModelRunner<M>` (`squared/messaging/model_runner.hpp`) runs a
+model at the model's end of a line.
+
+```cpp
+ModelRunner<Shop> runner( *line, std::ref( database ) );   // its own thread
+ModelRunner<Shop> runner( *line, on_ui_thread );           // or the UI's: runner.turn() each frame
+```
+
+| Call | Does |
+|---|---|
+| `ModelRunner<M>(line, args...)` | makes `M` from `args` on a new thread named `model` (the arguments are copied, as `std::thread` copies them: `std::ref` for a reference), calls `start`, then runs turns: `deliver`, then `tick` if due, then sleeps until the UI sends, a lifecycle signal, room for a held state, or the next tick |
+| `ModelRunner<M>(line, on_ui_thread, args...)` | makes `M` now, on the calling thread; nothing runs until `turn()` |
+| `turn()` | inline only: one turn, on the UI thread; the telegrams handled, 0 once the model has quit |
+| `threaded()` | whether the model has its own thread |
+| `~ModelRunner()` | asks the model to quit (it saves: `background` if the app was visible), wakes it, and waits for it to end; `M` is destroyed on the thread it lived on |
+
+Preconditions: one runner to a line, and the line outlives the runner. The
+model's thread never touches the UI's end, nor the UI the model; on its own
+thread the model is not reachable from the UI at all. Failure modes: none
+returned; a thread the system cannot make ends the program at start.
+
+**Waiting for room.** On its own thread, a model whose `event` finds the ring
+full, or whose `state` finds the pending table full too, waits up to
+`TELEGRAPH_WAIT_MS` (100 ms) for the UI to drain, then gets `full`. Inline,
+the UI cannot drain meanwhile, so `full` comes at once. A quit ends a wait at
+once. Both are counted in `wait_stats()`, which the `telegraph` Console
+command (6.7) will show.
+
+**Ticks** run on the model's thread at the interval `tick_every` asked for,
+measured on the steady clock; a model that fell behind starts the cadence
+again rather than catching up in a burst.
 
 ## Lists
 
@@ -443,4 +500,6 @@ Nothing allocates. The model's thread for `ModelList`, the UI thread for
 
 ## Dependencies
 
-None outside the standard library.
+The standard library, and POSIX as Linux and Android both have it: `eventfd`
+and `poll` for the wakes, `pthread_setname_np` for the thread's name. An app
+that uses `ModelRunner` links with `-pthread` (the project's make file does).

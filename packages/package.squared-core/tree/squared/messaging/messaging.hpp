@@ -7,6 +7,7 @@
 #include <squared/messaging/key.hpp>
 #include <squared/messaging/list_window.hpp>
 #include <squared/messaging/model_list.hpp>
+#include <squared/messaging/model_runner.hpp>
 #include <squared/messaging/name.hpp>
 #include <squared/messaging/name_table.hpp>
 #include <squared/messaging/telegram.hpp>

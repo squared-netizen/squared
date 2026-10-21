@@ -29,6 +29,9 @@
 #ifndef SQUARED_TELEGRAPH_LIST_VIEW
 #define SQUARED_TELEGRAPH_LIST_VIEW 128 // the most rows a list's view holds
 #endif
+#ifndef SQUARED_TELEGRAPH_WAIT_MS
+#define SQUARED_TELEGRAPH_WAIT_MS 100 // how long the model waits for room, then `full`
+#endif
 
 namespace sq::messaging::telegraph_size
 {
@@ -43,6 +46,7 @@ inline constexpr std::size_t cache = SQUARED_TELEGRAPH_CACHE;
 inline constexpr std::size_t cache_text = SQUARED_TELEGRAPH_CACHE_TEXT;
 inline constexpr std::size_t lists = SQUARED_TELEGRAPH_LISTS;
 inline constexpr std::size_t list_view = SQUARED_TELEGRAPH_LIST_VIEW;
+inline constexpr int wait_ms = SQUARED_TELEGRAPH_WAIT_MS;
 
 [[nodiscard]] constexpr bool power_of_two( std::size_t n ) noexcept
 {
@@ -58,5 +62,6 @@ static_assert( power_of_two( cache ) && cache >= 2 && cache <= 32768,
 static_assert( cache_text <= std::size_t{ 4 } * 0xFFFF && pending_text <= std::size_t{ 4 } * 0xFFFF,
                "TELEGRAPH_CACHE_TEXT and TELEGRAPH_DATA: at most 262140 bytes" );
 static_assert( lists >= 1 && list_view >= 1, "TELEGRAPH_LISTS and TELEGRAPH_LIST_VIEW: 1 or more" );
+static_assert( wait_ms >= 0, "TELEGRAPH_WAIT_MS: 0 or more (0: never wait)" );
 
 } // namespace sq::messaging::telegraph_size

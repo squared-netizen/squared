@@ -13,13 +13,15 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 SOURCES := src/address.cpp \
     src/list_window.cpp \
     src/model_list.cpp \
+    src/model_runner.cpp \
     src/name_table.cpp \
     src/telegram.cpp \
     src/telegram_data.cpp \
     src/telegram_ring.cpp \
     src/telegram_text.cpp \
     src/telegraph.cpp \
-    src/value_cache.cpp
+    src/value_cache.cpp \
+    src/wake.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -47,8 +49,12 @@ LIST_TEST := $(BUILD_DIR)/list_test
 # The Telegraph single-threaded (6.6a): both ends, held-back states, lists, lifecycle.
 TELEGRAPH_TEST := $(BUILD_DIR)/telegraph_test
 
+# The Telegraph on two threads (6.6c): the model's own thread, both wakes, the
+# bounded wait, ticks, quit, and the inline runner (so -pthread).
+THREAD_TEST := $(BUILD_DIR)/telegraph_thread_test
+
 TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
-    $(TELEGRAPH_TEST)
+    $(TELEGRAPH_TEST) $(THREAD_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -100,10 +106,24 @@ $(TELEGRAPH_TEST): $(MODULE_DIR)/test/telegraph_test.cpp \
                    $(MODULE_DIR)/src/value_cache.cpp \
                    $(MODULE_DIR)/src/model_list.cpp \
                    $(MODULE_DIR)/src/list_window.cpp \
-                   $(MODULE_DIR)/src/telegraph.cpp
+                   $(MODULE_DIR)/src/telegraph.cpp \
+                   $(MODULE_DIR)/src/wake.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+
+$(THREAD_TEST): $(MODULE_DIR)/test/telegraph_thread_test.cpp \
+                $(MODULE_DIR)/src/telegram.cpp \
+                $(MODULE_DIR)/src/telegram_ring.cpp \
+                $(MODULE_DIR)/src/value_cache.cpp \
+                $(MODULE_DIR)/src/model_list.cpp \
+                $(MODULE_DIR)/src/list_window.cpp \
+                $(MODULE_DIR)/src/telegraph.cpp \
+                $(MODULE_DIR)/src/wake.cpp \
+                $(MODULE_DIR)/src/model_runner.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

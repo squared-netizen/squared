@@ -1,6 +1,6 @@
 # struct DoResult
 
-*Defined at [messaging/telegraph.hpp:40](../../../../messaging/telegraph.hpp#L40)*
+*Defined at [messaging/telegraph.hpp:55](../../../../messaging/telegraph.hpp#L55)*
 
 
 
