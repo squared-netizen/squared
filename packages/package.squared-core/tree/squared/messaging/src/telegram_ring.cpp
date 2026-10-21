@@ -67,9 +67,10 @@ RingResult TelegramRing::push( const Telegram &telegram, std::span<const std::by
     assert( with_data || data.empty() );
     assert( type != ValueType::uids || data.size() % 4 == 0 );
 
-    // A value larger than a quarter of the data ring could block the ring
-    // for good once the skipped end is counted; one this size or smaller
-    // always fits in an empty ring.
+    // With the skipped end, a value can need almost twice its size, so one
+    // up to half the data ring always fits in an empty ring. The limit is a
+    // quarter (decided 2026-10-20): a second value of the largest size then
+    // fits while one waits, so one big value never holds up the next.
     if( with_data && data.size() > data_capacity() / 4 ) {
         return RingResult::too_large;
     }

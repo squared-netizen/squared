@@ -2,7 +2,8 @@
 
 The Telegraph's parts, rebuilt in Sprint 6 to the app model: names and
 addresses (6.1), keys (6.1b), the 32-byte telegram and its text form (6.2),
-the ring between two threads (6.3). Nothing here allocates.
+the ring between two threads (6.3), the latest-value cache (6.4). Nothing
+here allocates.
 
 Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 
@@ -11,11 +12,12 @@ Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 ```
 messaging/
   name.hpp address.hpp name_table.hpp key.hpp telegram.hpp telegram_data.hpp
-  telegram_ring.hpp telegram_text.hpp messaging.hpp
+  telegram_ring.hpp telegram_text.hpp value_cache.hpp messaging.hpp
   src/   verb.hpp value_type.hpp data_ref.hpp (supporting); address.cpp,
          name_table.cpp, telegram.cpp, telegram_data.cpp, telegram_ring.cpp,
-         telegram_text.cpp
-  test/  address_test.cpp, telegram_test.cpp, telegram_ring_test.cpp
+         telegram_text.cpp, value_cache.cpp
+  test/  address_test.cpp, telegram_test.cpp, telegram_ring_test.cpp,
+         value_cache_test.cpp
 ```
 
 **The old dispatcher was removed (2026-10-20),** 34 files: `MessageDispatcher`,
@@ -183,8 +185,12 @@ ring returns `full`).
   popped in the order they were written, so a value starts where the last one
   ended, unless its offset is not that place, which means the end was
   skipped. Empty text takes no room. A value over a quarter of the data ring
-  is `too_large`: with the skip, a value of a quarter or less always fits in
-  an empty ring, so a ring can never be stuck on one value. The spec makes an
+  is `too_large` (decided 2026-10-20). With the skip, a value can need almost
+  twice its size, so anything up to half the ring would always fit in an
+  empty one and the ring could never be stuck; the quarter also keeps room
+  for a second value of the largest size while one waits, so one big value
+  never holds up the next (throughput, not safety; corrected 2026-10-20, the
+  first text said a larger value could block the ring). The spec makes an
   oversized value a programmer error, asserted in debug builds; that assert
   belongs to the Telegraph's send (6.6), because the ring's own test has to
   see `too_large` come back.
@@ -223,6 +229,89 @@ ring returns `full`).
   the producer forgetting the skip when it checks for room, and the size
   limit at a half. g++ and clang.
 
+## The latest-value cache (6.4)
+
+`ValueCache`, in `value_cache.cpp`: the last value of each address, on the
+UI side, so a screen built later shows current values at once (the app
+model's cache). Decided 2026-10-20 ("yes to all your suggestions"), from the
+choices the spec left open: how an entry is found, and how text room comes
+back.
+
+- **Entries:** a dense array of 32-byte entries, laid out as a telegram's
+  bytes with the correlation's two bytes used for a bound count and flags
+  (0&ndash;7 name, 8&ndash;11 uid, 12 bound, 13 flags, 14&ndash;15 kind,
+  16&ndash;31 value). Read and written with `memcpy`, so the storage needs no
+  alignment. A power of two of them, 2 to 32,768. New entries are handed out
+  in order (`fresh_`); after that, an entry is reused only through the clock.
+- **Finding one:** an open-addressed index beside the array, two 2-byte
+  slots an entry, so it is at most half full and probes stay short. The slot
+  is the name's hash with the uid mixed in and the bits spread (a
+  multiply-xorshift), so the low bits depend on all of them. Linear probing;
+  a removed entry's slot is closed by a backward shift, not a tombstone, so
+  lookups never slow down with age. Priority 1 chose the separate index: the
+  entries in the table itself at a safe fill would leave about 4 KB of spare
+  entries at the defaults; the index is 2 KB. Passed over: a sorted array
+  with binary search, like the name table (smaller, but adding an address
+  shifts up to 16 KB, and virtualized lists add uids at every scroll:
+  priority 3); `std::unordered_map` (a node per entry, &sect;2.1).
+- **Eviction, the clock:** one "recently written" bit an entry and a hand
+  going round. A bound entry is passed; a marked one loses its mark and is
+  passed; the first other is taken. Two turns see every entry unmarked, so if
+  none is taken every entry is bound, and the value is dropped and counted.
+  Roughly oldest first, not strictly: an entry written once long ago can
+  outlive one written twice since. Chosen over a 2-byte timestamp an entry
+  and a scan of all 512 for the oldest, which a full cache would pay on every
+  new value while a list scrolls. `unbind` marks the entry, so one just shown
+  is passed once more.
+- **Binding:** a count, 255 at most; `bind` makes an entry with no value yet
+  when the address has none, so the first value lands in it.
+- **Text and uid lists:** up to 16 bytes in the entry's value (the flags
+  byte holds the length plus one; no text-area room, nothing to reclaim).
+  Longer ones in the text area, each after a 4-byte header (its entry, its
+  room). A longer value replacing one is rewritten in place when it fits the
+  old room; otherwise appended. When the end is reached, the area is
+  compacted: walked front to back, a text kept only if its entry still
+  points at it, slid down, its room shrunk to its length, its entry's offset
+  updated. No sort, at most the area moved, and only when it fills. Still
+  short: the text being replaced is dropped, but only once that is enough
+  (so a store that fails keeps the old value); then unbound entries holding
+  text give theirs up, by the clock; then the value is dropped and counted.
+  A value over a quarter of the text area is `too_large`, as in the ring.
+  Passed over: fixed blocks with a free list (a long text would span blocks,
+  so it could not be read as one piece); a ring (a replaced text in the
+  middle could never be freed).
+- **A view's life:** `find`'s data points into the cache, valid until the
+  next `store` or `bind` (compaction moves text, eviction reuses entries).
+  The cache is used on the UI thread only, so that means within the frame;
+  a caller keeping it longer copies it.
+- **`dropped` keeps the old value.** The spec: "the new value is dropped".
+  An actor then shows the value before; the drops are counted for the
+  Console's `telegraph` command, which is how the knobs are set.
+- **Standard library:** `std::span`, `std::optional`, `std::memcpy`,
+  `std::memmove`, `std::fill`. No container allocates.
+- **Patterns:** none from the catalogue; the clock is the textbook
+  second-chance page replacement.
+- **Tested** (`test/value_cache_test.cpp`): every value type back as it went
+  in, the correlation dropped; text of 0, 8 and 16 bytes in the entry, 17 and
+  100 in the text area; uid lists of 3 and 5; a value replaced by another
+  type and back; in place (shorter, then back to its size, nothing
+  appended); 2,000 random growing values on three addresses, every value
+  right after each store, compaction always enough; the clock's exact order
+  on 4 entries (bound passed, marks cleared, the rewritten one kept); every
+  entry bound (dropped, counted, `bind` refused), unbound again and taken;
+  255 binds; a full text area (an unbound text-holder gives way, bound ones
+  do not, a dropped value keeps the old one); too large; no allocation over
+  2,000 rounds; 300,000 random steps over 120 addresses and 32 entries
+  against a model (every value found is the latest stored, a value stored
+  while bound is never lost, drops only for want of room, the counts agree;
+  the last third only binds, so the full paths run too: 152,107 stored,
+  58,320 dropped, 127,885 evicted); 8 rounds of 1,024 addresses on 1,024
+  entries, each round all found. Clean under AddressSanitizer and
+  UndefinedBehaviorSanitizer. Five planted bugs each fail it: the backward
+  shift's condition inverted, compaction not moving the offset, the clock
+  taking bound entries, a rewrite in place ignoring its room, and the old
+  text dropped before the new one is sure to fit. g++ and clang.
+
 ## Memory
 
 | Type | Bytes |
@@ -234,8 +323,11 @@ ring returns `full`).
 | `Telegram` | 32 |
 | `TelegramData` | 24, plus the storage it is given |
 | `TelegramRing` | 192 (three 64-byte lines: shared, producer's, consumer's), plus the storage it is given |
+| `ValueCache` | 88, plus the storage it is given |
 
 Nothing allocates. At the spec's defaults a ring's storage is 8 KB of slots
 (`TELEGRAPH_RING`, 256) and 8 KB of data (`TELEGRAPH_DATA`), 16 KB a
-direction; the Telegraph (6.6) will own it. The caches of 6.4 and 6.5 are
-sized at init too.
+direction, and the cache's is 16 KB of entries (`TELEGRAPH_CACHE`, 512),
+2 KB of index and 8 KB of text (`TELEGRAPH_CACHE_TEXT`), 26 KB (the spec
+estimated 24; the index is the difference). The Telegraph (6.6) will own
+them. CDDA-sized (4,096 entries, 64 KB of text): 128 + 16 + 64 = 208 KB.

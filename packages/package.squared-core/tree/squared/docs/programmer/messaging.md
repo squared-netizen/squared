@@ -1,10 +1,10 @@
 # messaging
 
 The Telegraph's parts: names and addresses, keys, the 32-byte telegram and its
-one line of text, and the ring that carries telegrams from one thread to
-another. The Telegraph itself (a ring each way between the UI and the model
-thread, the latest-value cache) is being built in Sprint 6 on these; this page
-grows with it.
+one line of text, the ring that carries telegrams from one thread to
+another, and the latest-value cache. The Telegraph itself (a ring each way
+between the UI and the model thread, the cache on the UI side) is being built
+in Sprint 6 on these; this page grows with it.
 
 Every type below lives in its own header. Include exactly the ones a
 translation unit names; `squared/messaging/messaging.hpp` pulls in all of them
@@ -261,6 +261,48 @@ while( const auto got = ring.front() ) {
 
 Exactly one thread pushes and exactly one reads. Neither ever waits: a full
 ring says so, an empty one has no `front()`. A uid list is 4 bytes a uid.
+
+## The latest-value cache
+
+`sq::messaging::ValueCache` (`squared/messaging/value_cache.hpp`) keeps the
+last value of each address, so a screen built later shows current values at
+once. The Telegraph keeps one on the UI side and fills it from the model's
+`state` telegrams; an app reads it through its screens, not directly. A tool
+or a test can use one by itself.
+
+```cpp
+using namespace sq::messaging;
+std::array<std::byte, 512 * 32> entries;                      // 512 addresses
+std::array<std::byte, ValueCache::index_bytes( 512 )> index;  // 2 KB
+std::array<std::byte, 8192> text;                             // text over 16 bytes
+ValueCache cache{ entries, index, text };
+
+const Address name{ "item.name", 17 };
+if( !cache.bind( name ) ) { /* every entry bound: a larger cache */ }   // a label shows it
+const auto fur_coat = std::as_bytes( std::span( std::string_view( "fur coat" ) ) );
+const Telegram state = Telegram::data( Verb::state, name, ValueType::text, {} );
+if( cache.store( state, fur_coat ) != CacheResult::stored ) { /* counted in stats() */ }
+if( const auto got = cache.find( name ) ) {
+    show( got->data );                                // "fur coat", this frame only
+}
+cache.unbind( name );                                 // the label is gone: may be evicted
+```
+
+| Call | Does | Fails with |
+|---|---|---|
+| `ValueCache(entries, index, text)` | a cache over your storage: 32 bytes an entry, a power of two of them (2 to 32,768); `index_bytes(n)` of index; text may be empty | asserted: wrong sizes |
+| `store(telegram, data = {})` | makes the telegram's value the latest for its address; `text` and `uids` take their bytes from `data` | `dropped`: no room (every entry bound, or the text area full of bound text), counted, and the address keeps its old value; `too_large`: over a quarter of the text area |
+| `find(address)` | the latest value: the telegram (no correlation; for text and uids its `DataRef` is `{0, data.size()}`) and its bytes | nothing: no value cached |
+| `bind(address)` | an actor shows it: its entry is never evicted | false: every entry bound, or 255 binds already |
+| `unbind(address)` | one actor fewer shows it | asserted: not bound |
+| `stats()` | entries used and bound, text used and its highest, evictions, drops | &mdash; |
+
+- **What gets evicted:** only addresses nothing is bound to, roughly oldest
+  first, when room is needed.
+- **Text from `find` lasts until the next `store` or `bind`** (the cache may
+  move it to make room). Use it within the frame; copy it to keep it.
+- **Text up to 16 bytes** lives in the entry and costs no text room.
+- One thread only. Nothing allocates.
 
 ## Dependencies
 

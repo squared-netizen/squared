@@ -8,6 +8,8 @@
 ## Records
 
 * [Address](Address.md)
+* [CacheStats](CacheStats.md)
+* [CachedValue](CachedValue.md)
 * [DataRef](DataRef.md)
 * [Key](Key.md)
 * [NameTableProbe](NameTableProbe.md)
@@ -19,6 +21,7 @@
 * [TelegramData](TelegramData.md)
 * [TelegramRing](TelegramRing.md)
 * [Telegram](Telegram.md)
+* [ValueCache](ValueCache.md)
 * [Verbs](Verbs.md)
 
 
@@ -161,6 +164,21 @@
 **return** The length written, or 0 when `out` is too small, the telegram is not valid, or its data is outside `data`.
 
 ## Enums
+
+| enum class CacheResult |
+
+--
+
+| stored |
+| dropped |
+| too_large |
+
+
+*Defined at [messaging/value_cache.hpp:15](../../../../messaging/value_cache.hpp#L15)*
+
+
+
+**brief** What `ValueCache::store` did. 
 
 | enum class RingResult |
 

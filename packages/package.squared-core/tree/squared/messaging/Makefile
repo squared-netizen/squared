@@ -15,7 +15,8 @@ SOURCES := src/address.cpp \
     src/telegram.cpp \
     src/telegram_data.cpp \
     src/telegram_ring.cpp \
-    src/telegram_text.cpp
+    src/telegram_text.cpp \
+    src/value_cache.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -34,7 +35,10 @@ TELEGRAM_TEST := $(BUILD_DIR)/telegram_test
 # and two real threads (so -pthread).
 RING_TEST := $(BUILD_DIR)/telegram_ring_test
 
-TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST)
+# The latest-value cache on the UI side (6.4): one thread, a model.
+CACHE_TEST := $(BUILD_DIR)/value_cache_test
+
+TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -64,6 +68,13 @@ $(RING_TEST): $(MODULE_DIR)/test/telegram_ring_test.cpp \
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -pthread -o $@
+
+$(CACHE_TEST): $(MODULE_DIR)/test/value_cache_test.cpp \
+               $(MODULE_DIR)/src/telegram.cpp \
+               $(MODULE_DIR)/src/value_cache.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

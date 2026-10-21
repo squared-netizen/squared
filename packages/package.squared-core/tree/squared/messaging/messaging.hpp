@@ -11,3 +11,4 @@
 #include <squared/messaging/telegram_data.hpp>
 #include <squared/messaging/telegram_ring.hpp>
 #include <squared/messaging/telegram_text.hpp>
+#include <squared/messaging/value_cache.hpp>
