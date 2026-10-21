@@ -69,6 +69,16 @@ version=${version:-0}
 tool_path=$(command -v "$clang_doc")
 cxx="$(cd -P "$(dirname "$tool_path")" && pwd)/clang++"
 
+# dot n total: one dot for item n of total, and the count after every 50th
+# and the last. dots_end ends a row the loop left open.
+dot() {
+    printf '.'
+    if [ $(($1 % 50)) = 0 ] || [ "$1" = "$2" ]; then printf ' %d/%d\n' "$1" "$2"; fi
+}
+dots_end() {
+    if [ $(($1 % 50)) != 0 ] && [ "$1" != "$2" ]; then printf ' %d/%d\n' "$1" "$2"; fi
+}
+
 if [ "$check" = 1 ] && [ -f "$out/README.md" ]; then
     made_by=$(sed -n 's/.*made by clang-doc \([0-9][0-9]*\).*/\1/p' "$out/README.md" | head -1)
     if [ -n "$made_by" ] && [ "$made_by" != "$version" ]; then
@@ -121,25 +131,55 @@ echo "docs: clang-doc $version over ${#headers[@]} public headers"
 
 # clang-doc exits 0 after errors and writes what it could: pages with types
 # missing. So an error in its log fails the run too, and nothing is written.
+#
+# Progress: a dot as clang-doc starts each unit, the count every 50, the way
+# `make headers` shows its headers, so a run on the phone is never silent.
+# clang-doc says "[n/N] Processing file" on stderr, unbuffered, and the dots
+# are counted by a shell `read` loop, which takes each line as it comes (awk
+# would not: mawk holds its input back until the end). The full output still
+# goes to the log. With pipefail the pipeline's status is clang-doc's.
+#
+# clang-doc runs in a subshell whose own stderr is dropped: that is where bash
+# reports a command killed by a signal, and it would print the whole pipeline.
+# The signal is said below instead.
 clang_doc_status=0
-"$clang_doc" --format=md --public --output="$work/raw" --executor=all-TUs \
-    "$work/compile_commands.json" > "$work/clang-doc.log" 2>&1 || clang_doc_status=$?
+(
+    "$clang_doc" --format=md --public --output="$work/raw" --executor=all-TUs \
+        "$work/compile_commands.json" 2>&1
+    exit $? # a second command, so bash does not exec clang-doc in its place
+) 2>/dev/null | tee "$work/clang-doc.log" | {
+    n=0
+    while IFS= read -r line; do
+        case $line in
+            *"] Processing file "*) n=$((n + 1)); dot "$n" "${#headers[@]}" ;;
+        esac
+    done
+    dots_end "$n" "${#headers[@]}"
+} || clang_doc_status=$?
 errors=$(grep -cE ' (fatal )?error: ' "$work/clang-doc.log" || true)
 if [ "$clang_doc_status" != 0 ] || [ "$errors" != 0 ]; then
-    echo "docs: clang-doc failed (exit $clang_doc_status, $errors error line(s)); nothing written" >&2
+    how="exit $clang_doc_status"
+    if [ "$clang_doc_status" -gt 128 ]; then
+        how="killed by signal $((clang_doc_status - 128))"
+        [ "$clang_doc_status" = 139 ] && how="$how, a segmentation fault"
+    fi
+    echo "docs: clang-doc failed ($how; $errors error line(s)); nothing written" >&2
     # Units run in parallel, so lines interleave; whole error lines only, the
     # fatal ones (a header not found: usually the cause of the rest) first.
     grep -oE '[^ ]+:[0-9]+:[0-9]+: (fatal )?error: .*' "$work/clang-doc.log" |
         sed "s|$root/||" | LC_ALL=C sort -u |
         awk '/fatal error/ { print; next } { rest[++n] = $0 } END { for( i = 1; i <= n; i++ ) print rest[i] }' |
-        head -8 | sed 's/^/  /' >&2
+        head -8 | sed 's/^/  /' >&2 || true # no error lines (a crash alone) is not a second failure
     echo "docs: the whole log: ${work#"$root/"}/clang-doc.log" >&2
     exit 2
 fi
 
 # ---- tidy the pages --------------------------------------------------------------
 # Kept: the namespace pages and the pages of named types under sq/.
+# A dot a page, the count every 50, as above.
 mkdir -p "$work/reference"
+page_total=$(find "$work/raw/sq" -name '*.md' | wc -l | tr -d ' ')
+echo "docs: tidying $page_total pages"
 pages=0
 while IFS= read -r page; do
     rel=${page#"$work/raw/"}
@@ -212,7 +252,9 @@ while IFS= read -r page; do
         mv "$work/reference/$rel.sorted" "$work/reference/$rel"
     fi
     pages=$((pages + 1))
+    dot "$pages" "$page_total"
 done < <(find "$work/raw/sq" -name '*.md' | LC_ALL=C sort)
+dots_end "$pages" "$page_total"
 
 {
     echo "# API reference"

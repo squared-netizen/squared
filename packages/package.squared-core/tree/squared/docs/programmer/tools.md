@@ -20,6 +20,17 @@ squared/tools/docs.sh --missing   # what has no comment yet
 
 Do not edit the pages: change the comment in the header and run it again.
 
+A run prints a dot per header as clang-doc reads it, then a dot per page as
+the pages are tidied, with the count every 50:
+
+```
+docs: clang-doc 21 over 96 public headers
+.................................................. 50/96
+.............................................. 96/96
+docs: tidying 167 pages
+...
+```
+
 If clang-doc cannot compile a header, nothing is written: it prints the
 first few errors and where its log is (`build/release/docs/clang-doc.log`).
 `docs: clang-doc cannot compile #include <cstdint>` means it cannot see the

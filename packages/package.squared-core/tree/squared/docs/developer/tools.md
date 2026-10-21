@@ -84,6 +84,16 @@ with no comment (constructors, destructors and assignments are left out).
   with the log's path. Before the 96 units, a one-unit probe
   (`#include <cstdint>`, about a second) checks the standard library is
   visible and, if not, prints where clang-doc looked.
+- **Progress** (2026-10-20, after a silent run of minutes on the phone): a dot
+  as clang-doc starts each unit, then a dot per page tidied, with the count
+  every 50, as `make headers` prints. clang-doc says `[n/N] Processing file`
+  on stderr, unbuffered; a bash `read` loop counts those lines as they come.
+  Not awk: mawk holds its input until the end, so every dot came at once. With
+  `pipefail` the pipeline's status is clang-doc's. clang-doc runs in a
+  subshell whose own stderr is dropped, because that is where bash reports a
+  signal and it would print the whole pipeline; the script says the signal
+  itself ("killed by signal 11, a segmentation fault"). The subshell has a
+  second command (`exit $?`) so bash cannot exec clang-doc in its place.
 - **Versions:** the pages depend on clang-doc's version, so `README.md` records
   it and `--check` compares only with the same major version.
 - **Limits of clang-doc** (18 checked): a member variable's comment is not
