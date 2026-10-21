@@ -1,7 +1,8 @@
 # messaging
 
 The Telegraph's parts: names and addresses, keys, the 32-byte telegram and its
-one line of text. The Telegraph itself (the rings between the UI and the model
+one line of text, and the ring that carries telegrams from one thread to
+another. The Telegraph itself (a ring each way between the UI and the model
 thread, the latest-value cache) is being built in Sprint 6 on these; this page
 grows with it.
 
@@ -223,6 +224,43 @@ correlation past 65,535, two to four floats only, and anything after the value.
 `TelegramData` is a data area over storage you give it, filled from the front:
 `append(bytes)`, `at(where)`, `bytes()`, `clear()`. Nothing in this module
 allocates.
+
+## The ring
+
+`sq::messaging::TelegramRing` (`squared/messaging/telegram_ring.hpp`) carries
+telegrams from one thread to one other, in order, with no lock and no
+allocation. The Telegraph runs one each way; an app sends through the
+Telegraph, not through a ring. A tool or a test that moves telegrams between
+two threads of its own can use one directly.
+
+```cpp
+using namespace sq::messaging;
+std::array<std::byte, 256 * 32> slots;   // 256 telegrams
+std::array<std::byte, 8192> text;        // their text and uid lists
+TelegramRing ring{ slots, text };
+
+// the producer's thread
+const std::string_view name = "notes.txt";
+const Telegram open = Telegram::data( Verb::do_, { "file.open" }, ValueType::text, {} );
+if( ring.push( open, std::as_bytes( std::span( name ) ) ) == RingResult::full ) { /* later */ }
+
+// the consumer's thread
+while( const auto got = ring.front() ) {
+    handle( got->telegram, got->data ); // data: the text, valid until pop()
+    ring.pop();
+}
+```
+
+| Call | Thread | Does | Fails with |
+|---|---|---|---|
+| `TelegramRing(slots, data)` | either, once | a ring over your storage: 32 bytes a telegram, a power of two of them, at least 2; data a power of two, at least 16 bytes, or empty for a ring with no text | asserted: sizes not powers of two |
+| `push(telegram, data = {})` | producer | copies the telegram in; for `text` and `uids`, copies `data` into the ring too, and the telegram that arrives says where | `full`: no room now, nothing written; `too_large`: the value is over a quarter of the data ring and can never be sent |
+| `front()` | consumer | the oldest telegram and its data; nothing when empty | &mdash; |
+| `pop()` | consumer | done with the front telegram; its data's room is free again | asserted: the ring is empty |
+| `stats()` | either | the sizes, and the most telegrams and data bytes held at once | &mdash; |
+
+Exactly one thread pushes and exactly one reads. Neither ever waits: a full
+ring says so, an empty one has no `front()`. A uid list is 4 bytes a uid.
 
 ## Dependencies
 

@@ -1,8 +1,8 @@
 # messaging &mdash; internals
 
 The Telegraph's parts, rebuilt in Sprint 6 to the app model: names and
-addresses (6.1), keys (6.1b), the 32-byte telegram and its text form (6.2).
-Nothing here allocates.
+addresses (6.1), keys (6.1b), the 32-byte telegram and its text form (6.2),
+the ring between two threads (6.3). Nothing here allocates.
 
 Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 
@@ -11,10 +11,11 @@ Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 ```
 messaging/
   name.hpp address.hpp name_table.hpp key.hpp telegram.hpp telegram_data.hpp
-  telegram_text.hpp messaging.hpp
+  telegram_ring.hpp telegram_text.hpp messaging.hpp
   src/   verb.hpp value_type.hpp data_ref.hpp (supporting); address.cpp,
-         name_table.cpp, telegram.cpp, telegram_data.cpp, telegram_text.cpp
-  test/  address_test.cpp, telegram_test.cpp
+         name_table.cpp, telegram.cpp, telegram_data.cpp, telegram_ring.cpp,
+         telegram_text.cpp
+  test/  address_test.cpp, telegram_test.cpp, telegram_ring_test.cpp
 ```
 
 **The old dispatcher was removed (2026-10-20),** 34 files: `MessageDispatcher`,
@@ -157,6 +158,71 @@ allocation in reading or writing. Four planted bugs (no `.0` on a whole
 double, 0x7F unescaped, the spare bits unchecked, no rewind on failure) each
 fail it. g++ and clang.
 
+## The ring (6.3)
+
+`TelegramRing`, in `telegram_ring.cpp`: a bounded single-producer,
+single-consumer queue of telegrams with a data ring beside it, as the app
+model specifies (one each way, sized at init, no lock, no allocation, a full
+ring returns `full`).
+
+- **Header placement:** at the module root, beside `TelegramData`, though
+  apps will reach it only through the Telegraph. A header in `src/` must be
+  reachable from a workhorse header (`make headers`), and nothing reaches it
+  until the Telegraph exists (6.6); listing it as extension surface would be
+  wrong. When the Telegraph includes it, it can move to `src/` or stay; to be
+  settled then.
+- **Slots:** a power of two of 32-byte slots, so an index is a free-running
+  32-bit counter masked; the capacity divides 2^32, so the counters wrap
+  harmlessly, and `head - tail` is the fill. Telegrams go in and out with
+  `memcpy` (`TelegramBytes`), so the storage needs no alignment. Full is
+  `head - tail == capacity`: no slot is wasted to tell full from empty.
+- **The data ring:** `push` copies a `text` or `uids` value in and rewrites
+  the telegram's `DataRef` to where it went. A value never crosses the end of
+  the ring: when it would, the rest of the ring is skipped and it starts at 0.
+  The consumer does not need the producer's position to follow: values are
+  popped in the order they were written, so a value starts where the last one
+  ended, unless its offset is not that place, which means the end was
+  skipped. Empty text takes no room. A value over a quarter of the data ring
+  is `too_large`: with the skip, a value of a quarter or less always fits in
+  an empty ring, so a ring can never be stuck on one value. The spec makes an
+  oversized value a programmer error, asserted in debug builds; that assert
+  belongs to the Telegraph's send (6.6), because the ring's own test has to
+  see `too_large` come back.
+- **Memory order:** the producer writes the data and the slot, then stores
+  `head` with release; the consumer loads `head` with acquire, reads, then
+  stores `tail` and `data_tail` with release; the producer loads both with
+  acquire before reusing room. The producer's and the consumer's counters sit
+  on separate 64-byte lines, so the two threads do not take one cache line
+  from each other at every telegram (priority 3, for 128 bytes). No cached
+  copies of the other side's counter: one acquire load a call is cheap at the
+  spec's rate (about 50 telegrams a turn), and it keeps `stats()` exact.
+- **Stats:** the highest number of telegrams and data bytes held at once (the
+  skipped end included), seen by the producer as it pushes; relaxed atomics,
+  so the Console's `telegraph` command can read them from another thread. The
+  spec sizes the knobs from these.
+- **Waiting is not here.** Neither side waits. The UI drains at the start of
+  a frame; waking the model thread when a telegram arrives, and the model's
+  bounded wait for room, are the model thread's (6.6).
+- **Standard library:** `std::atomic<std::uint32_t>` (lock-free on arm64 and
+  x86-64), `std::span`, `std::optional`, `std::memcpy`. Passed over:
+  `std::deque` and `std::queue` (they allocate), `std::mutex` (the UI thread
+  must never block), `std::hardware_destructive_interference_size` (g++ warns
+  that its value may differ between compilers; 64 is right for both targets).
+- **Patterns:** none from the catalogue; a ring buffer (bounded queue).
+- **Tested** (`test/telegram_ring_test.cpp`): every value type in order, with
+  correlations; empty text; full slots (nothing written, room after a pop);
+  a full data ring (other telegrams still sent); a value that skips the end,
+  the consumer following it, and the room after; `too_large`, also on a ring
+  with no data ring; no allocation over 2,000 pushes and pops; 200,000 random
+  steps against a `std::deque` model, every telegram and byte checked, and
+  never `full` when the ring is empty; and two real threads, 200,000
+  telegrams (integers, text and uid lists up to a quarter of a 256-byte data
+  ring, 16 slots, so it is full most of the time), each checked for order and
+  bytes. Clean under ThreadSanitizer (g++). Four planted bugs each fail it:
+  `head` stored relaxed (ThreadSanitizer), the consumer ignoring the skip,
+  the producer forgetting the skip when it checks for room, and the size
+  limit at a half. g++ and clang.
+
 ## Memory
 
 | Type | Bytes |
@@ -167,5 +233,9 @@ fail it. g++ and clang.
 | `Key` | 16 (a constant) |
 | `Telegram` | 32 |
 | `TelegramData` | 24, plus the storage it is given |
+| `TelegramRing` | 192 (three 64-byte lines: shared, producer's, consumer's), plus the storage it is given |
 
-Nothing allocates; the rings and caches of 6.3 to 6.5 are sized at init.
+Nothing allocates. At the spec's defaults a ring's storage is 8 KB of slots
+(`TELEGRAPH_RING`, 256) and 8 KB of data (`TELEGRAPH_DATA`), 16 KB a
+direction; the Telegraph (6.6) will own it. The caches of 6.4 and 6.5 are
+sized at init too.

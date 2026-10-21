@@ -14,6 +14,7 @@ SOURCES := src/address.cpp \
     src/name_table.cpp \
     src/telegram.cpp \
     src/telegram_data.cpp \
+    src/telegram_ring.cpp \
     src/telegram_text.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
@@ -29,7 +30,11 @@ ADDRESS_TEST := $(BUILD_DIR)/address_test
 # The telegram, its text form both ways (a fuzz test) and the keys (6.1b, 6.2).
 TELEGRAM_TEST := $(BUILD_DIR)/telegram_test
 
-TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST)
+# The ring each direction of the Telegraph runs on (6.3): one thread, a model,
+# and two real threads (so -pthread).
+RING_TEST := $(BUILD_DIR)/telegram_ring_test
+
+TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -52,6 +57,13 @@ $(TELEGRAM_TEST): $(MODULE_DIR)/test/telegram_test.cpp \
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+
+$(RING_TEST): $(MODULE_DIR)/test/telegram_ring_test.cpp \
+              $(MODULE_DIR)/src/telegram.cpp \
+              $(MODULE_DIR)/src/telegram_ring.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

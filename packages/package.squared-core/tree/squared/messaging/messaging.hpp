@@ -9,4 +9,5 @@
 #include <squared/messaging/name_table.hpp>
 #include <squared/messaging/telegram.hpp>
 #include <squared/messaging/telegram_data.hpp>
+#include <squared/messaging/telegram_ring.hpp>
 #include <squared/messaging/telegram_text.hpp>

@@ -13,8 +13,11 @@
 * [NameTableProbe](NameTableProbe.md)
 * [NameTable](NameTable.md)
 * [Name](Name.md)
+* [Received](Received.md)
+* [RingStats](RingStats.md)
 * [TelegramBytes](TelegramBytes.md)
 * [TelegramData](TelegramData.md)
+* [TelegramRing](TelegramRing.md)
 * [Telegram](Telegram.md)
 * [Verbs](Verbs.md)
 
@@ -158,6 +161,21 @@
 **return** The length written, or 0 when `out` is too small, the telegram is not valid, or its data is outside `data`.
 
 ## Enums
+
+| enum class RingResult |
+
+--
+
+| sent |
+| full |
+| too_large |
+
+
+*Defined at [messaging/telegram_ring.hpp:15](../../../../messaging/telegram_ring.hpp#L15)*
+
+
+
+**brief** What `TelegramRing::push` did. 
 
 | enum class ValueType |
 

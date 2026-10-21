@@ -61,6 +61,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `messaging::Address` | 16 | 8 |
 | `messaging::NameTable` | 24 | 8 |
 | `messaging::Telegram` | 32 | 8 |
+| `messaging::TelegramRing` | 192 | 64 |
 | `console::Scrollback` | 56 | 8 |
 | `console::InputLine` | 2648 | 8 |
 | `console::Commands` | 2056 | 8 |
