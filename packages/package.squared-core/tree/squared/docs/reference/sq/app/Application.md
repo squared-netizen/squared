@@ -64,7 +64,7 @@
 
 ### update
 
-*public void update(int delta)*
+*public void update(std::chrono::nanoseconds delta)*
 
 
 

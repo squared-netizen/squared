@@ -10,11 +10,11 @@
 
 ## Members
 
-public int unchecked
+public shared_ptr unchecked
 
-public int checked
+public shared_ptr checked
 
-public int disabled
+public shared_ptr disabled
 
 public Color text
 
@@ -22,7 +22,7 @@ public float spacing
 
 public float minimum_touch_size
 
-public int font
+public shared_ptr font
 
 
 

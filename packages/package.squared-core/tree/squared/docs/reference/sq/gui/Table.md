@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### add
 
-*public Cell & add(int child)*
+*public Cell & add(std::unique_ptr<Widget> child)*
 
 
 

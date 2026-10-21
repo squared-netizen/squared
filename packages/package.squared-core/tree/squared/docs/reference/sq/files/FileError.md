@@ -12,9 +12,9 @@
 
 public FileErrorCode code
 
-public int message
+public std::string message
 
-public int path
+public std::string path
 
 
 

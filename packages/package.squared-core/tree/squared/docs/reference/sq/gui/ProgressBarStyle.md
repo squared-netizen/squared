@@ -10,9 +10,9 @@
 
 ## Members
 
-public int track
+public shared_ptr track
 
-public int fill
+public shared_ptr fill
 
 public float minimum_length
 

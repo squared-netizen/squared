@@ -46,7 +46,7 @@
 
 ### compile
 
-*public GlesError compile(ShaderStage stage, int source)*
+*public GlesError compile(ShaderStage stage, std::string_view source)*
 
 
 
@@ -86,7 +86,7 @@
 
 ### name
 
-*public int name()*
+*public std::uint32_t name()*
 
 *Defined at [gles/shader.hpp:54](../../../../gles/shader.hpp#L54)*
 

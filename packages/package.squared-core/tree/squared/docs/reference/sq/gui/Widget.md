@@ -16,7 +16,7 @@ Inherits from Group
 
 ## Members
 
-public static const int actor_interface_id
+public static const ActorInterfaceId actor_interface_id
 
 
 
@@ -24,7 +24,7 @@ public static const int actor_interface_id
 
 ### actor_interface
 
-*public void * actor_interface(int id)*
+*public void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/widget.hpp:49](../../../../gui/widget.hpp#L49)*
 
@@ -38,7 +38,7 @@ public static const int actor_interface_id
 
 ### actor_interface
 
-*public const void * actor_interface(int id)*
+*public const void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/widget.hpp:60](../../../../gui/widget.hpp#L60)*
 
@@ -192,7 +192,7 @@ public static const int actor_interface_id
 
 ### text_input
 
-*public bool text_input(int text)*
+*public bool text_input(std::string_view text)*
 
 
 
@@ -204,7 +204,7 @@ public static const int actor_interface_id
 
 ### text_editing
 
-*public bool text_editing(int , int , int )*
+*public bool text_editing(std::string_view , int , int )*
 
 
 
@@ -248,7 +248,7 @@ public static const int actor_interface_id
 
 ### set_tooltip_factory
 
-*public void set_tooltip_factory(int factory)*
+*public void set_tooltip_factory(TooltipFactory factory)*
 
 
 
@@ -280,7 +280,7 @@ public static const int actor_interface_id
 
 ### set_tooltip
 
-*public void set_tooltip(int text)*
+*public void set_tooltip(std::string text)*
 
 
 

@@ -64,7 +64,7 @@
 
 ### print
 
-*public void print(int text, Level level)*
+*public void print(std::string_view text, Level level)*
 
 
 
@@ -80,7 +80,7 @@
 
 ### run
 
-*public void run(int line)*
+*public void run(std::string_view line)*
 
 
 
@@ -108,7 +108,7 @@
 
 ### complete
 
-*public int complete()*
+*public std::size_t complete()*
 
 
 
@@ -128,7 +128,7 @@
 
 ### text
 
-*public void text(int utf8)*
+*public void text(std::string_view utf8)*
 
 *Defined at [console/console.hpp:104](../../../../console/console.hpp#L104)*
 

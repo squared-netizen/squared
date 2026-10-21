@@ -14,7 +14,7 @@ Inherits from Actor
 
 ## Members
 
-public static const int actor_interface_id
+public static const ActorInterfaceId actor_interface_id
 
 
 
@@ -54,7 +54,7 @@ public static const int actor_interface_id
 
 ### actor_interface
 
-*public void * actor_interface(int id)*
+*public void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/group.hpp:33](../../../../gui/group.hpp#L33)*
 
@@ -68,7 +68,7 @@ public static const int actor_interface_id
 
 ### actor_interface
 
-*public const void * actor_interface(int id)*
+*public const void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/group.hpp:43](../../../../gui/group.hpp#L43)*
 
@@ -94,7 +94,7 @@ public static const int actor_interface_id
 
 ### add_actor
 
-*public Actor & add_actor(int actor)*
+*public Actor & add_actor(std::unique_ptr<Actor> actor)*
 
 
 
@@ -106,7 +106,7 @@ public static const int actor_interface_id
 
 ### remove_actor
 
-*public int remove_actor(Actor & actor)*
+*public std::unique_ptr<Actor> remove_actor(Actor & actor)*
 
 
 
@@ -126,7 +126,7 @@ public static const int actor_interface_id
 
 ### child_count
 
-*public int child_count()*
+*public std::size_t child_count()*
 
 
 
@@ -136,7 +136,7 @@ public static const int actor_interface_id
 
 ### child_at
 
-*public Actor * child_at(int index)*
+*public Actor * child_at(std::size_t index)*
 
 
 
@@ -148,7 +148,7 @@ public static const int actor_interface_id
 
 ### child_at
 
-*public const Actor * child_at(int index)*
+*public const Actor * child_at(std::size_t index)*
 
 
 

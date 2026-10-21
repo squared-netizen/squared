@@ -10,15 +10,15 @@
 
 ## Members
 
-public int background
+public shared_ptr background
 
-public int title_background
+public shared_ptr title_background
 
-public int close_normal
+public shared_ptr close_normal
 
-public int close_hovered
+public shared_ptr close_hovered
 
-public int close_pressed
+public shared_ptr close_pressed
 
 public Color title_text
 
@@ -34,7 +34,7 @@ public float close_size
 
 public float resize_border
 
-public int title_font
+public shared_ptr title_font
 
 
 

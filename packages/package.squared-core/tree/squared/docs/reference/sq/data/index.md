@@ -14,7 +14,7 @@
 
 ### parse_json
 
-*JsonParseResult parse_json(int text, const JsonParseOptions & options)*
+*JsonParseResult parse_json(std::string_view text, const JsonParseOptions & options)*
 
 
 

@@ -10,11 +10,11 @@
 
 ## Members
 
-public int font
+public shared_ptr font
 
-public int text
+public optional text
 
-public int muted_text
+public optional muted_text
 
 
 

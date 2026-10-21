@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### Label
 
-*public void Label(int text)*
+*public void Label(std::string text)*
 
 
 
@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### set_text
 
-*public void set_text(int text)*
+*public void set_text(std::string text)*
 
 
 
@@ -36,7 +36,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 
@@ -70,7 +70,7 @@ Inherits from Widget
 
 ### text
 
-*public const int & text()*
+*public const std::string & text()*
 
 *Defined at [gui/label.hpp:34](../../../../gui/label.hpp#L34)*
 
@@ -82,7 +82,7 @@ Inherits from Widget
 
 ### style
 
-*public const int & style()*
+*public const std::string & style()*
 
 *Defined at [gui/label.hpp:43](../../../../gui/label.hpp#L43)*
 

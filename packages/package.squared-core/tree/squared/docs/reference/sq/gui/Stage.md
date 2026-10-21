@@ -46,7 +46,7 @@
 
 ### add_actor
 
-*public Actor & add_actor(int actor)*
+*public Actor & add_actor(std::unique_ptr<Actor> actor)*
 
 
 

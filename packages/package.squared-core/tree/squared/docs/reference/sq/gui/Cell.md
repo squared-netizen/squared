@@ -12,7 +12,7 @@
 
 ### column_span
 
-*public Cell & column_span(int columns)*
+*public Cell & column_span(std::size_t columns)*
 
 
 

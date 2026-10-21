@@ -10,7 +10,7 @@
 
 ## Members
 
-public int asset
+public AssetHandle<T> asset
 
 public AssetError error
 

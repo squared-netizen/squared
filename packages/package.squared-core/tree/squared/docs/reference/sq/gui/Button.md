@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### Button
 
-*public void Button(int text, int callback)*
+*public void Button(std::string text, Callback callback)*
 
 
 
@@ -28,7 +28,7 @@ Inherits from Widget
 
 ### set_text
 
-*public void set_text(int text)*
+*public void set_text(std::string text)*
 
 
 
@@ -38,7 +38,7 @@ Inherits from Widget
 
 ### set_on_click
 
-*public void set_on_click(int callback)*
+*public void set_on_click(Callback callback)*
 
 
 
@@ -48,7 +48,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 
@@ -58,7 +58,7 @@ Inherits from Widget
 
 ### set_icon
 
-*public void set_icon(int drawable)*
+*public void set_icon(DrawablePtr drawable)*
 
 
 
@@ -70,7 +70,7 @@ Inherits from Widget
 
 ### set_glyph
 
-*public void set_glyph(int glyph, int font)*
+*public void set_glyph(std::string glyph, FontPtr font)*
 
 
 
@@ -192,7 +192,7 @@ Inherits from Widget
 
 ### text
 
-*public const int & text()*
+*public const std::string & text()*
 
 *Defined at [gui/button.hpp:44](../../../../gui/button.hpp#L44)*
 

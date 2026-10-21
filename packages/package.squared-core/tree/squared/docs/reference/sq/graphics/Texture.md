@@ -90,7 +90,7 @@
 
 ### create_rgba
 
-*public bool create_rgba(int width, int height, const int * pixels)*
+*public bool create_rgba(int width, int height, const std::uint8_t * pixels)*
 
 
 
@@ -106,7 +106,7 @@
 
 ### create_rgba
 
-*public bool create_rgba(int width, int height, const int * pixels, TextureRecoveryOptions recovery)*
+*public bool create_rgba(int width, int height, const std::uint8_t * pixels, TextureRecoveryOptions recovery)*
 
 
 
@@ -230,7 +230,7 @@
 
 ### retained_recovery_bytes
 
-*public int retained_recovery_bytes()*
+*public std::size_t retained_recovery_bytes()*
 
 
 
@@ -304,7 +304,7 @@
 
 ### content_generation
 
-*public int content_generation()*
+*public std::uint32_t content_generation()*
 
 
 

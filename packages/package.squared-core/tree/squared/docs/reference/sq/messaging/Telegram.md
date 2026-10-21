@@ -1,106 +1,114 @@
 # class Telegram
 
-*Defined at [messaging/telegram.hpp:20](../../../../messaging/telegram.hpp#L20)*
+*Defined at [messaging/telegram.hpp:34](../../../../messaging/telegram.hpp#L34)*
 
 
 
-**brief** Owned immutable-access message envelope.
+**brief** One message: 32 bytes, copied whole through the Telegraph's rings.
 
- A receiver identifies directed delivery. An absent receiver requests broadcast delivery to subscribers of message(). Payloads are owned JSON values and therefore never contain process-local pointers.
+ | Bytes | Field | |---|---| | 8 | the name's id | | 4 | the uid (0: none) | | 2 | the correlation, which pairs a `do` with the `event` answering it (0: none) | | 2 | the verb (2 bits) and the value type (4 bits); the other 10 bits are 0 | | 16 | the value: a bool, an integer, a double, up to four floats, or where its text or uid list is in the data area |
+
+ Made by the factories, one per value type, so a telegram is always valid: the bytes a value does not use are zero, which makes two equal telegrams equal byte for byte. Apps send through the Telegraph with typed keys; this is what travels underneath.
 
 
 
 ## Functions
 
-### Telegram
+### address
 
-*public void Telegram(MessageId message, sq::data::JsonValue payload, int sender, int receiver, int correlation, bool receipt_requested)*
+*public Address address()*
 
+*Defined at [messaging/telegram.hpp:55](../../../../messaging/telegram.hpp#L55)*
 
+### empty
 
-**brief** Construct an owned immutable-access message envelope.
-
-**message** Message kind used for subscription matching.
-
-**payload** Application data carried by the envelope.
-
-**sender** Origin endpoint, when directed.
-
-**receiver** Destination endpoint for directed delivery; an absent receiver requests broadcast delivery to subscribers.
-
-**correlation** Application-owned correlation tag.
-
-**receipt_requested** Whether a queued return receipt is requested.
-
-### message
-
-*public const MessageId & message()*
+*public static Telegram empty(Verb verb, Address to)*
 
 
 
-**brief** Access the message kind.
+**brief** A telegram with no value (`event game.over`). 
 
-**return** Message kind used for subscription matching.
+### boolean
 
-### payload
-
-*public const sq::data::JsonValue & payload()*
-
-
-
-**brief** Access the owned application payload.
-
-**return** Reference to the stored payload; invalidated by destruction.
-
-### sender
-
-*public const int & sender()*
-
-
-
-**brief** Access the origin endpoint.
-
-**return** Sender endpoint when set, otherwise std::nullopt.
-
-### receiver
-
-*public const int & receiver()*
-
-
-
-**brief** Access the destination endpoint.
-
-**return** Receiver endpoint for directed delivery, else broadcast.
+*public static Telegram boolean(Verb verb, Address to, bool value)*
 
 ### correlation
 
-*public int correlation()*
+*public std::uint16_t correlation()*
+
+*Defined at [messaging/telegram.hpp:56](../../../../messaging/telegram.hpp#L56)*
+
+### integer
+
+*public static Telegram integer(Verb verb, Address to, std::int64_t value)*
+
+### number
+
+*public static Telegram number(Verb verb, Address to, double value)*
 
 
 
-**brief** Access the correlation tag.
+**brief** A double; a NaN has no text form, so it is not a value (asserted). 
 
-**return** Application-owned correlation tag.
+### floats
 
-### receipt_requested
-
-*public bool receipt_requested()*
+*public static Telegram floats(Verb verb, Address to, std::span<const float> values)*
 
 
 
-**brief** Report whether a return receipt was requested.
+**brief** Two to four floats (`vec2`..`vec4`); a NaN is not a value (asserted). 
 
-**return** true when a queued return receipt was requested.
+### data
 
-### directed
-
-*public bool directed()*
+*public static Telegram data(Verb verb, Address to, ValueType type, DataRef where)*
 
 
 
-**brief** Report directed delivery.
+**brief** Text or a uid list, by where it is in the data area. 
 
-**return** true for directed, false for broadcast delivery.
+### with_correlation
+
+*public Telegram with_correlation(std::uint16_t correlation)*
+
+
+
+**brief** The same telegram, answering or awaiting `correlation`. 
+
+### verb
+
+*public Verb verb()*
+
+### type
+
+*public ValueType type()*
+
+### as_boolean
+
+*public bool as_boolean()*
+
+
+
+**brief** The value, read as its type; meaningless for any other type. 
+
+### as_integer
+
+*public std::int64_t as_integer()*
+
+### as_number
+
+*public double as_number()*
+
+### as_floats
+
+*public std::array<float, 4> as_floats()*
+
+
+
+**brief** The floats; `float_count(type())` of them are meaningful. 
+
+### as_data
+
+*public DataRef as_data()*
 
 ### valid
 
@@ -108,9 +116,7 @@
 
 
 
-**brief** Validate the envelope.
-
-**return** true when message and any endpoint identifiers are valid.
+**brief** Whether these 32 bytes are a telegram: a verb and a known type, the spare bits and unused value bytes zero, no NaN. Bytes that arrived from elsewhere (a file) are checked with it; the factories make only valid ones.
 
 
 

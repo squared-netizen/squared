@@ -16,7 +16,7 @@ Inherits from CheckBox
 
 ### RadioButton
 
-*public void RadioButton(int text, bool checked)*
+*public void RadioButton(std::string text, bool checked)*
 
 
 

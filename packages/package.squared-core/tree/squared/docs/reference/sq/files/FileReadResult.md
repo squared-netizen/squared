@@ -10,7 +10,7 @@
 
 ## Members
 
-public int bytes
+public vector bytes
 
 public FileError error
 

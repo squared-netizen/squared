@@ -10,13 +10,13 @@
 
 ## Members
 
-public int normal
+public shared_ptr normal
 
-public int hovered
+public shared_ptr hovered
 
-public int pressed
+public shared_ptr pressed
 
-public int disabled
+public shared_ptr disabled
 
 public Color text
 
@@ -26,7 +26,7 @@ public float minimum_height
 
 public float horizontal_padding
 
-public int font
+public shared_ptr font
 
 public float icon_size
 

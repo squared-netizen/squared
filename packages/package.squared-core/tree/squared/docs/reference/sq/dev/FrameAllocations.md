@@ -8,9 +8,9 @@
 
 ## Members
 
-public int count
+public std::uint64_t count
 
-public int bytes
+public std::uint64_t bytes
 
 
 

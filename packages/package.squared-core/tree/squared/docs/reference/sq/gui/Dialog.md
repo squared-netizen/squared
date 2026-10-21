@@ -16,7 +16,7 @@ Inherits from Window
 
 ### Dialog
 
-*public void Dialog(int title, int result)*
+*public void Dialog(std::string title, ResultCallback result)*
 
 
 
@@ -52,7 +52,7 @@ Inherits from Window
 
 ### text
 
-*public Dialog & text(int text)*
+*public Dialog & text(std::string text)*
 
 
 
@@ -64,7 +64,7 @@ Inherits from Window
 
 ### button
 
-*public Dialog & button(int text, int result)*
+*public Dialog & button(std::string text, std::string result)*
 
 
 
@@ -90,7 +90,7 @@ Inherits from Window
 
 ### set_on_result
 
-*public void set_on_result(int result)*
+*public void set_on_result(ResultCallback result)*
 
 
 

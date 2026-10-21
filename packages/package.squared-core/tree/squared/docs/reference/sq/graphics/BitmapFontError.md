@@ -16,9 +16,9 @@ public const char * message
 
 public const char * field
 
-public int line
+public std::uint32_t line
 
-public int byte
+public std::uint32_t byte
 
 public BitmapFontErrorCode code
 

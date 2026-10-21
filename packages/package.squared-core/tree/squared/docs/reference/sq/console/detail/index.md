@@ -4,7 +4,7 @@
 
 ### apk_of_library
 
-*bool apk_of_library(int library, char * out, int size)*
+*bool apk_of_library(std::string_view library, char * out, std::size_t size)*
 
 
 
@@ -14,7 +14,7 @@
 
 ### characters
 
-*int characters(int text)*
+*std::size_t characters(std::string_view text)*
 
 *Defined at [console/layout.hpp:106](../../../../../console/layout.hpp#L106)*
 
@@ -26,7 +26,7 @@
 
 ### glyph_at
 
-*int glyph_at(int text, int & at)*
+*std::uint8_t glyph_at(std::string_view text, std::size_t & at)*
 
 *Defined at [console/layout.hpp:94](../../../../../console/layout.hpp#L94)*
 

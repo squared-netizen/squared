@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### set_content
 
-*public Widget & set_content(int content)*
+*public Widget & set_content(std::unique_ptr<Widget> content)*
 
 
 

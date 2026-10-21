@@ -10,9 +10,9 @@
 
 ## Members
 
-public int normal
+public shared_ptr normal
 
-public int focused
+public shared_ptr focused
 
 public Color text
 
@@ -22,7 +22,7 @@ public float minimum_height
 
 public float horizontal_padding
 
-public int font
+public shared_ptr font
 
 
 

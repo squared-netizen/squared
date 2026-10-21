@@ -16,7 +16,7 @@ Inherits from Drawable
 
 ### NinePatchDrawable
 
-*public void NinePatchDrawable(const graphics::TextureRegion & region, NinePatchSplits splits, int content_insets)*
+*public void NinePatchDrawable(const graphics::TextureRegion & region, NinePatchSplits splits, std::optional<Insets> content_insets)*
 
 
 

@@ -12,7 +12,7 @@
 
 public PointerAction action
 
-public int pointer_id
+public std::int64_t pointer_id
 
 public float x
 

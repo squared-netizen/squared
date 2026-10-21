@@ -58,7 +58,7 @@
 
 ### register_loader
 
-*public AssetError register_loader(int loader)*
+*public AssetError register_loader(AssetLoader<T> loader)*
 
 *Defined at [assets/asset_manager.hpp:140](../../../../assets/asset_manager.hpp#L140)*
 
@@ -74,7 +74,7 @@
 
 ### load
 
-*public AssetLoadResult<T> load(int path)*
+*public AssetLoadResult<T> load(std::string_view path)*
 
 *Defined at [assets/asset_manager.hpp:167](../../../../assets/asset_manager.hpp#L167)*
 
@@ -90,7 +90,7 @@
 
 ### reload
 
-*public AssetLoadResult<T> reload(int path)*
+*public AssetLoadResult<T> reload(std::string_view path)*
 
 *Defined at [assets/asset_manager.hpp:179](../../../../assets/asset_manager.hpp#L179)*
 
@@ -108,7 +108,7 @@
 
 ### unload
 
-*public AssetError unload(int path)*
+*public AssetError unload(std::string_view path)*
 
 *Defined at [assets/asset_manager.hpp:191](../../../../assets/asset_manager.hpp#L191)*
 
@@ -126,7 +126,7 @@
 
 ### contains
 
-*public bool contains(int path)*
+*public bool contains(std::string_view path)*
 
 *Defined at [assets/asset_manager.hpp:197](../../../../assets/asset_manager.hpp#L197)*
 
@@ -144,7 +144,7 @@
 
 ### cached_count
 
-*public int cached_count()*
+*public std::size_t cached_count()*
 
 
 

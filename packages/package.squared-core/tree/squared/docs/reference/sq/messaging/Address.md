@@ -14,7 +14,7 @@
 
 public Name name
 
-public int uid
+public std::uint32_t uid
 
 
 

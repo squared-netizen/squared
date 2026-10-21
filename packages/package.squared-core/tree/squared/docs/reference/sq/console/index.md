@@ -49,7 +49,7 @@
 
 ### add_file_commands
 
-*int add_file_commands(Console & console, const char * home, Bridge * bridge)*
+*std::size_t add_file_commands(Console & console, const char * home, Bridge * bridge)*
 
 
 
@@ -83,7 +83,7 @@
 
 ### add_system_commands
 
-*int add_system_commands(Console & console)*
+*std::size_t add_system_commands(Console & console)*
 
 
 
@@ -97,9 +97,17 @@
 
 **return** How many did not fit in the command table: 0 when all were added.
 
+### build_atlas
+
+*void build_atlas(std::span<std::uint8_t, atlas_bytes> out)*
+
+
+
+**brief** Expand the font into `out`, 255 where a glyph has a pixel and 0 elsewhere; glyph `g` at column `g % 16`, row `g / 16`; solid_glyph filled.
+
 ### for_each_line
 
-*void for_each_line(int fd, int buffer, Line line)*
+*void for_each_line(int fd, std::span<char> buffer, Line line)*
 
 *Defined at [console/line_reader.hpp:20](../../../../console/line_reader.hpp#L20)*
 
@@ -119,7 +127,7 @@
 
 ### install_crash_file
 
-*bool install_crash_file(const char * path, const Console * console, int log_lines)*
+*bool install_crash_file(const char * path, const Console * console, std::size_t log_lines)*
 
 
 
@@ -175,7 +183,7 @@
 
 ### run_program
 
-*bool run_program(Console & console, const char *const * argv, int max_lines)*
+*bool run_program(Console & console, const char *const * argv, std::size_t max_lines)*
 
 
 
@@ -191,7 +199,7 @@
 
 ### save_log
 
-*bool save_log(const Console & console, const char * path, int count)*
+*bool save_log(const Console & console, const char * path, std::size_t count)*
 
 
 
@@ -227,7 +235,7 @@
 
 ### show_log
 
-*bool show_log(Console & console, const char * path, int title)*
+*bool show_log(Console & console, const char * path, std::string_view title)*
 
 
 

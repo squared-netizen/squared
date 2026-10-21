@@ -10,9 +10,9 @@
 
 ## Members
 
-public int maximum_bytes
+public std::size_t maximum_bytes
 
-public int maximum_depth
+public std::size_t maximum_depth
 
 public bool reject_duplicate_keys
 

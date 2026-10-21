@@ -12,15 +12,15 @@
 
 ## Members
 
-public int location
+public std::int32_t location
 
-public int components
+public std::int32_t components
 
-public int stride
+public std::size_t stride
 
-public int offset
+public std::size_t offset
 
-public int instance_divisor
+public std::uint32_t instance_divisor
 
 
 

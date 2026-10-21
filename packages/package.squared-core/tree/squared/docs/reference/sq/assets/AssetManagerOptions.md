@@ -12,11 +12,11 @@
 
 ## Members
 
-public int maximum_cached_assets
+public std::size_t maximum_cached_assets
 
-public int maximum_asset_bytes
+public std::uint64_t maximum_asset_bytes
 
-public int maximum_dependency_depth
+public std::size_t maximum_dependency_depth
 
 
 

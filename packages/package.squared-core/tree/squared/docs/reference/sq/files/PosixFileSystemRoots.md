@@ -10,11 +10,11 @@
 
 ## Members
 
-public int internal_root
+public std::string internal_root
 
-public int local_root
+public std::string local_root
 
-public int external_root
+public std::string external_root
 
 
 

@@ -16,7 +16,7 @@ Inherits from Button
 
 ### ToggleButton
 
-*public void ToggleButton(int text, bool checked)*
+*public void ToggleButton(std::string text, bool checked)*
 
 
 
@@ -80,7 +80,7 @@ Inherits from Button
 
 ### set_on_change
 
-*public void set_on_change(int callback)*
+*public void set_on_change(ChangeCallback callback)*
 
 
 

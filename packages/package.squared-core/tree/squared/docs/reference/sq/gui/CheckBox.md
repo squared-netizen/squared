@@ -16,7 +16,7 @@ Inherits from ToggleButton
 
 ### CheckBox
 
-*public void CheckBox(int text, bool checked)*
+*public void CheckBox(std::string text, bool checked)*
 
 
 
@@ -28,7 +28,7 @@ Inherits from ToggleButton
 
 ### set_check_style
 
-*public void set_check_style(int style)*
+*public void set_check_style(std::string style)*
 
 
 

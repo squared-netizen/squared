@@ -14,7 +14,7 @@
 
 public Type type
 
-public int pointer_id
+public std::int64_t pointer_id
 
 public float x
 
@@ -30,11 +30,11 @@ public KeyModifiers modifiers
 
 public Navigation navigation
 
-public int input_device_id
+public std::int32_t input_device_id
 
 public bool repeat
 
-public int text
+public std::string text
 
 public int editing_start
 

@@ -54,7 +54,7 @@
 
 ### set_vertices
 
-*public GlesError set_vertices(const Buffer & vertices, int attributes)*
+*public GlesError set_vertices(const Buffer & vertices, std::span<const VertexAttribute> attributes)*
 
 
 
@@ -124,7 +124,7 @@
 
 ### name
 
-*public int name()*
+*public std::uint32_t name()*
 
 *Defined at [gles/vertex_array.hpp:74](../../../../gles/vertex_array.hpp#L74)*
 

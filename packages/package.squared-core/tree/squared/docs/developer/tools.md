@@ -64,6 +64,26 @@ with no comment (constructors, destructors and assignments are left out).
   types and the global namespace are dropped, and a namespace page loses its
   description (clang-doc reads every comment, `//` too, and gave `sq` the one
   above `namespace sq::console::bridge_protocol`).
+- **The compiler it names** (fixed 2026-10-20): each unit's compile command
+  names `<clang-doc's directory>/clang++`, an absolute path. clang-doc finds
+  the C++ standard library from where that compiler is. Termux builds clang
+  with a relative default sysroot (`DEFAULT_SYSROOT=../..`), which the driver
+  takes from the compiler's directory: `$PREFIX/bin/../..`, with libc++ under
+  it in `usr/include/c++/v1`. A bare `clang++` has no directory, so the
+  sysroot was `../..` from wherever clang-doc stood; on the phone every header
+  failed with `'cstdint' file not found` and clang-doc 21 then crashed
+  (segmentation fault). clang-tidy never had the problem: given flags after
+  `--` it names its compiler `<its directory>/clang-tool`, the same trick. The
+  file need not exist; only its directory is used. On Debian the host's
+  libstdc++ is found either way. (Why the bare name worked for 4.9a's and
+  6.1's runs is not known; the absolute name does not depend on it.)
+- **Failing loudly:** clang-doc exits 0 after compile errors and writes the
+  pages it could, with types missing (seen with clang-doc 18: 275 errors,
+  exit 0). So any `error:` in its log fails the run and nothing is written;
+  the first few distinct errors print, fatal ones (a header not found) first,
+  with the log's path. Before the 96 units, a one-unit probe
+  (`#include <cstdint>`, about a second) checks the standard library is
+  visible and, if not, prints where clang-doc looked.
 - **Versions:** the pages depend on clang-doc's version, so `README.md` records
   it and `--check` compares only with the same major version.
 - **Limits of clang-doc** (18 checked): a member variable's comment is not

@@ -10,11 +10,11 @@
 
 ## Members
 
-public int track
+public shared_ptr track
 
-public int filled_track
+public shared_ptr filled_track
 
-public int knob
+public shared_ptr knob
 
 public float minimum_length
 

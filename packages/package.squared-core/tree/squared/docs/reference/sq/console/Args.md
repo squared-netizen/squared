@@ -16,7 +16,7 @@
 
 ### parse
 
-*public bool parse(int line)*
+*public bool parse(std::string_view line)*
 
 
 
@@ -24,7 +24,7 @@
 
 ### size
 
-*public int size()*
+*public std::size_t size()*
 
 *Defined at [console/args.hpp:33](../../../../console/args.hpp#L33)*
 
@@ -34,7 +34,7 @@
 
 ### text
 
-*public int text(int index)*
+*public std::string_view text(std::size_t index)*
 
 
 
@@ -42,7 +42,7 @@
 
 ### integer
 
-*public int integer(int index, int fallback)*
+*public std::int64_t integer(std::size_t index, std::int64_t fallback)*
 
 
 
@@ -52,7 +52,7 @@
 
 ### real
 
-*public double real(int index, double fallback)*
+*public double real(std::size_t index, double fallback)*
 
 
 

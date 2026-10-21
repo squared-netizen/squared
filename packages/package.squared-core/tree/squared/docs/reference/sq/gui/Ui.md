@@ -28,7 +28,7 @@
 
 ### set_content
 
-*public Widget & set_content(int content)*
+*public Widget & set_content(std::unique_ptr<Widget> content)*
 
 
 
@@ -40,7 +40,7 @@
 
 ### show_window
 
-*public Window & show_window(int window, bool center)*
+*public Window & show_window(std::unique_ptr<Window> window, bool center)*
 
 
 
@@ -54,7 +54,7 @@
 
 ### show_dialog
 
-*public Dialog & show_dialog(int dialog, bool center)*
+*public Dialog & show_dialog(std::unique_ptr<Dialog> dialog, bool center)*
 
 
 
@@ -186,7 +186,7 @@
 
 ### pointer
 
-*public bool pointer(PointerAction action, float x, float y, int button, int pointer_id)*
+*public bool pointer(PointerAction action, float x, float y, int button, std::int64_t pointer_id)*
 
 
 
@@ -234,7 +234,7 @@
 
 ### navigation
 
-*public bool navigation(app::Navigation navigation, int input_device_id)*
+*public bool navigation(app::Navigation navigation, std::int32_t input_device_id)*
 
 
 
@@ -260,7 +260,7 @@
 
 ### text_input
 
-*public bool text_input(int text)*
+*public bool text_input(std::string_view text)*
 
 
 
@@ -272,7 +272,7 @@
 
 ### text_editing
 
-*public bool text_editing(int text, int start, int length)*
+*public bool text_editing(std::string_view text, int start, int length)*
 
 
 
@@ -318,7 +318,7 @@
 
 ### window_count
 
-*public int window_count()*
+*public std::size_t window_count()*
 
 *Defined at [gui/ui.hpp:86](../../../../gui/ui.hpp#L86)*
 
@@ -366,7 +366,7 @@
 
 ### tooltip_bounds
 
-*public int tooltip_bounds()*
+*public std::optional<Rectangle> tooltip_bounds()*
 
 *Defined at [gui/ui.hpp:255](../../../../gui/ui.hpp#L255)*
 

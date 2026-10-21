@@ -24,7 +24,7 @@ Inherits from Clock
 
 ### now
 
-*public int now()*
+*public TimePoint now()*
 
 
 
@@ -34,7 +34,7 @@ Inherits from Clock
 
 ### advance
 
-*public void advance(int delta)*
+*public void advance(Duration delta)*
 
 
 
@@ -92,7 +92,7 @@ Inherits from Clock
 
 ### set_now
 
-*protected void set_now(int value)*
+*protected void set_now(TimePoint value)*
 
 
 

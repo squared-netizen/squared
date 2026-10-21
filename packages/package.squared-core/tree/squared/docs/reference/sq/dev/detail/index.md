@@ -15,7 +15,7 @@
 
 ### fault_pc
 
-*int fault_pc(void * ucontext)*
+*std::uintptr_t fault_pc(void * ucontext)*
 
 *Defined at [dev/crash_trace.hpp:139](../../../../../dev/crash_trace.hpp#L139)*
 
@@ -23,7 +23,7 @@
 
 ### first_caller
 
-*int first_caller(const UnwindState & state, int fault)*
+*int first_caller(const UnwindState & state, std::uintptr_t fault)*
 
 *Defined at [dev/crash_trace.hpp:125](../../../../../dev/crash_trace.hpp#L125)*
 
@@ -45,7 +45,7 @@
 
 ### write_frame
 
-*void write_frame(int index, int pc, CrashSink sink, void * context)*
+*void write_frame(int index, std::uintptr_t pc, CrashSink sink, void * context)*
 
 *Defined at [dev/crash_trace.hpp:80](../../../../../dev/crash_trace.hpp#L80)*
 

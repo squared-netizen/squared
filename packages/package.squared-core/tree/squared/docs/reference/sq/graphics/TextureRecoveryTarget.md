@@ -32,7 +32,7 @@
 
 ### upload_rgba
 
-*public bool upload_rgba(int width, int height, const int * pixels)*
+*public bool upload_rgba(int width, int height, const std::uint8_t * pixels)*
 
 
 

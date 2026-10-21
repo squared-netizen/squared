@@ -10,13 +10,13 @@
 
 ## Members
 
-public int maximum_json_bytes
+public std::size_t maximum_json_bytes
 
-public int maximum_depth
+public std::size_t maximum_depth
 
-public int maximum_resources
+public std::size_t maximum_resources
 
-public int maximum_name_bytes
+public std::size_t maximum_name_bytes
 
 
 

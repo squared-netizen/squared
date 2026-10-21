@@ -12,17 +12,11 @@
 
 
 
-## Records
-
-Entry
-
-
-
 ## Functions
 
 ### NameTable
 
-*public void NameTable(int storage)*
+*public void NameTable(std::span<std::byte> storage)*
 
 
 
@@ -30,7 +24,7 @@ Entry
 
 ### add
 
-*public AddResult add(int text)*
+*public AddResult add(std::string_view text)*
 
 
 
@@ -38,7 +32,7 @@ Entry
 
 ### text
 
-*public int text(Name name)*
+*public std::string_view text(Name name)*
 
 
 
@@ -46,7 +40,7 @@ Entry
 
 ### format
 
-*public int format(Address address, int out)*
+*public std::size_t format(Address address, std::span<char> out)*
 
 
 
@@ -56,7 +50,7 @@ Entry
 
 ### size
 
-*public int size()*
+*public std::size_t size()*
 
 *Defined at [messaging/name_table.hpp:57](../../../../messaging/name_table.hpp#L57)*
 
@@ -66,7 +60,7 @@ Entry
 
 ### capacity
 
-*public int capacity()*
+*public std::size_t capacity()*
 
 *Defined at [messaging/name_table.hpp:63](../../../../messaging/name_table.hpp#L63)*
 
@@ -76,7 +70,7 @@ Entry
 
 ### used
 
-*public int used()*
+*public std::size_t used()*
 
 
 

@@ -62,7 +62,7 @@ Inherits from Widget
 
 ### set_on_change
 
-*public void set_on_change(int callback)*
+*public void set_on_change(ChangeCallback callback)*
 
 
 
@@ -72,7 +72,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 

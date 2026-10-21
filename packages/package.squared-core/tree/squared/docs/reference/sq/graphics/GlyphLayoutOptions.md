@@ -20,7 +20,7 @@ public char32_t replacement
 
 public bool reject_invalid_utf8
 
-public int tab_spaces
+public std::size_t tab_spaces
 
 
 

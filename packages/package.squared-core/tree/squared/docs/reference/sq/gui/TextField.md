@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### TextField
 
-*public void TextField(int text)*
+*public void TextField(std::string text)*
 
 
 
@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### set_text
 
-*public void set_text(int text)*
+*public void set_text(std::string text)*
 
 
 
@@ -36,7 +36,7 @@ Inherits from Widget
 
 ### text
 
-*public const int & text()*
+*public const std::string & text()*
 
 *Defined at [gui/text_field.hpp:41](../../../../gui/text_field.hpp#L41)*
 
@@ -48,7 +48,7 @@ Inherits from Widget
 
 ### cursor
 
-*public int cursor()*
+*public std::size_t cursor()*
 
 *Defined at [gui/text_field.hpp:47](../../../../gui/text_field.hpp#L47)*
 
@@ -60,7 +60,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 
@@ -130,7 +130,7 @@ Inherits from Widget
 
 ### text_input
 
-*public bool text_input(int )*
+*public bool text_input(std::string_view )*
 
 
 
@@ -142,7 +142,7 @@ Inherits from Widget
 
 ### text_editing
 
-*public bool text_editing(int , int , int )*
+*public bool text_editing(std::string_view , int , int )*
 
 
 

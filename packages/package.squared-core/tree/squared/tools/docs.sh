@@ -19,8 +19,11 @@
 # The pages depend on clang-doc's version, so README.md records the one that
 # made them, and --check compares only with the same major version.
 #
+# Any compile error fails the run and writes nothing; a one-unit probe first
+# checks that clang-doc can see the C++ standard library.
+#
 # Exit status: 0 written (or current), 1 --check found it out of date,
-# 2 usage or environment error.
+# 2 usage or environment error (clang-doc missing, or it failed).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)" # squared/
@@ -33,7 +36,7 @@ for argument in "$@"; do
     case "$argument" in
         --check) check=1 ;;
         --missing) missing=1 ;;
-        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "docs: unknown option: $argument" >&2; exit 2 ;;
     esac
 done
@@ -54,6 +57,18 @@ fi
 version=$("$clang_doc" --version 2>/dev/null | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p' | head -1)
 version=${version:-0}
 
+# The compiler the translation units name. clang-doc finds the C++ standard
+# library from where that compiler is. Termux's clang has a relative default
+# sysroot (../..), taken from the compiler's directory: $PREFIX/bin/../.., and
+# libc++ under it in usr/include/c++/v1. A bare "clang++" has no directory, so
+# the sysroot was ../.. from wherever clang-doc stood, <cstdint> was found in
+# no header, and clang-doc then crashed. So the compiler is named by an
+# absolute path in clang-doc's own directory, the way clang-tidy names its
+# compiler (<its directory>/clang-tool) when given flags after --. The file
+# need not exist: only its directory is used.
+tool_path=$(command -v "$clang_doc")
+cxx="$(cd -P "$(dirname "$tool_path")" && pwd)/clang++"
+
 if [ "$check" = 1 ] && [ -f "$out/README.md" ]; then
     made_by=$(sed -n 's/.*made by clang-doc \([0-9][0-9]*\).*/\1/p' "$out/README.md" | head -1)
     if [ -n "$made_by" ] && [ "$made_by" != "$version" ]; then
@@ -62,9 +77,28 @@ if [ "$check" = 1 ] && [ -f "$out/README.md" ]; then
     fi
 fi
 
-# ---- one translation unit per public header ----------------------------------
+# ---- first, can clang-doc see the standard library? ------------------------------
+# One unit that includes <cstdint>, about a second. Without it a missing
+# standard library shows as an error in every header, interleaved, and then a
+# crash, minutes later.
 rm -rf "$work"
-mkdir -p "$work/tu"
+mkdir -p "$work/probe" "$work/tu"
+printf '#include <cstdint>\n' > "$work/probe/probe.cpp"
+printf '[{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-c","%s"]}]\n' \
+    "$work/probe" "$work/probe/probe.cpp" "$cxx" "$work/probe/probe.cpp" \
+    > "$work/probe/compile_commands.json"
+if ! "$clang_doc" --format=md --output="$work/probe/out" --executor=all-TUs --extra-arg=-v \
+    "$work/probe/compile_commands.json" > "$work/probe/clang-doc.log" 2>&1 ||
+    grep -q 'error:' "$work/probe/clang-doc.log"; then
+    echo "docs: clang-doc cannot compile #include <cstdint> (compiler named as $cxx)" >&2
+    echo "docs: where it looked, and what it said:" >&2
+    sed -n '/search starts here/,/End of search list/p; /error:/p' "$work/probe/clang-doc.log" |
+        head -20 | sed 's/^/  /' >&2
+    echo "docs: the whole log: ${work#"$root/"}/probe/clang-doc.log" >&2
+    exit 2
+fi
+
+# ---- one translation unit per public header ----------------------------------
 headers=()
 while IFS= read -r header; do headers+=("$header"); done < <(
     cd "$root" && find . -mindepth 2 -maxdepth 2 -name '*.hpp' \
@@ -78,19 +112,30 @@ while IFS= read -r header; do headers+=("$header"); done < <(
         printf '#include <squared/%s>\n' "$header" > "$unit"
         [ "$first" = 1 ] || printf ','
         first=0
-        printf '\n{"directory":"%s","file":"%s","arguments":["clang++","-std=c++20","-I%s","-c","%s"]}' \
-            "$work" "$unit" "$tree" "$unit"
+        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-I%s","-c","%s"]}' \
+            "$work" "$unit" "$cxx" "$tree" "$unit"
     done
     printf '\n]\n'
 } > "$work/compile_commands.json"
 echo "docs: clang-doc $version over ${#headers[@]} public headers"
 
+# clang-doc exits 0 after errors and writes what it could: pages with types
+# missing. So an error in its log fails the run too, and nothing is written.
+clang_doc_status=0
 "$clang_doc" --format=md --public --output="$work/raw" --executor=all-TUs \
-    "$work/compile_commands.json" > "$work/clang-doc.log" 2>&1 || {
-    echo "docs: clang-doc failed; the end of its log:" >&2
-    tail -20 "$work/clang-doc.log" >&2
+    "$work/compile_commands.json" > "$work/clang-doc.log" 2>&1 || clang_doc_status=$?
+errors=$(grep -cE ' (fatal )?error: ' "$work/clang-doc.log" || true)
+if [ "$clang_doc_status" != 0 ] || [ "$errors" != 0 ]; then
+    echo "docs: clang-doc failed (exit $clang_doc_status, $errors error line(s)); nothing written" >&2
+    # Units run in parallel, so lines interleave; whole error lines only, the
+    # fatal ones (a header not found: usually the cause of the rest) first.
+    grep -oE '[^ ]+:[0-9]+:[0-9]+: (fatal )?error: .*' "$work/clang-doc.log" |
+        sed "s|$root/||" | LC_ALL=C sort -u |
+        awk '/fatal error/ { print; next } { rest[++n] = $0 } END { for( i = 1; i <= n; i++ ) print rest[i] }' |
+        head -8 | sed 's/^/  /' >&2
+    echo "docs: the whole log: ${work#"$root/"}/clang-doc.log" >&2
     exit 2
-}
+fi
 
 # ---- tidy the pages --------------------------------------------------------------
 # Kept: the namespace pages and the pages of named types under sq/.

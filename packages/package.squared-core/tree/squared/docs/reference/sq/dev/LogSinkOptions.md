@@ -8,7 +8,7 @@
 
 ## Members
 
-public int port
+public std::uint16_t port
 
 public bool catch_crashes
 

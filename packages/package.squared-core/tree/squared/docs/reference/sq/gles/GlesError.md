@@ -12,7 +12,7 @@
 
 public GlesErrorCode code
 
-public int message
+public std::string message
 
 
 

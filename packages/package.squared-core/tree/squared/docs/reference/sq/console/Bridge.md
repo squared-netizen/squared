@@ -20,13 +20,13 @@
 
 ## Members
 
-public static const int output_bytes
+public static const std::size_t output_bytes
 
-public static const int command_bytes
+public static const std::size_t command_bytes
 
-public static const int line_bytes
+public static const std::size_t line_bytes
 
-public static const int unknown_size
+public static const std::uint64_t unknown_size
 
 
 
@@ -96,7 +96,7 @@ public static const int unknown_size
 
 ### send
 
-*public void send(Level level, int line)*
+*public void send(Level level, std::string_view line)*
 
 
 
@@ -104,7 +104,7 @@ public static const int unknown_size
 
 ### send_file
 
-*public bool send_file(int fd, int name, int size)*
+*public bool send_file(int fd, std::string_view name, std::uint64_t size)*
 
 
 
@@ -136,13 +136,13 @@ public static const int unknown_size
 
 ### port
 
-*public int port()*
+*public std::uint16_t port()*
 
 *Defined at [console/bridge.hpp:140](../../../../console/bridge.hpp#L140)*
 
 ### dropped
 
-*public int dropped()*
+*public std::uint64_t dropped()*
 
 *Defined at [console/bridge.hpp:142](../../../../console/bridge.hpp#L142)*
 

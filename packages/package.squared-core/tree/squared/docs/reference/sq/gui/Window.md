@@ -18,7 +18,7 @@ Inherits from Widget
 
 ### Window
 
-*public void Window(int title, int style)*
+*public void Window(std::string title, std::string style)*
 
 
 
@@ -88,7 +88,7 @@ Inherits from Widget
 
 ### title
 
-*public const int & title()*
+*public const std::string & title()*
 
 *Defined at [gui/window.hpp:56](../../../../gui/window.hpp#L56)*
 
@@ -276,7 +276,7 @@ Inherits from Widget
 
 ### set_title
 
-*public void set_title(int title)*
+*public void set_title(std::string title)*
 
 
 
@@ -286,7 +286,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 

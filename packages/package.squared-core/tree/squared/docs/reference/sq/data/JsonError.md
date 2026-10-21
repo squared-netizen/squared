@@ -12,13 +12,13 @@
 
 public JsonErrorCode code
 
-public int message
+public std::string message
 
-public int byte_offset
+public std::size_t byte_offset
 
-public int line
+public std::size_t line
 
-public int column
+public std::size_t column
 
 
 

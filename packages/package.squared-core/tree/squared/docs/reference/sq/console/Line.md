@@ -12,7 +12,7 @@
 
 ## Members
 
-public int text
+public std::string_view text
 
 public Level level
 

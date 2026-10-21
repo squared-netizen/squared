@@ -10,7 +10,7 @@
 
 ## Members
 
-public int text
+public std::string text
 
 public JsonError error
 

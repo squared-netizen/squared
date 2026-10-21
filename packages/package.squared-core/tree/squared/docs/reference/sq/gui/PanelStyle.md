@@ -10,7 +10,7 @@
 
 ## Members
 
-public int background
+public shared_ptr background
 
 
 

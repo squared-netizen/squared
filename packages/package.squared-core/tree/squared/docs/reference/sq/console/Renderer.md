@@ -16,13 +16,7 @@
 
 ## Members
 
-public static const int batch_quads
-
-
-
-## Records
-
-Vertex
+public static const std::size_t batch_quads
 
 
 

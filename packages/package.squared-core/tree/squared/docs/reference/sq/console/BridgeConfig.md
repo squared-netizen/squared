@@ -10,13 +10,13 @@
 
 ## Members
 
-public int port
+public std::uint16_t port
 
-public int secret
+public std::string_view secret
 
 public bool announce
 
-public int push_directory
+public std::string_view push_directory
 
 
 

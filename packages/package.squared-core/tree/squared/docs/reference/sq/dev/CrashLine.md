@@ -10,11 +10,11 @@
 
 ## Members
 
-public char[<recovery-expr>() + 1] text
+public char[1001] text
 
-public int length
+public std::size_t length
 
-public static const int capacity
+public static const std::size_t capacity
 
 
 
@@ -28,13 +28,13 @@ public static const int capacity
 
 ### add_decimal
 
-*public void add_decimal(int v)*
+*public void add_decimal(std::uint64_t v)*
 
 *Defined at [dev/src/crash_line.hpp:27](../../../../dev/src/crash_line.hpp#L27)*
 
 ### add_hex
 
-*public void add_hex(int v)*
+*public void add_hex(std::uint64_t v)*
 
 *Defined at [dev/src/crash_line.hpp:39](../../../../dev/src/crash_line.hpp#L39)*
 

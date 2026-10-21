@@ -12,7 +12,7 @@
 
 ### set_text
 
-*public BitmapFontError set_text(const BitmapFont & font, int text, const GlyphLayoutOptions & options)*
+*public BitmapFontError set_text(const BitmapFont & font, std::string_view text, const GlyphLayoutOptions & options)*
 
 
 
@@ -56,13 +56,13 @@
 
 ### glyphs
 
-*public int glyphs()*
+*public std::span<const GlyphPlacement> glyphs()*
 
 *Defined at [graphics/glyph_layout.hpp:42](../../../../graphics/glyph_layout.hpp#L42)*
 
 ### lines
 
-*public int lines()*
+*public std::span<const GlyphLine> lines()*
 
 *Defined at [graphics/glyph_layout.hpp:43](../../../../graphics/glyph_layout.hpp#L43)*
 

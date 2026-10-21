@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### Image
 
-*public void Image(int drawable)*
+*public void Image(DrawablePtr drawable)*
 
 
 
@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### set_drawable
 
-*public void set_drawable(int drawable)*
+*public void set_drawable(DrawablePtr drawable)*
 
 
 

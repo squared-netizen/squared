@@ -16,7 +16,7 @@
 
 ### read_bytes
 
-*public files::FileReadResult read_bytes(int path)*
+*public files::FileReadResult read_bytes(std::string_view path)*
 
 
 
@@ -28,7 +28,7 @@
 
 ### load
 
-*public AssetLoadResult<T> load(int path)*
+*public AssetLoadResult<T> load(std::string_view path)*
 
 *Defined at [assets/asset_manager.hpp:203](../../../../assets/asset_manager.hpp#L203)*
 

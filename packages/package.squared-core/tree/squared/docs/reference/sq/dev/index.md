@@ -46,7 +46,7 @@
 
 ### log_line
 
-*void log_line(int line, LogLevel level)*
+*void log_line(std::string_view line, LogLevel level)*
 
 
 
@@ -96,7 +96,7 @@
 
 ### write_crash_trace
 
-*void write_crash_trace(int signal, const int * info, void * ucontext, CrashSink sink, void * context)*
+*void write_crash_trace(int signal, const siginfo_t * info, void * ucontext, CrashSink sink, void * context)*
 
 *Defined at [dev/crash_trace.hpp:160](../../../../dev/crash_trace.hpp#L160)*
 

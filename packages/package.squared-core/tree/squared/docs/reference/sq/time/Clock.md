@@ -14,7 +14,7 @@
 
 ### now
 
-*public int now()*
+*public TimePoint now()*
 
 
 

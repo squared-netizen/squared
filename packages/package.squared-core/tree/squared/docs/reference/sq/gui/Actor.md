@@ -10,12 +10,6 @@
 
 
 
-## Records
-
-ListenerEntry
-
-
-
 ## Functions
 
 ### Actor
@@ -74,7 +68,7 @@ ListenerEntry
 
 ### actor_interface
 
-*public void * actor_interface(int id)*
+*public void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/actor.hpp:157](../../../../gui/actor.hpp#L157)*
 
@@ -90,7 +84,7 @@ ListenerEntry
 
 ### actor_interface
 
-*public const void * actor_interface(int id)*
+*public const void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/actor.hpp:169](../../../../gui/actor.hpp#L169)*
 
@@ -160,7 +154,7 @@ ListenerEntry
 
 ### add_input_listener
 
-*public int add_input_listener(int listener, bool capture)*
+*public InputListenerId add_input_listener(InputListener listener, bool capture)*
 
 
 
@@ -174,7 +168,7 @@ ListenerEntry
 
 ### remove_input_listener
 
-*public bool remove_input_listener(int id)*
+*public bool remove_input_listener(InputListenerId id)*
 
 
 

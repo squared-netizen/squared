@@ -16,7 +16,7 @@ Inherits from Widget
 
 ### Panel
 
-*public void Panel(int style)*
+*public void Panel(std::string style)*
 
 
 
@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### set_style
 
-*public void set_style(int style)*
+*public void set_style(std::string style)*
 
 
 

@@ -14,13 +14,13 @@
 
 ## Members
 
-public int left
+public std::int16_t left
 
-public int top
+public std::int16_t top
 
-public int right
+public std::int16_t right
 
-public int bottom
+public std::int16_t bottom
 
 
 

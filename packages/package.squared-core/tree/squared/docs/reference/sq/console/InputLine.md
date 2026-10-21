@@ -44,7 +44,7 @@
 
 ### insert
 
-*public void insert(int utf8)*
+*public void insert(std::string_view utf8)*
 
 
 
@@ -94,7 +94,7 @@
 
 ### set
 
-*public void set(int utf8)*
+*public void set(std::string_view utf8)*
 
 
 
@@ -134,13 +134,13 @@
 
 ### text
 
-*public int text()*
+*public std::string_view text()*
 
 *Defined at [console/input_line.hpp:53](../../../../console/input_line.hpp#L53)*
 
 ### cursor
 
-*public int cursor()*
+*public std::size_t cursor()*
 
 *Defined at [console/input_line.hpp:55](../../../../console/input_line.hpp#L55)*
 

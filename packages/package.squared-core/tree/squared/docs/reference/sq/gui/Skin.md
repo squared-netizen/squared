@@ -48,7 +48,7 @@ public float minimum_touch_size
 
 ### add_drawable
 
-*public void add_drawable(int name, int drawable)*
+*public void add_drawable(std::string name, DrawablePtr drawable)*
 
 
 
@@ -60,7 +60,7 @@ public float minimum_touch_size
 
 ### add_region_drawable
 
-*public void add_region_drawable(int name, const graphics::TextureRegion & region, Insets insets)*
+*public void add_region_drawable(std::string name, const graphics::TextureRegion & region, Insets insets)*
 
 
 
@@ -74,7 +74,7 @@ public float minimum_touch_size
 
 ### add_nine_patch_drawable
 
-*public void add_nine_patch_drawable(int name, const graphics::TextureRegion & region, NinePatchSplits splits, int content_insets)*
+*public void add_nine_patch_drawable(std::string name, const graphics::TextureRegion & region, NinePatchSplits splits, std::optional<Insets> content_insets)*
 
 
 
@@ -90,7 +90,7 @@ public float minimum_touch_size
 
 ### add_nine_patch_drawable
 
-*public void add_nine_patch_drawable(int name, const graphics::AtlasRegion & region)*
+*public void add_nine_patch_drawable(std::string name, const graphics::AtlasRegion & region)*
 
 
 
@@ -102,7 +102,7 @@ public float minimum_touch_size
 
 ### drawable
 
-*public int drawable(int name)*
+*public DrawablePtr drawable(std::string_view name)*
 
 
 
@@ -114,7 +114,7 @@ public float minimum_touch_size
 
 ### add_font
 
-*public void add_font(int name, int font)*
+*public void add_font(std::string name, FontPtr font)*
 
 
 
@@ -128,7 +128,7 @@ public float minimum_touch_size
 
 ### font
 
-*public int font(int name)*
+*public FontPtr font(std::string_view name)*
 
 
 
@@ -140,7 +140,7 @@ public float minimum_touch_size
 
 ### add_panel_style
 
-*public void add_panel_style(int name, PanelStyle style)*
+*public void add_panel_style(std::string name, PanelStyle style)*
 
 
 
@@ -152,7 +152,7 @@ public float minimum_touch_size
 
 ### add_label_style
 
-*public void add_label_style(int name, LabelStyle style)*
+*public void add_label_style(std::string name, LabelStyle style)*
 
 
 
@@ -164,7 +164,7 @@ public float minimum_touch_size
 
 ### add_button_style
 
-*public void add_button_style(int name, ButtonStyle style)*
+*public void add_button_style(std::string name, ButtonStyle style)*
 
 
 
@@ -176,7 +176,7 @@ public float minimum_touch_size
 
 ### add_text_field_style
 
-*public void add_text_field_style(int name, TextFieldStyle style)*
+*public void add_text_field_style(std::string name, TextFieldStyle style)*
 
 
 
@@ -188,7 +188,7 @@ public float minimum_touch_size
 
 ### add_check_box_style
 
-*public void add_check_box_style(int name, CheckBoxStyle style)*
+*public void add_check_box_style(std::string name, CheckBoxStyle style)*
 
 
 
@@ -200,7 +200,7 @@ public float minimum_touch_size
 
 ### add_slider_style
 
-*public void add_slider_style(int name, SliderStyle style)*
+*public void add_slider_style(std::string name, SliderStyle style)*
 
 
 
@@ -212,7 +212,7 @@ public float minimum_touch_size
 
 ### add_progress_bar_style
 
-*public void add_progress_bar_style(int name, ProgressBarStyle style)*
+*public void add_progress_bar_style(std::string name, ProgressBarStyle style)*
 
 
 
@@ -224,7 +224,7 @@ public float minimum_touch_size
 
 ### add_window_style
 
-*public void add_window_style(int name, WindowStyle style)*
+*public void add_window_style(std::string name, WindowStyle style)*
 
 
 
@@ -236,7 +236,7 @@ public float minimum_touch_size
 
 ### panel_style
 
-*public const PanelStyle & panel_style(int name)*
+*public const PanelStyle & panel_style(std::string_view name)*
 
 
 
@@ -250,7 +250,7 @@ public float minimum_touch_size
 
 ### label_style
 
-*public const LabelStyle & label_style(int name)*
+*public const LabelStyle & label_style(std::string_view name)*
 
 
 
@@ -264,7 +264,7 @@ public float minimum_touch_size
 
 ### button_style
 
-*public const ButtonStyle & button_style(int name)*
+*public const ButtonStyle & button_style(std::string_view name)*
 
 
 
@@ -278,7 +278,7 @@ public float minimum_touch_size
 
 ### text_field_style
 
-*public const TextFieldStyle & text_field_style(int name)*
+*public const TextFieldStyle & text_field_style(std::string_view name)*
 
 
 
@@ -292,7 +292,7 @@ public float minimum_touch_size
 
 ### check_box_style
 
-*public const CheckBoxStyle & check_box_style(int name)*
+*public const CheckBoxStyle & check_box_style(std::string_view name)*
 
 
 
@@ -306,7 +306,7 @@ public float minimum_touch_size
 
 ### slider_style
 
-*public const SliderStyle & slider_style(int name)*
+*public const SliderStyle & slider_style(std::string_view name)*
 
 
 
@@ -320,7 +320,7 @@ public float minimum_touch_size
 
 ### progress_bar_style
 
-*public const ProgressBarStyle & progress_bar_style(int name)*
+*public const ProgressBarStyle & progress_bar_style(std::string_view name)*
 
 
 
@@ -334,7 +334,7 @@ public float minimum_touch_size
 
 ### window_style
 
-*public const WindowStyle & window_style(int name)*
+*public const WindowStyle & window_style(std::string_view name)*
 
 
 

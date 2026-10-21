@@ -22,7 +22,7 @@
 
 ### all
 
-*public int all()*
+*public std::span<const Command> all()*
 
 *Defined at [console/commands.hpp:42](../../../../console/commands.hpp#L42)*
 
@@ -32,7 +32,7 @@
 
 ### find
 
-*public const Command * find(int name)*
+*public const Command * find(std::string_view name)*
 
 
 

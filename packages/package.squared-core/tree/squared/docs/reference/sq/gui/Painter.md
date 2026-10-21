@@ -14,7 +14,7 @@
 
 ### measure_text
 
-*public Size measure_text(int text)*
+*public Size measure_text(std::string_view text)*
 
 
 
@@ -26,7 +26,7 @@
 
 ### measure_text
 
-*public Size measure_text(int text, const FontResource * font)*
+*public Size measure_text(std::string_view text, const FontResource * font)*
 
 
 
@@ -80,7 +80,7 @@
 
 ### draw_text
 
-*public void draw_text(int text, float x, float y, graphics::Color color)*
+*public void draw_text(std::string_view text, float x, float y, graphics::Color color)*
 
 
 
@@ -96,7 +96,7 @@
 
 ### draw_text
 
-*public void draw_text(int text, float x, float y, const FontResource * font, graphics::Color color)*
+*public void draw_text(std::string_view text, float x, float y, const FontResource * font, graphics::Color color)*
 
 
 

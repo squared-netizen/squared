@@ -44,7 +44,7 @@ Inherits from Painter
 
 ### clip_depth
 
-*public int clip_depth()*
+*public std::size_t clip_depth()*
 
 *Defined at [gui/batch_painter.hpp:108](../../../../gui/batch_painter.hpp#L108)*
 
@@ -102,11 +102,11 @@ Inherits from Painter
 
 ### measure_text
 
-*public Size measure_text(int text)*
+*public Size measure_text(std::string_view text)*
 
 ### measure_text
 
-*public Size measure_text(int text, const FontResource * font)*
+*public Size measure_text(std::string_view text, const FontResource * font)*
 
 ### fill_rectangle
 
@@ -122,11 +122,11 @@ Inherits from Painter
 
 ### draw_text
 
-*public void draw_text(int text, float x, float y, graphics::Color color)*
+*public void draw_text(std::string_view text, float x, float y, graphics::Color color)*
 
 ### draw_text
 
-*public void draw_text(int text, float x, float y, const FontResource * font, graphics::Color color)*
+*public void draw_text(std::string_view text, float x, float y, const FontResource * font, graphics::Color color)*
 
 ### push_clip
 

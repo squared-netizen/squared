@@ -1,6 +1,6 @@
 # class DeadlineQueue
 
-*Defined at [time/src/deadline_queue.hpp:26](../../../../time/src/deadline_queue.hpp#L26)*
+*Defined at [time/deadline_queue.hpp:26](../../../../time/deadline_queue.hpp#L26)*
 
 
 
@@ -12,8 +12,6 @@
 
 ## Records
 
-Entry
-
 Ticket
 
 
@@ -22,9 +20,9 @@ Ticket
 
 ### DeadlineQueue<Value>
 
-*public void DeadlineQueue<Value>(int capacity)*
+*public void DeadlineQueue<Value>(std::size_t capacity)*
 
-*Defined at [time/src/deadline_queue.hpp:62](../../../../time/src/deadline_queue.hpp#L62)*
+*Defined at [time/deadline_queue.hpp:62](../../../../time/deadline_queue.hpp#L62)*
 
 
 
@@ -34,9 +32,9 @@ Ticket
 
 ### size
 
-*public int size()*
+*public std::size_t size()*
 
-*Defined at [time/src/deadline_queue.hpp:72](../../../../time/src/deadline_queue.hpp#L72)*
+*Defined at [time/deadline_queue.hpp:72](../../../../time/deadline_queue.hpp#L72)*
 
 
 
@@ -46,9 +44,9 @@ Ticket
 
 ### capacity
 
-*public int capacity()*
+*public std::size_t capacity()*
 
-*Defined at [time/src/deadline_queue.hpp:78](../../../../time/src/deadline_queue.hpp#L78)*
+*Defined at [time/deadline_queue.hpp:78](../../../../time/deadline_queue.hpp#L78)*
 
 
 
@@ -60,7 +58,7 @@ Ticket
 
 *public bool empty()*
 
-*Defined at [time/src/deadline_queue.hpp:84](../../../../time/src/deadline_queue.hpp#L84)*
+*Defined at [time/deadline_queue.hpp:84](../../../../time/deadline_queue.hpp#L84)*
 
 
 
@@ -70,9 +68,9 @@ Ticket
 
 ### schedule_at
 
-*public ScheduleResult schedule_at(int due, Value value, Ticket * ticket)*
+*public ScheduleResult schedule_at(TimePoint due, Value value, Ticket * ticket)*
 
-*Defined at [time/src/deadline_queue.hpp:95](../../../../time/src/deadline_queue.hpp#L95)*
+*Defined at [time/deadline_queue.hpp:95](../../../../time/deadline_queue.hpp#L95)*
 
 
 
@@ -88,9 +86,9 @@ Ticket
 
 ### schedule_after
 
-*public ScheduleResult schedule_after(const Clock & clock, int delay, Value value, Ticket * ticket)*
+*public ScheduleResult schedule_after(const Clock & clock, Duration delay, Value value, Ticket * ticket)*
 
-*Defined at [time/src/deadline_queue.hpp:126](../../../../time/src/deadline_queue.hpp#L126)*
+*Defined at [time/deadline_queue.hpp:126](../../../../time/deadline_queue.hpp#L126)*
 
 
 
@@ -110,7 +108,7 @@ Ticket
 
 *public bool cancel(Ticket ticket)*
 
-*Defined at [time/src/deadline_queue.hpp:145](../../../../time/src/deadline_queue.hpp#L145)*
+*Defined at [time/deadline_queue.hpp:145](../../../../time/deadline_queue.hpp#L145)*
 
 
 
@@ -124,7 +122,7 @@ Ticket
 
 *public bool cancel(Ticket ticket, Visitor && visitor)*
 
-*Defined at [time/src/deadline_queue.hpp:167](../../../../time/src/deadline_queue.hpp#L167)*
+*Defined at [time/deadline_queue.hpp:167](../../../../time/deadline_queue.hpp#L167)*
 
 
 
@@ -138,9 +136,9 @@ Ticket
 
 ### poll_due
 
-*public int poll_due(int captured_now, int limit, Visitor && visitor)*
+*public std::size_t poll_due(TimePoint captured_now, std::size_t limit, Visitor && visitor)*
 
-*Defined at [time/src/deadline_queue.hpp:197](../../../../time/src/deadline_queue.hpp#L197)*
+*Defined at [time/deadline_queue.hpp:197](../../../../time/deadline_queue.hpp#L197)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -148,7 +146,7 @@ Ticket
 
 *public void visit_ordered(Visitor && visitor)*
 
-*Defined at [time/src/deadline_queue.hpp:231](../../../../time/src/deadline_queue.hpp#L231)*
+*Defined at [time/deadline_queue.hpp:231](../../../../time/deadline_queue.hpp#L231)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -166,7 +164,7 @@ Ticket
 | TicketExhausted |
 
 
-*Defined at [time/src/deadline_queue.hpp:51](../../../../time/src/deadline_queue.hpp#L51)*
+*Defined at [time/deadline_queue.hpp:51](../../../../time/deadline_queue.hpp#L51)*
 
 
 

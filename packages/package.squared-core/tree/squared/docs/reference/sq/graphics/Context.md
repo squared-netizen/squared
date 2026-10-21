@@ -166,7 +166,7 @@
 
 ### generation
 
-*public int generation()*
+*public std::uint64_t generation()*
 
 
 

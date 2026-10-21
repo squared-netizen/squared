@@ -10,15 +10,15 @@
 
 ## Members
 
-public int issues
+public vector issues
 
-public int colors_loaded
+public std::size_t colors_loaded
 
-public int drawables_loaded
+public std::size_t drawables_loaded
 
-public int fonts_loaded
+public std::size_t fonts_loaded
 
-public int styles_loaded
+public std::size_t styles_loaded
 
 
 

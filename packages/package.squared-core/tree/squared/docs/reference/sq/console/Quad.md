@@ -18,7 +18,7 @@ public int width
 
 public int height
 
-public int glyph
+public std::uint8_t glyph
 
 public Colour colour
 

@@ -16,7 +16,7 @@ public void * context
 
 public bool (*)(void *) noexcept begin
 
-public void (*)(void *, int) noexcept append
+public void (*)(void *, std::string_view) noexcept append
 
 public bool (*)(void *) noexcept end
 

@@ -148,7 +148,7 @@
 
 ### page_count
 
-*public int page_count()*
+*public std::size_t page_count()*
 
 
 
@@ -158,7 +158,7 @@
 
 ### region_count
 
-*public int region_count()*
+*public std::size_t region_count()*
 
 
 
@@ -168,7 +168,7 @@
 
 ### find_region
 
-*public const AtlasRegion * find_region(const int & name, int index)*
+*public const AtlasRegion * find_region(const std::string & name, int index)*
 
 
 

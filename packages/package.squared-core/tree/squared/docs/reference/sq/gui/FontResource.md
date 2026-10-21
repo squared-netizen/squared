@@ -14,7 +14,7 @@
 
 ### FontResource
 
-*public void FontResource(int descriptor_path)*
+*public void FontResource(std::string descriptor_path)*
 
 
 
@@ -26,7 +26,7 @@
 
 ### FontResource
 
-*public void FontResource(int descriptor_path, graphics::BitmapFont font, int pages, float scale)*
+*public void FontResource(std::string descriptor_path, graphics::BitmapFont font, std::vector<graphics::TextureRegion> pages, float scale)*
 
 
 
@@ -44,7 +44,7 @@
 
 ### descriptor_path
 
-*public const int & descriptor_path()*
+*public const std::string & descriptor_path()*
 
 *Defined at [gui/src/font_resource.hpp:53](../../../../gui/src/font_resource.hpp#L53)*
 
@@ -86,7 +86,7 @@
 
 ### pages
 
-*public int pages()*
+*public std::span<const graphics::TextureRegion> pages()*
 
 *Defined at [gui/src/font_resource.hpp:68](../../../../gui/src/font_resource.hpp#L68)*
 

@@ -20,6 +20,11 @@ squared/tools/docs.sh --missing   # what has no comment yet
 
 Do not edit the pages: change the comment in the header and run it again.
 
+If clang-doc cannot compile a header, nothing is written: it prints the
+first few errors and where its log is (`build/release/docs/clang-doc.log`).
+`docs: clang-doc cannot compile #include <cstdint>` means it cannot see the
+C++ standard library at all; the lines under it are where it looked.
+
 ## docs-archive.sh
 
 Zips documentation into one archive, for reading on another device or sharing.

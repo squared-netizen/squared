@@ -12,9 +12,9 @@
 
 public SkinLoadSeverity severity
 
-public int path
+public std::string path
 
-public int message
+public std::string message
 
 
 

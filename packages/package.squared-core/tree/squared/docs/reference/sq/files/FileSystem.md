@@ -46,7 +46,7 @@
 
 ### internal
 
-*public FileHandle internal(int path)*
+*public FileHandle internal(std::string_view path)*
 
 
 
@@ -54,7 +54,7 @@
 
 ### local
 
-*public FileHandle local(int path)*
+*public FileHandle local(std::string_view path)*
 
 
 
@@ -62,7 +62,7 @@
 
 ### external
 
-*public FileHandle external(int path)*
+*public FileHandle external(std::string_view path)*
 
 
 
@@ -70,7 +70,7 @@
 
 ### absolute
 
-*public FileHandle absolute(int path)*
+*public FileHandle absolute(std::string_view path)*
 
 
 
@@ -84,7 +84,7 @@
 
 ### resolve
 
-*public FileHandle resolve(FileType type, int path)*
+*public FileHandle resolve(FileType type, std::string_view path)*
 
 
 
@@ -92,7 +92,7 @@
 
 ### exists
 
-*public bool exists(FileType type, int path)*
+*public bool exists(FileType type, std::string_view path)*
 
 
 
@@ -100,7 +100,7 @@
 
 ### is_directory
 
-*public bool is_directory(FileType type, int path)*
+*public bool is_directory(FileType type, std::string_view path)*
 
 
 
@@ -108,7 +108,7 @@
 
 ### length
 
-*public int length(FileType type, int path)*
+*public std::uint64_t length(FileType type, std::string_view path)*
 
 
 
@@ -116,7 +116,7 @@
 
 ### read
 
-*public FileReadResult read(FileType type, int path)*
+*public FileReadResult read(FileType type, std::string_view path)*
 
 
 
@@ -124,7 +124,7 @@
 
 ### write
 
-*public FileError write(FileType type, int path, int bytes, bool append)*
+*public FileError write(FileType type, std::string_view path, std::span<const std::byte> bytes, bool append)*
 
 
 
@@ -132,7 +132,7 @@
 
 ### list
 
-*public FileError list(FileType type, int path, int & names)*
+*public FileError list(FileType type, std::string_view path, std::vector<std::string> & names)*
 
 
 
@@ -140,7 +140,7 @@
 
 ### make_directories
 
-*public FileError make_directories(FileType type, int path)*
+*public FileError make_directories(FileType type, std::string_view path)*
 
 
 
@@ -148,7 +148,7 @@
 
 ### remove
 
-*public FileError remove(FileType type, int path)*
+*public FileError remove(FileType type, std::string_view path)*
 
 
 

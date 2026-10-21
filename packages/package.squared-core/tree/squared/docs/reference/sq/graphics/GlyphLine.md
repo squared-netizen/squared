@@ -10,9 +10,9 @@
 
 ## Members
 
-public int first_glyph
+public std::size_t first_glyph
 
-public int glyph_count
+public std::size_t glyph_count
 
 public float width
 

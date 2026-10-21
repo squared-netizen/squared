@@ -4,7 +4,7 @@
 
 ### good_name
 
-*bool good_name(int name)*
+*bool good_name(std::string_view name)*
 
 *Defined at [console/src/bridge_protocol.hpp:53](../../../../../console/src/bridge_protocol.hpp#L53)*
 

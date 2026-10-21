@@ -24,6 +24,14 @@
 
 ### JsonValue
 
+*public void JsonValue(std::nullptr_t )*
+
+
+
+**brief** Construct a JSON null value. 
+
+### JsonValue
+
 *public void JsonValue(bool value)*
 
 
@@ -34,19 +42,7 @@
 
 ### JsonValue
 
-*public void JsonValue(int value)*
-
-
-
-**brief** Construct a JSON array by moving the vector.
-
-**value** Array whose storage is moved into the value.
-
-
-
-**brief** Construct a JSON object by moving the map.
-
-**value** Object whose storage is moved into the value.
+*public void JsonValue(std::int64_t value)*
 
 
 
@@ -54,17 +50,9 @@
 
 **value** Signed 64-bit integer to store.
 
+### JsonValue
 
-
-**brief** Construct a JSON string, copying the value.
-
-**value** UTF-8 text to copy into the stored value.
-
-
-
-**brief** Construct a JSON string, copying the view.
-
-**value** UTF-8 text to copy into the stored value.
+*public void JsonValue(std::uint64_t value)*
 
 
 
@@ -84,6 +72,26 @@
 
 ### JsonValue
 
+*public void JsonValue(std::string value)*
+
+
+
+**brief** Construct a JSON string, copying the value.
+
+**value** UTF-8 text to copy into the stored value.
+
+### JsonValue
+
+*public void JsonValue(std::string_view value)*
+
+
+
+**brief** Construct a JSON string, copying the view.
+
+**value** UTF-8 text to copy into the stored value.
+
+### JsonValue
+
 *public void JsonValue(const char * value)*
 
 
@@ -91,6 +99,26 @@
 **brief** Construct a JSON string from a null-terminated value.
 
 **value** Null-terminated UTF-8 text to copy.
+
+### JsonValue
+
+*public void JsonValue(Array value)*
+
+
+
+**brief** Construct a JSON array by moving the vector.
+
+**value** Array whose storage is moved into the value.
+
+### JsonValue
+
+*public void JsonValue(Object value)*
+
+
+
+**brief** Construct a JSON object by moving the map.
+
+**value** Object whose storage is moved into the value.
 
 ### type
 
@@ -124,7 +152,7 @@
 
 ### signed_integer_if
 
-*public const int * signed_integer_if()*
+*public const std::int64_t * signed_integer_if()*
 
 
 
@@ -134,7 +162,7 @@
 
 ### unsigned_integer_if
 
-*public const int * unsigned_integer_if()*
+*public const std::uint64_t * unsigned_integer_if()*
 
 
 
@@ -154,7 +182,7 @@
 
 ### string_if
 
-*public const int * string_if()*
+*public const std::string * string_if()*
 
 
 
@@ -164,7 +192,7 @@
 
 ### array_if
 
-*public int * array_if()*
+*public Array * array_if()*
 
 
 
@@ -174,7 +202,7 @@
 
 ### array_if
 
-*public const int * array_if()*
+*public const Array * array_if()*
 
 
 
@@ -184,7 +212,7 @@
 
 ### object_if
 
-*public int * object_if()*
+*public Object * object_if()*
 
 
 
@@ -194,7 +222,7 @@
 
 ### object_if
 
-*public const int * object_if()*
+*public const Object * object_if()*
 
 
 
@@ -204,7 +232,7 @@
 
 ### find
 
-*public JsonValue * find(int key)*
+*public JsonValue * find(std::string_view key)*
 
 
 
@@ -216,7 +244,7 @@
 
 ### find
 
-*public const JsonValue * find(int key)*
+*public const JsonValue * find(std::string_view key)*
 
 
 

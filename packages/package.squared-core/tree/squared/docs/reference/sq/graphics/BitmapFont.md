@@ -14,7 +14,7 @@
 
 ### load
 
-*public BitmapFontError load(int descriptor, const BitmapFontParseLimits & limits)*
+*public BitmapFontError load(std::string_view descriptor, const BitmapFontParseLimits & limits)*
 
 
 
@@ -68,19 +68,19 @@
 
 ### pages
 
-*public int pages()*
+*public std::span<const BitmapFontPage> pages()*
 
 *Defined at [graphics/bitmap_font.hpp:52](../../../../graphics/bitmap_font.hpp#L52)*
 
 ### glyphs
 
-*public int glyphs()*
+*public std::span<const BitmapGlyph> glyphs()*
 
 *Defined at [graphics/bitmap_font.hpp:53](../../../../graphics/bitmap_font.hpp#L53)*
 
 ### kernings
 
-*public int kernings()*
+*public std::span<const BitmapKerning> kernings()*
 
 *Defined at [graphics/bitmap_font.hpp:54](../../../../graphics/bitmap_font.hpp#L54)*
 

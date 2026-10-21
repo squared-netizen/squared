@@ -10,17 +10,17 @@
 
 ## Members
 
-public int maximum_bytes
+public std::size_t maximum_bytes
 
-public int maximum_line_bytes
+public std::size_t maximum_line_bytes
 
-public int maximum_pages
+public std::size_t maximum_pages
 
-public int maximum_glyphs
+public std::size_t maximum_glyphs
 
-public int maximum_kernings
+public std::size_t maximum_kernings
 
-public int maximum_name_bytes
+public std::size_t maximum_name_bytes
 
 
 

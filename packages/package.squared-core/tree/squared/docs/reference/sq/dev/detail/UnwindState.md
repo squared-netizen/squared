@@ -8,7 +8,7 @@
 
 ## Members
 
-public int[32] pcs
+public std::uintptr_t[32] pcs
 
 public int count
 

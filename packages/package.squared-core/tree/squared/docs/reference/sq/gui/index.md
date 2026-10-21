@@ -94,7 +94,7 @@
 
 ### load_libgdx_skin
 
-*bool load_libgdx_skin(Skin & destination, int json, const int & resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
+*bool load_libgdx_skin(Skin & destination, std::string_view json, const SkinDrawableResolver & resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
 
 
 
@@ -116,7 +116,7 @@
 
 ### load_libgdx_skin
 
-*bool load_libgdx_skin(Skin & destination, int json, const int & resolver, const int & font_resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
+*bool load_libgdx_skin(Skin & destination, std::string_view json, const SkinDrawableResolver & resolver, const SkinFontResolver & font_resolver, SkinLoadReport & report, const SkinLoadLimits & limits)*
 
 
 
@@ -142,7 +142,7 @@
 
 ### resolve_atlas_drawable
 
-*int resolve_atlas_drawable(const graphics::TextureAtlas & atlas, int resource_name)*
+*DrawablePtr resolve_atlas_drawable(const graphics::TextureAtlas & atlas, std::string_view resource_name)*
 
 
 

@@ -14,7 +14,7 @@
 
 ### ButtonGroup
 
-*public void ButtonGroup(int minimum_checked, int maximum_checked)*
+*public void ButtonGroup(std::size_t minimum_checked, std::size_t maximum_checked)*
 
 
 
@@ -88,7 +88,7 @@
 
 ### set_limits
 
-*public void set_limits(int minimum_checked, int maximum_checked)*
+*public void set_limits(std::size_t minimum_checked, std::size_t maximum_checked)*
 
 
 
@@ -102,7 +102,7 @@
 
 ### checked_count
 
-*public int checked_count()*
+*public std::size_t checked_count()*
 
 
 
@@ -118,7 +118,7 @@
 
 ### size
 
-*public int size()*
+*public std::size_t size()*
 
 *Defined at [gui/button_group.hpp:66](../../../../gui/button_group.hpp#L66)*
 

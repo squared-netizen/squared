@@ -26,7 +26,7 @@ Inherits from Widget
 
 ### add
 
-*public Widget & add(int child, float grow)*
+*public Widget & add(std::unique_ptr<Widget> child, float grow)*
 
 
 

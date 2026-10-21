@@ -46,7 +46,7 @@
 
 ### create
 
-*public GlesError create(int width, int height, TextureFormat format, int pixels)*
+*public GlesError create(int width, int height, TextureFormat format, std::span<const std::byte> pixels)*
 
 
 
@@ -66,7 +66,7 @@
 
 ### upload
 
-*public GlesError upload(int pixels)*
+*public GlesError upload(std::span<const std::byte> pixels)*
 
 
 
@@ -78,7 +78,7 @@
 
 ### upload_region
 
-*public GlesError upload_region(int x, int y, int width, int height, int pixels)*
+*public GlesError upload_region(int x, int y, int width, int height, std::span<const std::byte> pixels)*
 
 
 
@@ -158,7 +158,7 @@
 
 ### name
 
-*public int name()*
+*public std::uint32_t name()*
 
 *Defined at [gles/texture2d.hpp:100](../../../../gles/texture2d.hpp#L100)*
 

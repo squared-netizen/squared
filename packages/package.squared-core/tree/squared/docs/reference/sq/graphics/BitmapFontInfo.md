@@ -10,7 +10,7 @@
 
 ## Members
 
-public int face
+public std::string face
 
 public int size
 

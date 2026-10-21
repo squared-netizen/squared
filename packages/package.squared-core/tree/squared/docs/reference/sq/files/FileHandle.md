@@ -30,7 +30,7 @@
 
 ### FileHandle
 
-*public void FileHandle(FileSystem & system, FileType type, int path)*
+*public void FileHandle(FileSystem & system, FileType type, std::string path)*
 
 
 
@@ -46,7 +46,7 @@
 
 ### name
 
-*public int name()*
+*public std::string_view name()*
 
 
 
@@ -54,7 +54,7 @@
 
 ### extension
 
-*public int extension()*
+*public std::string_view extension()*
 
 
 
@@ -62,7 +62,7 @@
 
 ### name_without_extension
 
-*public int name_without_extension()*
+*public std::string_view name_without_extension()*
 
 
 
@@ -70,7 +70,7 @@
 
 ### child
 
-*public FileHandle child(int name)*
+*public FileHandle child(std::string_view name)*
 
 
 
@@ -102,7 +102,7 @@
 
 ### path
 
-*public const int & path()*
+*public const std::string & path()*
 
 *Defined at [files/file_handle.hpp:58](../../../../files/file_handle.hpp#L58)*
 
@@ -112,7 +112,7 @@
 
 ### sibling
 
-*public FileHandle sibling(int name)*
+*public FileHandle sibling(std::string_view name)*
 
 
 
@@ -150,7 +150,7 @@
 
 ### length
 
-*public int length()*
+*public std::uint64_t length()*
 
 
 
@@ -180,7 +180,7 @@
 
 ### write_bytes
 
-*public FileError write_bytes(int bytes, bool append)*
+*public FileError write_bytes(std::span<const std::byte> bytes, bool append)*
 
 
 
@@ -198,7 +198,7 @@
 
 ### write_string
 
-*public FileError write_string(int text, bool append)*
+*public FileError write_string(std::string_view text, bool append)*
 
 
 
@@ -212,7 +212,7 @@
 
 ### list
 
-*public FileError list(int & entries)*
+*public FileError list(std::vector<FileHandle> & entries)*
 
 
 

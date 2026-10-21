@@ -1,6 +1,6 @@
 # struct Ticket
 
-*Defined at [time/src/deadline_queue.hpp:34](../../../../../time/src/deadline_queue.hpp#L34)*
+*Defined at [time/deadline_queue.hpp:34](../../../../../time/deadline_queue.hpp#L34)*
 
 
 
@@ -12,7 +12,7 @@
 
 ## Members
 
-public int value
+public std::uint64_t value
 
 
 
@@ -22,7 +22,7 @@ public int value
 
 *public bool operator bool()*
 
-*Defined at [time/src/deadline_queue.hpp:43](../../../../../time/src/deadline_queue.hpp#L43)*
+*Defined at [time/deadline_queue.hpp:43](../../../../../time/deadline_queue.hpp#L43)*
 
 
 

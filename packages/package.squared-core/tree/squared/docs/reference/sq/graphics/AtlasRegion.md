@@ -10,33 +10,11 @@
 
 
 
-## Members
-
-public int name_
-
-public int index_
-
-public TextureRegion region_
-
-public int packed_width_
-
-public int packed_height_
-
-public int original_width_
-
-public int original_height_
-
-public int offset_x_
-
-public int offset_y_
-
-
-
 ## Functions
 
 ### name
 
-*public const int & name()*
+*public const std::string & name()*
 
 
 
@@ -135,6 +113,30 @@ public int offset_y_
 **brief** Read the trimmed region's vertical placement.
 
 **return** Vertical offset in source pixels.
+
+### splits
+
+*public const std::optional<std::array<int, 4>> & splits()*
+
+*Defined at [graphics/atlas_region.hpp:86](../../../../graphics/atlas_region.hpp#L86)*
+
+
+
+**brief** Read optional nine-patch splits.
+
+**return** Left, right, top, bottom splits when present, else empty.
+
+### pads
+
+*public const std::optional<std::array<int, 4>> & pads()*
+
+*Defined at [graphics/atlas_region.hpp:95](../../../../graphics/atlas_region.hpp#L95)*
+
+
+
+**brief** Read optional nine-patch padding.
+
+**return** Left, right, top, bottom padding when present, else empty.
 
 
 

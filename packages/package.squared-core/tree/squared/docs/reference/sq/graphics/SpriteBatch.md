@@ -42,7 +42,7 @@
 
 ### initialize
 
-*public bool initialize(int maximum_sprites)*
+*public bool initialize(std::size_t maximum_sprites)*
 
 
 
@@ -222,7 +222,7 @@
 
 ### sprite_capacity
 
-*public int sprite_capacity()*
+*public std::size_t sprite_capacity()*
 
 
 
@@ -232,7 +232,7 @@
 
 ### queued_sprites
 
-*public int queued_sprites()*
+*public std::size_t queued_sprites()*
 
 
 
@@ -242,7 +242,7 @@
 
 ### skipped_draws
 
-*public int skipped_draws()*
+*public std::size_t skipped_draws()*
 
 
 

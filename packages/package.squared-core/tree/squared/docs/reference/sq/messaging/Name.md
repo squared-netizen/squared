@@ -12,7 +12,7 @@
 
 ## Members
 
-public int id
+public std::uint64_t id
 
 
 
@@ -38,7 +38,7 @@ public int id
 
 ### of
 
-*public static Name of(int text)*
+*public static Name of(std::string_view text)*
 
 *Defined at [messaging/name.hpp:85](../../../../messaging/name.hpp#L85)*
 
@@ -48,7 +48,7 @@ public int id
 
 ### from_id
 
-*public static Name from_id(int id)*
+*public static Name from_id(std::uint64_t id)*
 
 *Defined at [messaging/name.hpp:93](../../../../messaging/name.hpp#L93)*
 

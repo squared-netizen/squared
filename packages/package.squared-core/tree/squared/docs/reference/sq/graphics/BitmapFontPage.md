@@ -10,9 +10,9 @@
 
 ## Members
 
-public int id
+public std::size_t id
 
-public int file
+public std::string file
 
 
 

@@ -60,7 +60,7 @@
 
 ### build
 
-*public GlesError build(int vertex_source, int fragment_source)*
+*public GlesError build(std::string_view vertex_source, std::string_view fragment_source)*
 
 
 
@@ -82,7 +82,7 @@
 
 ### uniform_location
 
-*public int uniform_location(int name)*
+*public std::int32_t uniform_location(std::string_view name)*
 
 
 
@@ -96,7 +96,7 @@
 
 ### set_float
 
-*public void set_float(int location, float value)*
+*public void set_float(std::int32_t location, float value)*
 
 
 
@@ -104,7 +104,7 @@
 
 ### set_int
 
-*public void set_int(int location, int value)*
+*public void set_int(std::int32_t location, std::int32_t value)*
 
 
 
@@ -112,7 +112,7 @@
 
 ### set_vec2
 
-*public void set_vec2(int location, float x, float y)*
+*public void set_vec2(std::int32_t location, float x, float y)*
 
 
 
@@ -120,7 +120,7 @@
 
 ### set_vec4
 
-*public void set_vec4(int location, float x, float y, float z, float w)*
+*public void set_vec4(std::int32_t location, float x, float y, float z, float w)*
 
 
 
@@ -128,7 +128,7 @@
 
 ### set_mat4
 
-*public void set_mat4(int location, const float * values)*
+*public void set_mat4(std::int32_t location, const float * values)*
 
 
 
@@ -140,7 +140,7 @@
 
 ### attributes
 
-*public GlesError attributes(int & out)*
+*public GlesError attributes(std::vector<AttributeInfo> & out)*
 
 
 
@@ -154,7 +154,7 @@
 
 ### uniforms
 
-*public GlesError uniforms(int & out)*
+*public GlesError uniforms(std::vector<UniformInfo> & out)*
 
 
 
@@ -192,7 +192,7 @@
 
 ### name
 
-*public int name()*
+*public std::uint32_t name()*
 
 *Defined at [gles/program.hpp:114](../../../../gles/program.hpp#L114)*
 

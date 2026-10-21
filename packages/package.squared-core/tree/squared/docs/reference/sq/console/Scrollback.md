@@ -24,7 +24,7 @@ Iterator
 
 ### Scrollback
 
-*public void Scrollback(int storage)*
+*public void Scrollback(std::span<char> storage)*
 
 
 
@@ -34,7 +34,7 @@ Iterator
 
 ### push
 
-*public void push(Level level, int text)*
+*public void push(Level level, std::string_view text)*
 
 
 
@@ -52,7 +52,7 @@ Iterator
 
 ### size
 
-*public int size()*
+*public std::size_t size()*
 
 *Defined at [console/scrollback.hpp:56](../../../../console/scrollback.hpp#L56)*
 
@@ -72,7 +72,7 @@ Iterator
 
 ### dropped
 
-*public int dropped()*
+*public std::uint64_t dropped()*
 
 *Defined at [console/scrollback.hpp:62](../../../../console/scrollback.hpp#L62)*
 
@@ -82,7 +82,7 @@ Iterator
 
 ### longest_line
 
-*public int longest_line()*
+*public std::size_t longest_line()*
 
 
 
@@ -108,7 +108,7 @@ Iterator
 
 ### last
 
-*public Iterator last(int count)*
+*public Iterator last(std::size_t count)*
 
 
 

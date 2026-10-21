@@ -16,7 +16,7 @@ Inherits from Timepiece
 
 ### reset
 
-*public void reset(int value)*
+*public void reset(TimePoint value)*
 
 
 

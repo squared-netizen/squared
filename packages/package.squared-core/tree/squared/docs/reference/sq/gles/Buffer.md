@@ -44,7 +44,7 @@
 
 ### create
 
-*public GlesError create(BufferTarget target, BufferUsage usage, int bytes, int size_bytes)*
+*public GlesError create(BufferTarget target, BufferUsage usage, std::span<const std::byte> bytes, std::size_t size_bytes)*
 
 
 
@@ -62,7 +62,7 @@
 
 ### update
 
-*public GlesError update(int offset_bytes, int bytes)*
+*public GlesError update(std::size_t offset_bytes, std::span<const std::byte> bytes)*
 
 
 
@@ -120,7 +120,7 @@
 
 ### name
 
-*public int name()*
+*public std::uint32_t name()*
 
 *Defined at [gles/buffer.hpp:77](../../../../gles/buffer.hpp#L77)*
 
@@ -140,7 +140,7 @@
 
 ### size_bytes
 
-*public int size_bytes()*
+*public std::size_t size_bytes()*
 
 *Defined at [gles/buffer.hpp:83](../../../../gles/buffer.hpp#L83)*
 

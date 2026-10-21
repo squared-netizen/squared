@@ -48,7 +48,7 @@ public float alpha
 
 ### from_rgba8
 
-*public static Color from_rgba8(int red_value, int green_value, int blue_value, int alpha_value)*
+*public static Color from_rgba8(std::uint8_t red_value, std::uint8_t green_value, std::uint8_t blue_value, std::uint8_t alpha_value)*
 
 *Defined at [graphics/color.hpp:43](../../../../graphics/color.hpp#L43)*
 

@@ -14,7 +14,7 @@
 
 public char32_t codepoint
 
-public int page
+public std::size_t page
 
 public int source_x
 
