@@ -1,104 +1,86 @@
 # class Timepiece
 
-*Defined at [time/timepiece.hpp:17](../../../../time/timepiece.hpp#L17)*
+*Defined at [time/timepiece.hpp:21](../../../../time/timepiece.hpp#L21)*
 
 
 
-**brief** Mutable, pausable, scaled application time domain.
+**brief** The time between ticks, as a value: the last time it was given, the step since the one before (clamped), and how many ticks there have been. 24 bytes, no base class, nothing virtual, no clock of its own: the loop reads the clock once (`now()`) and passes the time in.
 
- Time is stored as signed 64-bit nanoseconds. Negative deltas are ignored and overflow saturates at the largest representable time point. This class is not thread-safe; one thread must own the domain.
+ One per loop: the UI's frames, the model's ticks. Not shared between threads.
 
 
 
-Inherits from Clock
+## Members
+
+public static duration longest_step
 
 
 
 ## Functions
 
-### Timepiece
+### tick
 
-*public void Timepiece()*
-
-*Defined at [time/timepiece.hpp:20](../../../../time/timepiece.hpp#L20)*
-
-### now
-
-*public TimePoint now()*
+*public double tick(TimePoint now)*
 
 
 
-**brief** Read the current domain time.
+**brief** A tick at `now`: the seconds since the last tick (or since `start`), at most a quarter second; 0 for the first tick when there was no `start`, and 0 if `now` is earlier than the last time.
 
-**return** Nanoseconds since the domain's epoch.
+### start
 
-### advance
-
-*public void advance(Duration delta)*
+*public void start(TimePoint now)*
 
 
 
-**brief** Advance the domain by one frame or fixed step.
+**brief** Count from `now`: the next tick measures from here. Clears the step and the count. 
 
-**delta** Desired elapsed time in nanoseconds. Negative values are ignored. Scaled by the current time-scale value.
+### seconds
 
-### pause
-
-*public void pause()*
+*public double seconds()*
 
 
 
-**brief** Freeze the domain so time no longer advances. 
+**brief** The step the last tick reported, in seconds. 
 
-### resume
+### step
 
-*public void resume()*
+*public Duration step()*
 
-
-
-**brief** Resume a paused domain. 
-
-### paused
-
-*public bool paused()*
+*Defined at [time/timepiece.hpp:38](../../../../time/timepiece.hpp#L38)*
 
 
 
-**brief** Report the paused state.
+**brief** The step the last tick reported, in nanoseconds. 
 
-**return** true while the domain is frozen.
+### last
 
-### set_time_scale
+*public TimePoint last()*
 
-*public bool set_time_scale(double scale)*
-
-
-
-**brief** Set a finite time scale in the inclusive range [0, 1024].
-
-**scale** Multiplier applied to every advance delta.
-
-**return** false when the requested scale is invalid; true otherwise.
-
-### time_scale
-
-*public double time_scale()*
+*Defined at [time/timepiece.hpp:44](../../../../time/timepiece.hpp#L44)*
 
 
 
-**brief** Read the current time-scale multiplier.
+**brief** The time the last tick (or `start`) was given. 
 
-**return** Active multiplier in the inclusive range [0, 1024].
+### ticks
 
-### set_now
+*public std::uint64_t ticks()*
 
-*protected void set_now(TimePoint value)*
+*Defined at [time/timepiece.hpp:47](../../../../time/timepiece.hpp#L47)*
 
 
 
-**brief** Overwrite the current time for explicit controls and tests.
+**brief** Ticks since `start`, or since it was made. 
 
-**value** Replacement time point in nanoseconds.
+### started
+
+*public bool started()*
+
+*Defined at [time/timepiece.hpp:50](../../../../time/timepiece.hpp#L50)*
+
+
+
+**brief** Whether it has a time to measure from: a tick or `start` happened. 
 
 
 

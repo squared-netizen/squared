@@ -361,7 +361,9 @@ struct.)
 A model is any type with `receive(Telegraph&, const Received&)` (the
 `TelegraphModel` concept). Optional: `start(Telegraph&)`,
 `tick(Telegraph&, double seconds)`, `low_memory(Telegraph&)`,
-`background(Telegraph&)`, `foreground(Telegraph&, std::uint64_t elapsed_ms)`. On a turn they come in a
+`background(Telegraph&)`, `foreground(Telegraph&, std::uint64_t elapsed_ms)`,
+and for timers the pair `wake_at()` and `due(Telegraph&, sq::time::TimePoint now)`
+(see [The model's thread](#the-models-thread)). On a turn they come in a
 fixed order: low memory first; background and foreground in the order that
 ends where the app is now; quit last, after `background` (quit saves).
 
@@ -421,9 +423,9 @@ ModelRunner<Shop> runner( *line, on_ui_thread );           // or the UI's: runne
 
 | Call | Does |
 |---|---|
-| `ModelRunner<M>(line, args...)` | makes `M` from `args` on a new thread named `model` (the arguments are copied, as `std::thread` copies them: `std::ref` for a reference), calls `start`, then runs turns: `deliver`, then `tick` if due, then sleeps until the UI sends, a lifecycle signal, room for a held state, or the next tick |
+| `ModelRunner<M>(line, args...)` | makes `M` from `args` on a new thread named `model` (the arguments are copied, as `std::thread` copies them: `std::ref` for a reference), calls `start`, then runs turns: `deliver`, then `tick` if due, then `due` if its time has come, then sleeps until the UI sends, a lifecycle signal, room for a held state, the next tick, or `wake_at()` |
 | `ModelRunner<M>(line, on_ui_thread, args...)` | makes `M` now, on the calling thread; nothing runs until `turn()` |
-| `turn()` | inline only: one turn, on the UI thread; the telegrams handled, 0 once the model has quit |
+| `turn()` | inline only: one turn, on the UI thread (ticks and timers that are due run in it); the telegrams handled, 0 once the model has quit |
 | `threaded()` | whether the model has its own thread |
 | `~ModelRunner()` | asks the model to quit (it saves: `background` if the app was visible), wakes it, and waits for it to end; `M` is destroyed on the thread it lived on |
 
@@ -440,8 +442,29 @@ once. Both are counted in `wait_stats()`, which the `telegraph` Console
 command (6.7) will show.
 
 **Ticks** run on the model's thread at the interval `tick_every` asked for,
-measured on the steady clock; a model that fell behind starts the cadence
-again rather than catching up in a burst.
+measured by a `sq::time::Timepiece` (see [time.md](time.md)): `seconds` is
+the time since the last tick, at most 0.25, and the first tick measures
+from when `tick_every` was called. A model that fell behind starts the
+cadence again rather than catching up in a burst.
+
+**Timers.** A model with timers says when it next needs a turn, and is
+called when that time comes; it sleeps in between, ticking or not. Most keep
+a `sq::time::DeadlineQueue`:
+
+```cpp
+std::optional<sq::time::TimePoint> wake_at() const { return timers.next_due(); }
+void due( Telegraph &t, sq::time::TimePoint now ) {
+    timers.poll_due( now, 16, [&]( Timer timer ) { fire( t, timer ); } );
+}
+```
+
+| Hook | Called |
+|---|---|
+| `wake_at()` | after each turn's `deliver` and `tick`: the time the model next needs a turn, or nothing. The thread sleeps no later than that |
+| `due(t, now)` | when that time has come, with the turn's one reading of the clock; then `wake_at()` is asked again |
+
+A model with `wake_at()` and no `due` does not compile. The clock is read
+once a turn, after `deliver`, for both the tick and the timers.
 
 ## Lists
 
@@ -500,6 +523,7 @@ Nothing allocates. The model's thread for `ModelList`, the UI thread for
 
 ## Dependencies
 
-The standard library, and POSIX as Linux and Android both have it: `eventfd`
-and `poll` for the wakes, `pthread_setname_np` for the thread's name. An app
-that uses `ModelRunner` links with `-pthread` (the project's make file does).
+The standard library; `time` (the runner's `Timepiece` and clock); and POSIX
+as Linux and Android both have it: `eventfd` and `poll` for the wakes,
+`pthread_setname_np` for the thread's name. An app that uses `ModelRunner`
+links with `-pthread` (the project's make file does).

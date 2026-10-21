@@ -1,75 +1,33 @@
-#include <squared/time/duration.hpp>
-#include <squared/time/time_point.hpp>
 #include <squared/time/timepiece.hpp>
 
-#include <cmath>
-#include <limits>
+#include <chrono>
 
 namespace sq::time
 {
 
-TimePoint Timepiece::now() const noexcept
+double Timepiece::tick( TimePoint now ) noexcept
 {
-    return now_;
-}
-
-void Timepiece::advance( Duration delta ) noexcept
-{
-    if( paused_ || delta.count() <= 0 || time_scale_ == 0.0 ) {
-        return;
+    if( !started() || now < last_ ) {
+        step_ = Duration::zero();
+    } else {
+        const Duration step = now - last_;
+        step_ = step < longest_step ? step : longest_step;
     }
-
-    const long double scaled =
-        static_cast<long double>( delta.count() ) * static_cast<long double>( time_scale_ ) +
-        fractional_nanoseconds_;
-    const long double whole = std::floor( scaled );
-    const auto maximum = std::numeric_limits<Duration::rep>::max();
-    const long double remaining = static_cast<long double>( maximum - now_.count() );
-
-    if( whole >= remaining ) {
-        now_ = TimePoint( maximum );
-        fractional_nanoseconds_ = 0.0L;
-        return;
-    }
-
-    const auto increment = static_cast<Duration::rep>( whole );
-    now_ += Duration( increment );
-    fractional_nanoseconds_ = scaled - whole;
+    last_ = now;
+    ++ticks_;
+    return seconds();
 }
 
-void Timepiece::pause() noexcept
+void Timepiece::start( TimePoint now ) noexcept
 {
-    paused_ = true;
+    last_ = now;
+    step_ = Duration::zero();
+    ticks_ = 0;
 }
 
-void Timepiece::resume() noexcept
+double Timepiece::seconds() const noexcept
 {
-    paused_ = false;
-}
-
-bool Timepiece::paused() const noexcept
-{
-    return paused_;
-}
-
-bool Timepiece::set_time_scale( double scale ) noexcept
-{
-    if( !std::isfinite( scale ) || scale < 0.0 || scale > 1024.0 ) {
-        return false;
-    }
-    time_scale_ = scale;
-    return true;
-}
-
-double Timepiece::time_scale() const noexcept
-{
-    return time_scale_;
-}
-
-void Timepiece::set_now( TimePoint value ) noexcept
-{
-    now_ = value.count() < 0 ? Duration::zero() : value;
-    fractional_nanoseconds_ = 0.0L;
+    return std::chrono::duration<double>( step_ ).count();
 }
 
 } // namespace sq::time

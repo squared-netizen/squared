@@ -1,6 +1,6 @@
 # struct OnUiThread
 
-*Defined at [messaging/model_runner.hpp:17](../../../../messaging/model_runner.hpp#L17)*
+*Defined at [messaging/model_runner.hpp:19](../../../../messaging/model_runner.hpp#L19)*
 
 
 
@@ -14,7 +14,7 @@
 
 *public void OnUiThread()*
 
-*Defined at [messaging/model_runner.hpp:19](../../../../messaging/model_runner.hpp#L19)*
+*Defined at [messaging/model_runner.hpp:21](../../../../messaging/model_runner.hpp#L21)*
 
 
 

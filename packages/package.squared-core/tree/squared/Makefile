@@ -36,7 +36,7 @@ MODULES := math data files assets graphics \
 .PHONY: all clean docs docs-check headers lint test retest $(MODULES)
 
 # The modules with tests, in the order they are run.
-TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console messaging
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging
 
 all: $(MODULES)
 
@@ -44,6 +44,7 @@ graphics: math files
 gui: graphics math data files
 assets: files
 gles: graphics
+messaging: time
 
 $(MODULES):
 	$(MAKE) -C $@ -f Makefile

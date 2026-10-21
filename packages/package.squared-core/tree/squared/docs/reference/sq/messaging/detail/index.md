@@ -8,6 +8,20 @@
 
 ## Functions
 
+### earliest
+
+*int earliest(int first, int second)*
+
+*Defined at [messaging/model_runner.hpp:49](../../../../../messaging/model_runner.hpp#L49)*
+
+ The earlier of two timeouts in milliseconds, -1 meaning none.
+
+### milliseconds_until
+
+*int milliseconds_until(time::TimePoint at, time::TimePoint now)*
+
+ Whole milliseconds from `now` until `at`, rounded up: 0 when it has come.
+
 ### name_this_thread
 
 *void name_this_thread(const char * name)*

@@ -2,7 +2,8 @@
 // on its wake descriptor as a looper would. Round trips with no wakeup lost,
 // a model that sleeps rather than spins, ticks, the bounded wait (ended by
 // its timeout, by a drain, by quit), the order an event keeps behind held
-// states, the lifecycle waking the model, quit, and the inline runner. Run
+// states, the lifecycle waking the model, quit, the inline runner, and
+// timers (6.6b) on both. Run
 // under ThreadSanitizer on desktop Linux before each package (Android's
 // clang ships no ThreadSanitizer runtime).
 //
@@ -10,6 +11,7 @@
 // hanging the test.
 
 #include <squared/messaging/model_runner.hpp>
+#include <squared/time/deadline_queue.hpp>
 
 #include <poll.h>
 #include <sys/prctl.h>
@@ -21,6 +23,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <string>
 #include <thread>
@@ -82,6 +85,8 @@ namespace
     } while( false )
 
 using Clock = std::chrono::steady_clock;
+using sq::time::TimePoint;
+using namespace std::chrono_literals;
 using Milliseconds = std::chrono::milliseconds;
 
 // Generous: ThreadSanitizer is slow, and the phone may be busy.
@@ -98,6 +103,8 @@ inline constexpr Key<std::int64_t, do_> fill{ "test.fill" };
 inline constexpr Key<std::int64_t, state, with_uid> cell{ "test.cell" };
 inline constexpr Key<std::int64_t, state> ticks{ "test.ticks" };
 inline constexpr Key<void, event> pinged{ "test.pinged" };
+inline constexpr Key<std::int64_t, do_> after{ "test.after" };
+inline constexpr Key<std::int64_t, event> fired{ "test.fired" };
 } // namespace names
 
 constexpr std::uint32_t cells = 300; // more than a ring holds: some are held back
@@ -117,6 +124,7 @@ struct Shared
         std::atomic<std::int64_t> flood_milliseconds{ -1 };
         std::atomic<bool> flood_done{ false };
         std::atomic<bool> flooding{ false };
+        std::atomic<std::uint32_t> due_calls{ 0 };
         std::thread::id made_on;
         std::thread::id destroyed_on;
         std::string thread_name;
@@ -212,9 +220,51 @@ class Model final
         Shared &shared_;
 };
 
+// A model with timers: `do test.after <ms>` schedules one; when it is due,
+// `event test.fired <ms>`. It sleeps until then: no tick, no polling.
+class TimerModel final
+{
+    public:
+        explicit TimerModel( Shared &shared ) noexcept
+            : shared_( shared )
+        {}
+
+        void receive( Telegraph & /*telegraph*/, const Received &received ) noexcept
+        {
+            if( received.telegram.address().name == names::after.name() ) {
+                const std::int64_t delay = received.telegram.as_integer();
+                const auto wait = std::chrono::milliseconds( delay );
+                const auto scheduled = timers_.schedule_after( sq::time::now(), wait, delay );
+                CHECK( scheduled );
+            }
+        }
+
+        [[nodiscard]] std::optional<TimePoint> wake_at() const noexcept
+        {
+            return timers_.next_due();
+        }
+
+        void due( Telegraph &telegraph, TimePoint now ) noexcept
+        {
+            shared_.due_calls.fetch_add( 1 );
+            const auto fire = [&]( std::int64_t delay ) noexcept {
+                CHECK( telegraph.event( names::fired, delay ) == SendResult::sent );
+            };
+            timers_.poll_due( now, timers_.capacity(), fire );
+        }
+
+    private:
+        Shared &shared_;
+        std::array<sq::time::DeadlineQueue<std::int64_t>::Entry, 8> storage_{};
+        sq::time::DeadlineQueue<std::int64_t> timers_{ storage_ };
+};
+
 // The UI's side of a test: what the model sent, and a wait as a looper's.
 struct Handler
 {
+        std::array<std::int64_t, 4> fired{};
+        std::uint32_t fired_count = 0;
+        Clock::time_point first_fired{};
         std::uint32_t flooded = 0;
         std::uint32_t pinged = 0;
         std::int64_t round_done = 0;
@@ -224,7 +274,15 @@ struct Handler
         void event( const Received &received ) noexcept
         {
             const Name name = received.telegram.address().name;
-            if( name == names::flooded.name() ) {
+            if( name == names::fired.name() ) {
+                if( fired_count == 0 ) {
+                    first_fired = Clock::now();
+                }
+                if( fired_count < fired.size() ) {
+                    fired[fired_count] = received.telegram.as_integer();
+                }
+                ++fired_count;
+            } else if( name == names::flooded.name() ) {
                 ++flooded;
             } else if( name == names::pinged.name() ) {
                 ++pinged;
@@ -291,18 +349,29 @@ bool spin_until( Done done )
 
 void tick_clock()
 {
+    // Times passed in: exact, and no sleeping.
+    const TimePoint t0 = TimePoint( 100s );
     detail::TickClock clock;
-    CHECK( clock.until_due( 0 ) == -1 );
-    const int first = clock.until_due( 20 );
-    CHECK( first > 0 && first <= 20 );
-    sleep_ms( 25 );
-    CHECK( clock.until_due( 20 ) == 0 );
-    const double seconds = clock.take();
-    CHECK( seconds >= 0.020 && seconds < 0.25 );
-    sleep_ms( 300 ); // a stall: the step is clamped, and no burst follows
-    CHECK( clock.until_due( 20 ) == 0 );
-    CHECK( clock.take() == 0.25 );
-    CHECK( clock.until_due( 20 ) > 0 );
+    CHECK( clock.until_due( 0, t0 ) == -1 );
+    CHECK( clock.until_due( 20, t0 ) == 20 );
+    CHECK( clock.until_due( 20, t0 + 5ms ) == 15 );
+    CHECK( clock.until_due( 20, t0 + 19ms + 1ns ) == 1 ); // rounded up, never early
+    CHECK( clock.until_due( 20, t0 + 25ms ) == 0 );
+    CHECK( clock.take( t0 + 25ms ) == 0.025 );       // measured from when the interval began
+    CHECK( clock.until_due( 20, t0 + 25ms ) == 15 ); // the cadence kept: next at 40
+    CHECK( clock.until_due( 20, t0 + 40ms ) == 0 );
+    CHECK( clock.take( t0 + 40ms ) == 0.015 );
+    CHECK( clock.until_due( 20, t0 + 400ms ) == 0 );  // a stall
+    CHECK( clock.take( t0 + 400ms ) == 0.25 );        // clamped
+    CHECK( clock.until_due( 20, t0 + 400ms ) == 20 ); // the cadence starts again: no burst
+    CHECK( clock.until_due( 50, t0 + 410ms ) == 50 ); // a new interval starts now
+    CHECK( clock.until_due( 0, t0 + 420ms ) == -1 );
+
+    CHECK( detail::milliseconds_until( t0, t0 + 1s ) == 0 );
+    CHECK( detail::milliseconds_until( t0 + 1ns, t0 ) == 1 );
+    CHECK( detail::milliseconds_until( TimePoint::max(), t0 ) == std::numeric_limits<int>::max() );
+    CHECK( detail::earliest( -1, 5 ) == 5 && detail::earliest( 7, -1 ) == 7 );
+    CHECK( detail::earliest( 3, 9 ) == 3 && detail::earliest( -1, -1 ) == -1 );
 }
 
 // Two thousand round trips, each one a sleep and a wake on both sides.
@@ -493,6 +562,50 @@ void quit_ends_the_wait()
     CHECK( shared.flood_done.load() );
 }
 
+// Timers on the model's thread: it sleeps until the first is due, wakes for
+// it alone, and again for the next; `due` is called once each time.
+void timers()
+{
+    const auto owned = std::make_unique<TelegraphLine>();
+    TelegraphLine &line = *owned;
+    Shared shared;
+    TelegraphUi &ui = line.ui();
+    Handler handler{ .ui = &ui };
+    ModelRunner<TimerModel> runner( line, std::ref( shared ) );
+    const Clock::time_point began = Clock::now();
+    CHECK( ui.do_( names::after, std::int64_t{ 60 } ).result == SendResult::sent );
+    CHECK( ui.do_( names::after, std::int64_t{ 30 } ).result == SendResult::sent );
+    CHECK( wait_for( ui, handler, [&] { return handler.fired_count == 2; } ) );
+    const auto first = std::chrono::duration_cast<Milliseconds>( handler.first_fired - began );
+    CHECK( first.count() >= 30 && first.count() < 60 );
+    CHECK( handler.fired[0] == 30 && handler.fired[1] == 60 );
+    CHECK( shared.due_calls.load() == 2 ); // woken for each, not polling
+}
+
+// Timers inline: a turn runs what is due.
+void inline_timers()
+{
+    const auto owned = std::make_unique<TelegraphLine>();
+    TelegraphLine &line = *owned;
+    Shared shared;
+    TelegraphUi &ui = line.ui();
+    Handler handler{ .ui = &ui };
+    ModelRunner<TimerModel> runner( line, on_ui_thread, std::ref( shared ) );
+    CHECK( ui.do_( names::after, std::int64_t{ 0 } ).result == SendResult::sent );
+    CHECK( runner.turn() == 1 ); // scheduled, and due in the same turn
+    ui.drain( handler );
+    CHECK( handler.fired_count == 1 && handler.fired[0] == 0 );
+    CHECK( ui.do_( names::after, std::int64_t{ 30 } ).result == SendResult::sent );
+    CHECK( runner.turn() == 1 );
+    CHECK( runner.turn() == 0 );
+    ui.drain( handler );
+    CHECK( handler.fired_count == 1 && shared.due_calls.load() == 1 ); // not yet
+    sleep_ms( 35 );
+    CHECK( runner.turn() == 0 );
+    ui.drain( handler );
+    CHECK( handler.fired_count == 2 && handler.fired[1] == 30 && shared.due_calls.load() == 2 );
+}
+
 // No thread: the UI runs the model a turn at a time; a full ring is `full` at once.
 void inline_runner()
 {
@@ -541,6 +654,8 @@ int main()
     lifecycle_and_quit();
     quit_ends_the_wait();
     inline_runner();
+    timers();
+    inline_timers();
     std::printf( "telegraph_thread_test: ok\n" );
     return 0;
 }

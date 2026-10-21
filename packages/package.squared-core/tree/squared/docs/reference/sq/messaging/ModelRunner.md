@@ -1,12 +1,12 @@
 # class ModelRunner
 
-*Defined at [messaging/model_runner.hpp:79](../../../../messaging/model_runner.hpp#L79)*
+*Defined at [messaging/model_runner.hpp:100](../../../../messaging/model_runner.hpp#L100)*
 
 
 
 **brief** Runs a model at the far end of a `TelegraphLine`: on its own thread (named "model"), or on the UI thread a turn at a time.
 
- On its own thread the model is made there, from the arguments (copied, as `std::thread` copies them: `std::ref` for a reference), and it sleeps between turns until the UI sends, Android's lifecycle reaches it, or a `tick` is due. A turn is `deliver`, then `tick` if due. The runner's destructor asks the model to quit (it saves, in `background`), wakes it, and waits for its thread: the model is destroyed on the thread it lived on.
+ On its own thread the model is made there, from the arguments (copied, as `std::thread` copies them: `std::ref` for a reference), and it sleeps between turns until the UI sends, Android's lifecycle reaches it, a `tick` is due, or its `wake_at()` time comes. A turn is `deliver`, then `tick` if due, then `due` if its time has come; the clock is read once a turn. The runner's destructor asks the model to quit (it saves, in `background`), wakes it, and waits for its thread: the model is destroyed on the thread it lived on.
 
  One runner to a line. The model lives inside the runner, not on a stack.
 
@@ -18,7 +18,7 @@
 
 *public void ModelRunner<M>(TelegraphLine & line, Args &&... args)*
 
-*Defined at [messaging/model_runner.hpp:87](../../../../messaging/model_runner.hpp#L87)*
+*Defined at [messaging/model_runner.hpp:108](../../../../messaging/model_runner.hpp#L108)*
 
 
 
@@ -28,47 +28,47 @@
 
 *public void ModelRunner<M>(TelegraphLine & line, OnUiThread , Args &&... args)*
 
-*Defined at [messaging/model_runner.hpp:105](../../../../messaging/model_runner.hpp#L105)*
+*Defined at [messaging/model_runner.hpp:126](../../../../messaging/model_runner.hpp#L126)*
 
 
 
-**brief** The model on the UI thread, made now: call `turn()` once a frame. 
+**brief** The model on the UI thread, made now: call `turn()` once a frame (ticks and timers run there). 
 
 ### ModelRunner<M>
 
 *public void ModelRunner<M>(const ModelRunner<M> & )*
 
-*Defined at [messaging/model_runner.hpp:113](../../../../messaging/model_runner.hpp#L113)*
+*Defined at [messaging/model_runner.hpp:134](../../../../messaging/model_runner.hpp#L134)*
 
 ### operator=
 
 *public ModelRunner<M> & operator=(const ModelRunner<M> & )*
 
-*Defined at [messaging/model_runner.hpp:114](../../../../messaging/model_runner.hpp#L114)*
+*Defined at [messaging/model_runner.hpp:135](../../../../messaging/model_runner.hpp#L135)*
 
 ### ModelRunner<M>
 
 *public void ModelRunner<M>(ModelRunner<M> && )*
 
-*Defined at [messaging/model_runner.hpp:115](../../../../messaging/model_runner.hpp#L115)*
+*Defined at [messaging/model_runner.hpp:136](../../../../messaging/model_runner.hpp#L136)*
 
 ### operator=
 
 *public ModelRunner<M> & operator=(ModelRunner<M> && )*
 
-*Defined at [messaging/model_runner.hpp:116](../../../../messaging/model_runner.hpp#L116)*
+*Defined at [messaging/model_runner.hpp:137](../../../../messaging/model_runner.hpp#L137)*
 
 ### ~ModelRunner<M>
 
 *public void ~ModelRunner<M>()*
 
-*Defined at [messaging/model_runner.hpp:118](../../../../messaging/model_runner.hpp#L118)*
+*Defined at [messaging/model_runner.hpp:139](../../../../messaging/model_runner.hpp#L139)*
 
 ### turn
 
 *public std::uint32_t turn()*
 
-*Defined at [messaging/model_runner.hpp:135](../../../../messaging/model_runner.hpp#L135)*
+*Defined at [messaging/model_runner.hpp:156](../../../../messaging/model_runner.hpp#L156)*
 
 
 
@@ -78,7 +78,7 @@
 
 *public bool threaded()*
 
-*Defined at [messaging/model_runner.hpp:150](../../../../messaging/model_runner.hpp#L150)*
+*Defined at [messaging/model_runner.hpp:171](../../../../messaging/model_runner.hpp#L171)*
 
 
 

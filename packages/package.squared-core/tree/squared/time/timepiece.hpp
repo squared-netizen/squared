@@ -1,74 +1,62 @@
 #pragma once
 
-#include <squared/time/clock.hpp>
 #include <squared/time/duration.hpp>
 #include <squared/time/time_point.hpp>
+
+#include <chrono>
+#include <cstdint>
 
 namespace sq::time
 {
 
 /**
- * @brief Mutable, pausable, scaled application time domain.
+ * @brief The time between ticks, as a value: the last time it was given,
+ * the step since the one before (clamped), and how many ticks there have
+ * been. 24 bytes, no base class, nothing virtual, no clock of its own: the
+ * loop reads the clock once (`now()`) and passes the time in.
  *
- * Time is stored as signed 64-bit nanoseconds. Negative deltas are ignored and
- * overflow saturates at the largest representable time point. This class is
- * not thread-safe; one thread must own the domain.
+ * One per loop: the UI's frames, the model's ticks. Not shared between
+ * threads.
  */
-class Timepiece : public Clock
+class Timepiece final
 {
     public:
-        Timepiece() noexcept = default;
+        /** @brief The longest step a tick reports: after a stall, a debugger or a suspended app. */
+        static constexpr Duration longest_step = std::chrono::milliseconds( 250 );
 
         /**
-     * @brief Read the current domain time.
-     * @return Nanoseconds since the domain's epoch.
-     */
-        [[nodiscard]] TimePoint now() const noexcept override;
+         * @brief A tick at `now`: the seconds since the last tick (or since
+         * `start`), at most a quarter second; 0 for the first tick when
+         * there was no `start`, and 0 if `now` is earlier than the last time.
+         */
+        double tick( TimePoint now ) noexcept;
 
-        /**
-     * @brief Advance the domain by one frame or fixed step.
-     * @param delta Desired elapsed time in nanoseconds. Negative values are
-     * ignored. Scaled by the current time-scale value.
-     */
-        void advance( Duration delta ) noexcept;
+        /** @brief Count from `now`: the next tick measures from here. Clears the step and the count. */
+        void start( TimePoint now ) noexcept;
 
-        /** @brief Freeze the domain so time no longer advances. */
-        void pause() noexcept;
+        /** @brief The step the last tick reported, in nanoseconds. */
+        [[nodiscard]] Duration step() const noexcept { return step_; }
 
-        /** @brief Resume a paused domain. */
-        void resume() noexcept;
+        /** @brief The step the last tick reported, in seconds. */
+        [[nodiscard]] double seconds() const noexcept;
 
-        /**
-     * @brief Report the paused state.
-     * @return true while the domain is frozen.
-     */
-        [[nodiscard]] bool paused() const noexcept;
+        /** @brief The time the last tick (or `start`) was given. */
+        [[nodiscard]] TimePoint last() const noexcept { return last_; }
 
-        /**
-     * @brief Set a finite time scale in the inclusive range [0, 1024].
-     * @param scale Multiplier applied to every advance delta.
-     * @return false when the requested scale is invalid; true otherwise.
-     */
-        [[nodiscard]] bool set_time_scale( double scale ) noexcept;
+        /** @brief Ticks since `start`, or since it was made. */
+        [[nodiscard]] std::uint64_t ticks() const noexcept { return ticks_; }
 
-        /**
-     * @brief Read the current time-scale multiplier.
-     * @return Active multiplier in the inclusive range [0, 1024].
-     */
-        [[nodiscard]] double time_scale() const noexcept;
-
-    protected:
-        /**
-     * @brief Overwrite the current time for explicit controls and tests.
-     * @param value Replacement time point in nanoseconds.
-     */
-        void set_now( TimePoint value ) noexcept;
+        /** @brief Whether it has a time to measure from: a tick or `start` happened. */
+        [[nodiscard]] bool started() const noexcept { return last_ != never; }
 
     private:
-        TimePoint now_{ Duration::zero() };
-        long double fractional_nanoseconds_{ 0.0L };
-        double time_scale_{ 1.0 };
-        bool paused_{ false };
+        static constexpr TimePoint never = TimePoint::min();
+
+        TimePoint last_ = never;
+        Duration step_ = Duration::zero();
+        std::uint64_t ticks_ = 0;
 };
+
+static_assert( sizeof( Timepiece ) == 24, "Timepiece is 24 bytes: the app model's budget" );
 
 } // namespace sq::time

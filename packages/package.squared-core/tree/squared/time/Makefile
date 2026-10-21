@@ -10,15 +10,32 @@ MODULE_DIR := $(SQUARED_ROOT)/time
 
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/manual_timepiece.cpp \
+SOURCES := src/now.cpp \
     src/timepiece.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/time/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
 TARGET := $(LIB_DIR)/libsquared_time.a
 
-.PHONY: all clean
+.PHONY: all clean test
 all: $(TARGET)
+
+# Timepiece, the clocks, and DeadlineQueue against a model, with no allocation counted.
+TIME_TEST := $(BUILD_DIR)/time_test
+
+TESTS := $(TIME_TEST)
+
+test: $(TESTS)
+	$(call run_tests,$(TESTS))
+
+$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+
+$(TIME_TEST): $(MODULE_DIR)/test/time_test.cpp \
+              $(MODULE_DIR)/src/now.cpp \
+              $(MODULE_DIR)/src/timepiece.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)

@@ -1,179 +1,160 @@
 #pragma once
 
-#include <squared/time/clock.hpp>
 #include <squared/time/duration.hpp>
 #include <squared/time/time_point.hpp>
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
+#include <span>
+#include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace sq::time
 {
 
+/** @brief What a `DeadlineQueue` can hold: made empty, and moved without throwing. */
+template<typename T>
+concept DeadlineValue = std::default_initializable<T> && std::is_nothrow_move_constructible_v<T>;
+
 /**
- * @brief Bounded deterministic queue used by higher-level schedulers.
+ * @brief A model's timers: values due at times, given back in order once
+ * their time has come. Over storage its owner gives (`Entry`s, as many as it
+ * may hold at once), so nothing is allocated after it is made.
  *
- * Entries are ordered by due time and then insertion sequence. The queue does
- * not read a clock or run a thread; its owner captures time once and passes it
- * to poll_due(). Stored values are not callbacks, keeping policy in the
- * higher-level subsystem.
+ * It reads no clock and runs no thread: its owner passes the time in. In a
+ * model, `next_due()` is the model's `wake_at()`, and `poll_due` runs in its
+ * `due()` (see `ModelRunner`). Entries due at the same time come back in the
+ * order they were scheduled. Values are not callbacks: what a due value means
+ * is its owner's business.
  */
-template<typename Value>
-class DeadlineQueue
+template<DeadlineValue Value>
+class DeadlineQueue final
 {
+        static_assert( std::is_nothrow_move_assignable_v<Value>, "a value moves without throwing" );
+
     public:
-        /**
-     * @brief Opaque cancellation identity for one scheduled entry.
-     *
-     * A zero-valued ticket is empty and never matches a scheduled entry.
-     */
+        /** @brief One slot of the storage; its fields are the queue's. */
+        struct Entry
+        {
+                TimePoint due{};
+                std::uint64_t sequence = 0;
+                Value value{};
+        };
+
+        /** @brief Names a scheduled entry, to cancel it. Zero names none. */
         struct Ticket
         {
-                /** @brief Non-zero monotonic sequence; zero means empty/unset. */
-                std::uint64_t value{ 0 };
+                std::uint64_t value = 0;
 
-                /**
-         * @brief Check whether this ticket references a scheduled entry.
-         * @return true when the ticket is non-zero and usable.
-         */
-                [[nodiscard]]
-                explicit operator bool() const noexcept
+                [[nodiscard]] explicit operator bool() const noexcept { return value != 0; }
+        };
+
+        /** @brief What scheduling did. */
+        enum class ScheduleResult : std::uint8_t {
+            /** In the queue. */
+            scheduled,
+            /** Every entry of the storage is in use. */
+            full,
+            /** Before the epoch, or past the largest time. */
+            invalid_time,
+            /** 2^64 - 1 entries scheduled over its life: none more. */
+            tickets_exhausted,
+        };
+
+        /** @brief The result, and the ticket when scheduled. */
+        struct Scheduled
+        {
+                ScheduleResult result = ScheduleResult::full;
+                Ticket ticket{};
+
+                [[nodiscard]] explicit operator bool() const noexcept
                 {
-                    return value != 0;
+                    return result == ScheduleResult::scheduled;
                 }
         };
 
-        /** @brief Result of attempting to schedule or restore an entry. */
-        enum class ScheduleResult : std::uint8_t {
-            Scheduled,
-            QueueFull,
-            InvalidTime,
-            TicketExhausted
-        };
+        /** @brief A queue over `storage`: it holds at most `storage.size()` entries at once. */
+        explicit DeadlineQueue( std::span<Entry> storage ) noexcept
+            : storage_( storage )
+        {}
 
-        /**
-     * @brief Construct a queue with fixed logical capacity.
-     * @param capacity Maximum number of simultaneously scheduled entries.
-     */
-        explicit DeadlineQueue( std::size_t capacity )
-            : capacity_( capacity )
+        DeadlineQueue( const DeadlineQueue & ) = delete;
+        DeadlineQueue &operator=( const DeadlineQueue & ) = delete;
+        DeadlineQueue( DeadlineQueue && ) = delete;
+        DeadlineQueue &operator=( DeadlineQueue && ) = delete;
+        ~DeadlineQueue() = default;
+
+        [[nodiscard]] std::size_t size() const noexcept { return size_; }
+        [[nodiscard]] std::size_t capacity() const noexcept { return storage_.size(); }
+        [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
+
+        /** @brief When the first entry is due; nothing when the queue is empty. */
+        [[nodiscard]] std::optional<TimePoint> next_due() const noexcept
         {
-            entries_.reserve( capacity );
+            if( size_ == 0 ) {
+                return std::nullopt;
+            }
+            return storage_.front().due;
         }
 
-        /**
-     * @brief Count currently scheduled entries.
-     * @return Number of scheduled entries, at most the configured capacity.
-     */
-        [[nodiscard]] std::size_t size() const noexcept { return entries_.size(); }
-
-        /**
-     * @brief Read the fixed logical capacity.
-     * @return Maximum number of simultaneously scheduled entries.
-     */
-        [[nodiscard]] std::size_t capacity() const noexcept { return capacity_; }
-
-        /**
-     * @brief Check whether the queue holds no entries.
-     * @return true when no entries are scheduled.
-     */
-        [[nodiscard]] bool empty() const noexcept { return entries_.empty(); }
-
-        /**
-     * @brief Schedule an entry at an exact domain time.
-     * @param due Nanoseconds since the domain epoch; must be non-negative.
-     * @param value Storage delivered later; moved through the queue.
-     * @param ticket Optional out-parameter filled with the cancellation
-     * ticket on success; left unchanged on failure.
-     * @return ScheduleResult::Scheduled on success, or QueueFull,
-     * InvalidTime, or TicketExhausted.
-     */
-        ScheduleResult schedule_at( TimePoint due, Value value, Ticket *ticket = nullptr )
+        /** @brief `value`, due at `due` (not before the epoch). */
+        Scheduled schedule_at( TimePoint due, Value value ) noexcept
         {
             if( due.count() < 0 ) {
-                return ScheduleResult::InvalidTime;
+                return { ScheduleResult::invalid_time, {} };
             }
-            if( entries_.size() >= capacity_ ) {
-                return ScheduleResult::QueueFull;
+            if( size_ == storage_.size() ) {
+                return { ScheduleResult::full, {} };
             }
             if( next_sequence_ == std::numeric_limits<std::uint64_t>::max() ) {
-                return ScheduleResult::TicketExhausted;
+                return { ScheduleResult::tickets_exhausted, {} };
             }
-
             const std::uint64_t sequence = ++next_sequence_;
-            entries_.push_back( Entry{ due, sequence, std::move( value ) } );
-            std::push_heap( entries_.begin(), entries_.end(), Later{} );
-            if( ticket ) {
-                ticket->value = sequence;
-            }
-            return ScheduleResult::Scheduled;
+            Entry &slot = storage_[size_];
+            slot.due = due;
+            slot.sequence = sequence;
+            slot.value = std::move( value );
+            ++size_;
+            std::push_heap( storage_.begin(), end(), Later{} );
+            return { ScheduleResult::scheduled, Ticket{ sequence } };
         }
 
-        /**
-     * @brief Schedule an entry a fixed delay after the clock's current time.
-     * @param clock Domain clock read exactly once to compute the deadline.
-     * @param delay Non-negative delay in nanoseconds.
-     * @param value Storage delivered later; moved through the queue.
-     * @param ticket Optional out-parameter filled with the cancellation
-     * ticket on success; left unchanged on failure.
-     * @return ScheduleResult::Scheduled on success, or QueueFull, InvalidTime,
-     * or TicketExhausted.
-     */
-        ScheduleResult schedule_after( const Clock &clock, Duration delay, Value value,
-                                       Ticket *ticket = nullptr )
+        /** @brief `value`, due `delay` after `now` (the owner's one reading of the clock). */
+        Scheduled schedule_after( TimePoint now, Duration delay, Value value ) noexcept
         {
-            if( delay.count() < 0 ) {
-                return ScheduleResult::InvalidTime;
+            constexpr auto largest = std::numeric_limits<Duration::rep>::max();
+            if( delay.count() < 0 || now.count() < 0 || delay.count() > largest - now.count() ) {
+                return { ScheduleResult::invalid_time, {} };
             }
-            const TimePoint current = clock.now();
-            const auto maximum = std::numeric_limits<Duration::rep>::max();
-            if( current.count() < 0 || delay.count() > maximum - current.count() ) {
-                return ScheduleResult::InvalidTime;
-            }
-            return schedule_at( current + delay, std::move( value ), ticket );
+            return schedule_at( now + delay, std::move( value ) );
         }
 
-        /**
-     * @brief Cancel a scheduled entry and reclaim its capacity.
-     * @param ticket Ticket returned when the entry was scheduled.
-     * @return `true` when the entry was found and removed.
-     */
+        /** @brief Cancel the entry `ticket` names, freeing its slot. False if it is not here (due already, or cancelled). */
         [[nodiscard]] bool cancel( Ticket ticket ) noexcept
         {
-            if( !ticket ) {
-                return false;
-            }
-            for( auto iterator = entries_.begin(); iterator != entries_.end(); ++iterator ) {
-                if( iterator->sequence == ticket.value ) {
-                    entries_.erase( iterator );
-                    std::make_heap( entries_.begin(), entries_.end(), Later{} );
-                    return true;
-                }
-            }
-            return false;
+            return cancel( ticket, []( Value & ) noexcept {} );
         }
 
-        /**
-     * @brief Cancel a scheduled entry and release its stored value.
-     * @param ticket Ticket returned when the entry was scheduled.
-     * @param visitor Called with the cancelled value before it is destroyed.
-     * @return `true` when the entry was found and removed.
-     */
+        /** @brief Cancel, handing the value to `visitor` first (to release what it holds). */
         template<typename Visitor>
         bool cancel( Ticket ticket, Visitor &&visitor )
         {
             if( !ticket ) {
                 return false;
             }
-            for( auto iterator = entries_.begin(); iterator != entries_.end(); ++iterator ) {
-                if( iterator->sequence == ticket.value ) {
-                    Value cancelled = std::move( iterator->value );
-                    entries_.erase( iterator );
-                    std::make_heap( entries_.begin(), entries_.end(), Later{} );
+            for( std::size_t i = 0; i < size_; ++i ) {
+                if( storage_[i].sequence == ticket.value ) {
+                    Value cancelled = std::move( storage_[i].value );
+                    --size_;
+                    if( i != size_ ) {
+                        storage_[i] = std::move( storage_[size_] );
+                    }
+                    storage_[size_].value = Value{};
+                    std::make_heap( storage_.begin(), end(), Later{} );
                     std::forward<Visitor>( visitor )( cancelled );
                     return true;
                 }
@@ -182,78 +163,54 @@ class DeadlineQueue
         }
 
         /**
-     * @brief Deliver at most limit due values using one captured timestamp.
-     *
-     * Cancellation removes entries immediately and reclaims their capacity.
-     *
-     * @param captured_now The owner's single per-update clock reading.
-     * @param limit Maximum number of values delivered by this call.
-     * @param visitor Called with each due value in delivery order.
-     * @return The number of values delivered.
-     */
+         * @brief Hand each entry due at `now` or before to `visitor`, in
+         * order, at most `limit` of them. The number handed over.
+         */
         // Called once per due entry: forwarding would let the first call move it away.
         template<typename Visitor>
         // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
-        std::size_t poll_due( TimePoint captured_now, std::size_t limit, Visitor &&visitor )
+        std::size_t poll_due( TimePoint now, std::size_t limit, Visitor &&visitor )
         {
             std::size_t delivered = 0;
-            while( !entries_.empty() ) {
-                const Entry &next = entries_.front();
-                if( next.due > captured_now ) {
-                    break;
-                }
-
-                std::pop_heap( entries_.begin(), entries_.end(), Later{} );
-                Entry entry = std::move( entries_.back() );
-                entries_.pop_back();
-                if( delivered >= limit ) {
-                    entries_.push_back( std::move( entry ) );
-                    std::push_heap( entries_.begin(), entries_.end(), Later{} );
-                    break;
-                }
-                visitor( std::move( entry.value ) );
+            while( size_ != 0 && delivered < limit && storage_.front().due <= now ) {
+                std::pop_heap( storage_.begin(), end(), Later{} );
+                --size_;
+                Value value = std::move( storage_[size_].value );
+                storage_[size_].value = Value{};
+                visitor( std::move( value ) );
                 ++delivered;
             }
             return delivered;
         }
 
         /**
-     * @brief Visit entries in delivery order without mutating the queue.
-     *
-     * Inspection allocates only a bounded array of entry pointers. References
-     * passed to the visitor remain valid only for the duration of the call.
-     *
-     * @param visitor Called with (due time, ticket, value) for every entry.
-     */
+         * @brief Every entry, in the order they will come due:
+         * `visitor(due, ticket, value)`. Allocates nothing: a selection walk,
+         * O(n²), for the few timers a Console command shows.
+         */
         // Called once per entry: forwarding would let the first call move it away.
         template<typename Visitor>
         // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
         void visit_ordered( Visitor &&visitor ) const
         {
-            std::vector<const Entry *> ordered;
-            ordered.reserve( entries_.size() );
-            for( const auto &entry : entries_ ) {
-                ordered.push_back( &entry );
-            }
-            std::sort( ordered.begin(), ordered.end(), []( const Entry *left, const Entry *right ) {
-                if( left->due != right->due ) {
-                    return left->due < right->due;
+            const Entry *previous = nullptr;
+            for( std::size_t visited = 0; visited < size_; ++visited ) {
+                const Entry *next = nullptr;
+                for( std::size_t i = 0; i < size_; ++i ) {
+                    const Entry &entry = storage_[i];
+                    const bool after = previous == nullptr || Later{}( entry, *previous );
+                    if( after && ( next == nullptr || Later{}( *next, entry ) ) ) {
+                        next = &entry;
+                    }
                 }
-                return left->sequence < right->sequence;
-            } );
-            for( const Entry *entry : ordered ) {
-                visitor( entry->due, Ticket{ entry->sequence }, entry->value );
+                visitor( next->due, Ticket{ next->sequence }, next->value );
+                previous = next;
             }
         }
 
     private:
-        struct Entry
-        {
-                TimePoint due;
-                std::uint64_t sequence;
-                Value value;
-        };
-
+        // Due later, or due at the same time and scheduled later: the heap's
+        // front is the entry due first.
         struct Later
         {
                 bool operator()( const Entry &left, const Entry &right ) const noexcept
@@ -265,9 +222,14 @@ class DeadlineQueue
                 }
         };
 
-        std::vector<Entry> entries_;
-        std::size_t capacity_;
-        std::uint64_t next_sequence_{ 0 };
+        [[nodiscard]] auto end() const noexcept
+        {
+            return storage_.begin() + static_cast<std::ptrdiff_t>( size_ );
+        }
+
+        std::span<Entry> storage_;
+        std::size_t size_ = 0;
+        std::uint64_t next_sequence_ = 0;
 };
 
 } // namespace sq::time

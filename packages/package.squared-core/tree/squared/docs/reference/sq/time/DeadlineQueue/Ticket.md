@@ -1,12 +1,10 @@
 # struct Ticket
 
-*Defined at [time/deadline_queue.hpp:34](../../../../../time/deadline_queue.hpp#L34)*
+*Defined at [time/deadline_queue.hpp:49](../../../../../time/deadline_queue.hpp#L49)*
 
 
 
-**brief** Opaque cancellation identity for one scheduled entry.
-
- A zero-valued ticket is empty and never matches a scheduled entry.
+**brief** Names a scheduled entry, to cancel it. Zero names none. 
 
 
 
@@ -22,13 +20,7 @@ public std::uint64_t value
 
 *public bool operator bool()*
 
-*Defined at [time/deadline_queue.hpp:43](../../../../../time/deadline_queue.hpp#L43)*
-
-
-
-**brief** Check whether this ticket references a scheduled entry.
-
-**return** true when the ticket is non-zero and usable.
+*Defined at [time/deadline_queue.hpp:53](../../../../../time/deadline_queue.hpp#L53)*
 
 
 

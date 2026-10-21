@@ -1,16 +1,20 @@
 # class DeadlineQueue
 
-*Defined at [time/deadline_queue.hpp:26](../../../../time/deadline_queue.hpp#L26)*
+*Defined at [time/deadline_queue.hpp:35](../../../../time/deadline_queue.hpp#L35)*
 
 
 
-**brief** Bounded deterministic queue used by higher-level schedulers.
+**brief** A model's timers: values due at times, given back in order once their time has come. Over storage its owner gives (`Entry`s, as many as it may hold at once), so nothing is allocated after it is made.
 
- Entries are ordered by due time and then insertion sequence. The queue does not read a clock or run a thread; its owner captures time once and passes it to poll_due(). Stored values are not callbacks, keeping policy in the higher-level subsystem.
+ It reads no clock and runs no thread: its owner passes the time in. In a model, `next_due()` is the model's `wake_at()`, and `poll_due` runs in its `due()` (see `ModelRunner`). Entries due at the same time come back in the order they were scheduled. Values are not callbacks: what a due value means is its owner's business.
 
 
 
 ## Records
+
+Entry
+
+Scheduled
 
 Ticket
 
@@ -20,125 +24,117 @@ Ticket
 
 ### DeadlineQueue<Value>
 
-*public void DeadlineQueue<Value>(std::size_t capacity)*
+*public void DeadlineQueue<Value>(std::span<Entry> storage)*
 
-*Defined at [time/deadline_queue.hpp:62](../../../../time/deadline_queue.hpp#L62)*
+*Defined at [time/deadline_queue.hpp:81](../../../../time/deadline_queue.hpp#L81)*
 
 
 
-**brief** Construct a queue with fixed logical capacity.
+**brief** A queue over `storage`: it holds at most `storage.size()` entries at once. 
 
-**capacity** Maximum number of simultaneously scheduled entries.
+### DeadlineQueue<Value>
+
+*public void DeadlineQueue<Value>(const DeadlineQueue<Value> & )*
+
+*Defined at [time/deadline_queue.hpp:85](../../../../time/deadline_queue.hpp#L85)*
+
+### operator=
+
+*public DeadlineQueue<Value> & operator=(const DeadlineQueue<Value> & )*
+
+*Defined at [time/deadline_queue.hpp:86](../../../../time/deadline_queue.hpp#L86)*
+
+### DeadlineQueue<Value>
+
+*public void DeadlineQueue<Value>(DeadlineQueue<Value> && )*
+
+*Defined at [time/deadline_queue.hpp:87](../../../../time/deadline_queue.hpp#L87)*
+
+### operator=
+
+*public DeadlineQueue<Value> & operator=(DeadlineQueue<Value> && )*
+
+*Defined at [time/deadline_queue.hpp:88](../../../../time/deadline_queue.hpp#L88)*
+
+### ~DeadlineQueue<Value>
+
+*public void ~DeadlineQueue<Value>()*
+
+*Defined at [time/deadline_queue.hpp:89](../../../../time/deadline_queue.hpp#L89)*
 
 ### size
 
 *public std::size_t size()*
 
-*Defined at [time/deadline_queue.hpp:72](../../../../time/deadline_queue.hpp#L72)*
-
-
-
-**brief** Count currently scheduled entries.
-
-**return** Number of scheduled entries, at most the configured capacity.
+*Defined at [time/deadline_queue.hpp:91](../../../../time/deadline_queue.hpp#L91)*
 
 ### capacity
 
 *public std::size_t capacity()*
 
-*Defined at [time/deadline_queue.hpp:78](../../../../time/deadline_queue.hpp#L78)*
-
-
-
-**brief** Read the fixed logical capacity.
-
-**return** Maximum number of simultaneously scheduled entries.
+*Defined at [time/deadline_queue.hpp:92](../../../../time/deadline_queue.hpp#L92)*
 
 ### empty
 
 *public bool empty()*
 
-*Defined at [time/deadline_queue.hpp:84](../../../../time/deadline_queue.hpp#L84)*
+*Defined at [time/deadline_queue.hpp:93](../../../../time/deadline_queue.hpp#L93)*
+
+### next_due
+
+*public std::optional<TimePoint> next_due()*
+
+*Defined at [time/deadline_queue.hpp:96](../../../../time/deadline_queue.hpp#L96)*
 
 
 
-**brief** Check whether the queue holds no entries.
-
-**return** true when no entries are scheduled.
+**brief** When the first entry is due; nothing when the queue is empty. 
 
 ### schedule_at
 
-*public ScheduleResult schedule_at(TimePoint due, Value value, Ticket * ticket)*
+*public Scheduled schedule_at(TimePoint due, Value value)*
 
-*Defined at [time/deadline_queue.hpp:95](../../../../time/deadline_queue.hpp#L95)*
+*Defined at [time/deadline_queue.hpp:105](../../../../time/deadline_queue.hpp#L105)*
 
 
 
-**brief** Schedule an entry at an exact domain time.
-
-**due** Nanoseconds since the domain epoch; must be non-negative.
-
-**value** Storage delivered later; moved through the queue.
-
-**ticket** Optional out-parameter filled with the cancellation ticket on success; left unchanged on failure.
-
-**return** ScheduleResult::Scheduled on success, or QueueFull, InvalidTime, or TicketExhausted.
+**brief** `value`, due at `due` (not before the epoch). 
 
 ### schedule_after
 
-*public ScheduleResult schedule_after(const Clock & clock, Duration delay, Value value, Ticket * ticket)*
+*public Scheduled schedule_after(TimePoint now, Duration delay, Value value)*
 
-*Defined at [time/deadline_queue.hpp:126](../../../../time/deadline_queue.hpp#L126)*
+*Defined at [time/deadline_queue.hpp:127](../../../../time/deadline_queue.hpp#L127)*
 
 
 
-**brief** Schedule an entry a fixed delay after the clock's current time.
-
-**clock** Domain clock read exactly once to compute the deadline.
-
-**delay** Non-negative delay in nanoseconds.
-
-**value** Storage delivered later; moved through the queue.
-
-**ticket** Optional out-parameter filled with the cancellation ticket on success; left unchanged on failure.
-
-**return** ScheduleResult::Scheduled on success, or QueueFull, InvalidTime, or TicketExhausted.
+**brief** `value`, due `delay` after `now` (the owner's one reading of the clock). 
 
 ### cancel
 
 *public bool cancel(Ticket ticket)*
 
-*Defined at [time/deadline_queue.hpp:145](../../../../time/deadline_queue.hpp#L145)*
+*Defined at [time/deadline_queue.hpp:137](../../../../time/deadline_queue.hpp#L137)*
 
 
 
-**brief** Cancel a scheduled entry and reclaim its capacity.
-
-**ticket** Ticket returned when the entry was scheduled.
-
-**return** `true` when the entry was found and removed.
+**brief** Cancel the entry `ticket` names, freeing its slot. False if it is not here (due already, or cancelled). 
 
 ### cancel
 
 *public bool cancel(Ticket ticket, Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:167](../../../../time/deadline_queue.hpp#L167)*
+*Defined at [time/deadline_queue.hpp:144](../../../../time/deadline_queue.hpp#L144)*
 
 
 
-**brief** Cancel a scheduled entry and release its stored value.
-
-**ticket** Ticket returned when the entry was scheduled.
-
-**visitor** Called with the cancelled value before it is destroyed.
-
-**return** `true` when the entry was found and removed.
+**brief** Cancel, handing the value to `visitor` first (to release what it holds). 
 
 ### poll_due
 
-*public std::size_t poll_due(TimePoint captured_now, std::size_t limit, Visitor && visitor)*
+*public std::size_t poll_due(TimePoint now, std::size_t limit, Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:197](../../../../time/deadline_queue.hpp#L197)*
+*Defined at [time/deadline_queue.hpp:172](../../../../time/deadline_queue.hpp#L172)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -146,7 +142,7 @@ Ticket
 
 *public void visit_ordered(Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:231](../../../../time/deadline_queue.hpp#L231)*
+*Defined at [time/deadline_queue.hpp:194](../../../../time/deadline_queue.hpp#L194)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -158,17 +154,17 @@ Ticket
 
 --
 
-| Scheduled |
-| QueueFull |
-| InvalidTime |
-| TicketExhausted |
+| scheduled |
+| full |
+| invalid_time |
+| tickets_exhausted |
 
 
-*Defined at [time/deadline_queue.hpp:51](../../../../time/deadline_queue.hpp#L51)*
+*Defined at [time/deadline_queue.hpp:57](../../../../time/deadline_queue.hpp#L57)*
 
 
 
-**brief** Result of attempting to schedule or restore an entry. 
+**brief** What scheduling did. 
 
 
 

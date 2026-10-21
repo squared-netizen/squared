@@ -36,7 +36,9 @@ timers (`time::DeadlineQueue`, moved to the module root, since nothing in
 `src/` reached it any more); correlation ids are in the envelope; providers
 become the latest-value cache; snapshots become persistence in `background()`;
 receipts are dropped; JSON payloads are for saves and the network only. The
-module no longer depends on `time` or `data`.
+module no longer depends on `time` or `data`. (Since 6.6b it depends on
+`time` again: the model's runner measures its ticks with `time::Timepiece`
+and reads `time::now()`; one 24-byte value, no code of the old hierarchy.)
 
 ## Names, addresses and the name table (Sprint 6.1)
 
@@ -550,19 +552,34 @@ the looper's wiring left to Sprint 7.
   thread's start orders it), and the thread's body names the thread, makes
   `M` in the runner's `std::optional<M>` from copies of the arguments (an
   init-capture pack: `std::thread`'s rule, `std::ref` for a reference), runs
-  `start`, then turns until `quitting()`: `deliver`, `tick` if due, `idle`
-  until the next tick. It destroys `M` on the same thread. The model lives in
+  `start`, then turns until `quitting()`: `deliver`, then `after_deliver`
+  (one `time::now()` read; `tick` if due; `due` if `wake_at()` has come),
+  `idle` until the earlier of the next tick and `wake_at()`. It destroys `M` on the same thread. The model lives in
   the runner, not on the thread's stack: a large model cannot overflow the
   stack, and its size is part of the App's footprint, known before `main`
   (priority 1). The destructor calls `quit()` (which wakes the model, waiting
   or sleeping) and joins. Inline: `M` is made in the constructor on the
-  calling thread and started; `turn()` is `deliver` then `tick` if due; the
+  calling thread and started; `turn()` is `deliver` then `after_deliver`; the
   destructor quits and runs one last turn, so the model saves either way.
-- **Ticks.** `detail::TickClock`, on the steady clock: the first tick comes
-  a whole interval after an interval is first seen or changed; each step is
-  the time since the last, clamped to 0.25 s (a debugger, a suspended app);
-  a clock that fell behind starts the cadence again instead of bursting to
-  catch up. A model without `tick` ignores `tick_every`.
+- **Ticks.** `detail::TickClock` (40 bytes): a `time::Timepiece` (since
+  6.6b; it was its own steady-clock code), the next due time and the
+  interval, with the time passed in. A new or changed interval calls the
+  Timepiece's `start`, so the first tick comes a whole interval later and
+  measures it; each step is clamped by the Timepiece (0.25 s); a clock that
+  fell behind starts the cadence again instead of bursting to catch up.
+  Timeouts are whole milliseconds rounded up (`milliseconds_until`), so a
+  sleep never ends before its time. A model without `tick` ignores
+  `tick_every`.
+- **Timers** (6.6b, decided 2026-10-21): two optional hooks found with
+  `requires`, `wake_at()` (an optional time point) and `due(t, now)`; a
+  `static_assert` refuses the first without the second. After the tick,
+  `timers_if_due` asks `wake_at()`; if it has come, calls `due` and asks
+  again; the milliseconds until it join the tick's by `earliest` (-1 meaning
+  none) as `idle`'s timeout. Chosen over timers inside the Telegraph
+  (`t.after(...)`, a capacity knob): storage in every app, scheduling or not
+  (priority 1), for a nicer call (priority 2). A model that keeps no timers
+  pays nothing; one that does owns a `time::DeadlineQueue`, or anything
+  else that knows its next time.
 - **The thread's name** is set with `pthread_setname_np` (glibc and bionic
   both; 15 characters at most), for `top -H`, `ps -T` and debuggers.
 - **Standard library:** `std::thread`, `std::optional` (the model in place),
@@ -584,8 +601,9 @@ the looper's wiring left to Sprint 7.
   written once a sleep, so 128 bytes of alignment would buy nothing
   measurable.
 - **Tested** (`test/telegraph_thread_test.cpp`, every wait bounded so a lost
-  wakeup fails a `CHECK` instead of hanging): the tick clock alone (due,
-  clamped, no burst after a stall); 2,000 round trips, each a sleep and a
+  wakeup fails a `CHECK` instead of hanging): the tick clock alone, with
+  exact times passed in (due, rounded up, the cadence kept, clamped, no burst
+  after a stall, a new interval), `milliseconds_until` and `earliest`; 2,000 round trips, each a sleep and a
   wake on both sides, with no allocation on either; an idle model using
   under 50 ms of CPU in 200 ms; `ready_to_sleep` refusing while something
   waits; ticks at 10 ms counted over 150 ms; the wait timing out (a ring's
@@ -605,7 +623,13 @@ the looper's wiring left to Sprint 7.
   waking only a sleeper, an event overtaking held states (the 6.6a guard),
   a model that spins, the UI never woken by the model, no wait for room, a
   wait with no deadline, ticks unclamped, and `idle` forgetting what it
-  holds.
+  holds. Added in 6.6b: timers on the model's thread (two scheduled 60 and
+  30 ms apart in that order; the first fires between 30 and 60 ms, they come
+  in time order, and `due` runs exactly twice, so the model slept rather than
+  polled) and inline (due in the turn that scheduled it; not before its
+  time; then in the next turn after it). Planted bugs caught: timers never
+  waking the model, `due` never called, the tick cadence drifting, timeouts
+  rounded down, `earliest` picking the later.
 
 ## Memory
 
@@ -624,7 +648,7 @@ the looper's wiring left to Sprint 7.
 | `TelegraphLine` | 87,936 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and two descriptors fit its padding |
 | `Wake` | 4 (a descriptor) |
 | `WaitStats` | 8 |
-| `ModelRunner<M>` | 40 plus `std::optional<M>` (`M` and a flag, rounded to `M`'s alignment): the line's reference, the tick clock, the thread; 48 for an empty model |
+| `ModelRunner<M>` | 56 plus `std::optional<M>` (`M` and a flag, rounded to `M`'s alignment): the line's reference, the tick clock (40, a `Timepiece` inside), the thread; 64 for an empty model |
 
 Nothing allocates. At the spec's defaults a ring's storage is 8 KB of slots
 (`TELEGRAPH_RING`, 256) and 8 KB of data (`TELEGRAPH_DATA`), 16 KB a

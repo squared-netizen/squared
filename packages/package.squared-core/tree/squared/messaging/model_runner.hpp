@@ -1,9 +1,11 @@
 #pragma once
 
 #include <squared/messaging/telegraph.hpp>
+#include <squared/time/now.hpp>
+#include <squared/time/time_point.hpp>
+#include <squared/time/timepiece.hpp>
 
 #include <cassert>
-#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <thread>
@@ -23,8 +25,11 @@ inline constexpr OnUiThread on_ui_thread{};
 /**
  * @brief A model: it takes what the UI sends. Its other hooks are optional:
  * `start(Telegraph&)`, `tick(Telegraph&, double seconds)`,
- * `low_memory(Telegraph&)`, `background(Telegraph&)` (save here) and
- * `foreground(Telegraph&, std::uint64_t elapsed_milliseconds)`.
+ * `low_memory(Telegraph&)`, `background(Telegraph&)` (save here),
+ * `foreground(Telegraph&, std::uint64_t elapsed_milliseconds)`, and for
+ * timers the pair `std::optional<sq::time::TimePoint> wake_at()` (when it
+ * next needs a turn; a `DeadlineQueue`'s `next_due()`) and
+ * `due(Telegraph&, sq::time::TimePoint now)` (that time has come).
  */
 template<typename M>
 concept TelegraphModel = requires( M &model, Telegraph &telegraph, const Received &received ) {
@@ -37,20 +42,34 @@ namespace detail
 /// Names the calling thread, as `top -H` and a debugger show it (15 characters at most).
 void name_this_thread( const char *name ) noexcept;
 
-/// When a model's `tick` is due, and the seconds since the last one.
+/// Whole milliseconds from `now` until `at`, rounded up: 0 when it has come.
+[[nodiscard]] int milliseconds_until( time::TimePoint at, time::TimePoint now ) noexcept;
+
+/// The earlier of two timeouts in milliseconds, -1 meaning none.
+[[nodiscard]] constexpr int earliest( int first, int second ) noexcept
+{
+    if( first < 0 ) {
+        return second;
+    }
+    if( second < 0 ) {
+        return first;
+    }
+    return first < second ? first : second;
+}
+
+/// When a model's `tick` is due; its steps measured by a `time::Timepiece`.
 class TickClock final
 {
     public:
-        /** @brief Milliseconds until the next tick: 0 when due, -1 when there is none. */
-        [[nodiscard]] int until_due( std::uint32_t interval_ms ) noexcept;
+        /** @brief Milliseconds from `now` until the next tick: 0 when due, -1 when there is none. */
+        [[nodiscard]] int until_due( std::uint32_t interval_ms, time::TimePoint now ) noexcept;
 
-        /** @brief A tick happens now: the seconds since the last, at most a quarter second. */
-        [[nodiscard]] double take() noexcept;
+        /** @brief A tick happens at `now`: the seconds since the last, at most a quarter second. */
+        [[nodiscard]] double take( time::TimePoint now ) noexcept;
 
     private:
-        using Clock = std::chrono::steady_clock;
-        Clock::time_point last_{};
-        Clock::time_point next_{};
+        time::Timepiece time_;
+        time::TimePoint next_{};
         std::uint32_t interval_ms_ = 0;
 };
 
@@ -68,8 +87,10 @@ inline constexpr bool starts_on_ui_thread<First, Rest...> =
  *
  * On its own thread the model is made there, from the arguments (copied,
  * as `std::thread` copies them: `std::ref` for a reference), and it sleeps
- * between turns until the UI sends, Android's lifecycle reaches it, or a
- * `tick` is due. A turn is `deliver`, then `tick` if due. The runner's
+ * between turns until the UI sends, Android's lifecycle reaches it, a
+ * `tick` is due, or its `wake_at()` time comes. A turn is `deliver`, then
+ * `tick` if due, then `due` if its time has come; the clock is read once a
+ * turn. The runner's
  * destructor asks the model to quit (it saves, in `background`), wakes it,
  * and waits for its thread: the model is destroyed on the thread it lived on.
  *
@@ -100,7 +121,7 @@ class ModelRunner final
             thread_ = std::thread( std::move( body ) );
         }
 
-        /** @brief The model on the UI thread, made now: call `turn()` once a frame. */
+        /** @brief The model on the UI thread, made now: call `turn()` once a frame (ticks and timers run there). */
         template<typename... Args>
         ModelRunner( TelegraphLine &line, OnUiThread /*on_ui_thread*/, Args &&...args ) noexcept
             : line_( line )
@@ -141,7 +162,7 @@ class ModelRunner final
             }
             const std::uint32_t handled = telegraph.deliver( *model_ );
             if( !telegraph.quitting() ) {
-                tick_if_due( telegraph );
+                static_cast<void>( after_deliver( telegraph ) );
             }
             return handled;
         }
@@ -166,19 +187,43 @@ class ModelRunner final
                 if( telegraph.quitting() ) {
                     break;
                 }
-                const int until_tick = tick_if_due( telegraph );
-                telegraph.idle( until_tick );
+                telegraph.idle( after_deliver( telegraph ) );
             }
         }
 
-        // The milliseconds to the next tick, -1 for none.
-        int tick_if_due( Telegraph &telegraph ) noexcept
+        // The rest of a turn: the tick if due, then the timers if due. The
+        // milliseconds until the next of either, -1 for neither.
+        int after_deliver( Telegraph &telegraph ) noexcept
+        {
+            const time::TimePoint now = time::now(); // one clock read a turn
+            const int until_tick = tick_if_due( telegraph, now );
+            return detail::earliest( until_tick, timers_if_due( telegraph, now ) );
+        }
+
+        int tick_if_due( Telegraph &telegraph, time::TimePoint now ) noexcept
         {
             if constexpr( requires { model_->tick( telegraph, 0.0 ); } ) {
-                if( clock_.until_due( telegraph.tick_interval() ) == 0 ) {
-                    model_->tick( telegraph, clock_.take() );
+                const std::uint32_t interval = telegraph.tick_interval();
+                if( clock_.until_due( interval, now ) == 0 ) {
+                    model_->tick( telegraph, clock_.take( now ) );
                 }
-                return clock_.until_due( telegraph.tick_interval() );
+                return clock_.until_due( interval, now );
+            } else {
+                return -1;
+            }
+        }
+
+        int timers_if_due( Telegraph &telegraph, time::TimePoint now ) noexcept
+        {
+            if constexpr( requires { model_->wake_at(); } ) {
+                constexpr bool has_due = requires { model_->due( telegraph, now ); };
+                static_assert( has_due, "a model with wake_at() has due(Telegraph&, TimePoint)" );
+                std::optional<time::TimePoint> at = model_->wake_at();
+                if( at && *at <= now ) {
+                    model_->due( telegraph, now );
+                    at = model_->wake_at();
+                }
+                return at ? detail::milliseconds_until( *at, now ) : -1;
             } else {
                 return -1;
             }

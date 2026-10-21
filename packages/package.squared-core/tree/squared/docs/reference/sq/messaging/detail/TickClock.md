@@ -1,8 +1,8 @@
 # class TickClock
 
-*Defined at [messaging/model_runner.hpp:41](../../../../../messaging/model_runner.hpp#L41)*
+*Defined at [messaging/model_runner.hpp:61](../../../../../messaging/model_runner.hpp#L61)*
 
- When a model's `tick` is due, and the seconds since the last one.
+ When a model's `tick` is due; its steps measured by a `time::Timepiece`.
 
 
 
@@ -10,19 +10,19 @@
 
 ### until_due
 
-*public int until_due(std::uint32_t interval_ms)*
+*public int until_due(std::uint32_t interval_ms, time::TimePoint now)*
 
 
 
-**brief** Milliseconds until the next tick: 0 when due, -1 when there is none. 
+**brief** Milliseconds from `now` until the next tick: 0 when due, -1 when there is none. 
 
 ### take
 
-*public double take()*
+*public double take(time::TimePoint now)*
 
 
 
-**brief** A tick happens now: the seconds since the last, at most a quarter second. 
+**brief** A tick happens at `now`: the seconds since the last, at most a quarter second. 
 
 
 

@@ -50,7 +50,8 @@ LIST_TEST := $(BUILD_DIR)/list_test
 TELEGRAPH_TEST := $(BUILD_DIR)/telegraph_test
 
 # The Telegraph on two threads (6.6c): the model's own thread, both wakes, the
-# bounded wait, ticks, quit, and the inline runner (so -pthread).
+# bounded wait, ticks, timers (6.6b), quit, and the inline runner (so -pthread).
+# The runner measures its ticks with time's Timepiece, so time's sources too.
 THREAD_TEST := $(BUILD_DIR)/telegraph_thread_test
 
 TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
@@ -120,7 +121,9 @@ $(THREAD_TEST): $(MODULE_DIR)/test/telegraph_thread_test.cpp \
                 $(MODULE_DIR)/src/list_window.cpp \
                 $(MODULE_DIR)/src/telegraph.cpp \
                 $(MODULE_DIR)/src/wake.cpp \
-                $(MODULE_DIR)/src/model_runner.cpp
+                $(MODULE_DIR)/src/model_runner.cpp \
+                $(SQUARED_ROOT)/time/src/now.cpp \
+                $(SQUARED_ROOT)/time/src/timepiece.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -pthread -o $@
