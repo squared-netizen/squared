@@ -158,6 +158,8 @@ class Bridge final
         bool queue( char type, std::string_view text ) noexcept;
         bool append( char type, std::string_view text ) noexcept;
         void append_bytes( std::string_view bytes ) noexcept;
+        void done() noexcept;
+        void release_dones() noexcept;
         void flush() noexcept;
         void watch_client() noexcept;
 
@@ -184,9 +186,13 @@ class Bridge final
         int file_{ -1 };    // the file being sent
         int push_{ -1 };    // the file being received; -1 while one refused is skipped
         std::uint16_t port_{ 0 };
-        bool writing_{ false };         // the client's watch includes writing
-        bool cutting_{ false };         // the rest of an over-long command is dropped
-        bool done_after_file_{ false }; // the command that sent it is still to be marked done
+        bool writing_{ false }; // the client's watch includes writing
+        bool cutting_{ false }; // the rest of an over-long command is dropped
+        // End marks held back while a file is sent: the command that sent it,
+        // and every command (or push) that finished meanwhile. A client takes
+        // the first "." after a file's chunks as the file's end, so these go
+        // after it, in order (2026-10-20: a push's "." ended a pull early).
+        std::uint16_t dones_after_file_{ 0 };
 };
 
 static_assert( sizeof( Bridge ) <= std::size_t{ 17 } * 1024 + 512,

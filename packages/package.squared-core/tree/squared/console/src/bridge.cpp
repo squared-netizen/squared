@@ -173,7 +173,7 @@ void Bridge::end_transfers() noexcept
     abandon_push();
     file_left_ = 0;
     push_left_ = 0;
-    done_after_file_ = false;
+    dones_after_file_ = 0;
 }
 
 void Bridge::close() noexcept
@@ -392,18 +392,13 @@ bool Bridge::run_line( std::string_view line ) noexcept
         start_push( line.substr( protocol::push.size() ) );
         return client_ == fd;
     }
-    const bool sending = file_ >= 0;
     if( handlers_.command != nullptr ) {
         handlers_.command( handlers_.context, line );
     }
     if( client_ != fd ) {
         return false; // the command closed the bridge
     }
-    if( !sending && file_ >= 0 ) {
-        done_after_file_ = true; // this command started a file: its end mark follows the file
-    } else {
-        queue( protocol::done, {} );
-    }
+    done(); // after the file, if this command started one or one is being sent
     return true;
 }
 
@@ -416,7 +411,7 @@ void Bridge::start_push( std::string_view request ) noexcept
         space == std::string_view::npos ? std::string_view{} : request.substr( space + 1 );
     if( space == std::string_view::npos || !parse_size( request.substr( 0, space ), size ) ) {
         note( Level::error, "push: the client sent a malformed push" );
-        queue( protocol::done, {} );
+        done();
         return;
     }
     push_size_ = size;
@@ -470,7 +465,27 @@ void Bridge::finish_push() noexcept
             note( Level::error, "push: could not finish the file" );
         }
     }
+    done();
+}
+
+void Bridge::done() noexcept
+{
+    // Held back while a file is sent, or while earlier ones still wait, so
+    // every "." keeps its command's place.
+    if( file_ >= 0 || dones_after_file_ != 0 ) {
+        if( dones_after_file_ != UINT16_MAX ) {
+            ++dones_after_file_;
+        }
+        return;
+    }
     queue( protocol::done, {} );
+}
+
+void Bridge::release_dones() noexcept
+{
+    while( dones_after_file_ != 0 && append( protocol::done, {} ) ) {
+        --dones_after_file_;
+    }
 }
 
 void Bridge::note( Level level, std::string_view line ) noexcept
@@ -501,7 +516,6 @@ bool Bridge::send_file( int fd, std::string_view name, std::uint64_t size ) noex
     }
     file_ = fd;
     file_left_ = size;
-    done_after_file_ = false; // set by run_line when a command sent it
     if( !writing_ ) {
         writing_ = true;
         watch_client();
@@ -625,10 +639,7 @@ bool Bridge::pump_file() noexcept
     ::close( file_ );
     file_ = -1;
     file_left_ = 0;
-    if( done_after_file_ ) {
-        done_after_file_ = false;
-        append( protocol::done, {} );
-    }
+    release_dones(); // the file's own end mark, then any held back behind it
     return true;
 }
 
@@ -660,6 +671,11 @@ void Bridge::flush() noexcept
             output_size_ -= static_cast<std::size_t>( wrote );
         }
         output_head_ = 0;
+        // End marks that did not fit when their file ended.
+        if( file_ < 0 && dones_after_file_ != 0 ) {
+            release_dones();
+            continue;
+        }
         // The buffer is empty: the next chunk of a file being sent, a few at a
         // time, then the socket is waited for again (writing stays watched).
         if( file_ < 0 || chunks == chunks_per_turn || !pump_file() ) {

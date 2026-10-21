@@ -338,6 +338,9 @@ class Session
             return true;
         }
 
+        /// Whether a pull failed or came short: --run then exits 1.
+        [[nodiscard]] bool failed() const { return failed_; }
+
         void reset()
         {
             held_ = 0;
@@ -385,6 +388,7 @@ class Session
             received_ = 0;
             if( !protocol::good_name( name ) ) {
                 note( "sqconsole: pull: the app sent an unusable name; not saved" );
+                failed_ = true;
                 return;
             }
             make_directories( into_ );
@@ -393,6 +397,7 @@ class Session
             file_ = ::open( part_.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644 );
             if( file_ < 0 ) {
                 note( "sqconsole: pull: cannot write " + part_ + ": " + std::strerror( errno ) );
+                failed_ = true;
             }
         }
 
@@ -403,6 +408,7 @@ class Session
                 const ssize_t wrote = ::write( file_, bytes.data(), bytes.size() );
                 if( wrote <= 0 ) {
                     note( "sqconsole: pull: writing " + part_ + " failed" );
+                    failed_ = true;
                     abandon();
                     return;
                 }
@@ -426,6 +432,7 @@ class Session
             } else {
                 note( "sqconsole: pull: " + final_ + " came short (" + std::to_string( received_ ) +
                       " bytes); kept as " + part_ );
+                failed_ = true;
             }
         }
 
@@ -447,6 +454,7 @@ class Session
         long long expected_ = -1;
         std::uint64_t received_ = 0;
         int file_ = -1;
+        bool failed_ = false;
 };
 
 int usage()
@@ -457,7 +465,8 @@ int usage()
 }
 
 /// --run: connect (waiting up to wait_seconds), run each command, print its
-/// output, and exit 0; 1 if the app could not be reached. With until_closed,
+/// output, and exit 0; 1 if the app could not be reached, or a pull failed or
+/// came short. With until_closed,
 /// keep printing until the app closes the connection, and exit 0 when it does.
 int run_commands( const Bridge &bridge, const Settings &settings )
 {
@@ -534,7 +543,7 @@ int run_commands( const Bridge &bridge, const Settings &settings )
         }
     }
     ::close( fd );
-    return failed ? 1 : 0;
+    return failed || session.failed() ? 1 : 0;
 }
 
 /// Interactive: until Ctrl-D, reconnecting whenever the app comes back.

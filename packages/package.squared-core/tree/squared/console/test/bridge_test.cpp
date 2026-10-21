@@ -514,6 +514,34 @@ bool await( Loop &loop, const Child &child, std::string &got, std::string_view w
     return contains( got, want );
 }
 
+/// Pump the bridge and collect the child's output until it exits (up to
+/// `seconds`), then what is left in the pipe. A line can come after the one
+/// a test awaited: sqconsole sends every --run command at once, and the app
+/// can answer a push before a long pull has ended (2026-10-20, on the phone:
+/// `saved ...blob.bin` came after `theirs.bin`, and the test had stopped
+/// reading). The exit status, or -1 if it did not exit in time.
+int collect_until_exit( Loop &loop, Child &child, std::string &got, int seconds = 5 )
+{
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds( seconds );
+    std::array<char, 4096> buffer{};
+    const auto read_all = [&] {
+        for( ssize_t n = 0; ( n = ::read( child.out, buffer.data(), buffer.size() ) ) > 0; ) {
+            got.append( buffer.data(), static_cast<std::size_t>( n ) );
+        }
+    };
+    while( std::chrono::steady_clock::now() < until ) {
+        loop.pump( 10 );
+        read_all();
+        int status = 0;
+        if( ::waitpid( child.pid, &status, WNOHANG ) == child.pid ) {
+            child.pid = -1;
+            read_all(); // to the end of the pipe: the child has closed it
+            return status;
+        }
+    }
+    return -1;
+}
+
 void client_tests()
 {
     static sq::console::Console console;
@@ -578,16 +606,8 @@ void client_tests()
         { SQCONSOLE_PATH, "--conf", conf, "--run", "say one", "--run", "say two", "--wait", "5" } );
     std::string ran;
     assert( await( loop, run, ran, "said two" ) );
-    for( int i = 0; i < 50; ++i ) {
-        loop.pump( 10 );
-        int status = 0;
-        if( ::waitpid( run.pid, &status, WNOHANG ) == run.pid ) {
-            assert( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 );
-            run.pid = -1;
-            break;
-        }
-    }
-    assert( run.pid == -1 );
+    const int run_status = collect_until_exit( loop, run, ran );
+    assert( run_status != -1 && WIFEXITED( run_status ) && WEXITSTATUS( run_status ) == 0 );
     assert( contains( ran, "> say one" ) && contains( ran, "said one" ) );
     assert( !contains( ran, "the app's first line" ) ); // quiet: no replay
     assert( await( loop, interactive, seen, "another connection took over" ) );
@@ -603,16 +623,8 @@ void client_tests()
                  "--run", "push " + local + " theirs.bin", "--wait", "5" } );
     std::string moved;
     assert( await( loop, files_run, moved, "theirs.bin, 12345 bytes" ) );
-    for( int i = 0; i < 300; ++i ) {
-        loop.pump( 10 );
-        int status = 0;
-        if( ::waitpid( files_run.pid, &status, WNOHANG ) == files_run.pid ) {
-            assert( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 );
-            files_run.pid = -1;
-            break;
-        }
-    }
-    assert( files_run.pid == -1 );
+    const int files_status = collect_until_exit( loop, files_run, moved );
+    assert( files_status != -1 && WIFEXITED( files_status ) && WEXITSTATUS( files_status ) == 0 );
     assert( contains( moved, "saved " + pulled + "/blob.bin (70001 bytes)" ) );
     assert( read_whole( pulled + "/blob.bin" ) == blob );
     assert( read_whole( files + "/theirs.bin" ) == mine );
@@ -701,6 +713,7 @@ struct Heard
         std::string file_header;        // "<size> <name>" of the last "p"
         std::string file;               // its bytes
         int done = 0;
+        std::size_t file_at_first_done = 0; // how much of the file had come by the first "."
 };
 
 /// Pump and read until `dones` end marks have arrived (or 5 s), parsing frames.
@@ -745,6 +758,9 @@ Heard listen( Loop &loop, int fd, int dones, const std::function<void()> &betwee
                 assert( data_left > 0 && data_left <= 4096 );
             } else {
                 if( line == "." ) {
+                    if( heard.done == 0 ) {
+                        heard.file_at_first_done = heard.file.size();
+                    }
                     ++heard.done;
                 }
                 heard.lines.push_back( line );
@@ -839,6 +855,24 @@ void transfer_tests( const std::string &home )
     say( fd, "push 0 empty.bin\npush x y\n" );
     heard = listen( loop, fd, 2 );
     assert( read_whole( files + "/empty.bin" ).empty() && heard_line( heard, "malformed" ) );
+    // Commands that finish while a file is going out (sqconsole sends every
+    // --run command at once): their end marks wait behind the file's, so a
+    // client's first "." after a file still means the file is whole
+    // (2026-10-20, on the phone: a push's "." ended a 70,001-byte pull).
+    // The file is larger than a pull sends before its command returns (two
+    // flushes of 16 chunks, 128 KB), so it is still going out when the push
+    // and the ls behind it in the same write are run.
+    const std::string long_file = random_bytes( 300001 );
+    write_whole( files + "/long.bin", long_file );
+    const std::string during = random_bytes( 3000 );
+    say( fd, "pull files/long.bin\npush 3000 during.bin\n" + during + "ls files\n" );
+    heard = listen( loop, fd, 3 );
+    assert( heard.done == 3 && heard.file_header == "300001 long.bin" && heard.file == long_file );
+    assert( heard.file_at_first_done == long_file.size() );
+    assert( heard_line( heard, "push: " + files + "/during.bin, 3000 bytes" ) );
+    assert( heard_line( heard, "ls: " ) && heard.lines.back() == "." );
+    assert( read_whole( files + "/during.bin" ) == during );
+    std::printf( "bridge: a push and a command during a pull: their end marks after the file's\n" );
     // The client leaving mid-push: the part file is removed.
     say( fd, "push 100000 cut.bin\n" + std::string( 100, 'z' ) );
     hear( loop, fd, nullptr, 2 );
@@ -889,7 +923,7 @@ void transfer_tests( const std::string &home )
 
     console.set_mirror( nullptr, nullptr );
     bridge.close();
-    for( const char *name : { "/big.bin", "/up.bin", "/empty.bin" } ) {
+    for( const char *name : { "/big.bin", "/up.bin", "/empty.bin", "/during.bin", "/long.bin" } ) {
         ::unlink( ( files + name ).c_str() );
     }
     ::rmdir( files.c_str() );
