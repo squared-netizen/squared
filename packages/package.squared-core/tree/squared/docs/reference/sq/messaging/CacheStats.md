@@ -1,6 +1,6 @@
 # struct CacheStats
 
-*Defined at [messaging/value_cache.hpp:34](../../../../messaging/value_cache.hpp#L34)*
+*Defined at [messaging/value_cache.hpp:43](../../../../messaging/value_cache.hpp#L43)*
 
 
 

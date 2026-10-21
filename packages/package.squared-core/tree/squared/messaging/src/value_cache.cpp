@@ -406,10 +406,15 @@ std::optional<CachedValue> ValueCache::find( Address address ) const noexcept
         return std::nullopt;
     }
     const std::uint16_t at = slot_at( slot );
-    const Entry entry = load( at );
-    if( !entry.has( valued_flag ) ) {
+    if( !load( at ).has( valued_flag ) ) {
         return std::nullopt;
     }
+    return value_at( at );
+}
+
+CachedValue ValueCache::value_at( std::uint32_t at ) const noexcept
+{
+    const Entry entry = load( at );
     std::array<std::byte, 32> bytes = entry.bytes;
     bytes[12] = std::byte{ 0 }; // the correlation: none
     bytes[13] = std::byte{ 0 };
@@ -427,7 +432,32 @@ std::optional<CachedValue> ValueCache::find( Address address ) const noexcept
     std::fill( bytes.begin() + 16, bytes.end(), std::byte{ 0 } );
     const Telegram shape = TelegramBytes::from( bytes );
     const DataRef where{ 0, static_cast<std::uint32_t>( data.size() ) };
+    const Address address{ entry.name(), entry.uid() };
     return CachedValue{ Telegram::data( shape.verb(), address, shape.type(), where ), data };
+}
+
+std::uint32_t ValueCache::bindings( Address address ) const noexcept
+{
+    bool found = false;
+    const std::uint32_t slot = probe( address, found );
+    return found ? load( slot_at( slot ) ).bound() : 0;
+}
+
+std::optional<BoundEntry> ValueCache::bound_from( std::uint32_t from ) const noexcept
+{
+    for( std::uint32_t at = from; at < fresh_; ++at ) {
+        const Entry entry = load( at );
+        if( entry.has( used_flag ) && entry.bound() != 0 ) {
+            BoundEntry found;
+            found.entry = at;
+            found.address = { entry.name(), entry.uid() };
+            if( entry.has( valued_flag ) ) {
+                found.value = value_at( at );
+            }
+            return found;
+        }
+    }
+    return std::nullopt;
 }
 
 bool ValueCache::bind( Address address ) noexcept

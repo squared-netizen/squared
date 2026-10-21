@@ -30,6 +30,15 @@ struct CachedValue
         std::span<const std::byte> data;
 };
 
+/** @brief A bound entry found by `ValueCache::bound_from`: its number and its value. */
+struct BoundEntry
+{
+        std::uint32_t entry = 0;
+        Address address;
+        /** Its value; nothing when it was bound before any value came. */
+        std::optional<CachedValue> value;
+};
+
 /** @brief How full a cache is and has been (the Console's `telegraph` command). */
 struct CacheStats
 {
@@ -101,6 +110,16 @@ class ValueCache final
         /** @brief One actor fewer shows `address`. It must be bound. */
         void unbind( Address address ) noexcept;
 
+        /** @brief How many binds `address` has; 0 when it has none or no entry. */
+        [[nodiscard]] std::uint32_t bindings( Address address ) const noexcept;
+
+        /**
+         * @brief The first bound entry numbered `from` or after; nothing when
+         * there is none. A walk over the bound entries: from 0, then from the
+         * last one found plus 1. Unbinding the one found does not disturb it.
+         */
+        [[nodiscard]] std::optional<BoundEntry> bound_from( std::uint32_t from ) const noexcept;
+
         [[nodiscard]] CacheStats stats() const noexcept;
 
     private:
@@ -124,6 +143,8 @@ class ValueCache final
         // Room for `length` text bytes at the end of the text area, for `entry`.
         [[nodiscard]] MaybeEntry text_room( std::uint32_t entry, std::uint32_t length ) noexcept;
         void compact() noexcept;
+        // The value held by entry `at`, which holds one.
+        [[nodiscard]] CachedValue value_at( std::uint32_t at ) const noexcept;
         // The room a long text has: its length, or more after an in-place rewrite.
         [[nodiscard]] std::uint32_t room_of( DataRef text ) const noexcept;
 

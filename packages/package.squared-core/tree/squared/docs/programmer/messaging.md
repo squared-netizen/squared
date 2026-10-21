@@ -2,9 +2,9 @@
 
 The Telegraph's parts: names and addresses, keys, the 32-byte telegram and its
 one line of text, the ring that carries telegrams from one thread to
-another, and the latest-value cache. The Telegraph itself (a ring each way
-between the UI and the model thread, the cache on the UI side) is being built
-in Sprint 6 on these; this page grows with it.
+another, the latest-value cache, both ends of a virtualized list, and the
+Telegraph that joins them. The Telegraph runs single-threaded for now (6.6a);
+the model's own thread comes in 6.6c. This page grows with it.
 
 Every type below lives in its own header. Include exactly the ones a
 translation unit names; `squared/messaging/messaging.hpp` pulls in all of them
@@ -303,6 +303,143 @@ cache.unbind( name );                                 // the label is gone: may 
   move it to make room). Use it within the frame; copy it to keep it.
 - **Text up to 16 bytes** lives in the entry and costs no text room.
 - One thread only. Nothing allocates.
+
+## The Telegraph
+
+What a model sees: `sq::messaging::Telegraph` (`squared/messaging/telegraph.hpp`),
+its end of the line to the UI. It sends `state` and `event` by key, declares
+lists, and runs the model's side of a turn. The UI's end, `TelegraphUi`, is
+the Stage's; both live in one `TelegraphLine`, which the App will own.
+
+```cpp
+namespace names {
+inline constexpr Key<bool, state | set> sound{ "settings.sound" };
+inline constexpr Key<std::int64_t, state> ticks{ "counter.ticks" };
+inline constexpr Key<void, do_> reset{ "counter.reset" };
+}
+
+struct Counter {
+    std::int64_t ticks = 0;
+    bool sound = true;
+    void start( Telegraph &t ) { t.state( names::ticks, ticks ); t.state( names::sound, sound ); }
+    void receive( Telegraph &t, const Received &m ) {
+        if( m.telegram.address().name == names::reset.name() ) t.state( names::ticks, ticks = 0 );
+        if( m.telegram.address().name == names::sound.name() )
+            t.state( names::sound, sound = m.telegram.as_boolean() );
+    }
+    void low_memory( Telegraph & ) {}            // optional, like background and foreground
+};
+
+auto line = std::make_unique<TelegraphLine>();  // about 86 KB, once
+Counter model;
+line->model().start( model );
+
+TelegraphUi &ui = line->ui();                    // the Stage's end
+ui.set( names::sound, false );
+ui.do_( names::reset );
+line->model().deliver( model );                  // the model's turn (inline here)
+ui.drain();                                      // the UI's: into the cache
+bool sound = *ui.value( names::sound );          // false
+```
+
+(The App, Sprint 7, does the last eight lines for you; a model writes only its
+struct.)
+
+**The model's end, `Telegraph`:**
+
+| Call | Does |
+|---|---|
+| `state(key, value)`, `state(key, uid, value)` | `state` an address; when the ring is full, held back and coalesced (`pending`): only the latest value per address goes, when room frees |
+| `event(key)`, `event(key, value)`, `event(key, uid, value)` | `event`; never held back, and never ahead of states sent before it: `full` while any wait |
+| `answer(request, key[, value])` | an `event` answering a `do`, with its correlation |
+| `list(rows, source)` | a virtualized list (see [Lists](#lists)); its count is sent at once |
+| `changed(rows)`, `changed(rows, uid)` | the list changed, or one item: what changed on screen is sent |
+| `tick_every(ms)` | ask for `tick` every `ms` (0, the default: none); run by the model's thread, 6.6c |
+| `start(model)` | calls `model.start(t)`, once |
+| `deliver(model)` | one turn: lifecycle hooks, held-back states, then each telegram from the UI to `model.receive(t, telegram)` (a list's `view` goes to its list) |
+| `pending()`, `quitting()` | states waiting; whether quit was asked for |
+
+A model is any type with `receive(Telegraph&, const Received&)`. Optional:
+`start(Telegraph&)`, `low_memory(Telegraph&)`, `background(Telegraph&)`,
+`foreground(Telegraph&, std::uint64_t elapsed_ms)`. On a turn they come in a
+fixed order: low memory first; background and foreground in the order that
+ends where the app is now; quit last, after `background` (quit saves).
+
+**Sending mistakes do not compile:** a verb the key does not carry, a value
+of the wrong type, a uid where the key takes none or none where it does.
+
+**`SendResult`:** `sent`; `pending` (a state held back); `full` (no room now:
+a `set` or `do` from the UI, an `event`, or a state when the pending table is
+full, which in 6.6c makes the model wait); `too_large` (over a quarter of the
+data ring, never sendable).
+
+**The UI's end, `TelegraphUi`:** `set`, `do_` (returns the correlation), `view`
+(a list widget's rows), `drain` (states into the cache, events to a handler's
+`event`), `find` and `value` (typed; text valid until the next `drain`),
+`bind`/`unbind`, and `background`, `foreground(elapsed_ms)`, `low_memory`,
+`quit` for the model's next turn. It never waits.
+
+**Capacities** are compile-time knobs (`-DSQUARED_TELEGRAPH_RING=512` and so
+on; a project's make variables follow in 6.6c): `TELEGRAPH_RING` 256 telegrams
+each way, `TELEGRAPH_DATA` 8 KB of text each way, `TELEGRAPH_PENDING` 256 held
+states, `TELEGRAPH_CACHE` 512 values with `TELEGRAPH_CACHE_TEXT` 8 KB,
+`TELEGRAPH_LISTS` 16 of `TELEGRAPH_LIST_VIEW` 128 rows. Powers of two where
+counted; checked when the framework compiles.
+
+## Lists
+
+A list of any length costs the UI only the rows on screen. The model holds
+the items; the list widget asks for the rows it shows, and the model sends
+those rows and their items' fields, nothing else. For a list named
+`inventory`:
+
+| Telegram | Means |
+|---|---|
+| `state inventory.count 300` | how many rows |
+| `do inventory.view 20 52` | the widget shows rows 20 to 52, a screen above and below included |
+| `state inventory[20] 17` | row 20 is the item with uid 17 (row 0 is written `inventory`) |
+| `state item[17].name "fur coat"` | that item's fields, by its uid |
+
+**What a model provides** for a list (the `ListRows` concept): any object
+with three members. Uids are not 0.
+
+```cpp
+struct Inventory {
+    std::vector<Item> items;
+    std::uint32_t count() const { return std::uint32_t( items.size() ); }
+    std::uint32_t uid_at( std::uint32_t row ) const { return items[row].uid; }
+    void publish( Out &t, std::uint32_t uid ) { /* t.state( names::item_name, uid, ... ) */ }
+};
+```
+
+A type missing one of them does not compile. The Telegraph takes it as
+`t.list( names::inventory, inventory )`, and changes as
+`t.changed( names::inventory )` (a sort, an insert, a removal) or
+`t.changed( names::inventory, uid )` (one item's fields). The widget asks with
+`ui.view( names::inventory, window )`, the `view` travelling as two floats:
+`do inventory.view (20 52)`, exact up to 16.7 million rows. Only what is on
+screen is ever sent: after a sort, the rows whose item changed, and the
+fields of items new to the screen; nothing for the rest of the list.
+
+`sq::messaging::ModelList` (`squared/messaging/model_list.hpp`) is the
+model's end, `sq::messaging::ListWindow` (`squared/messaging/list_window.hpp`)
+the widget's. The Telegraph and the list widget use them; an app does not.
+
+| Call | Does |
+|---|---|
+| `list_source<Out>(source)` | a `ListSource`: the three members as plain functions |
+| `ModelList(name, source, window, scratch)` | the model's end: `window` holds the uids sent for the rows in view (4 bytes a row, `TELEGRAPH_LIST_VIEW`); `scratch` as large, shared by every list on the thread |
+| `start(out)` | sends the count |
+| `view(first, last, out)` | answers a `view`: the rows whose item is not the one sent, the fields of items new to it; cut to the count and the window's size |
+| `changed(out)` | the count if it changed, then the view read again |
+| `changed(uid, out)` | the item's fields again, if it is on screen |
+| `ListWindow(most_rows)` | the widget's end |
+| `set_count(n)` | from `state inventory.count` |
+| `visible(first, rows)` | each frame: the rows to ask for, when they should be asked for (the screen and one more each side, asked again when the screen comes within half a screen of an edge, or the count changes) |
+| `window()` | the rows last asked for: the ones to keep bound in the cache |
+
+Nothing allocates. The model's thread for `ModelList`, the UI thread for
+`ListWindow`.
 
 ## Dependencies
 

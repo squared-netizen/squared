@@ -11,11 +11,14 @@ MODULE_DIR := $(SQUARED_ROOT)/messaging
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/address.cpp \
+    src/list_window.cpp \
+    src/model_list.cpp \
     src/name_table.cpp \
     src/telegram.cpp \
     src/telegram_data.cpp \
     src/telegram_ring.cpp \
     src/telegram_text.cpp \
+    src/telegraph.cpp \
     src/value_cache.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/messaging/%.o,$(SOURCES))
@@ -38,7 +41,14 @@ RING_TEST := $(BUILD_DIR)/telegram_ring_test
 # The latest-value cache on the UI side (6.4): one thread, a model.
 CACHE_TEST := $(BUILD_DIR)/value_cache_test
 
-TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST)
+# Virtualized lists (6.5): the model's list, the widget's window, the two together.
+LIST_TEST := $(BUILD_DIR)/list_test
+
+# The Telegraph single-threaded (6.6a): both ends, held-back states, lists, lifecycle.
+TELEGRAPH_TEST := $(BUILD_DIR)/telegraph_test
+
+TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
+    $(TELEGRAPH_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -72,6 +82,25 @@ $(RING_TEST): $(MODULE_DIR)/test/telegram_ring_test.cpp \
 $(CACHE_TEST): $(MODULE_DIR)/test/value_cache_test.cpp \
                $(MODULE_DIR)/src/telegram.cpp \
                $(MODULE_DIR)/src/value_cache.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+
+$(LIST_TEST): $(MODULE_DIR)/test/list_test.cpp \
+              $(MODULE_DIR)/src/telegram.cpp \
+              $(MODULE_DIR)/src/model_list.cpp \
+              $(MODULE_DIR)/src/list_window.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+
+$(TELEGRAPH_TEST): $(MODULE_DIR)/test/telegraph_test.cpp \
+                   $(MODULE_DIR)/src/telegram.cpp \
+                   $(MODULE_DIR)/src/telegram_ring.cpp \
+                   $(MODULE_DIR)/src/value_cache.cpp \
+                   $(MODULE_DIR)/src/model_list.cpp \
+                   $(MODULE_DIR)/src/list_window.cpp \
+                   $(MODULE_DIR)/src/telegraph.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@

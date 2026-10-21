@@ -1,6 +1,6 @@
 # class ValueCache
 
-*Defined at [messaging/value_cache.hpp:58](../../../../messaging/value_cache.hpp#L58)*
+*Defined at [messaging/value_cache.hpp:67](../../../../messaging/value_cache.hpp#L67)*
 
 
 
@@ -24,7 +24,7 @@
 
 *public static std::size_t index_bytes(std::size_t entries)*
 
-*Defined at [messaging/value_cache.hpp:62](../../../../messaging/value_cache.hpp#L62)*
+*Defined at [messaging/value_cache.hpp:71](../../../../messaging/value_cache.hpp#L71)*
 
 
 
@@ -34,25 +34,25 @@
 
 *public void ValueCache(const ValueCache & )*
 
-*Defined at [messaging/value_cache.hpp:76](../../../../messaging/value_cache.hpp#L76)*
+*Defined at [messaging/value_cache.hpp:85](../../../../messaging/value_cache.hpp#L85)*
 
 ### operator=
 
 *public ValueCache & operator=(const ValueCache & )*
 
-*Defined at [messaging/value_cache.hpp:77](../../../../messaging/value_cache.hpp#L77)*
+*Defined at [messaging/value_cache.hpp:86](../../../../messaging/value_cache.hpp#L86)*
 
 ### ValueCache
 
 *public void ValueCache(ValueCache && )*
 
-*Defined at [messaging/value_cache.hpp:78](../../../../messaging/value_cache.hpp#L78)*
+*Defined at [messaging/value_cache.hpp:87](../../../../messaging/value_cache.hpp#L87)*
 
 ### operator=
 
 *public ValueCache & operator=(ValueCache && )*
 
-*Defined at [messaging/value_cache.hpp:79](../../../../messaging/value_cache.hpp#L79)*
+*Defined at [messaging/value_cache.hpp:88](../../../../messaging/value_cache.hpp#L88)*
 
 ### store
 
@@ -86,6 +86,22 @@
 
 **brief** One actor fewer shows `address`. It must be bound. 
 
+### bindings
+
+*public std::uint32_t bindings(Address address)*
+
+
+
+**brief** How many binds `address` has; 0 when it has none or no entry. 
+
+### bound_from
+
+*public std::optional<BoundEntry> bound_from(std::uint32_t from)*
+
+
+
+**brief** The first bound entry numbered `from` or after; nothing when there is none. A walk over the bound entries: from 0, then from the last one found plus 1. Unbinding the one found does not disturb it.
+
 ### stats
 
 *public CacheStats stats()*
@@ -94,7 +110,7 @@
 
 *public void ~ValueCache()*
 
-*Defined at [messaging/value_cache.hpp:80](../../../../messaging/value_cache.hpp#L80)*
+*Defined at [messaging/value_cache.hpp:89](../../../../messaging/value_cache.hpp#L89)*
 
 
 

@@ -282,6 +282,34 @@ void full_text()
     std::puts( "full text: unbound text-holders give way, bound ones do not; too large refused" );
 }
 
+// The pending table's walk (6.6a): bindings, and the bound entries in order.
+void bound_walk()
+{
+    Storage<8, 256> s;
+    ValueCache cache( s.entries, s.index, s.text );
+    CHECK( cache.bindings( at( 1 ) ) == 0 );
+    CHECK( !cache.bound_from( 0 ) );
+    CHECK( cache.store( Telegram::integer( Verb::state, at( 1 ), 1 ) ) == CacheResult::stored );
+    CHECK( cache.bind( at( 2 ) ) && cache.bind( at( 2 ) ) ); // twice, no value yet
+    CHECK( cache.store( text( at( 3 ) ), bytes_of( "a text longer than sixteen" ) ) ==
+           CacheResult::stored );
+    CHECK( cache.bind( at( 3 ) ) );
+    CHECK( cache.bindings( at( 1 ) ) == 0 && cache.bindings( at( 2 ) ) == 2 );
+    CHECK( cache.bindings( at( 3 ) ) == 1 && cache.bindings( at( 9 ) ) == 0 );
+
+    // Bound: 2 (entry 1, no value) and 3 (entry 2); 1 is not.
+    auto found = cache.bound_from( 0 );
+    CHECK( found && found->entry == 1 && found->address == at( 2 ) && !found->value );
+    found = cache.bound_from( found->entry + 1 );
+    CHECK( found && found->entry == 2 && found->address == at( 3 ) && found->value );
+    CHECK( text_of( found->value->data ) == "a text longer than sixteen" );
+    // Unbinding the one found does not disturb the walk.
+    cache.unbind( at( 3 ) );
+    CHECK( !cache.bound_from( found->entry + 1 ) );
+    CHECK( cache.bound_from( 0 )->address == at( 2 ) );
+    std::puts( "bound walk: bindings counted, bound entries found in order" );
+}
+
 void no_allocation()
 {
     Storage<64, 1024> s;
@@ -449,6 +477,7 @@ int main()
     text_room();
     clock_and_binding();
     full_text();
+    bound_walk();
     no_allocation();
     against_a_model();
     index_stress();
