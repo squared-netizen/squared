@@ -83,6 +83,16 @@ void Telegraph::count_full() noexcept
     line_.full_.fetch_add( 1, std::memory_order_relaxed );
 }
 
+// The model's count, for the UI to read (relaxed: figures, not a handshake).
+void Telegraph::publish_held() noexcept
+{
+    const std::uint32_t held = line_.pending_count_;
+    line_.held_.store( held, std::memory_order_relaxed );
+    if( held > line_.held_highest_.load( std::memory_order_relaxed ) ) {
+        line_.held_highest_.store( held, std::memory_order_relaxed );
+    }
+}
+
 template<typename F>
 bool Telegraph::wait_for_room( F attempt ) noexcept
 {
@@ -196,6 +206,7 @@ SendResult Telegraph::hold( const Telegram &telegram, std::span<const std::byte>
     }
     if( fresh ) {
         ++line_.pending_count_;
+        publish_held();
     }
     return SendResult::pending;
 }
@@ -242,6 +253,7 @@ bool Telegraph::flush() noexcept
         if( !held ) {
             assert( false && "a pending count with nothing bound" );
             line_.pending_count_ = 0;
+            publish_held();
             break;
         }
         if( held->value ) {
@@ -252,6 +264,7 @@ bool Telegraph::flush() noexcept
         }
         line_.pending_.unbind( held->address );
         --line_.pending_count_;
+        publish_held();
         from = held->entry + 1;
     }
     return true;
@@ -284,6 +297,7 @@ bool Telegraph::add_list( Name rows, ListSource source ) noexcept
         std::optional<ModelList> &slot = line_.lists_[i];
         if( !slot.has_value() ) {
             ModelList &list = slot.emplace( rows, source, line_.windows_[i], line_.scratch_ );
+            line_.lists_count_.fetch_add( 1, std::memory_order_relaxed );
             line_.view_names_[i] = Name::from_id( name_hash( ".view", rows.id ) );
             list.start( output() );
             return true;
@@ -504,6 +518,20 @@ RingStats TelegraphUi::to_model_stats() const noexcept
 RingStats TelegraphUi::to_ui_stats() const noexcept
 {
     return line_.to_ui_.stats();
+}
+
+ModelStats TelegraphUi::model_stats() const noexcept
+{
+    ModelStats stats;
+    stats.held = line_.held_.load( std::memory_order_relaxed );
+    stats.highest_held = line_.held_highest_.load( std::memory_order_relaxed );
+    stats.lists = line_.lists_count_.load( std::memory_order_relaxed );
+    return stats;
+}
+
+std::optional<BoundEntry> TelegraphUi::cached_from( std::uint32_t from ) const noexcept
+{
+    return line_.cache_.entry_from( from );
 }
 
 WaitStats TelegraphUi::wait_stats() const noexcept

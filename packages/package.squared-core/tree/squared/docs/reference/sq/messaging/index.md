@@ -20,6 +20,7 @@
 * [ListWindow](ListWindow.md)
 * [ModelList](ModelList.md)
 * [ModelRunner](ModelRunner.md)
+* [ModelStats](ModelStats.md)
 * [NameTableProbe](NameTableProbe.md)
 * [NameTable](NameTable.md)
 * [Name](Name.md)

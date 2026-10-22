@@ -12,6 +12,12 @@
 #ifndef SQUARED_CONSOLE_COMMANDS
 #define SQUARED_CONSOLE_COMMANDS 64
 #endif
+#ifndef SQUARED_CONSOLE_GROUPS
+#define SQUARED_CONSOLE_GROUPS 16
+#endif
+#ifndef SQUARED_CONSOLE_GROUP_LINES
+#define SQUARED_CONSOLE_GROUP_LINES 128
+#endif
 
 namespace sq::console
 {
@@ -21,6 +27,12 @@ inline constexpr std::size_t scrollback_bytes = SQUARED_CONSOLE_SCROLLBACK;
 
 /** @brief Registered commands the table holds. */
 inline constexpr std::size_t command_slots = SQUARED_CONSOLE_COMMANDS;
+
+/** @brief Named groups of command lines, for `dump`. */
+inline constexpr std::size_t group_slots = SQUARED_CONSOLE_GROUPS;
+
+/** @brief Command lines among all the groups; also the most one `dump` queues. */
+inline constexpr std::size_t group_line_slots = SQUARED_CONSOLE_GROUP_LINES;
 
 /** @brief Bytes in the input line; a longer line is cut at a character boundary. */
 inline constexpr std::size_t input_bytes = 256;
@@ -39,5 +51,9 @@ static_assert( scrollback_bytes >= 1024 && scrollback_bytes % 4 == 0,
 static_assert( scrollback_bytes <= 0x7FFFFFFF, "SQUARED_CONSOLE_SCROLLBACK: below 2 GB" );
 static_assert( command_slots >= 1 && command_slots <= 1024,
                "SQUARED_CONSOLE_COMMANDS: between 1 and 1024" );
+static_assert( group_slots >= 1 && group_slots <= 1024,
+               "SQUARED_CONSOLE_GROUPS: between 1 and 1024" );
+static_assert( group_line_slots >= 1 && group_line_slots <= 4096,
+               "SQUARED_CONSOLE_GROUP_LINES: between 1 and 4096" );
 
 } // namespace sq::console

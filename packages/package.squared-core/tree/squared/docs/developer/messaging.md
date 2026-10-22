@@ -631,6 +631,21 @@ the looper's wiring left to Sprint 7.
   waking the model, `due` never called, the tick cadence drifting, timeouts
   rounded down, `earliest` picking the later.
 
+## For the Console (6.7a)
+
+- **`ValueCache::entry_from(from)`**: the walk `bound_from` is, over every
+  entry in use, bound or not; the same `BoundEntry` comes back (its value
+  empty for an entry bound before any value came). `TelegraphUi::cached_from`
+  forwards to it for `telegraph state`.
+- **`ModelStats`** (`held`, `highest_held`, `lists`) through
+  `TelegraphUi::model_stats()`: the pending count and the list table belong to
+  the model's thread, so the model publishes them as relaxed atomics on the
+  line (`held_`, `held_highest_`, `lists_count_`), at each change of the
+  held-back count (`publish_held`: a store, and a load and a store for the
+  high mark) and when a list is declared. Figures, not a handshake: the UI may
+  read a value a moment old. They fit the line's padding: `TelegraphLine` is
+  still 87,936 bytes.
+
 ## Memory
 
 | Type | Bytes |

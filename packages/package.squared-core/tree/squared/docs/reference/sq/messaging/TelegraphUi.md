@@ -1,6 +1,6 @@
 # class TelegraphUi
 
-*Defined at [messaging/telegraph.hpp:310](../../../../messaging/telegraph.hpp#L310)*
+*Defined at [messaging/telegraph.hpp:322](../../../../messaging/telegraph.hpp#L322)*
 
 
 
@@ -16,89 +16,23 @@
 
 *public void TelegraphUi(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.hpp:313](../../../../messaging/telegraph.hpp#L313)*
-
-### operator=
-
-*public TelegraphUi & operator=(const TelegraphUi & )*
-
-*Defined at [messaging/telegraph.hpp:314](../../../../messaging/telegraph.hpp#L314)*
+*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
 
 ### TelegraphUi
 
 *public void TelegraphUi(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.hpp:315](../../../../messaging/telegraph.hpp#L315)*
+*Defined at [messaging/telegraph.hpp:327](../../../../messaging/telegraph.hpp#L327)*
 
-### operator=
+### drain
 
-*public TelegraphUi & operator=(TelegraphUi && )*
+*public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.hpp:316](../../../../messaging/telegraph.hpp#L316)*
-
-### ready_to_sleep
-
-*public bool ready_to_sleep()*
+*Defined at [messaging/telegraph.hpp:629](../../../../messaging/telegraph.hpp#L629)*
 
 
 
-**brief** Before sleeping on `wake_fd`: false when the model has sent already (drain instead). True means sleep: the next send wakes it.
-
-### ~TelegraphUi
-
-*public void ~TelegraphUi()*
-
-*Defined at [messaging/telegraph.hpp:317](../../../../messaging/telegraph.hpp#L317)*
-
-### set
-
-*public SendResult set(const K & key, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:322](../../../../messaging/telegraph.hpp#L322)*
-
-
-
-**brief** `set <key> <value>`: the user changed a value. 
-
-### set
-
-*public SendResult set(const K & key, std::uint32_t uid, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:332](../../../../messaging/telegraph.hpp#L332)*
-
-
-
-**brief** `set <key>[uid] <value>`. 
-
-### do_
-
-*public DoResult do_(const K & key)*
-
-*Defined at [messaging/telegraph.hpp:342](../../../../messaging/telegraph.hpp#L342)*
-
-
-
-**brief** `do <key>`: an intent, with no value. 
-
-### do_
-
-*public DoResult do_(const K & key, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:350](../../../../messaging/telegraph.hpp#L350)*
-
-
-
-**brief** `do <key> <value>`. 
-
-### do_
-
-*public DoResult do_(const K & key, std::uint32_t uid)*
-
-*Defined at [messaging/telegraph.hpp:359](../../../../messaging/telegraph.hpp#L359)*
-
-
-
-**brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
+**brief** Take what the model sent: each `state` into the cache, each `event` to `handler.event(received)` if it has one. At most a ring's worth, so one frame never takes more. The telegrams taken.
 
 ### drain
 
@@ -148,6 +82,30 @@
 
 *public void quit()*
 
+### wake_fd
+
+*public int wake_fd()*
+
+
+
+**brief** The descriptor that becomes readable when the model sends while the UI sleeps: poll it beside the others (Android's looper, a desktop event loop). -1 if it could not be made.
+
+### ready_to_sleep
+
+*public bool ready_to_sleep()*
+
+
+
+**brief** Before sleeping on `wake_fd`: false when the model has sent already (drain instead). True means sleep: the next send wakes it.
+
+### woke
+
+*public void woke()*
+
+
+
+**brief** After sleeping, woken or not: the model no longer wakes the UI. 
+
 ### cache_stats
 
 *public CacheStats cache_stats()*
@@ -160,11 +118,95 @@
 
 *public RingStats to_ui_stats()*
 
+### wait_stats
+
+*public WaitStats wait_stats()*
+
+### model_stats
+
+*public ModelStats model_stats()*
+
+### cached_from
+
+*public std::optional<BoundEntry> cached_from(std::uint32_t from)*
+
+
+
+**brief** A walk over every value the cache holds, as `ValueCache::entry_from`: from 0, then from the last found plus 1. A value's text is valid until the next `drain`.
+
+### operator=
+
+*public TelegraphUi & operator=(const TelegraphUi & )*
+
+*Defined at [messaging/telegraph.hpp:326](../../../../messaging/telegraph.hpp#L326)*
+
+### operator=
+
+*public TelegraphUi & operator=(TelegraphUi && )*
+
+*Defined at [messaging/telegraph.hpp:328](../../../../messaging/telegraph.hpp#L328)*
+
+### ~TelegraphUi
+
+*public void ~TelegraphUi()*
+
+*Defined at [messaging/telegraph.hpp:329](../../../../messaging/telegraph.hpp#L329)*
+
+### set
+
+*public SendResult set(const K & key, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:334](../../../../messaging/telegraph.hpp#L334)*
+
+
+
+**brief** `set <key> <value>`: the user changed a value. 
+
+### set
+
+*public SendResult set(const K & key, std::uint32_t uid, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:344](../../../../messaging/telegraph.hpp#L344)*
+
+
+
+**brief** `set <key>[uid] <value>`. 
+
+### do_
+
+*public DoResult do_(const K & key)*
+
+*Defined at [messaging/telegraph.hpp:354](../../../../messaging/telegraph.hpp#L354)*
+
+
+
+**brief** `do <key>`: an intent, with no value. 
+
+### do_
+
+*public DoResult do_(const K & key, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:362](../../../../messaging/telegraph.hpp#L362)*
+
+
+
+**brief** `do <key> <value>`. 
+
+### do_
+
+*public DoResult do_(const K & key, std::uint32_t uid)*
+
+*Defined at [messaging/telegraph.hpp:371](../../../../messaging/telegraph.hpp#L371)*
+
+
+
+**brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
+
 ### view
 
 *public SendResult view(const K & rows, RowSpan span)*
 
-*Defined at [messaging/telegraph.hpp:367](../../../../messaging/telegraph.hpp#L367)*
+*Defined at [messaging/telegraph.hpp:379](../../../../messaging/telegraph.hpp#L379)*
 
 
 
@@ -174,7 +216,7 @@
 
 *public detail::value_of<K> value(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:389](../../../../messaging/telegraph.hpp#L389)*
+*Defined at [messaging/telegraph.hpp:401](../../../../messaging/telegraph.hpp#L401)*
 
 
 
@@ -184,41 +226,11 @@
 
 *public detail::value_of<K> value(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:397](../../../../messaging/telegraph.hpp#L397)*
+*Defined at [messaging/telegraph.hpp:409](../../../../messaging/telegraph.hpp#L409)*
 
 
 
 **brief** The latest value of `key` at `uid`, as its type. 
-
-### drain
-
-*public std::uint32_t drain(H & handler)*
-
-*Defined at [messaging/telegraph.hpp:606](../../../../messaging/telegraph.hpp#L606)*
-
-
-
-**brief** Take what the model sent: each `state` into the cache, each `event` to `handler.event(received)` if it has one. At most a ring's worth, so one frame never takes more. The telegrams taken.
-
-### wake_fd
-
-*public int wake_fd()*
-
-
-
-**brief** The descriptor that becomes readable when the model sends while the UI sleeps: poll it beside the others (Android's looper, a desktop event loop). -1 if it could not be made.
-
-### woke
-
-*public void woke()*
-
-
-
-**brief** After sleeping, woken or not: the model no longer wakes the UI. 
-
-### wait_stats
-
-*public WaitStats wait_stats()*
 
 
 

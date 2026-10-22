@@ -39,6 +39,68 @@ void close( Console &console, const Args &, void * ) noexcept
     console.hide();
 }
 
+constexpr const char *dump_usage =
+    "dump <group>...: run groups of commands, one a frame; dump all, dump stop";
+constexpr const char *dump_help =
+    "dump [group...]: run groups of commands (sys, memory, ...); all; stop";
+
+// Each group and its lines, as one line: "sys      mem, heap, threads".
+void list_groups( Console &console ) noexcept
+{
+    const Groups &groups = console.groups();
+    if( groups.names().empty() ) {
+        console.print( "dump: no groups yet" );
+        return;
+    }
+    std::array<char, format_bytes> joined{};
+    for( std::size_t group = 0; group < groups.names().size(); ++group ) {
+        std::size_t used = 0;
+        for( const GroupLine &line : groups.lines() ) {
+            if( line.group != group ) {
+                continue;
+            }
+            const char *separator = used == 0 ? "" : ", ";
+            const int wrote = std::snprintf( joined.data() + used, joined.size() - used, "%s%s",
+                                             separator, line.line );
+            const std::size_t grew = used + static_cast<std::size_t>( std::max( wrote, 0 ) );
+            used = std::min( grew, joined.size() - 1 );
+        }
+        console.printf( Level::info, "  %-9s %s", groups.names()[group], joined.data() );
+    }
+}
+
+void dump( Console &console, const Args &args, void * ) noexcept
+{
+    if( args.size() == 1 ) {
+        console.print( dump_usage );
+        list_groups( console );
+        return;
+    }
+    if( args.size() == 2 && args.text( 1 ) == "stop" ) {
+        const std::size_t left = console.stop_dump();
+        console.printf( Level::info, "dump: stopped; %zu not run", left );
+        return;
+    }
+    std::size_t queued = 0;
+    std::size_t full = 0;
+    for( std::size_t word = 1; word < args.size(); ++word ) {
+        const std::string_view group = args.text( word );
+        const Console::Queued result = console.queue_group( group );
+        if( !result.found ) {
+            console.printf( Level::error, "dump: no group named %.*s (dump lists them)",
+                            static_cast<int>( group.size() ), group.data() );
+        }
+        queued += result.queued;
+        full += result.full;
+    }
+    if( full != 0 ) {
+        console.printf( Level::warning, "dump: the queue is full; %zu not queued", full );
+    }
+    if( queued != 0 ) {
+        console.printf( Level::info, "dump: %zu queued, one a frame", queued );
+    }
+}
+
 } // namespace
 
 Console::Console() noexcept
@@ -48,6 +110,75 @@ Console::Console() noexcept
         commands_.add( "help", "help [command]: list the commands, or show one", help ) );
     static_cast<void>( commands_.add( "clear", "clear: empty the scrollback", clear ) );
     static_cast<void>( commands_.add( "close", "close: hide the console", close ) );
+    static_cast<void>( commands_.add( "dump", dump_help, dump ) );
+}
+
+Groups::AddResult Console::add_group( const char *group,
+                                      std::initializer_list<const char *> lines ) noexcept
+{
+    for( const char *line : lines ) {
+        const Groups::AddResult result = groups_.add( group, line );
+        if( result != Groups::AddResult::added ) {
+            return result;
+        }
+    }
+    return Groups::AddResult::added;
+}
+
+Console::Queued Console::queue_group( std::string_view group ) noexcept
+{
+    Queued result;
+    const bool all = group == "all";
+    const std::optional<std::size_t> number = all ? std::nullopt : groups_.find( group );
+    if( !all && !number ) {
+        return result;
+    }
+    result.found = true;
+    for( const GroupLine &line : groups_.lines() ) {
+        if( !all && line.group != *number ) {
+            continue;
+        }
+        bool waiting = false;
+        for( std::size_t i = 0; i < queued_ && !waiting; ++i ) {
+            waiting = std::string_view( queue_[( queue_head_ + i ) % queue_.size()] ) == line.line;
+        }
+        if( waiting ) {
+            continue;
+        }
+        if( queued_ == queue_.size() ) {
+            ++result.full;
+            continue;
+        }
+        queue_[( queue_head_ + queued_ ) % queue_.size()] = line.line;
+        ++queued_;
+        ++result.queued;
+    }
+    return result;
+}
+
+std::size_t Console::stop_dump() noexcept
+{
+    const std::size_t left = queued_;
+    queued_ = 0;
+    queue_head_ = 0;
+    dump_run_ = 0;
+    return left;
+}
+
+void Console::update() noexcept
+{
+    if( queued_ == 0 ) {
+        return;
+    }
+    const char *line = queue_[queue_head_];
+    queue_head_ = ( queue_head_ + 1 ) % queue_.size();
+    --queued_;
+    ++dump_run_;
+    run( line );
+    if( queued_ == 0 && dump_run_ != 0 ) {
+        printf( Level::info, "dump: done, %zu run", dump_run_ );
+        dump_run_ = 0;
+    }
 }
 
 void Console::print( std::string_view text, Level level ) noexcept

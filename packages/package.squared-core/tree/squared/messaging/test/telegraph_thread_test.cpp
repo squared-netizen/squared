@@ -255,8 +255,7 @@ class TimerModel final
 
     private:
         Shared &shared_;
-        std::array<sq::time::DeadlineQueue<std::int64_t>::Entry, 8> storage_{};
-        sq::time::DeadlineQueue<std::int64_t> timers_{ storage_ };
+        sq::time::DeadlineQueue<std::int64_t, 8> timers_;
 };
 
 // The UI's side of a test: what the model sent, and a wait as a looper's.

@@ -1,6 +1,6 @@
 # struct Ticket
 
-*Defined at [time/deadline_queue.hpp:49](../../../../../time/deadline_queue.hpp#L49)*
+*Defined at [time/deadline_queue.hpp:42](../../../../../time/deadline_queue.hpp#L42)*
 
 
 
@@ -20,7 +20,7 @@ public std::uint64_t value
 
 *public bool operator bool()*
 
-*Defined at [time/deadline_queue.hpp:53](../../../../../time/deadline_queue.hpp#L53)*
+*Defined at [time/deadline_queue.hpp:46](../../../../../time/deadline_queue.hpp#L46)*
 
 
 

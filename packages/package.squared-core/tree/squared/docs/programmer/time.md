@@ -16,7 +16,7 @@ Developer counterpart: [../developer/time.md](../developer/time.md)
 | `Duration`, `TimePoint` | `squared/time/duration.hpp`, `squared/time/time_point.hpp` | `std::chrono::nanoseconds`: a span, and a time since a clock's start |
 | `now()`, `since_boot()` | `squared/time/now.hpp` | The monotonic clock; the time since boot, deep sleep included |
 | `Timepiece` | `squared/time/timepiece.hpp` | The step between ticks, clamped, and the tick count: 24 bytes |
-| `DeadlineQueue<Value>` | `squared/time/deadline_queue.hpp` | A model's timers, over storage its owner gives |
+| `DeadlineQueue<Value, N>` | `squared/time/deadline_queue.hpp` | A model's timers, at most `N` waiting at once |
 
 ## Timepiece
 
@@ -55,13 +55,12 @@ takes the time as an argument.
 ## DeadlineQueue
 
 A model's timers: values due at times, handed back in order once their time
-has come. It allocates nothing: its owner gives the storage, as many entries
-as may be waiting at once.
+has come. It allocates nothing: it holds an array of `N` entries, as many as
+may be waiting at once.
 
 ```cpp
 struct Shop {
-    std::array<sq::time::DeadlineQueue<Restock>::Entry, 16> storage{};
-    sq::time::DeadlineQueue<Restock> timers{ storage };
+    sq::time::DeadlineQueue<Restock, 16> timers;
 
     void receive( Telegraph &t, const Received &m ) {
         timers.schedule_after( sq::time::now(), std::chrono::seconds( 30 ), Restock{ 17 } );
@@ -78,14 +77,14 @@ The model's thread sleeps until `wake_at()`, then calls `due` (see
 
 | Call | Does |
 |---|---|
-| `DeadlineQueue(storage)` | over a `std::span<Entry>`; holds at most `storage.size()` at once |
+| `DeadlineQueue<Value, N>` | empty; holds at most `N` at once (`N` at least 1) |
 | `schedule_at(due, value)` | due at `due`; returns a `Scheduled`: `result`, and the `ticket` when scheduled (true when it was) |
 | `schedule_after(now, delay, value)` | due `delay` after `now` |
 | `cancel(ticket)`, `cancel(ticket, visitor)` | remove it (the visitor gets the value first); false if it is not there |
 | `poll_due(now, limit, visitor)` | hand each value due at `now` or before to `visitor`, in order, at most `limit`; returns how many |
 | `next_due()` | when the first is due; nothing when empty |
 | `visit_ordered(visitor)` | every entry in the order they come due: `visitor(due, ticket, value)` |
-| `size()`, `capacity()`, `empty()` | |
+| `size()`, `capacity()` (`N`), `empty()` | |
 
 Values due at the same time come back in the order they were scheduled.
 `Value` must be default-constructible and move without throwing.

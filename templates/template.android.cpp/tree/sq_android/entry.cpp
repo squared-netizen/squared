@@ -824,7 +824,8 @@ struct Platform {
     }
 
     /// The built-in commands: the system's, `gl`, `display`, and `alloc`
-    /// with the dev log. A table too small for them says so once.
+    /// with the dev log; and their `dump` groups. A table too small for them
+    /// says so once.
     void add_console_commands() {
         using Added = sq::console::Commands::AddResult;
         std::size_t refused = sq::console::add_system_commands(console);
@@ -869,6 +870,24 @@ struct Platform {
 #endif
         if (refused != 0) {
             SQ_LOGW("console: %zu built-in commands did not fit; raise CONSOLE_COMMANDS", refused);
+        }
+
+        // `dump` groups for the template's own commands; `sys` and `memory`
+        // came with the system's. `dump crash` reads how the last run ended.
+        using Grouped = sq::console::Groups::AddResult;
+        std::size_t ungrouped = console.add_group("sys", {"gl", "display"}) != Grouped::added ? 1 : 0;
+        if (crash_previous_path[0] != '\0') {
+            ungrouped += console.add_to_group("crash", "crash") != Grouped::added ? 1 : 0;
+        }
+        if (log_previous_path[0] != '\0') {
+            ungrouped += console.add_to_group("crash", "log previous") != Grouped::added ? 1 : 0;
+        }
+        ungrouped += console.add_to_group("crash", "logcat 100") != Grouped::added ? 1 : 0;
+#ifdef SQUARED_DEV_LOG
+        ungrouped += console.add_to_group("memory", "alloc") != Grouped::added ? 1 : 0;
+#endif
+        if (ungrouped != 0) {
+            SQ_LOGW("console: %zu dump group lines did not fit; raise CONSOLE_GROUP_LINES", ungrouped);
         }
     }
 
@@ -1604,8 +1623,12 @@ void android_main(android_app* app) {
         // poll with a zero timeout and render continuously; without one - or
         // once finishing - we wait, so a closing or backgrounded app costs no
         // battery.
-        const int timeout =
-            platform->surface_ready && !platform->finishing ? 0 : -1;
+        int timeout = platform->surface_ready && !platform->finishing ? 0 : -1;
+#ifdef SQUARED_CONSOLE
+        // A `dump` still running with no surface (from Termux, the app in
+        // the background): wake for its next line every 16 ms, then sleep again.
+        if (timeout < 0 && !platform->finishing && platform->console.dumping()) timeout = 16;
+#endif
 
         // The destroy check sits outside the poll loop as well as inside it.
         // Inside alone is enough while ALooper_pollOnce blocks on a -1 timeout,
@@ -1627,6 +1650,12 @@ void android_main(android_app* app) {
             }
             if (platform->surface_ready && !platform->finishing) break;
         }
+
+#ifdef SQUARED_CONSOLE
+        // One line of a `dump` a turn, drawn or not: the bridge sends what it
+        // printed before the next, and no frame waits on a long group.
+        platform->console.update();
+#endif
 
         // Nothing is drawn once finishing: the application has said it is
         // done, and its last frame should be the one it chose.

@@ -1,6 +1,6 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. the **app's own files** through it (`ls`, `pull`, `push`), and its **own system log** and **libraries** (`logcat`, `libs`). The monitor app comes later.
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. the **app's own files** through it (`ls`, `pull`, `push`), and its **own system log** and **libraries** (`logcat`, `libs`); **`dump`**, which runs groups of commands (`dump sys`, `dump state`); and the **Telegraph's commands** (`telegraph`). The monitor app comes later.
 
 Developer side: [../developer/console.md](../developer/console.md).
 
@@ -20,7 +20,7 @@ make CONSOLE=app CONSOLE_SCROLLBACK=1048576 install # a bigger history
 | `CONSOLE_SCROLLBACK` | `65536` | Bytes of history: about 1,000 lines. At least 1024, a multiple of 4 |
 | `CONSOLE_COMMANDS` | `64` | Commands the table holds, 1 to 1024 |
 
-In code, `SQUARED_CONSOLE` is defined (1 for `app`, 2 for `monitor`) when it is on, and `sq::console::scrollback_bytes` and `sq::console::command_slots` hold the sizes. A wrong value is a build error, not a surprise on the device.
+In code, `SQUARED_CONSOLE` is defined (1 for `app`, 2 for `monitor`) when it is on, and `sq::console::scrollback_bytes` and `sq::console::command_slots` hold the sizes. A wrong value is a build error, not a surprise on the device. Two more sizes, for `dump`, are set with `-D` until a project needs them as make variables: `SQUARED_CONSOLE_GROUPS` (16 groups) and `SQUARED_CONSOLE_GROUP_LINES` (128 command lines among them).
 
 ## What you see
 
@@ -44,6 +44,7 @@ With `CONSOLE=app` the Android template draws the Console over the upper half of
 | copy one to Termux / from Termux | `pull files/crash.txt` (lands in `build/pulled/`), `push <file> [name]` typed in `make console` (lands in the app's `files/`) |
 | read the app's own system log | `logcat`, `logcat 500`: Android's lines about this app, a library that failed to load or a Java exception among them |
 | see what it loaded | `libs` |
+| run a group of commands | `dump sys` (every system command), `dump memory`, `dump crash` (the last crash, the last run's log, the system log), `dump state` (every value the UI holds), `dump telegraph`; several at once: `dump sys state`; everything: `dump all`; `dump` lists them; `dump stop` |
 
 `app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included: the next launch shows its report, and `make console` waits for the app to come back). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
 
@@ -84,10 +85,15 @@ console->run("spawn goblin 3");          // or typed: text("spawn goblin 3"), th
 | `complete()` | Complete the command name being typed. Returns the number of matches: one fills it in with a space; several fill in the common part and print them |
 | `key(Key, KeyModifiers)` | Left, Right, Home, End, Up and Down (history), Backspace, Delete, Enter (`submit`), Tab (`complete`), Escape (clear the line). Returns false for keys it leaves alone, Space among them: typed characters, a space included, come through `text()` |
 | `text(utf8)` | Typed text, inserted at the cursor |
-| `lines()`, `input()`, `commands()` | The scrollback, the input line, the table |
+| `lines()`, `input()`, `commands()`, `groups()` | The scrollback, the input line, the command table, the groups |
+| `add_to_group(group, line)` | Add a whole command line (`"logcat 100"`) to a group for `dump`, making the group if it is new. Returns `Groups::AddResult`: `added` (a line already there counts), `groups_full`, `lines_full`, `invalid_name` (an empty name, a space or a quote, `all` or `stop`; an empty line, or one that is itself a `dump`) |
+| `add_group(group, { lines... })` | Each line in turn; the first refusal, or `added` |
+| `update()` | Run the next line `dump` queued, if any. Call it once a frame (the Android template does, drawn or not) |
+| `dumping()` | Whether `dump` has lines left: a loop that sleeps should wake soon for them |
+| `queue_group(name)`, `stop_dump()` | What `dump` does, for code: queue a group's lines (`all`: every group), or forget the queue |
 | `set_mirror(mirror, context)` | Hand every printed line to `mirror(context, level, line)` too, a call a line, the echo of a command and its output included; `nullptr` stops it. The bridge uses it |
 
-Three commands are built in: `help` (all commands, or `help <name>` for one), `clear` and `close`. More come from the calls below, and the Android template adds them all.
+Four commands are built in: `help` (all commands, or `help <name>` for one), `clear`, `close` and `dump` (below). More come from the calls below, and the Android template adds them all.
 
 | Call | Does |
 |---|---|
@@ -215,6 +221,37 @@ static_cast<void>(sq::console::add_file_commands(console, "/data/user/0/<package
 | `show_log(console, path, title)` | Print a saved log into the Console after a title line. False when there is no file |
 | `add_log_command(console, previous_path)` | The `log` command: `log previous`. `previous_path` is kept, not copied |
 
+## dump: groups of commands
+
+```cpp
+console->add_group("crash", {"crash", "log previous", "logcat 100"});
+console->add_to_group("sys", "gl");   // the system group, one more line
+console->run("dump sys crash");       // queued; each frame...
+console->update();                    // ...runs the next line
+```
+
+| Typed | Does |
+|---|---|
+| `dump` | the usage, then each group and its lines |
+| `dump sys` | queues the group's lines, which run one a frame; each is echoed (`> mem`) and prints as if typed, then `dump: done, 7 run` |
+| `dump sys state` | several groups, in the order typed; a line in more than one runs once |
+| `dump all` | every group, in the order they were made |
+| `dump stop` | forgets what is still queued |
+
+A line in a group is a whole command line, so it can carry arguments (`logcat 100`, `telegraph state`). One a frame, so a long group never holds up a frame, and through the bridge each command's output goes out before the next; while a dump runs with the app in the background, the Android template wakes every 16 ms for the next line. A command typed meanwhile runs at once. An unknown group is an error line; the rest of the dump still runs.
+
+The groups that come with squared:
+
+| Group | Lines | Added by |
+|---|---|---|
+| `sys` | `mem`, `heap`, `threads`, `fds`, `device`, `smaps`, `libs`; `gl`, `display` | `add_system_commands`; the Android template |
+| `memory` | `mem`, `heap`, `smaps`; `alloc` with `DEV_LOG` | `add_system_commands`; the Android template |
+| `crash` | `crash`, `log previous`, `logcat 100` | the Android template |
+| `telegraph` | `telegraph` | `add_telegraph_commands` |
+| `state` | `telegraph state` | `add_telegraph_commands` |
+
+Nothing is allocated: the groups and the queue are fixed tables in the Console (about 3 KB). Group names and lines are kept as pointers: pass string literals.
+
 `squared/console/line_reader.hpp` has the reader these use: `for_each_line(fd, buffer, line)` calls `line(std::string_view)` for each line of a descriptor, through a buffer you give it, with no allocation.
 
 ## Built-in commands
@@ -242,6 +279,8 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
 | `ls`, `pull`, `push` | the app's files ([Files](#files)); added by the Android template |
 | `logcat` | `logcat [lines]`: the app's own system log, newest 200 by default (`/system/bin/logcat -d`). Added by the Android template, through `run_program` |
+| `telegraph` | each capacity of the Telegraph and its highest fill since start, the states held back, the lists, and how often the model waited for room or was refused. `add_telegraph_commands(console, ui)`, below |
+| `telegraph state` | every value the UI holds from the model, one line each in the text form, ordered by address |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
 
@@ -251,6 +290,30 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 const char* const argv[] = {"/system/bin/logcat", "-d", "-t", "200", "-v", "brief", nullptr};
 sq::console::run_program(console, argv, 208);
 ```
+
+**The Telegraph's commands** (`squared/console/telegraph_commands.hpp`), on the UI's end of a line:
+
+```cpp
+static_cast<void>(sq::console::add_telegraph_commands(console, line->ui()));
+```
+
+```
+> telegraph
+to the model: 0 of 256 telegrams at most, 0 of 8192 data bytes
+to the UI:    2 of 256 telegrams at most, 8 of 8192 data bytes
+cache:        2 of 512 entries, 0 bound
+              text 0 of 8192 bytes, 0 at most
+              0 evicted for room, 0 dropped
+held back:    0 now, 0 at most, of 256
+lists:        0 of 16
+model sends:  waited 0 times, refused 0 (full)
+> telegraph state
+state #6be79300f6b58562 42
+state #734944bd109491bb[17] "fur coat"
+telegraph: 2 values; 0 bound, with no value yet
+```
+
+The highest fills are what the `TELEGRAPH_*` make variables are set from. Names show as `#` and 16 hex digits until they are registered for the text form (6.7b). A value too long for one line (over 512 bytes as text) is named, with its size, instead. The UI must outlive the commands; the App wires them in Sprint 7. It returns how many did not fit in the tables.
 
 `add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` and `add_copy_command` return the table's `AddResult`. None of them allocates or keeps anything.
 

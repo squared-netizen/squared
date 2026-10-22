@@ -389,6 +389,8 @@ model.
 | `ready_to_sleep()` | before sleeping on it: `false` when the model has sent already (drain instead) |
 | `woke()` | after the sleep, woken or timed out |
 | `wait_stats()` | `waits` (times the model waited for room) and `full` (sends it had refused) |
+| `model_stats()` | the model's side as the UI may read it: `held` (states held back now), `highest_held`, `lists` declared |
+| `cached_from(from)` | a walk over every value the cache holds: from 0, then from the last found's `entry` plus 1; each has its `address` and, unless only bound so far, its `value` (the Console's `telegraph state`) |
 
 The Stage sleeps like this, when nothing is animating:
 

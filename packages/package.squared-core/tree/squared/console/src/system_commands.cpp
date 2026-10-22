@@ -558,6 +558,13 @@ std::size_t add_system_commands( Console &console ) noexcept
             Commands::AddResult::added ) {
             ++refused;
         }
+        // `dump sys` runs every one of them.
+        if( console.add_to_group( "sys", builtin.name ) != Groups::AddResult::added ) {
+            ++refused;
+        }
+    }
+    if( console.add_group( "memory", { "mem", "heap", "smaps" } ) != Groups::AddResult::added ) {
+        ++refused;
     }
     return refused;
 }

@@ -1,6 +1,6 @@
 # struct Scheduled
 
-*Defined at [time/deadline_queue.hpp:69](../../../../../time/deadline_queue.hpp#L69)*
+*Defined at [time/deadline_queue.hpp:62](../../../../../time/deadline_queue.hpp#L62)*
 
 
 
@@ -22,7 +22,7 @@ public Ticket ticket
 
 *public bool operator bool()*
 
-*Defined at [time/deadline_queue.hpp:74](../../../../../time/deadline_queue.hpp#L74)*
+*Defined at [time/deadline_queue.hpp:67](../../../../../time/deadline_queue.hpp#L67)*
 
 
 

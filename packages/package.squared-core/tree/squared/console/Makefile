@@ -7,7 +7,11 @@
 #
 # Its sizes are compile-time: SQUARED_CONSOLE_SCROLLBACK and
 # SQUARED_CONSOLE_COMMANDS (console/src/limits.hpp), passed by the template as
-# -D flags so the archive and the application agree.
+# -D flags so the archive and the application agree; SQUARED_CONSOLE_GROUPS
+# and SQUARED_CONSOLE_GROUP_LINES likewise, by hand, until a project needs them.
+#
+# The Telegraph's commands (telegraph_commands.cpp) use messaging, which every
+# project links; the other tests build without it.
 
 include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 
@@ -24,10 +28,12 @@ SOURCES := src/args.cpp \
     src/crash_file.cpp \
     src/file_commands.cpp \
     src/font8x8.cpp \
+    src/groups.cpp \
     src/input_line.cpp \
     src/log_file.cpp \
     src/scrollback.cpp \
-    src/system_commands.cpp
+    src/system_commands.cpp \
+    src/telegraph_commands.cpp
 
 # The renderer and the `gl` command need the GLES 3.0 headers, so they are
 # built with the gles backend only; the rest of the Console builds anywhere.
@@ -36,6 +42,14 @@ ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
 SOURCES += src/gles/gl_command.cpp \
     src/gles/renderer.cpp
 endif
+
+# What the tests below link: everything but the drawing and the Telegraph's commands.
+CORE_SOURCES := $(filter-out src/gles/% src/telegraph_commands.cpp,$(SOURCES))
+
+# Messaging and time, for the Telegraph's commands' test: built from source,
+# as every test here builds the module.
+MESSAGING_SOURCES := $(wildcard $(SQUARED_ROOT)/messaging/src/*.cpp) \
+                     $(wildcard $(SQUARED_ROOT)/time/src/*.cpp)
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/console/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -63,6 +77,13 @@ RENDERER_TEST := $(BUILD_DIR)/console_renderer_test
 HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/test/*.hpp) \
            $(wildcard $(SQUARED_ROOT)/dev/*.hpp $(SQUARED_ROOT)/dev/src/*.hpp)
 
+# Groups and dump: queued, one line a frame, combinations, stop, the limits.
+DUMP_TEST := $(BUILD_DIR)/dump_test
+
+# The Telegraph's commands over a real line, the model inline: the
+# capacities, every value in order, the groups.
+TELEGRAPH_COMMANDS_TEST := $(BUILD_DIR)/telegraph_commands_test
+
 # A child process crashes for real (SIGSEGV, abort) with the crash file
 # installed; the parent reads the report, shows it, and checks the signal
 # still reached the handler before it and killed the child.
@@ -76,7 +97,8 @@ BRIDGE_TEST := $(BUILD_DIR)/bridge_test
 # A project builds it for Termux with `make console` (mk/pkg_squared_core.mk).
 SQCONSOLE := $(BUILD_DIR)/sqconsole
 
-TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(LAYOUT_TEST) $(CRASH_TEST) $(BRIDGE_TEST)
+TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(DUMP_TEST) $(TELEGRAPH_COMMANDS_TEST) $(LAYOUT_TEST) \
+    $(CRASH_TEST) $(BRIDGE_TEST)
 ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
 TESTS += $(RENDERER_TEST)
 endif
@@ -91,18 +113,33 @@ $(SQCONSOLE): $(MODULE_DIR)/client/sqconsole.cpp
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $< -o $@
 
-$(BRIDGE_TEST): $(MODULE_DIR)/test/bridge_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+$(DUMP_TEST): $(MODULE_DIR)/test/dump_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
+              $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
+
+$(TELEGRAPH_COMMANDS_TEST): $(MODULE_DIR)/test/telegraph_commands_test.cpp \
+                            $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
+                            $(MODULE_DIR)/src/telegraph_commands.cpp $(MESSAGING_SOURCES) \
+                            $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+                            $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
+
+$(BRIDGE_TEST): $(MODULE_DIR)/test/bridge_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(SQCONSOLE)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) -DSQCONSOLE_PATH='"$(SQCONSOLE)"' $(filter %.cpp,$^) -ldl -pthread -o $@
 
-$(CRASH_TEST): $(MODULE_DIR)/test/crash_file_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) $(HEADERS)
+$(CRASH_TEST): $(MODULE_DIR)/test/crash_file_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -o $@
 
-$(LAYOUT_TEST): $(MODULE_DIR)/test/layout_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+$(LAYOUT_TEST): $(MODULE_DIR)/test/layout_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
                 $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
@@ -115,7 +152,7 @@ $(RENDERER_TEST): $(MODULE_DIR)/test/renderer_test.cpp $(MODULE_DIR)/test/gl_stu
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) $(filter %.cpp,$^) -ldl -pthread -o $@
 
-$(CONSOLE_TEST): $(MODULE_DIR)/test/console_test.cpp $(addprefix $(MODULE_DIR)/,$(filter-out src/gles/%,$(SOURCES))) \
+$(CONSOLE_TEST): $(MODULE_DIR)/test/console_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
                  $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))

@@ -102,6 +102,14 @@
 
 **brief** The first bound entry numbered `from` or after; nothing when there is none. A walk over the bound entries: from 0, then from the last one found plus 1. Unbinding the one found does not disturb it.
 
+### entry_from
+
+*public std::optional<BoundEntry> entry_from(std::uint32_t from)*
+
+
+
+**brief** The first entry in use numbered `from` or after, bound or not: a walk over every address the cache holds, as `bound_from` walks the bound ones (the Console's `telegraph state`).
+
 ### stats
 
 *public CacheStats stats()*

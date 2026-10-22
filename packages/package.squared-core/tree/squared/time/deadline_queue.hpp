@@ -4,12 +4,12 @@
 #include <squared/time/time_point.hpp>
 
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
-#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -22,8 +22,8 @@ concept DeadlineValue = std::default_initializable<T> && std::is_nothrow_move_co
 
 /**
  * @brief A model's timers: values due at times, given back in order once
- * their time has come. Over storage its owner gives (`Entry`s, as many as it
- * may hold at once), so nothing is allocated after it is made.
+ * their time has come. It holds at most `Capacity` at once, in an array of
+ * its own, so nothing is ever allocated: `DeadlineQueue<Restock, 16> timers;`
  *
  * It reads no clock and runs no thread: its owner passes the time in. In a
  * model, `next_due()` is the model's `wake_at()`, and `poll_due` runs in its
@@ -31,20 +31,13 @@ concept DeadlineValue = std::default_initializable<T> && std::is_nothrow_move_co
  * order they were scheduled. Values are not callbacks: what a due value means
  * is its owner's business.
  */
-template<DeadlineValue Value>
+template<DeadlineValue Value, std::size_t Capacity>
 class DeadlineQueue final
 {
+        static_assert( Capacity >= 1, "a DeadlineQueue holds at least one entry" );
         static_assert( std::is_nothrow_move_assignable_v<Value>, "a value moves without throwing" );
 
     public:
-        /** @brief One slot of the storage; its fields are the queue's. */
-        struct Entry
-        {
-                TimePoint due{};
-                std::uint64_t sequence = 0;
-                Value value{};
-        };
-
         /** @brief Names a scheduled entry, to cancel it. Zero names none. */
         struct Ticket
         {
@@ -77,19 +70,8 @@ class DeadlineQueue final
                 }
         };
 
-        /** @brief A queue over `storage`: it holds at most `storage.size()` entries at once. */
-        explicit DeadlineQueue( std::span<Entry> storage ) noexcept
-            : storage_( storage )
-        {}
-
-        DeadlineQueue( const DeadlineQueue & ) = delete;
-        DeadlineQueue &operator=( const DeadlineQueue & ) = delete;
-        DeadlineQueue( DeadlineQueue && ) = delete;
-        DeadlineQueue &operator=( DeadlineQueue && ) = delete;
-        ~DeadlineQueue() = default;
-
         [[nodiscard]] std::size_t size() const noexcept { return size_; }
-        [[nodiscard]] std::size_t capacity() const noexcept { return storage_.size(); }
+        [[nodiscard]] static constexpr std::size_t capacity() noexcept { return Capacity; }
         [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
         /** @brief When the first entry is due; nothing when the queue is empty. */
@@ -107,7 +89,7 @@ class DeadlineQueue final
             if( due.count() < 0 ) {
                 return { ScheduleResult::invalid_time, {} };
             }
-            if( size_ == storage_.size() ) {
+            if( size_ == Capacity ) {
                 return { ScheduleResult::full, {} };
             }
             if( next_sequence_ == std::numeric_limits<std::uint64_t>::max() ) {
@@ -209,6 +191,13 @@ class DeadlineQueue final
         }
 
     private:
+        struct Entry
+        {
+                TimePoint due{};
+                std::uint64_t sequence = 0;
+                Value value{};
+        };
+
         // Due later, or due at the same time and scheduled later: the heap's
         // front is the entry due first.
         struct Later
@@ -222,12 +211,12 @@ class DeadlineQueue final
                 }
         };
 
-        [[nodiscard]] auto end() const noexcept
+        [[nodiscard]] auto end() noexcept
         {
             return storage_.begin() + static_cast<std::ptrdiff_t>( size_ );
         }
 
-        std::span<Entry> storage_;
+        std::array<Entry, Capacity> storage_{};
         std::size_t size_ = 0;
         std::uint64_t next_sequence_ = 0;
 };

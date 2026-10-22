@@ -51,6 +51,17 @@ struct WaitStats
         std::uint32_t full = 0;
 };
 
+/**
+ * @brief The model's side, as the UI may read it (the `telegraph` command):
+ * states held back now and at most, and lists declared.
+ */
+struct ModelStats
+{
+        std::uint32_t held = 0;
+        std::uint32_t highest_held = 0;
+        std::uint32_t lists = 0;
+};
+
 /** @brief What `TelegraphUi::do_` did, and the correlation the answering `event` will carry. */
 struct DoResult
 {
@@ -282,6 +293,7 @@ class Telegraph final
         void idle( int timeout_ms ) noexcept;
         void wake_ui() noexcept;
         void count_full() noexcept;
+        void publish_held() noexcept;
         bool add_list( Name rows, ListSource source ) noexcept;
         void changed_list( Name rows ) noexcept;
         void changed_item( Name rows, std::uint32_t uid ) noexcept;
@@ -429,6 +441,14 @@ class TelegraphUi final
         [[nodiscard]] RingStats to_model_stats() const noexcept;
         [[nodiscard]] RingStats to_ui_stats() const noexcept;
         [[nodiscard]] WaitStats wait_stats() const noexcept;
+        [[nodiscard]] ModelStats model_stats() const noexcept;
+
+        /**
+         * @brief A walk over every value the cache holds, as
+         * `ValueCache::entry_from`: from 0, then from the last found plus 1.
+         * A value's text is valid until the next `drain`.
+         */
+        [[nodiscard]] std::optional<BoundEntry> cached_from( std::uint32_t from ) const noexcept;
 
     private:
         friend class TelegraphLine;
@@ -522,6 +542,9 @@ class TelegraphLine final
         std::atomic<bool> ui_sleeping_{ false };    // until the model sends
         std::atomic<std::uint32_t> waits_{ 0 };     // the model's, read by the UI
         std::atomic<std::uint32_t> full_{ 0 };      // the model's, read by the UI
+        std::atomic<std::uint32_t> held_{ 0 };      // pending_count_, published for the UI
+        std::atomic<std::uint32_t> held_highest_{ 0 };
+        std::atomic<std::uint32_t> lists_count_{ 0 };
         Wake model_wake_;
         Wake ui_wake_;
 

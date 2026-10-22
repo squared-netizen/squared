@@ -8,9 +8,11 @@ The Console module (Sprint 4). Programmer counterpart: [../programmer/console.md
 
 It was planned as its own package, `package.squared-console` (decided 2026-10-15). It became a module instead (2026-10-16). `vendor_framework.sh`, and sqpg's packages, put squared-core's `squared/` in place whole, so a second package writing into `squared/console/` would be removed by the next vendoring. Overlaying packages, or a second include root that `make headers` and `make lint` would have to learn, is tooling for a second consumer that does not exist. As a module, the existing checks cover it unchanged. Priority 4 (extensibility) lost to 2 (one tree, one vendoring step); priority 1 was unaffected either way, since an unlinked archive costs nothing.
 
+**It depends on messaging** since 6.7a (2026-10-21), for the Telegraph's commands (`src/telegraph_commands.cpp`): the Console is the development tool over the lower layers, so it reaches down to them, never the other way. Every project links messaging, so a `CONSOLE` build needs nothing more. The module's other tests build without it (`CORE_SOURCES` in its Makefile); the Telegraph commands' test builds messaging and time from source.
+
 ## Sizes
 
-`console/src/limits.hpp` reads `SQUARED_CONSOLE_SCROLLBACK` (default 65536) and `SQUARED_CONSOLE_COMMANDS` (default 64), checks them with `static_assert`, and exposes them as `scrollback_bytes` and `command_slots`. The template passes both, from `CONSOLE_SCROLLBACK` and `CONSOLE_COMMANDS`, to the framework's build (in `CXXFLAGS_EXTRA`) and to the application's (in `SQ_CPPFLAGS`) alike, and includes them in the framework's flags stamp, so archive and application cannot disagree about a size. The framework gets them in every build, `CONSOLE=0` included, so switching `CONSOLE` changes nothing it compiles (2026-10-19; [build-and-toolchain.md](build-and-toolchain.md#building-only-what-changed)).
+`console/src/limits.hpp` reads `SQUARED_CONSOLE_SCROLLBACK` (default 65536) and `SQUARED_CONSOLE_COMMANDS` (default 64), checks them with `static_assert`, and exposes them as `scrollback_bytes` and `command_slots`; since 6.7a also `SQUARED_CONSOLE_GROUPS` (16, `group_slots`) and `SQUARED_CONSOLE_GROUP_LINES` (128, `group_line_slots`), which no make variable sets yet (priority 4: a knob when a project needs one). The template passes both, from `CONSOLE_SCROLLBACK` and `CONSOLE_COMMANDS`, to the framework's build (in `CXXFLAGS_EXTRA`) and to the application's (in `SQ_CPPFLAGS`) alike, and includes them in the framework's flags stamp, so archive and application cannot disagree about a size. The framework gets them in every build, `CONSOLE=0` included, so switching `CONSOLE` changes nothing it compiles (2026-10-19; [build-and-toolchain.md](build-and-toolchain.md#building-only-what-changed)).
 
 ## The Console's layout
 
@@ -21,13 +23,15 @@ It was planned as its own package, `package.squared-console` (decided 2026-10-15
 | scrollback storage | 65,536 |
 | `InputLine` (text 256, the draft kept while browsing history 256, history 2,048, its `Scrollback` 56, counters) | 2,648 |
 | `Commands` (64 entries × 32: name, help, function, context) | 2,056 |
+| `Groups` (16 names × 8; 128 lines × 16: the group's number, the line's pointer; two counts) | 2,192 |
+| `dump`'s queue (128 line pointers) and its head, count and run count | 1,048 |
 | the `printf` buffer | 512 |
 | the copy of the line being run | 256 |
 | `Args` (16 views and a count) | 264 |
 | the scrollback's own `Scrollback` | 56 |
 | the mirror: a function pointer and its context (2026-10-19, for the bridge) | 16 |
 | the shown flag, padded | 8 |
-| **`sizeof(Console)`** | **71,352** |
+| **`sizeof(Console)`** | **74,592** |
 
 Owned by its user, constructed once and long-lived; 70 KB is too much for a stack. Whether it is shown is a flag in the model (`show`, `hide`, `shown`), not in the view: the `close` command and the close button change the same state, and whoever draws it reads it. Nothing it does allocates (checked: 200 rounds of running, printing, completing and editing make no allocation, by the frame counter).
 
@@ -47,6 +51,8 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 | Command | Where | Reads |
 |---|---|---|
 | `help`, `clear`, `close` | `src/console.cpp`, always | the table; the scrollback; the shown flag |
+| `dump` | `src/console.cpp`, always | the groups; queues their lines for `update()` (below) |
+| `telegraph`, `telegraph state` | `src/telegraph_commands.cpp`, when added | a `messaging::TelegraphUi`: ring, cache, model and wait figures; the cache's values (below) |
 | `mem` | `src/system_commands.cpp` | `/proc/self/status` (`VmRSS`, `VmHWM`), `/proc/meminfo` (`MemAvailable`, `MemTotal`); before Linux 3.14, which has no `MemAvailable`, `MemFree` plus `Cached`, printed as "about" |
 | `heap` | same | `mallinfo` (bionic, older glibc) or `mallinfo2` (glibc 2.33 and later): `uordblks`, `fordblks`, `hblkhd` |
 | `threads` | same | `/proc/self/status` (`Threads`) |
@@ -81,7 +87,31 @@ Owned by its user, constructed once and long-lived; 70 KB is too much for a stac
 
 The native heap is still one figure for everyone who calls `malloc`: squared, the application, libc++, and the GPU driver's CPU side. The `alloc` command splits it: in `DEV_LOG` builds the replacement `operator new` keeps what it holds now (each block by `malloc_usable_size`, relaxed atomics, two counters and a peak), so heap less that figure is everyone else's. Cost: three atomic operations per allocation and free, in development builds only.
 
-**Left for later.** `telegraph` and `screens` arrive with their subsystems (Sprints 6, 7); `smaps`, `libs`, `thermal` and `storage` from the spec are not built yet (`libs` belongs with the crash report, 4.6).
+## Groups and `dump`
+
+Asked for 2026-10-21 ("a dump command with a few switch combinations like dump state... dump sys that just runs all the system commands"); decided as recommended.
+
+- **A group is a name and command lines,** not command names, so a line carries its arguments (`logcat 100`, `telegraph state`). Two fixed tables in `Groups` (`groups.hpp`): names (pointers) and lines (`GroupLine`: the group's number, the line's pointer), lines in the order added. A group's lines are found by a scan, as commands are: a few dozen entries, looked up when a person types. Considered: tags on each command at `add`, which keeps a group with its commands but cannot pass arguments.
+- **Refused:** the names `all` and `stop` (dump's own words), names with a space or a quote, an empty line, and any line that is itself a `dump` (it could queue its own group again, for ever). A line already in the group is not added twice.
+- **The queue** is a ring of line pointers as long as the line table, in the Console. `queue_group` skips a line whose text is already waiting (so `dump sys memory` runs `mem` once). Distinct texts are at most the table's lines, so the queue cannot overflow from groups alone; the `full` count is there for code that queues more than once.
+- **One line a call of `update()`,** which the template makes once a loop turn, drawn or not. Considered: running a group at once. A group like `sys` prints tens of KB (`libs` alone can be 20 KB); at once, it would hold up the frame it ran in, and over the bridge, whose 16 KB buffer only drains between turns when Termux reads slowly, lines could be lost. One a turn keeps both bounded. With no surface the template's loop would sleep until an event (`-1`); while `dumping()` it wakes every 16 ms instead, so a dump typed into Termux runs with the app in the background, and the loop sleeps fully again when it is done.
+- **What runs** is `run(line)`, as if typed: the echo, the command, its output. The queue holds pointers to the groups' lines, which outlive it; nothing is copied.
+- **Patterns:** a Command queue, of the plainest kind. **Standard library:** `std::array`, `std::string_view`, `std::initializer_list` for `add_group`. Passed over: `std::deque` for the queue (chunk table, allocation; §2.1), `std::vector` of strings for groups (allocation).
+- **Tested** (`test/dump_test.cpp`): every refusal, a line added twice, the name and line limits exactly; the listing; two groups with a shared line (three queued, run one an `update()`, in order, an argument reaching its command, the done line, nothing after); `all`, a group already queued (nothing new), `stop`; an unknown group among known ones; a command typed during a dump; the system groups' exact lines, and `dump sys memory` running seven; no allocation over 100 rounds of `dump all` and the listing.
+
+## Telegraph commands
+
+`telegraph` and `telegraph state` (`src/telegraph_commands.cpp`), added by `add_telegraph_commands(console, ui)` with their groups, the `TelegraphUi&` as the commands' context. They read only what the UI thread may read:
+
+- the rings' `stats()` (their capacities, and highest fills kept by the producer in atomics);
+- the cache's `stats()` and its values, which belong to the UI thread;
+- `model_stats()` (states held back now and at most, lists declared) and `wait_stats()`, which the model publishes as relaxed atomics: figures, not a handshake. The held-back count is written at each change (one relaxed store; a load and a store for the high mark), so `telegraph` shows it without reaching into the model's table.
+
+`telegraph state` walks the cache with `TelegraphUi::cached_from` (`ValueCache::entry_from`, a walk over every entry in use, added for it) and prints the values in (name id, uid) order: the same names give the same ids on every run, so two dumps compare line for line. The order costs no scratch: a selection walk, one pass of the cache a line, O(n²) for n values (512 at the default: about 260,000 entry reads, a millisecond or two, for a command run when asked). Each value goes through `write_telegram` into the Console's 512-byte line; one that does not fit (text over about 500 bytes) is named with its size instead. Until names are registered (6.7b) it writes them with an empty `NameTable`, so `#` and 16 hex digits. Entries bound with no value yet are counted, not printed.
+
+Tested (`test/telegraph_commands_test.cpp`, a real `TelegraphLine`, the model inline): every value's line read back with `read_telegram` to the cached value's type, in ascending order; the long title named, with its 700 bytes; the bound entry counted; each figure of `telegraph` at the start, with 44 states held back (300 sent, a ring of 256), after the flush (0 now, 44 at most), and after 260 events inline (the ring full, 4 refused); the usage on wrong words; `dump state telegraph` running two; no allocation over 50 rounds of both.
+
+**Left for later.** `screens` arrives with its subsystem (Sprint 7); the App registers the Telegraph's commands (Sprint 7); `thermal` and `storage` from the spec are not built yet.
 
 ## Crash file
 

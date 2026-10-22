@@ -4,7 +4,7 @@
 
 
 
-**brief** A bound entry found by `ValueCache::bound_from`: its number and its value. 
+**brief** An entry found by a walk (`bound_from`, `entry_from`): its number, address and value. 
 
 
 

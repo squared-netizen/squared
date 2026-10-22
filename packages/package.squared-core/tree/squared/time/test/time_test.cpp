@@ -98,12 +98,12 @@ void clocks()
     }
 }
 
-using Queue = DeadlineQueue<int>;
+using Queue = DeadlineQueue<int, 32>;
 
 void queue_basics()
 {
-    std::array<Queue::Entry, 4> storage{};
-    Queue queue( storage );
+    using Q = DeadlineQueue<int, 4>;
+    Q queue;
     CHECK( queue.empty() && queue.capacity() == 4 && !queue.next_due() );
 
     const auto a = queue.schedule_at( at( 30ms ), 1 );
@@ -113,12 +113,12 @@ void queue_basics()
     CHECK( a && b && c && d && queue.size() == 4 );
     CHECK( a.ticket.value == 1 && d.ticket.value == 4 );
     CHECK( queue.next_due() == at( 10ms ) );
-    CHECK( queue.schedule_at( at( 1ms ), 5 ).result == Queue::ScheduleResult::full );
+    CHECK( queue.schedule_at( at( 1ms ), 5 ).result == Q::ScheduleResult::full );
     CHECK( !queue.schedule_at( at( 1ms ), 5 ).ticket );
 
     std::vector<int> order;
     order.reserve( 8 );
-    queue.visit_ordered( [&]( TimePoint, Queue::Ticket, int value ) { order.push_back( value ); } );
+    queue.visit_ordered( [&]( TimePoint, Q::Ticket, int value ) { order.push_back( value ); } );
     CHECK( ( order == std::vector<int>{ 2, 4, 1, 3 } ) );
 
     order.clear();
@@ -131,12 +131,12 @@ void queue_basics()
     CHECK( queue.cancel( a.ticket ) );
     CHECK( !queue.cancel( a.ticket ) ); // gone already
     CHECK( !queue.cancel( b.ticket ) ); // given back already
-    CHECK( !queue.cancel( Queue::Ticket{} ) );
+    CHECK( !queue.cancel( Q::Ticket{} ) );
     CHECK( queue.poll_due( at( 1s ), 10, take ) == 1 );
     CHECK( ( order == std::vector<int>{ 2, 4, 3 } ) && queue.empty() && !queue.next_due() );
 
     // Times: none before the epoch, none past the largest.
-    using Result = Queue::ScheduleResult;
+    using Result = Q::ScheduleResult;
     const TimePoint largest = TimePoint::max();
     CHECK( queue.schedule_at( at( -1ns ), 0 ).result == Result::invalid_time );
     CHECK( queue.schedule_after( at( 1s ), -1ns, 0 ).result == Result::invalid_time );
@@ -150,59 +150,77 @@ void queue_basics()
 // left behind holds nothing.
 void queue_owning_values()
 {
-    std::array<DeadlineQueue<std::string>::Entry, 3> storage{};
-    DeadlineQueue<std::string> queue( storage );
+    DeadlineQueue<std::string, 3> queue;
     const std::string long_text( 100, 'x' ); // past any short-string buffer
     const auto first = queue.schedule_at( at( 2s ), long_text );
     CHECK( queue.schedule_at( at( 1s ), "one" ) );
     std::string seen;
     CHECK( queue.cancel( first.ticket, [&]( std::string &value ) { seen = std::move( value ); } ) );
     CHECK( seen == long_text );
-    for( const auto &entry : storage ) {
-        CHECK( entry.value.size() <= 3 ); // the cancelled text is not left in a slot
-    }
     const auto keep = [&]( std::string value ) { seen = std::move( value ); };
     CHECK( queue.poll_due( at( 5s ), 5, keep ) == 1 );
-    CHECK( seen == "one" );
-    for( const auto &entry : storage ) {
-        CHECK( entry.value.empty() );
-    }
+    CHECK( seen == "one" && queue.empty() );
 }
 
 // A value whose move leaves the source as it was (any trivially copyable
-// type does): the slot a value leaves is still cleared, so nothing a value
-// refers to is kept alive by the storage.
+// type, or a handle), counting the live copies of itself: once its values
+// are given back or cancelled, the queue's slots hold none, so nothing a
+// value refers to is kept alive by them.
+int live_stickies = 0;
+
+struct Sticky
+{
+        int id = 0;
+        Sticky() noexcept = default;
+        explicit Sticky( int value ) noexcept
+            : id( value )
+        {
+            live_stickies += id != 0 ? 1 : 0;
+        }
+        Sticky( const Sticky &other ) noexcept
+            : id( other.id )
+        {
+            live_stickies += id != 0 ? 1 : 0;
+        }
+        Sticky &operator=( const Sticky &other ) noexcept
+        {
+            live_stickies -= id != 0 ? 1 : 0;
+            id = other.id;
+            live_stickies += id != 0 ? 1 : 0;
+            return *this;
+        }
+        ~Sticky() { live_stickies -= id != 0 ? 1 : 0; }
+};
+
 void queue_clears_slots()
 {
-    struct Sticky
     {
-            int id = 0;
-    };
-    std::array<DeadlineQueue<Sticky>::Entry, 4> storage{};
-    DeadlineQueue<Sticky> queue( storage );
-    const auto kept = queue.schedule_at( at( 1s ), Sticky{ 1 } );
-    CHECK( queue.schedule_at( at( 2s ), Sticky{ 2 } ) && kept );
-    CHECK( queue.schedule_at( at( 3s ), Sticky{ 3 } ) );
-    CHECK( queue.cancel( kept.ticket ) );
-    int sum = 0;
-    CHECK( queue.poll_due( at( 5s ), 5, [&]( Sticky value ) { sum += value.id; } ) == 2 );
-    CHECK( sum == 5 );
-    for( const auto &entry : storage ) {
-        CHECK( entry.value.id == 0 );
+        DeadlineQueue<Sticky, 4> queue;
+        const auto kept = queue.schedule_at( at( 1s ), Sticky{ 1 } );
+        CHECK( queue.schedule_at( at( 2s ), Sticky{ 2 } ) && kept );
+        CHECK( queue.schedule_at( at( 3s ), Sticky{ 3 } ) );
+        CHECK( live_stickies == 3 );
+        CHECK( queue.cancel( kept.ticket ) );
+        CHECK( live_stickies == 2 );
+        int sum = 0;
+        const auto add = [&]( const Sticky &value ) { sum += value.id; };
+        CHECK( queue.poll_due( at( 5s ), 5, add ) == 2 );
+        CHECK( sum == 5 && live_stickies == 0 );
     }
+    CHECK( live_stickies == 0 );
 }
 
 void queue_allocates_nothing()
 {
-    std::array<Queue::Entry, 64> storage{};
-    Queue queue( storage );
+    using Q = DeadlineQueue<int, 64>;
+    Q queue;
     const std::size_t before = allocations;
     long long sum = 0;
     for( int round = 0; round < 100; ++round ) {
         for( int i = 0; i < 64; ++i ) {
             CHECK( queue.schedule_at( at( std::chrono::milliseconds( ( i * 37 ) % 64 ) ), i ) );
         }
-        queue.visit_ordered( [&]( TimePoint, Queue::Ticket, int value ) { sum += value; } );
+        queue.visit_ordered( [&]( TimePoint, Q::Ticket, int value ) { sum += value; } );
         const auto refused = queue.schedule_at( at( 1ms ), 0 ); // full
         CHECK( !refused && !queue.cancel( refused.ticket ) );
         CHECK( queue.poll_due( at( 1s ), 64, [&]( int value ) { sum += value; } ) == 64 );
@@ -215,8 +233,7 @@ void queue_allocates_nothing()
 // sequence): the same values come back in the same order.
 void queue_against_a_model()
 {
-    std::array<Queue::Entry, 32> storage{};
-    Queue queue( storage );
+    Queue queue;
     std::map<std::pair<long long, std::uint64_t>, int> model;
     std::vector<Queue::Ticket> tickets;
     std::mt19937 engine( 7 );
@@ -298,8 +315,8 @@ int main()
     queue_clears_slots();
     queue_allocates_nothing();
     queue_against_a_model();
-    const std::size_t entry = sizeof( Queue::Entry );
+    const std::size_t one = sizeof( DeadlineQueue<int, 1> );
     std::printf( "time_test: ok (sizeof(Timepiece) %zu bytes", sizeof( Timepiece ) );
-    std::printf( ", DeadlineQueue<int> %zu, %zu an entry)\n", sizeof( Queue ), entry );
+    std::printf( ", DeadlineQueue<int, 32> %zu, <int, 1> %zu)\n", sizeof( Queue ), one );
     return 0;
 }

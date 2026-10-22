@@ -30,7 +30,7 @@ struct CachedValue
         std::span<const std::byte> data;
 };
 
-/** @brief A bound entry found by `ValueCache::bound_from`: its number and its value. */
+/** @brief An entry found by a walk (`bound_from`, `entry_from`): its number, address and value. */
 struct BoundEntry
 {
         std::uint32_t entry = 0;
@@ -119,6 +119,13 @@ class ValueCache final
          * last one found plus 1. Unbinding the one found does not disturb it.
          */
         [[nodiscard]] std::optional<BoundEntry> bound_from( std::uint32_t from ) const noexcept;
+
+        /**
+         * @brief The first entry in use numbered `from` or after, bound or
+         * not: a walk over every address the cache holds, as `bound_from`
+         * walks the bound ones (the Console's `telegraph state`).
+         */
+        [[nodiscard]] std::optional<BoundEntry> entry_from( std::uint32_t from ) const noexcept;
 
         [[nodiscard]] CacheStats stats() const noexcept;
 

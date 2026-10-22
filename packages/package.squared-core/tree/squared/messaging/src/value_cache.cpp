@@ -443,6 +443,23 @@ std::uint32_t ValueCache::bindings( Address address ) const noexcept
     return found ? load( slot_at( slot ) ).bound() : 0;
 }
 
+std::optional<BoundEntry> ValueCache::entry_from( std::uint32_t from ) const noexcept
+{
+    for( std::uint32_t at = from; at < fresh_; ++at ) {
+        const Entry entry = load( at );
+        if( entry.has( used_flag ) ) {
+            BoundEntry found;
+            found.entry = at;
+            found.address = { entry.name(), entry.uid() };
+            if( entry.has( valued_flag ) ) {
+                found.value = value_at( at );
+            }
+            return found;
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<BoundEntry> ValueCache::bound_from( std::uint32_t from ) const noexcept
 {
     for( std::uint32_t at = from; at < fresh_; ++at ) {

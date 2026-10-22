@@ -4,11 +4,13 @@
 #include <squared/app/src/key_modifiers.hpp>
 #include <squared/console/args.hpp>
 #include <squared/console/commands.hpp>
+#include <squared/console/groups.hpp>
 #include <squared/console/input_line.hpp>
 #include <squared/console/scrollback.hpp>
 
 #include <array>
 #include <cstddef>
+#include <initializer_list>
 #include <string_view>
 
 namespace sq::console
@@ -43,7 +45,7 @@ using Mirror = void ( * )( void *context, Level level, std::string_view line ) n
 class Console final
 {
     public:
-        /** @brief An empty, hidden console with its built-ins: `help`, `clear`, `close`. */
+        /** @brief An empty, hidden console with its built-ins: `help`, `clear`, `close`, `dump`. */
         Console() noexcept;
         ~Console() = default;
         Console( const Console & ) = delete;
@@ -57,6 +59,28 @@ class Console final
         {
             return commands_.add( name, help, handler, context );
         }
+
+        /**
+         * @brief Add `line` (a whole command line, `logcat 100`) to the group
+         * `group` for `dump`, making the group if it is new. See Groups::add.
+         */
+        Groups::AddResult add_to_group( const char *group, const char *line ) noexcept
+        {
+            return groups_.add( group, line );
+        }
+
+        /** @brief Add each of `lines` to `group`; the first refusal, or `added`. */
+        Groups::AddResult add_group( const char *group,
+                                     std::initializer_list<const char *> lines ) noexcept;
+
+        /**
+         * @brief Run the next line `dump` queued, if any: once a frame, so a
+         * long group never holds a frame up, and the bridge sends between.
+         */
+        void update() noexcept;
+
+        /** @brief Whether `dump` has lines still to run: the loop should not sleep long. */
+        [[nodiscard]] bool dumping() const noexcept { return queued_ != 0; }
 
         /**
          * @brief Hand every printed line to `mirror` as well, the echo of a
@@ -117,6 +141,27 @@ class Console final
         [[nodiscard]] const InputLine &input() const noexcept { return input_; }
         [[nodiscard]] InputLine &input() noexcept { return input_; }
         [[nodiscard]] const Commands &commands() const noexcept { return commands_; }
+        [[nodiscard]] const Groups &groups() const noexcept { return groups_; }
+
+        /** @brief What queue_group() did. */
+        struct Queued final
+        {
+                /** @brief False when there is no group of that name. */
+                bool found{ false };
+                /** @brief Lines queued now. */
+                std::size_t queued{ 0 };
+                /** @brief Lines left out: the queue was full (`CONSOLE_GROUP_LINES`). */
+                std::size_t full{ 0 };
+        };
+
+        /**
+         * @brief Queue each line of `group` that is not queued already, for
+         * update() to run; `all` queues every group, in the order made.
+         */
+        Queued queue_group( std::string_view group ) noexcept;
+
+        /** @brief Forget the queued lines; how many there were. */
+        std::size_t stop_dump() noexcept;
 
     private:
         std::array<char, scrollback_bytes> storage_{};
@@ -125,6 +170,12 @@ class Console final
         Scrollback lines_;
         InputLine input_;
         Commands commands_;
+        Groups groups_;
+        // dump's queue: a ring of line pointers, run one a frame.
+        std::array<const char *, group_line_slots> queue_{};
+        std::size_t queue_head_{ 0 };
+        std::size_t queued_{ 0 };
+        std::size_t dump_run_{ 0 };
         Args args_;
         Mirror mirror_{ nullptr };
         void *mirror_context_{ nullptr };

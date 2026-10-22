@@ -69,11 +69,12 @@ Regenerate with `tools/measure_sizes.sh`.
 | `messaging::Wake` | 4 | 4 |
 | `messaging::WaitStats` | 8 | 4 |
 | `time::Timepiece` | 24 | 8 |
-| `time::DeadlineQueue<int>` | 32 | 8 |
+| `time::DeadlineQueue<int, 32>` | 784 | 8 |
 | `console::Scrollback` | 56 | 8 |
 | `console::InputLine` | 2648 | 8 |
 | `console::Commands` | 2056 | 8 |
-| `console::Console` | 71352 | 8 |
+| `console::Groups` | 2192 | 8 |
+| `console::Console` | 74592 | 8 |
 | `console::Bridge` | 17376 | 8 |
 | `console::Quad` | 20 | 4 |
 | `console::Frame` | 24 | 4 |

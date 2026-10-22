@@ -1,8 +1,8 @@
 # time &mdash; internals
 
 Rewritten in Sprint 6.6b (2026-10-21) to the app model's "time as a value"
-(spec §3): a 24-byte `Timepiece`, two clock functions, and `DeadlineQueue`
-over storage its owner gives. Nothing allocates.
+(spec §3): a 24-byte `Timepiece`, two clock functions, and
+`DeadlineQueue<Value, N>` holding its own array. Nothing allocates.
 
 Programmer counterpart: [../programmer/time.md](../programmer/time.md)
 
@@ -61,10 +61,11 @@ new platform supplies these two functions.
 
 ## DeadlineQueue
 
-A binary min-heap over a caller's `std::span<Entry>` (`std::push_heap` and
+A binary min-heap over its own `std::array<Entry, N>` (`std::push_heap` and
 `std::pop_heap`, ordered by due time then a 64-bit sequence, so equal times
 keep their order). Entry: due 8, sequence 8, the value (24 bytes for an
-`int`); the queue itself is 32 bytes (the span, the size, the next sequence).
+`int`); the queue is the array plus 16 (the size, the next sequence): 784
+bytes for 32 `int`s.
 
 | Operation | Time |
 |---|---|
@@ -74,16 +75,19 @@ keep their order). Entry: due 8, sequence 8, the value (24 bytes for an
 | `cancel` | O(n): a scan for the ticket, then `make_heap` |
 | `visit_ordered` | O(n²): a selection walk, allocating nothing (it was a `std::vector` of pointers per call); for the few timers a Console command shows |
 
-- **Storage given, not owned** (decided 2026-10-21): it was a
-  `std::vector` reserved in the constructor. Now nothing is allocated, the
-  capacity is the owner's choice at start, and the queue follows
-  `ValueCache` and `TelegramRing`. The cost is a second line at the call site
-  (the array, then the queue); a `DeadlineQueue<Value, N>` owning its array
-  would make it one, at one template instance per capacity.
+- **The capacity a template parameter, the array its own** (decided
+  2026-10-21, your call after 6.6b shipped storage given by the owner:
+  "simplicity and ergonomics leads to less errors and we can also change it
+  if it proves too slow"): `DeadlineQueue<Restock, 16> timers;` is the whole
+  setup. It was a `std::vector` reserved in the constructor, then (6.6b) a
+  span over storage the owner gave, which took two lines (the array, then
+  the queue). The cost: one instance of the template per capacity and value
+  type, and a capacity fixed at compile time. Same bytes as before
+  (priority 1 untouched); priority 2 decided it.
 - **Slots are cleared** when a value leaves (polled or cancelled): assigned
   `Value{}`, so a value whose move leaves its source intact (any trivially
-  copyable type, or a handle) is not kept alive by the storage.
-- **`Value`** must be default-constructible (the storage is made empty) and
+  copyable type, or a handle) is not kept alive by the array.
+- **`Value`** must be default-constructible (the array is made empty) and
   move without throwing (the `DeadlineValue` concept and a `static_assert`),
   so every operation is `noexcept` or throws only what the visitor throws.
 - **Results are snake_case** (`scheduled`, `full`, `invalid_time`,
@@ -93,7 +97,7 @@ keep their order). Entry: due 8, sequence 8, the value (24 bytes for an
 - **`schedule_after`** refuses a sum past the largest time before adding (the
   addition would be signed overflow, undefined; UBSan catches it if the check
   is removed).
-- **Standard library:** `<algorithm>`'s heap functions, `std::span`,
+- **Standard library:** `<algorithm>`'s heap functions, `std::array`,
   `std::optional`. Passed over: `std::priority_queue` (it owns a container,
   and offers neither cancel nor an ordered walk), `std::map`/`std::multimap`
   (a node per entry, §2.1).
@@ -108,8 +112,8 @@ goes back, `start`, the epoch); the clocks (monotonic over 1,000 reads, boot
 time never behind); the queue's order with ties, `full`, the ordered walk, a
 poll limit, cancels (gone, given back, the empty ticket), every
 `invalid_time` case and exactly the largest time; owning values (a 100-byte
-string cancelled into a visitor, no text left in a slot); a value whose move
-copies (slots still cleared); no allocation over 100 rounds of 64; 200,000
+string cancelled into a visitor); a value whose move copies, counting its
+live copies (none left in the slots once given back or cancelled); no allocation over 100 rounds of 64; 200,000
 random schedules, cancels and polls against a `std::map`, with the ordered
 walk compared every 1,000 steps. Clean under AddressSanitizer and
 UndefinedBehaviorSanitizer; g++ and clang. Planted bugs caught: no clamp, the
@@ -123,7 +127,8 @@ walk that repeats.
 | Type | Bytes |
 |---|---|
 | `Timepiece` | 24 |
-| `DeadlineQueue<Value>` | 32, plus the storage it is given |
-| `DeadlineQueue<int>::Entry` | 24 (16 plus the value, aligned) |
+| `DeadlineQueue<Value, N>` | 16 plus `N` entries |
+| an entry | 16 plus the value, aligned: 24 for an `int` |
 
-Nothing allocates; nothing is resident but what its owners hold.
+Nothing allocates; each is resident where its owner is (a model's timers in
+the model, so in its `ModelRunner`).

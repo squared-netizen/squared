@@ -22,9 +22,10 @@ namespace sq::console
  * | `libs` | every shared library the process has mapped, with the address space it takes (`/proc/self/maps`) |
  *
  * Each reads into the stack and prints through the Console: nothing is
- * allocated, nothing is kept.
+ * allocated, nothing is kept. Two groups for `dump` come with them: `sys`
+ * (all seven) and `memory` (`mem`, `heap`, `smaps`).
  *
- * @return How many did not fit in the command table: 0 when all were added.
+ * @return How many did not fit in the command or group tables: 0 when all were added.
  */
 [[nodiscard]] std::size_t add_system_commands( Console &console ) noexcept;
 

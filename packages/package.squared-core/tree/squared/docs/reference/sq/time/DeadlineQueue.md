@@ -4,15 +4,13 @@
 
 
 
-**brief** A model's timers: values due at times, given back in order once their time has come. Over storage its owner gives (`Entry`s, as many as it may hold at once), so nothing is allocated after it is made.
+**brief** A model's timers: values due at times, given back in order once their time has come. It holds at most `Capacity` at once, in an array of its own, so nothing is ever allocated: `DeadlineQueue<Restock, 16> timers;`
 
  It reads no clock and runs no thread: its owner passes the time in. In a model, `next_due()` is the model's `wake_at()`, and `poll_due` runs in its `due()` (see `ModelRunner`). Entries due at the same time come back in the order they were scheduled. Values are not callbacks: what a due value means is its owner's business.
 
 
 
 ## Records
-
-Entry
 
 Scheduled
 
@@ -22,69 +20,29 @@ Ticket
 
 ## Functions
 
-### DeadlineQueue<Value>
-
-*public void DeadlineQueue<Value>(std::span<Entry> storage)*
-
-*Defined at [time/deadline_queue.hpp:81](../../../../time/deadline_queue.hpp#L81)*
-
-
-
-**brief** A queue over `storage`: it holds at most `storage.size()` entries at once. 
-
-### DeadlineQueue<Value>
-
-*public void DeadlineQueue<Value>(const DeadlineQueue<Value> & )*
-
-*Defined at [time/deadline_queue.hpp:85](../../../../time/deadline_queue.hpp#L85)*
-
-### operator=
-
-*public DeadlineQueue<Value> & operator=(const DeadlineQueue<Value> & )*
-
-*Defined at [time/deadline_queue.hpp:86](../../../../time/deadline_queue.hpp#L86)*
-
-### DeadlineQueue<Value>
-
-*public void DeadlineQueue<Value>(DeadlineQueue<Value> && )*
-
-*Defined at [time/deadline_queue.hpp:87](../../../../time/deadline_queue.hpp#L87)*
-
-### operator=
-
-*public DeadlineQueue<Value> & operator=(DeadlineQueue<Value> && )*
-
-*Defined at [time/deadline_queue.hpp:88](../../../../time/deadline_queue.hpp#L88)*
-
-### ~DeadlineQueue<Value>
-
-*public void ~DeadlineQueue<Value>()*
-
-*Defined at [time/deadline_queue.hpp:89](../../../../time/deadline_queue.hpp#L89)*
-
 ### size
 
 *public std::size_t size()*
 
-*Defined at [time/deadline_queue.hpp:91](../../../../time/deadline_queue.hpp#L91)*
+*Defined at [time/deadline_queue.hpp:73](../../../../time/deadline_queue.hpp#L73)*
 
 ### capacity
 
-*public std::size_t capacity()*
+*public static std::size_t capacity()*
 
-*Defined at [time/deadline_queue.hpp:92](../../../../time/deadline_queue.hpp#L92)*
+*Defined at [time/deadline_queue.hpp:74](../../../../time/deadline_queue.hpp#L74)*
 
 ### empty
 
 *public bool empty()*
 
-*Defined at [time/deadline_queue.hpp:93](../../../../time/deadline_queue.hpp#L93)*
+*Defined at [time/deadline_queue.hpp:75](../../../../time/deadline_queue.hpp#L75)*
 
 ### next_due
 
 *public std::optional<TimePoint> next_due()*
 
-*Defined at [time/deadline_queue.hpp:96](../../../../time/deadline_queue.hpp#L96)*
+*Defined at [time/deadline_queue.hpp:78](../../../../time/deadline_queue.hpp#L78)*
 
 
 
@@ -94,7 +52,7 @@ Ticket
 
 *public Scheduled schedule_at(TimePoint due, Value value)*
 
-*Defined at [time/deadline_queue.hpp:105](../../../../time/deadline_queue.hpp#L105)*
+*Defined at [time/deadline_queue.hpp:87](../../../../time/deadline_queue.hpp#L87)*
 
 
 
@@ -104,7 +62,7 @@ Ticket
 
 *public Scheduled schedule_after(TimePoint now, Duration delay, Value value)*
 
-*Defined at [time/deadline_queue.hpp:127](../../../../time/deadline_queue.hpp#L127)*
+*Defined at [time/deadline_queue.hpp:109](../../../../time/deadline_queue.hpp#L109)*
 
 
 
@@ -114,7 +72,7 @@ Ticket
 
 *public bool cancel(Ticket ticket)*
 
-*Defined at [time/deadline_queue.hpp:137](../../../../time/deadline_queue.hpp#L137)*
+*Defined at [time/deadline_queue.hpp:119](../../../../time/deadline_queue.hpp#L119)*
 
 
 
@@ -124,7 +82,7 @@ Ticket
 
 *public bool cancel(Ticket ticket, Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:144](../../../../time/deadline_queue.hpp#L144)*
+*Defined at [time/deadline_queue.hpp:126](../../../../time/deadline_queue.hpp#L126)*
 
 
 
@@ -134,7 +92,7 @@ Ticket
 
 *public std::size_t poll_due(TimePoint now, std::size_t limit, Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:172](../../../../time/deadline_queue.hpp#L172)*
+*Defined at [time/deadline_queue.hpp:154](../../../../time/deadline_queue.hpp#L154)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -142,7 +100,7 @@ Ticket
 
 *public void visit_ordered(Visitor && visitor)*
 
-*Defined at [time/deadline_queue.hpp:194](../../../../time/deadline_queue.hpp#L194)*
+*Defined at [time/deadline_queue.hpp:176](../../../../time/deadline_queue.hpp#L176)*
 
  NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 
@@ -160,7 +118,7 @@ Ticket
 | tickets_exhausted |
 
 
-*Defined at [time/deadline_queue.hpp:57](../../../../time/deadline_queue.hpp#L57)*
+*Defined at [time/deadline_queue.hpp:50](../../../../time/deadline_queue.hpp#L50)*
 
 
 
