@@ -1,6 +1,6 @@
 # class Telegraph
 
-*Defined at [messaging/telegraph.hpp:121](../../../../messaging/telegraph.hpp#L121)*
+*Defined at [messaging/telegraph.hpp:112](../../../../messaging/telegraph.hpp#L112)*
 
 
 
@@ -16,37 +16,37 @@
 
 *public void Telegraph(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:124](../../../../messaging/telegraph.hpp#L124)*
+*Defined at [messaging/telegraph.hpp:115](../../../../messaging/telegraph.hpp#L115)*
 
 ### operator=
 
 *public Telegraph & operator=(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:125](../../../../messaging/telegraph.hpp#L125)*
+*Defined at [messaging/telegraph.hpp:116](../../../../messaging/telegraph.hpp#L116)*
 
 ### Telegraph
 
 *public void Telegraph(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:126](../../../../messaging/telegraph.hpp#L126)*
+*Defined at [messaging/telegraph.hpp:117](../../../../messaging/telegraph.hpp#L117)*
 
 ### operator=
 
 *public Telegraph & operator=(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:127](../../../../messaging/telegraph.hpp#L127)*
+*Defined at [messaging/telegraph.hpp:118](../../../../messaging/telegraph.hpp#L118)*
 
 ### ~Telegraph
 
 *public void ~Telegraph()*
 
-*Defined at [messaging/telegraph.hpp:128](../../../../messaging/telegraph.hpp#L128)*
+*Defined at [messaging/telegraph.hpp:119](../../../../messaging/telegraph.hpp#L119)*
 
 ### state
 
 *public SendResult state(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:138](../../../../messaging/telegraph.hpp#L138)*
+*Defined at [messaging/telegraph.hpp:129](../../../../messaging/telegraph.hpp#L129)*
 
 
 
@@ -56,7 +56,7 @@
 
 *public SendResult state(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:148](../../../../messaging/telegraph.hpp#L148)*
+*Defined at [messaging/telegraph.hpp:139](../../../../messaging/telegraph.hpp#L139)*
 
 
 
@@ -66,7 +66,7 @@
 
 *public SendResult event(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:162](../../../../messaging/telegraph.hpp#L162)*
+*Defined at [messaging/telegraph.hpp:153](../../../../messaging/telegraph.hpp#L153)*
 
 
 
@@ -76,7 +76,7 @@
 
 *public SendResult event(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:170](../../../../messaging/telegraph.hpp#L170)*
+*Defined at [messaging/telegraph.hpp:161](../../../../messaging/telegraph.hpp#L161)*
 
 
 
@@ -86,7 +86,7 @@
 
 *public SendResult event(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:180](../../../../messaging/telegraph.hpp#L180)*
+*Defined at [messaging/telegraph.hpp:171](../../../../messaging/telegraph.hpp#L171)*
 
 
 
@@ -96,7 +96,7 @@
 
 *public SendResult answer(const Received & request, const K & key)*
 
-*Defined at [messaging/telegraph.hpp:190](../../../../messaging/telegraph.hpp#L190)*
+*Defined at [messaging/telegraph.hpp:181](../../../../messaging/telegraph.hpp#L181)*
 
 
 
@@ -106,7 +106,7 @@
 
 *public SendResult answer(const Received & request, const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:199](../../../../messaging/telegraph.hpp#L199)*
+*Defined at [messaging/telegraph.hpp:190](../../../../messaging/telegraph.hpp#L190)*
 
 
 
@@ -116,7 +116,7 @@
 
 *public bool list(const K & rows, S & source)*
 
-*Defined at [messaging/telegraph.hpp:215](../../../../messaging/telegraph.hpp#L215)*
+*Defined at [messaging/telegraph.hpp:206](../../../../messaging/telegraph.hpp#L206)*
 
 
 
@@ -126,7 +126,7 @@
 
 *public void changed(const K & rows)*
 
-*Defined at [messaging/telegraph.hpp:223](../../../../messaging/telegraph.hpp#L223)*
+*Defined at [messaging/telegraph.hpp:214](../../../../messaging/telegraph.hpp#L214)*
 
 
 
@@ -136,7 +136,7 @@
 
 *public void changed(const K & rows, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:231](../../../../messaging/telegraph.hpp#L231)*
+*Defined at [messaging/telegraph.hpp:222](../../../../messaging/telegraph.hpp#L222)*
 
 
 
@@ -158,7 +158,7 @@
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.hpp:565](../../../../messaging/telegraph.hpp#L565)*
+*Defined at [messaging/telegraph.hpp:604](../../../../messaging/telegraph.hpp#L604)*
 
 
 
@@ -170,7 +170,7 @@
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.hpp:573](../../../../messaging/telegraph.hpp#L573)*
+*Defined at [messaging/telegraph.hpp:612](../../../../messaging/telegraph.hpp#L612)*
 
 
 

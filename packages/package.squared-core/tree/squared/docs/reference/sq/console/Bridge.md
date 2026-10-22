@@ -112,11 +112,19 @@ public static const std::uint64_t unknown_size
 
 **return** false, leaving `fd` open, when no client is connected, a file is already on its way, or `name` is not a plain name.
 
+### set_busy
+
+*public void set_busy(bool busy)*
+
+
+
+**brief** Whether a command goes on after it returned: a `dump` queues its lines and runs them one a frame. While busy, every command's end mark waits, so a client (`sqconsole --run`) reads on until the work is done; set_busy(false) sends them, in order. The owner sets it after running a command and after each `Console::update()`: `set_busy( console.dumping() )`.
+
 ### transferring
 
 *public bool transferring()*
 
-*Defined at [console/bridge.hpp:136](../../../../console/bridge.hpp#L136)*
+*Defined at [console/bridge.hpp:146](../../../../console/bridge.hpp#L146)*
 
 
 
@@ -126,25 +134,25 @@ public static const std::uint64_t unknown_size
 
 *public bool listening()*
 
-*Defined at [console/bridge.hpp:138](../../../../console/bridge.hpp#L138)*
+*Defined at [console/bridge.hpp:148](../../../../console/bridge.hpp#L148)*
 
 ### connected
 
 *public bool connected()*
 
-*Defined at [console/bridge.hpp:139](../../../../console/bridge.hpp#L139)*
+*Defined at [console/bridge.hpp:149](../../../../console/bridge.hpp#L149)*
 
 ### port
 
 *public std::uint16_t port()*
 
-*Defined at [console/bridge.hpp:140](../../../../console/bridge.hpp#L140)*
+*Defined at [console/bridge.hpp:150](../../../../console/bridge.hpp#L150)*
 
 ### dropped
 
 *public std::uint64_t dropped()*
 
-*Defined at [console/bridge.hpp:142](../../../../console/bridge.hpp#L142)*
+*Defined at [console/bridge.hpp:152](../../../../console/bridge.hpp#L152)*
 
 
 

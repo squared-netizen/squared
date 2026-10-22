@@ -108,6 +108,8 @@ $(TELEGRAPH_TEST): $(MODULE_DIR)/test/telegraph_test.cpp \
                    $(MODULE_DIR)/src/model_list.cpp \
                    $(MODULE_DIR)/src/list_window.cpp \
                    $(MODULE_DIR)/src/telegraph.cpp \
+                   $(MODULE_DIR)/src/name_table.cpp \
+                   $(MODULE_DIR)/src/address.cpp \
                    $(MODULE_DIR)/src/wake.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
@@ -120,6 +122,8 @@ $(THREAD_TEST): $(MODULE_DIR)/test/telegraph_thread_test.cpp \
                 $(MODULE_DIR)/src/model_list.cpp \
                 $(MODULE_DIR)/src/list_window.cpp \
                 $(MODULE_DIR)/src/telegraph.cpp \
+                $(MODULE_DIR)/src/name_table.cpp \
+                $(MODULE_DIR)/src/address.cpp \
                 $(MODULE_DIR)/src/wake.cpp \
                 $(MODULE_DIR)/src/model_runner.cpp \
                 $(SQUARED_ROOT)/time/src/now.cpp \

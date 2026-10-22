@@ -15,7 +15,10 @@
 #include <squared/gui/dialog.hpp>
 #include <squared/gui/group.hpp>
 #include <squared/gui/image.hpp>
+#include <squared/gui/instantiate.hpp>
 #include <squared/gui/label.hpp>
+#include <squared/gui/layout.hpp>
+#include <squared/gui/layout_writer.hpp>
 #include <squared/gui/linear_layout.hpp>
 #include <squared/gui/margin_container.hpp>
 #include <squared/gui/panel.hpp>

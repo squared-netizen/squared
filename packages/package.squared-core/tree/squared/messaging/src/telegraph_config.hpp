@@ -29,6 +29,9 @@
 #ifndef SQUARED_TELEGRAPH_LIST_VIEW
 #define SQUARED_TELEGRAPH_LIST_VIEW 128 // the most rows a list's view holds
 #endif
+#ifndef SQUARED_TELEGRAPH_NAMES
+#define SQUARED_TELEGRAPH_NAMES 8192 // the dev tools' name table, for the text form
+#endif
 #ifndef SQUARED_TELEGRAPH_WAIT_MS
 #define SQUARED_TELEGRAPH_WAIT_MS 100 // how long the model waits for room, then `full`
 #endif
@@ -47,6 +50,9 @@ inline constexpr std::size_t cache_text = SQUARED_TELEGRAPH_CACHE_TEXT;
 inline constexpr std::size_t lists = SQUARED_TELEGRAPH_LISTS;
 inline constexpr std::size_t list_view = SQUARED_TELEGRAPH_LIST_VIEW;
 inline constexpr int wait_ms = SQUARED_TELEGRAPH_WAIT_MS;
+// In the dev tools only (console::TelegraphTools), not in the line: a plain
+// build holds no name table. About 250 names at the default.
+inline constexpr std::size_t names = SQUARED_TELEGRAPH_NAMES;
 
 [[nodiscard]] constexpr bool power_of_two( std::size_t n ) noexcept
 {
@@ -63,5 +69,7 @@ static_assert( cache_text <= std::size_t{ 4 } * 0xFFFF && pending_text <= std::s
                "TELEGRAPH_CACHE_TEXT and TELEGRAPH_DATA: at most 262140 bytes" );
 static_assert( lists >= 1 && list_view >= 1, "TELEGRAPH_LISTS and TELEGRAPH_LIST_VIEW: 1 or more" );
 static_assert( wait_ms >= 0, "TELEGRAPH_WAIT_MS: 0 or more (0: never wait)" );
+static_assert( names >= 64 && names <= std::size_t{ 1 } << 24,
+               "TELEGRAPH_NAMES: 64 bytes to 16 MB" );
 
 } // namespace sq::messaging::telegraph_size

@@ -1,6 +1,6 @@
 # struct ModelStats
 
-*Defined at [messaging/telegraph.hpp:58](../../../../messaging/telegraph.hpp#L58)*
+*Defined at [messaging/telegraph.hpp:60](../../../../messaging/telegraph.hpp#L60)*
 
 
 

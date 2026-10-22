@@ -8,6 +8,8 @@ duplicate key and modifier types (deduplicated in Sprint 3).
 
 Programmer counterpart: [../programmer/gui.md](../programmer/gui.md)
 
+Layouts (the node table, `check`, `LayoutWriter`, `instantiate`): [layouts.md](layouts.md).
+
 - Public types: 70
 
 ## Layout

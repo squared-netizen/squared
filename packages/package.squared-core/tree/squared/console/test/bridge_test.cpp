@@ -82,6 +82,7 @@ struct Loop
             self.commands.emplace_back( line );
             if( self.console != nullptr ) {
                 self.console->run( line );
+                self.bridge->set_busy( self.console->dumping() ); // as the template does
             }
         }
         static void note( void *context, Level level, std::string_view line ) noexcept
@@ -114,9 +115,14 @@ struct Loop
                      .context = this };
         }
 
-        /// One round: wait up to `ms` for a watched socket, hand each ready one on.
+        /// One round: wait up to `ms` for a watched socket, hand each ready one
+        /// on; with a Console, one line of its dump, as a frame does.
         void pump( int ms = 50 )
         {
+            if( console != nullptr ) {
+                console->update();
+                bridge->set_busy( console->dumping() );
+            }
             std::vector<pollfd> fds;
             fds.reserve( watched.size() );
             for( const Watched &w : watched ) {
@@ -316,6 +322,19 @@ void protocol_tests()
     const std::string told = hear( loop, first, &closed );
     assert( contains( told, "w bridge: another connection took over\n" ) && closed );
     ::close( first );
+
+    // A command whose work goes on after it returns (a dump): its end mark,
+    // and those of commands behind it, wait until the work is done, in order;
+    // its lines still go at once (2026-10-21: sqconsole stopped reading).
+    bridge.set_busy( true );
+    say( second, "mem\nfds\n" );
+    assert( hear( loop, second ).empty() && loop.commands.back() == "fds" );
+    bridge.send( Level::info, "a dumped line" );
+    assert( hear( loop, second ) == "i a dumped line\n" );
+    bridge.set_busy( false );
+    assert( hear( loop, second ) == ".\n.\n" );
+    bridge.set_busy( false ); // again: nothing more
+    assert( hear( loop, second ).empty() );
 
     // A client that stops reading: lines are dropped and counted, nothing
     // allocates, and it is told once it reads again.
@@ -611,6 +630,18 @@ void client_tests()
     assert( contains( ran, "> say one" ) && contains( ran, "said one" ) );
     assert( !contains( ran, "the app's first line" ) ); // quiet: no replay
     assert( await( loop, interactive, seen, "another connection took over" ) );
+
+    // --run of a dump: sqconsole reads every line it queued, one a frame,
+    // before it exits (2026-10-21: it stopped after the first three).
+    const auto added = console.add_group( "pair", { "say a", "say b", "say c" } );
+    assert( added == sq::console::Groups::AddResult::added );
+    const std::string dump_pair = "dump pair";
+    Child dumping = spawn( { SQCONSOLE_PATH, "--conf", conf, "--run", dump_pair, "--wait", "5" } );
+    std::string dumped;
+    const int dump_status = collect_until_exit( loop, dumping, dumped );
+    assert( dump_status != -1 && WIFEXITED( dump_status ) && WEXITSTATUS( dump_status ) == 0 );
+    assert( contains( dumped, "said a" ) && contains( dumped, "said c" ) );
+    assert( contains( dumped, "dump: done, 3 run" ) );
 
     // pull and push through sqconsole: --run, then the files are compared.
     const std::string blob = random_bytes( 70001 );

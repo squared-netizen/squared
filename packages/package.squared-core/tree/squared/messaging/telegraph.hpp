@@ -4,6 +4,8 @@
 #include <squared/messaging/key.hpp>
 #include <squared/messaging/list_window.hpp>
 #include <squared/messaging/model_list.hpp>
+#include <squared/messaging/name_table.hpp>
+#include <squared/messaging/src/pack.hpp>
 #include <squared/messaging/src/telegraph_config.hpp>
 #include <squared/messaging/src/wake.hpp>
 #include <squared/messaging/telegram.hpp>
@@ -62,6 +64,24 @@ struct ModelStats
         std::uint32_t lists = 0;
 };
 
+/** @brief Which way a telegram crossed, for a tap. */
+enum class TapDirection : std::uint8_t {
+    /** Sent by the UI: `set`, `do`, a list's `view`. */
+    to_model,
+    /** Taken by the UI's `drain`: `state`, `event`. */
+    to_ui,
+};
+
+/**
+ * @brief Called with each telegram the UI sends and each it drains, and its
+ * value's bytes: for `text` and `uids` the telegram's `DataRef` is
+ * `{ 0, data.size() }`, so `write_telegram` takes the two as they come. On
+ * the UI thread. The dev tools' tap (console::TelegraphTools) writes them as
+ * lines.
+ */
+using Tap = void ( * )( void *context, TapDirection direction, const Telegram &telegram,
+                        std::span<const std::byte> data ) noexcept;
+
 /** @brief What `TelegraphUi::do_` did, and the correlation the answering `event` will carry. */
 struct DoResult
 {
@@ -71,35 +91,6 @@ struct DoResult
 
 namespace detail
 {
-
-/// A telegram and its text or uid list, from a key's value.
-struct Packed
-{
-        Telegram telegram;
-        std::span<const std::byte> data;
-};
-
-template<typename T, typename V>
-[[nodiscard]] Packed pack( Verb verb, Address to, const V &value ) noexcept
-{
-    if constexpr( std::is_same_v<T, bool> ) {
-        return { Telegram::boolean( verb, to, value ), {} };
-    } else if constexpr( std::is_same_v<T, std::int64_t> ) {
-        return { Telegram::integer( verb, to, static_cast<std::int64_t>( value ) ), {} };
-    } else if constexpr( std::is_same_v<T, double> ) {
-        return { Telegram::number( verb, to, static_cast<double>( value ) ), {} };
-    } else if constexpr( std::is_same_v<T, std::string_view> ) {
-        const std::string_view text( value );
-        const auto bytes = std::as_bytes( std::span<const char>( text.data(), text.size() ) );
-        return { Telegram::data( verb, to, ValueType::text, {} ), bytes };
-    } else if constexpr( std::is_same_v<T, std::span<const std::uint32_t>> ) {
-        const std::span<const std::uint32_t> uids( value );
-        return { Telegram::data( verb, to, ValueType::uids, {} ), std::as_bytes( uids ) };
-    } else {
-        const T floats( value ); // std::array<float, 2..4>
-        return { Telegram::floats( verb, to, std::span<const float>( floats ) ), {} };
-    }
-}
 
 template<typename K>
 using key_type = std::remove_cvref_t<K>;
@@ -333,6 +324,7 @@ class TelegraphUi final
             requires sendable<K, Verb::set, V> && ( !detail::key_type<K>::takes_uid )
         SendResult set( const K &key, const V &value ) noexcept
         {
+            note( key );
             using T = typename detail::key_type<K>::value_type;
             const auto packed = detail::pack<T>( Verb::set, { key.name(), 0 }, value );
             return push( packed.telegram, packed.data );
@@ -343,6 +335,7 @@ class TelegraphUi final
             requires sendable<K, Verb::set, V> && detail::key_type<K>::takes_uid
         SendResult set( const K &key, std::uint32_t uid, const V &value ) noexcept
         {
+            note( key );
             using T = typename detail::key_type<K>::value_type;
             const auto packed = detail::pack<T>( Verb::set, { key.name(), uid }, value );
             return push( packed.telegram, packed.data );
@@ -353,6 +346,7 @@ class TelegraphUi final
             requires sendable<K, Verb::do_, void> && ( !detail::key_type<K>::takes_uid )
         DoResult do_( const K &key ) noexcept
         {
+            note( key );
             return request( Telegram::empty( Verb::do_, { key.name(), 0 } ), {} );
         }
 
@@ -361,6 +355,7 @@ class TelegraphUi final
             requires sendable<K, Verb::do_, V> && ( !detail::key_type<K>::takes_uid )
         DoResult do_( const K &key, const V &value ) noexcept
         {
+            note( key );
             using T = typename detail::key_type<K>::value_type;
             return request_packed( detail::pack<T>( Verb::do_, { key.name(), 0 }, value ) );
         }
@@ -370,16 +365,21 @@ class TelegraphUi final
             requires sendable<K, Verb::do_, void> && detail::key_type<K>::takes_uid
         DoResult do_( const K &key, std::uint32_t uid ) noexcept
         {
+            note( key );
             return request( Telegram::empty( Verb::do_, { key.name(), uid } ), {} );
         }
 
         /** @brief `do <list>.view (first last)`: the rows a list widget shows (`ListWindow`). */
         template<typename K>
             requires is_key<detail::key_type<K>> && detail::key_type<K>::takes_uid
-        SendResult view( const K &rows, RowSpan span ) noexcept
-        {
-            return send_view( rows.name(), span );
-        }
+        SendResult view( const K &rows, RowSpan span ) noexcept;
+
+        /**
+         * @brief Send a telegram as it is, read from its text (a replay): its
+         * text or uid list is in `data`, as `read_telegram` left it. Meant
+         * for `set` and `do`; nothing checks its type against a key.
+         */
+        SendResult send( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
 
         /**
          * @brief Take what the model sent: each `state` into the cache, each
@@ -400,6 +400,7 @@ class TelegraphUi final
             requires is_key<detail::key_type<K>> && ( !detail::key_type<K>::takes_uid )
         [[nodiscard]] detail::value_of<K> value( const K &key ) const noexcept
         {
+            note( key );
             return read<typename detail::key_type<K>::value_type>( find( { key.name(), 0 } ) );
         }
 
@@ -408,8 +409,32 @@ class TelegraphUi final
             requires is_key<detail::key_type<K>> && detail::key_type<K>::takes_uid
         [[nodiscard]] detail::value_of<K> value( const K &key, std::uint32_t uid ) const noexcept
         {
+            note( key );
             return read<typename detail::key_type<K>::value_type>( find( { key.name(), uid } ) );
         }
+
+        /**
+         * @brief Where the names of keys go, for the text form: a table the
+         * dev tools own (nullptr, the default, keeps none). Each key the UI
+         * uses (`set`, `do_`, `view`, `value`) is added the first time, and
+         * `register_names` adds others. Not owned; it must outlive its use.
+         */
+        void set_names( NameTable *names ) noexcept;
+        [[nodiscard]] const NameTable *names() const noexcept;
+
+        /** @brief Add each key's name, for names only the model sends. Nothing without a table. */
+        template<typename... K>
+            requires( is_key<detail::key_type<K>> && ... )
+        void register_names( const K &...keys ) noexcept
+        {
+            ( note( keys ), ... );
+        }
+
+        /**
+         * @brief Hand each telegram the UI sends, and each it drains, to
+         * `tap` (nullptr, the default: none). One at a time.
+         */
+        void set_tap( Tap tap, void *context ) noexcept;
 
         /** @brief An actor shows `address`: its value is kept in the cache. */
         [[nodiscard]] bool bind( Address address ) noexcept;
@@ -463,6 +488,16 @@ class TelegraphUi final
             return request( packed.telegram, packed.data );
         }
         SendResult send_view( Name rows, RowSpan span ) noexcept;
+        void tapped( TapDirection direction, const Telegram &telegram,
+                     std::span<const std::byte> data ) const noexcept;
+
+        // A key's name into the table, the first time: a check in plain
+        // builds, where there is no table.
+        template<typename K>
+        void note( const K &key ) const noexcept;
+        void note_name( Name name, std::string_view text ) const noexcept;
+        // A list's names: the rows, `.view` and `.count`.
+        void note_list( Name rows, std::string_view text ) const noexcept;
         [[nodiscard]] std::optional<Received> next_from_model() const noexcept;
         void pop_from_model() noexcept;
         void take_state( const Received &received ) noexcept;
@@ -545,6 +580,10 @@ class TelegraphLine final
         std::atomic<std::uint32_t> held_{ 0 };      // pending_count_, published for the UI
         std::atomic<std::uint32_t> held_highest_{ 0 };
         std::atomic<std::uint32_t> lists_count_{ 0 };
+        // The UI's dev tools: a tap, and a name table. Both null in a plain build.
+        Tap tap_ = nullptr;
+        void *tap_context_ = nullptr;
+        NameTable *names_ = nullptr;
         Wake model_wake_;
         Wake ui_wake_;
 
@@ -625,6 +664,24 @@ std::uint32_t Telegraph::deliver( M &model ) noexcept
     return handled;
 }
 
+template<typename K>
+    requires is_key<detail::key_type<K>> && detail::key_type<K>::takes_uid
+SendResult TelegraphUi::view( const K &rows, RowSpan span ) noexcept
+{
+    if( line_.names_ != nullptr ) {
+        note_list( rows.name(), rows.text() );
+    }
+    return send_view( rows.name(), span );
+}
+
+template<typename K>
+void TelegraphUi::note( const K &key ) const noexcept
+{
+    if( line_.names_ != nullptr ) {
+        note_name( key.name(), key.text() );
+    }
+}
+
 template<typename H>
 std::uint32_t TelegraphUi::drain( H &handler ) noexcept
 {
@@ -633,6 +690,9 @@ std::uint32_t TelegraphUi::drain( H &handler ) noexcept
         const auto received = next_from_model();
         if( !received ) {
             break;
+        }
+        if( line_.tap_ != nullptr ) {
+            tapped( TapDirection::to_ui, received->telegram, received->data );
         }
         if( received->telegram.verb() == Verb::state ) {
             take_state( *received );

@@ -10,8 +10,8 @@
 # -D flags so the archive and the application agree; SQUARED_CONSOLE_GROUPS
 # and SQUARED_CONSOLE_GROUP_LINES likewise, by hand, until a project needs them.
 #
-# The Telegraph's commands (telegraph_commands.cpp) use messaging, which every
-# project links; the other tests build without it.
+# The Telegraph's tools (telegraph_tools.cpp) use messaging and time, which
+# every project links; the other tests build without them.
 
 include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 
@@ -33,7 +33,7 @@ SOURCES := src/args.cpp \
     src/log_file.cpp \
     src/scrollback.cpp \
     src/system_commands.cpp \
-    src/telegraph_commands.cpp
+    src/telegraph_tools.cpp
 
 # The renderer and the `gl` command need the GLES 3.0 headers, so they are
 # built with the gles backend only; the rest of the Console builds anywhere.
@@ -43,10 +43,10 @@ SOURCES += src/gles/gl_command.cpp \
     src/gles/renderer.cpp
 endif
 
-# What the tests below link: everything but the drawing and the Telegraph's commands.
-CORE_SOURCES := $(filter-out src/gles/% src/telegraph_commands.cpp,$(SOURCES))
+# What the tests below link: everything but the drawing and the Telegraph's tools.
+CORE_SOURCES := $(filter-out src/gles/% src/telegraph_tools.cpp,$(SOURCES))
 
-# Messaging and time, for the Telegraph's commands' test: built from source,
+# Messaging and time, for the Telegraph tools' test: built from source,
 # as every test here builds the module.
 MESSAGING_SOURCES := $(wildcard $(SQUARED_ROOT)/messaging/src/*.cpp) \
                      $(wildcard $(SQUARED_ROOT)/time/src/*.cpp)
@@ -80,9 +80,9 @@ HEADERS := $(wildcard $(MODULE_DIR)/*.hpp $(MODULE_DIR)/src/*.hpp $(MODULE_DIR)/
 # Groups and dump: queued, one line a frame, combinations, stop, the limits.
 DUMP_TEST := $(BUILD_DIR)/dump_test
 
-# The Telegraph's commands over a real line, the model inline: the
-# capacities, every value in order, the groups.
-TELEGRAPH_COMMANDS_TEST := $(BUILD_DIR)/telegraph_commands_test
+# The Telegraph's tools over a real line, the model inline: the capacities,
+# every value in order with its name, the tap, recording and replaying.
+TELEGRAPH_TOOLS_TEST := $(BUILD_DIR)/telegraph_tools_test
 
 # A child process crashes for real (SIGSEGV, abort) with the crash file
 # installed; the parent reads the report, shows it, and checks the signal
@@ -97,7 +97,7 @@ BRIDGE_TEST := $(BUILD_DIR)/bridge_test
 # A project builds it for Termux with `make console` (mk/pkg_squared_core.mk).
 SQCONSOLE := $(BUILD_DIR)/sqconsole
 
-TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(DUMP_TEST) $(TELEGRAPH_COMMANDS_TEST) $(LAYOUT_TEST) \
+TESTS := $(SCROLLBACK_TEST) $(CONSOLE_TEST) $(DUMP_TEST) $(TELEGRAPH_TOOLS_TEST) $(LAYOUT_TEST) \
     $(CRASH_TEST) $(BRIDGE_TEST)
 ifeq ($(SQUARED_GRAPHICS_BACKEND),gles)
 TESTS += $(RENDERER_TEST)
@@ -119,11 +119,11 @@ $(DUMP_TEST): $(MODULE_DIR)/test/dump_test.cpp $(addprefix $(MODULE_DIR)/,$(CORE
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
-$(TELEGRAPH_COMMANDS_TEST): $(MODULE_DIR)/test/telegraph_commands_test.cpp \
-                            $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
-                            $(MODULE_DIR)/src/telegraph_commands.cpp $(MESSAGING_SOURCES) \
-                            $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
-                            $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
+$(TELEGRAPH_TOOLS_TEST): $(MODULE_DIR)/test/telegraph_tools_test.cpp \
+                         $(addprefix $(MODULE_DIR)/,$(CORE_SOURCES)) \
+                         $(MODULE_DIR)/src/telegraph_tools.cpp $(MESSAGING_SOURCES) \
+                         $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+                         $(SQUARED_ROOT)/dev/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@

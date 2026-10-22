@@ -109,6 +109,7 @@ endif
 #   TELEGRAPH_LISTS=<n>        virtualized lists a model declares (16)
 #   TELEGRAPH_LIST_VIEW=<n>    the most rows a list's view holds (128)
 #   TELEGRAPH_WAIT_MS=<ms>     how long the model waits for room (100)
+#   TELEGRAPH_NAMES=<bytes>    the dev tools' name table, Console builds (8192)
 #
 # The defaults are in squared/messaging/src/telegraph_config.hpp, one place;
 # only the ones set here are passed, so a default build adds no flags. They
@@ -116,7 +117,7 @@ endif
 # TelegraphLine, so both must agree on its layout), and the framework's stamp,
 # so changing one rebuilds both. RING, DATA, PENDING and CACHE must be powers
 # of two: the framework checks when it compiles.
-SQ_TELEGRAPH_KNOBS := RING DATA PENDING CACHE CACHE_TEXT LISTS LIST_VIEW WAIT_MS
+SQ_TELEGRAPH_KNOBS := RING DATA PENDING CACHE CACHE_TEXT LISTS LIST_VIEW WAIT_MS NAMES
 SQ_TELEGRAPH_SIZES := $(strip $(foreach k,$(SQ_TELEGRAPH_KNOBS),\
     $(if $(TELEGRAPH_$(k)),-DSQUARED_TELEGRAPH_$(k)=$(TELEGRAPH_$(k)))))
 SQ_CPPFLAGS += $(SQ_TELEGRAPH_SIZES)

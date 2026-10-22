@@ -1036,7 +1036,12 @@ struct Platform {
         static_cast<Platform*>(context)->console.print(line, level);
     }
     static void bridge_command(void* context, std::string_view line) noexcept {
-        static_cast<Platform*>(context)->console.run(line);
+        auto& self = *static_cast<Platform*>(context);
+        self.console.run(line);
+        // A `dump` goes on after its command returns: its end mark waits
+        // until the dump is done, so `make console CMD='dump sys'` prints
+        // every line before it exits.
+        self.bridge.set_busy(self.console.dumping());
     }
     static void bridge_connected(void* context, bool replay) noexcept {
         auto& self = *static_cast<Platform*>(context);
@@ -1655,6 +1660,9 @@ void android_main(android_app* app) {
         // One line of a `dump` a turn, drawn or not: the bridge sends what it
         // printed before the next, and no frame waits on a long group.
         platform->console.update();
+#ifdef SQUARED_BRIDGE_PORT
+        platform->bridge.set_busy(platform->console.dumping());
+#endif
 #endif
 
         // Nothing is drawn once finishing: the application has said it is

@@ -194,6 +194,7 @@ bridge.ready(fd, readable, writable);
 | `ready(fd, readable, writable)` | Call it when a watched socket is ready. False when that socket is now closed |
 | `send(level, line)` | To the client, if one is connected; else nothing. A line is at most 1 KB; a newline inside becomes a space |
 | `send_file(fd, name, size)` | Send an open file to the client as `name`, `size` bytes or `Bridge::unknown_size` (read until it ends, as a `/proc` file must be). The bridge reads and closes it. Called from a command, that command's end mark follows the file. False, `fd` left open, with no client, a file already on its way, or a name that is not plain |
+| `set_busy(busy)` | Whether a command's work goes on after it returned (a `dump`, one line a frame). While busy, every command's end mark waits, so `sqconsole --run` (`make console CMD=...`) reads to the end; `set_busy(false)` sends them, in order. Set it after running a command and after each `Console::update()`: `bridge.set_busy( console.dumping() )`, as the template does |
 | `transferring()` | A file is going out or coming in |
 | `close()` | Close everything; `watch` is told to stop watching each socket |
 | `listening()`, `connected()`, `port()`, `dropped()` | State; `dropped()` counts lines lost to a slow client since `open` |
@@ -247,8 +248,8 @@ The groups that come with squared:
 | `sys` | `mem`, `heap`, `threads`, `fds`, `device`, `smaps`, `libs`; `gl`, `display` | `add_system_commands`; the Android template |
 | `memory` | `mem`, `heap`, `smaps`; `alloc` with `DEV_LOG` | `add_system_commands`; the Android template |
 | `crash` | `crash`, `log previous`, `logcat 100` | the Android template |
-| `telegraph` | `telegraph` | `add_telegraph_commands` |
-| `state` | `telegraph state` | `add_telegraph_commands` |
+| `telegraph` | `telegraph` | `TelegraphTools::add_commands` |
+| `state` | `telegraph state` | `TelegraphTools::add_commands` |
 
 Nothing is allocated: the groups and the queue are fixed tables in the Console (about 3 KB). Group names and lines are kept as pointers: pass string literals.
 
@@ -279,8 +280,11 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
 | `ls`, `pull`, `push` | the app's files ([Files](#files)); added by the Android template |
 | `logcat` | `logcat [lines]`: the app's own system log, newest 200 by default (`/system/bin/logcat -d`). Added by the Android template, through `run_program` |
-| `telegraph` | each capacity of the Telegraph and its highest fill since start, the states held back, the lists, and how often the model waited for room or was refused. `add_telegraph_commands(console, ui)`, below |
+| `telegraph` | each capacity of the Telegraph and its highest fill since start, the states held back, the lists, and how often the model waited for room or was refused. From `TelegraphTools`, below |
 | `telegraph state` | every value the UI holds from the model, one line each in the text form, ordered by address |
+| `telegraph tap [on \| off]` | every telegram as a line, both ways: `ui>model set settings.sound false`, `model>ui state settings.sound false` |
+| `telegraph record [file] \| record stop` | what the UI sends, to `files/replay.txt` (or `file`), each line with its milliseconds since the start |
+| `telegraph replay [file] [fast] \| replay stop` | send a recording again, at its pace or as fast as the ring takes it |
 
 | `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
 
@@ -291,11 +295,26 @@ const char* const argv[] = {"/system/bin/logcat", "-d", "-t", "200", "-v", "brie
 sq::console::run_program(console, argv, 208);
 ```
 
-**The Telegraph's commands** (`squared/console/telegraph_commands.hpp`), on the UI's end of a line:
+**The Telegraph's tools** (`squared/console/telegraph_tools.hpp`): the commands above, the name table the text form uses, the tap, and recording and replaying. One per line, beside the Console, in Console builds (about 15 KB, the name table most of it):
 
 ```cpp
-static_cast<void>(sq::console::add_telegraph_commands(console, line->ui()));
+sq::console::TelegraphTools tools(line->ui(), files_directory);   // files_directory may be nullptr
+static_cast<void>(tools.add_commands(console));
+tools.set_sink(to_dev_log, nullptr);   // with DEV_LOG: tap lines to the dev log; else into the Console
+// each frame:
+tools.update(sq::time::now());          // a replay's next telegrams, as their time comes
 ```
+
+| Call | Does |
+|---|---|
+| `TelegraphTools(ui, directory)` | the tools for `ui`; from now on the UI names each key it uses (`set`, `do_`, `view`, `value`) in their table. `directory` is where `record` writes and `replay` reads (the app's `files/`); nullptr: neither is offered |
+| `add_commands(console)` | `telegraph` and its words, and the groups `telegraph` and `state`; how many did not fit |
+| `set_sink(sink, context)` | where the tap's lines go: `sink(context, line)`; nullptr, the default: the Console's scrollback |
+| `update(now)` | once a frame: replays what is due, at most 64 a frame; a full ring waits for the next frame |
+| `tap(on)`, `record(file)`, `stop_recording()`, `replay(file, fast)`, `stop_replay()` | what the words do, for code; `record` and `replay` are false when the file cannot be opened or its name holds a directory |
+| `names()`, `tapping()`, `recording()`, `replaying()` | |
+
+Names the UI never uses (a value only shown through a binding) are added with `ui.register_names(names::hp, names::item, ...)`; a name not in the table shows as `#` and 16 hex digits. A list's rows are named with `.view` and `.count` when the UI first asks for a view. A recording holds only what the UI sends: the model makes its own replies again, so a model that ticks or keeps timers repeats only as exactly as its time does. A replay line is `<milliseconds> <telegram>`; `#` starts a comment, a line that is no telegram is counted and named, and a line over 4 KB is left out. The tools detach from the UI when they go; one at a time to a line.
 
 ```
 > telegraph
@@ -308,12 +327,16 @@ held back:    0 now, 0 at most, of 256
 lists:        0 of 16
 model sends:  waited 0 times, refused 0 (full)
 > telegraph state
-state #6be79300f6b58562 42
-state #734944bd109491bb[17] "fur coat"
+state player.hp 42
+state item[17].name "fur coat"
 telegraph: 2 values; 0 bound, with no value yet
+> telegraph tap on
+telegraph: the tap is on
+ui>model set settings.sound false
+model>ui state settings.sound false
 ```
 
-The highest fills are what the `TELEGRAPH_*` make variables are set from. Names show as `#` and 16 hex digits until they are registered for the text form (6.7b). A value too long for one line (over 512 bytes as text) is named, with its size, instead. The UI must outlive the commands; the App wires them in Sprint 7. It returns how many did not fit in the tables.
+The highest fills are what the `TELEGRAPH_*` make variables are set from. A value too long for one line (over 512 bytes as text) is named, with its size, instead. The UI must outlive the tools; the App wires them in Sprint 7.
 
 `add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` and `add_copy_command` return the table's `AddResult`. None of them allocates or keeps anything.
 

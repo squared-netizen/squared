@@ -78,6 +78,24 @@ branch on a missing style.
 The policy behind these choices, and the test for when an extension point is
 warranted at all, is in [extension-policy.md](extension-policy.md).
 
+## Builder &mdash; `LayoutWriter` / `NodeWriter`
+
+C++ screens write a layout through a writer: `add<W>()` returns a
+`NodeWriter` whose calls chain (`.bind(...).grow()`). Deviates from the
+textbook in what it builds: not an object graph but a flat node table in
+storage the caller gives, the same table a compiled layout file is. Cost: 192
+bytes for the writer, 16 for a `NodeWriter` (a pointer and an index); nothing
+allocated. Chosen over building widgets directly from C++, which would have
+been a second way to make a screen ([layouts.md](layouts.md)).
+
+## Factory over a type tag &mdash; `instantiate`
+
+Widgets are made from nodes by a `switch` on `NodeType`, with custom types
+through one hook (a function pointer). Chosen over a registry of factories or
+an abstract factory: the built-in types are fixed, so a registry would be an
+extension point with no second use (priority 4). Cost: one branch per node,
+at push time.
+
 ## Not used, deliberately
 
 **Service Locator** &mdash; absent, as the rules require. `Ui` receives its

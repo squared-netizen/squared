@@ -404,12 +404,15 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   `static_assert`s), and the two ends as members. The model is handed
   `model()` (a `Telegraph&`), the Stage `ui()`: each end holds only the line,
   and neither exposes the other, so nothing points across (the app model's
-  rule 5). Their constructors are private to the line. 87,936 bytes at the
-  defaults; made once at start, with `make_unique` (it is 64-byte aligned:
+  rule 5). Their constructors are private to the line. 88,000 bytes at the
+  defaults (87,936 until 6.7b's tap and names pointer took it past a 64-byte
+  boundary); made once at start, with `make_unique` (it is 64-byte aligned:
   the rings' counters). Priority 1: known before `main` runs, nothing after.
 - **Sending by key.** Every send is a template constrained by `sendable`
   (6.1b) and the key's uid flag, so a mistake is a compile error, then
-  `detail::pack` makes the telegram and its bytes; the rest is not a template
+  `detail::pack` (in `src/pack.hpp` since 7.0, so the gui's `LayoutWriter`
+  writes a typed tap's line without including the Telegraph) makes the
+  telegram and its bytes; the rest is not a template
   (`send_state`, `send_event`, `push`). `answer` copies a `do`'s correlation
   onto its `event`. Correlations are 1 to 65,535, then round again, and a
   refused `do` does not use one up.
@@ -643,8 +646,28 @@ the looper's wiring left to Sprint 7.
   line (`held_`, `held_highest_`, `lists_count_`), at each change of the
   held-back count (`publish_held`: a store, and a load and a store for the
   high mark) and when a list is declared. Figures, not a handshake: the UI may
-  read a value a moment old. They fit the line's padding: `TelegraphLine` is
-  still 87,936 bytes.
+  read a value a moment old. They fit the line's padding.
+
+## For the dev tools (6.7b)
+
+- **A tap:** `TelegraphUi::set_tap(tap, context)`, a function pointer and a
+  context on the line (`tap_`, `tap_context_`), called at each successful
+  `push` (`to_model`) and for each telegram `drain` takes (`to_ui`), on the
+  UI thread, with the telegram rebased to its value's bytes. Null by
+  default: one branch a telegram. The framework cannot compile it out (it is
+  never built with the dev flags), and 16 bytes and a branch are what a hook
+  costs (priority 1 and 3 both, barely).
+- **Names:** `set_names(NameTable*)`, `names()`, `register_names(keys...)`.
+  `note(key)` (a template, defined after the line, like `drain`) checks the
+  pointer and calls `note_name` out of line, which looks the name up and adds
+  its text the first time; `view` calls `note_list` for the rows, `.view`
+  and `.count`. The table is the tools' (console::TelegraphTools), not the
+  line's.
+- **`send(telegram, data)`:** a telegram read from text pushed as it is, its
+  value taken from `data` at its `DataRef`; for the replay. Nothing checks
+  it against a key.
+- **Size:** the three pointers took `TelegraphLine` from 87,936 to 88,000
+  bytes: 24 bytes past its padding, rounded to its 64-byte alignment.
 
 ## Memory
 
@@ -660,7 +683,7 @@ the looper's wiring left to Sprint 7.
 | `ValueCache` | 88, plus the storage it is given |
 | `ModelList` | 96, plus 4 bytes a row of its window (and a shared scratch as large) |
 | `ListWindow` | 24 |
-| `TelegraphLine` | 87,936 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and two descriptors fit its padding |
+| `TelegraphLine` | 88,000 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and descriptors fit its padding, 6.7b's tap and names pointers took it one 64-byte step further |
 | `Wake` | 4 (a descriptor) |
 | `WaitStats` | 8 |
 | `ModelRunner<M>` | 56 plus `std::optional<M>` (`M` and a flag, rounded to `M`'s alignment): the line's reference, the tick clock (40, a `Timepiece` inside), the thread; 64 for an empty model |

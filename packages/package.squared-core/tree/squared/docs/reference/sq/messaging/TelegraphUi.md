@@ -1,6 +1,6 @@
 # class TelegraphUi
 
-*Defined at [messaging/telegraph.hpp:322](../../../../messaging/telegraph.hpp#L322)*
+*Defined at [messaging/telegraph.hpp:313](../../../../messaging/telegraph.hpp#L313)*
 
 
 
@@ -16,19 +16,67 @@
 
 *public void TelegraphUi(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
+*Defined at [messaging/telegraph.hpp:316](../../../../messaging/telegraph.hpp#L316)*
 
 ### TelegraphUi
 
 *public void TelegraphUi(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.hpp:327](../../../../messaging/telegraph.hpp#L327)*
+*Defined at [messaging/telegraph.hpp:318](../../../../messaging/telegraph.hpp#L318)*
+
+### do_
+
+*public DoResult do_(const K & key)*
+
+*Defined at [messaging/telegraph.hpp:347](../../../../messaging/telegraph.hpp#L347)*
+
+
+
+**brief** `do <key>`: an intent, with no value. 
+
+### do_
+
+*public DoResult do_(const K & key, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:356](../../../../messaging/telegraph.hpp#L356)*
+
+
+
+**brief** `do <key> <value>`. 
+
+### do_
+
+*public DoResult do_(const K & key, std::uint32_t uid)*
+
+*Defined at [messaging/telegraph.hpp:366](../../../../messaging/telegraph.hpp#L366)*
+
+
+
+**brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
+
+### view
+
+*public SendResult view(const K & rows, RowSpan span)*
+
+*Defined at [messaging/telegraph.hpp:669](../../../../messaging/telegraph.hpp#L669)*
+
+
+
+**brief** `do <list>.view (first last)`: the rows a list widget shows (`ListWindow`). 
+
+### send
+
+*public SendResult send(const Telegram & telegram, std::span<const std::byte> data)*
+
+
+
+**brief** Send a telegram as it is, read from its text (a replay): its text or uid list is in `data`, as `read_telegram` left it. Meant for `set` and `do`; nothing checks its type against a key.
 
 ### drain
 
 *public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.hpp:629](../../../../messaging/telegraph.hpp#L629)*
+*Defined at [messaging/telegraph.hpp:686](../../../../messaging/telegraph.hpp#L686)*
 
 
 
@@ -49,6 +97,26 @@
 
 
 **brief** The latest value at `address`, as it came. 
+
+### set_names
+
+*public void set_names(NameTable * names)*
+
+
+
+**brief** Where the names of keys go, for the text form: a table the dev tools own (nullptr, the default, keeps none). Each key the UI uses (`set`, `do_`, `view`, `value`) is added the first time, and `register_names` adds others. Not owned; it must outlive its use.
+
+### names
+
+*public const NameTable * names()*
+
+### set_tap
+
+*public void set_tap(Tap tap, void * context)*
+
+
+
+**brief** Hand each telegram the UI sends, and each it drains, to `tap` (nullptr, the default: none). One at a time.
 
 ### bind
 
@@ -138,25 +206,25 @@
 
 *public TelegraphUi & operator=(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.hpp:326](../../../../messaging/telegraph.hpp#L326)*
+*Defined at [messaging/telegraph.hpp:317](../../../../messaging/telegraph.hpp#L317)*
 
 ### operator=
 
 *public TelegraphUi & operator=(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.hpp:328](../../../../messaging/telegraph.hpp#L328)*
+*Defined at [messaging/telegraph.hpp:319](../../../../messaging/telegraph.hpp#L319)*
 
 ### ~TelegraphUi
 
 *public void ~TelegraphUi()*
 
-*Defined at [messaging/telegraph.hpp:329](../../../../messaging/telegraph.hpp#L329)*
+*Defined at [messaging/telegraph.hpp:320](../../../../messaging/telegraph.hpp#L320)*
 
 ### set
 
 *public SendResult set(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:334](../../../../messaging/telegraph.hpp#L334)*
+*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
 
 
 
@@ -166,51 +234,11 @@
 
 *public SendResult set(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:344](../../../../messaging/telegraph.hpp#L344)*
+*Defined at [messaging/telegraph.hpp:336](../../../../messaging/telegraph.hpp#L336)*
 
 
 
 **brief** `set <key>[uid] <value>`. 
-
-### do_
-
-*public DoResult do_(const K & key)*
-
-*Defined at [messaging/telegraph.hpp:354](../../../../messaging/telegraph.hpp#L354)*
-
-
-
-**brief** `do <key>`: an intent, with no value. 
-
-### do_
-
-*public DoResult do_(const K & key, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:362](../../../../messaging/telegraph.hpp#L362)*
-
-
-
-**brief** `do <key> <value>`. 
-
-### do_
-
-*public DoResult do_(const K & key, std::uint32_t uid)*
-
-*Defined at [messaging/telegraph.hpp:371](../../../../messaging/telegraph.hpp#L371)*
-
-
-
-**brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
-
-### view
-
-*public SendResult view(const K & rows, RowSpan span)*
-
-*Defined at [messaging/telegraph.hpp:379](../../../../messaging/telegraph.hpp#L379)*
-
-
-
-**brief** `do <list>.view (first last)`: the rows a list widget shows (`ListWindow`). 
 
 ### value
 
@@ -226,11 +254,21 @@
 
 *public detail::value_of<K> value(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:409](../../../../messaging/telegraph.hpp#L409)*
+*Defined at [messaging/telegraph.hpp:410](../../../../messaging/telegraph.hpp#L410)*
 
 
 
 **brief** The latest value of `key` at `uid`, as its type. 
+
+### register_names
+
+*public void register_names(const K &... keys)*
+
+*Defined at [messaging/telegraph.hpp:428](../../../../messaging/telegraph.hpp#L428)*
+
+
+
+**brief** Add each key's name, for names only the model sends. Nothing without a table. 
 
 
 

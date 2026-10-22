@@ -41,7 +41,7 @@ TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gle
 all: $(MODULES)
 
 graphics: math files
-gui: graphics math data files
+gui: graphics math data files messaging
 assets: files
 gles: graphics
 messaging: time

@@ -391,6 +391,10 @@ model.
 | `wait_stats()` | `waits` (times the model waited for room) and `full` (sends it had refused) |
 | `model_stats()` | the model's side as the UI may read it: `held` (states held back now), `highest_held`, `lists` declared |
 | `cached_from(from)` | a walk over every value the cache holds: from 0, then from the last found's `entry` plus 1; each has its `address` and, unless only bound so far, its `value` (the Console's `telegraph state`) |
+| `set_names(table)`, `names()` | a name table for the text form (the dev tools' own): each key the UI uses (`set`, `do_`, `view`, `value`) is added the first time. nullptr, the default, keeps none |
+| `register_names(keys...)` | add these keys' names too: the ones only the model sends. Nothing without a table |
+| `set_tap(tap, context)` | `tap(context, direction, telegram, data)` for every telegram the UI sends (`to_model`) and drains (`to_ui`), on the UI thread; its text or uid list in `data`, from 0. nullptr, the default: none |
+| `send(telegram, data)` | a telegram read from text, sent as it is (a replay): no key checks it |
 
 The Stage sleeps like this, when nothing is animating:
 
@@ -409,7 +413,9 @@ ones) or `-DSQUARED_TELEGRAPH_RING=512` by hand: `TELEGRAPH_RING` 256
 telegrams each way, `TELEGRAPH_DATA` 8 KB of text each way,
 `TELEGRAPH_PENDING` 256 held states, `TELEGRAPH_CACHE` 512 values with
 `TELEGRAPH_CACHE_TEXT` 8 KB, `TELEGRAPH_LISTS` 16 of `TELEGRAPH_LIST_VIEW`
-128 rows, `TELEGRAPH_WAIT_MS` 100 ms of waiting for room (0: never wait).
+128 rows, `TELEGRAPH_WAIT_MS` 100 ms of waiting for room (0: never wait),
+`TELEGRAPH_NAMES` 8 KB of names for the dev tools (Console builds only: the
+table is theirs, not the line's).
 `RING`, `DATA`, `PENDING` and `CACHE` are powers of two; checked when the
 framework compiles. `make status` shows the ones set.
 

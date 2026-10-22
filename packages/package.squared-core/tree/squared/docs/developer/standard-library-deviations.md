@@ -19,6 +19,7 @@ the existing state, not of choices made during the file split.
 | `std::string` | `FontResource::descriptor_path_` | One per font resource, not per widget. Acceptable. |
 | `std::shared_ptr` | `DrawablePtr`, `FontPtr` | Genuine shared ownership across skins and widgets, but a handle into a skin-owned pool would remove the control block and the atomics. |
 | `std::deque<Cell>` | `Table::cells_` | Chosen for reference stability: `Table::add` returns `Cell&` and later adds must not invalidate it. A chunked vector or a stable pool would give the same guarantee with better locality. |
+| `std::unique_ptr`, `std::string`, `std::function` | `gui::instantiate` (7.0) | Once per widget when a layout is built, never per frame: today's widgets own children through `unique_ptr`, take `std::string` words, and a button holds its tap (a `TapCall`: hook, context, the line) in its `std::function`. A per-screen arena can replace them behind `instantiate` ([layouts.md](layouts.md)). |
 | `std::vector` | throughout | Fine. This is the intended default. |
 | `std::optional` | `drag_pointer_`, `content_insets` | Fine; no allocation. |
 | `std::array` | `NinePatchDrawable::regions_` | Fine, and the right call: 9 regions inline, no allocation. |
@@ -28,6 +29,7 @@ the existing state, not of choices made during the file split.
 
 | Facility | Site | Why |
 |---|---|---|
+| `std::function` | `gui::LayoutHooks` (7.0) | Function pointers and one context: nothing allocated to hold a hook, no type erasure. |
 | `<filesystem>`, `<fstream>` | `files::PosixFileSystem` (2026-10-19) | Measured on the phone: +613 KB in the demo's stripped `libdemo.so` (+55%), 79 allocations per iteration of everyday file work against 9, for a third fewer statements; and libc++ and libstdc++ answered one `create_directories` case differently. POSIX calls kept. Tools and tests may use both. The numbers: [files.md](files.md#posixfilesystem) |
 
 `sq::Result`, an interned string table, a flat hash map, and a handle pool are

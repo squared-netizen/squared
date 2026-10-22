@@ -38,5 +38,5 @@
 
 *Packed pack(Verb verb, Address to, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:83](../../../../../messaging/telegraph.hpp#L83)*
+*Defined at [messaging/src/pack.hpp:26](../../../../../messaging/src/pack.hpp#L26)*
 

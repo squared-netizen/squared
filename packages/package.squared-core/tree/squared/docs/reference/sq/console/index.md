@@ -25,6 +25,7 @@
 * [Quad](Quad.md)
 * [Renderer](Renderer.md)
 * [Scrollback](Scrollback.md)
+* [TelegraphTools](TelegraphTools.md)
 
 
 ## Functions
@@ -94,22 +95,6 @@
  | Command | Prints | |---|---| | `mem` | resident and peak memory (`/proc/self/status`), and what the system has available (`/proc/meminfo`) | | `heap` | the allocator's in-use, free and mapped bytes (`mallinfo`) | | `threads` | the process's thread count | | `fds` | the open file descriptors | | `device` | maker, model, Android version, API level and ABI (system properties), and the kernel (`uname`) | | `smaps` | memory by kind (this program, native heap, GPU driver, Java runtime, stacks, other libraries, files, anonymous): PSS, RSS and private dirty, from `/proc/self/smaps` | | `libs` | every shared library the process has mapped, with the address space it takes (`/proc/self/maps`) |
 
  Each reads into the stack and prints through the Console: nothing is allocated, nothing is kept. Two groups for `dump` come with them: `sys` (all seven) and `memory` (`mem`, `heap`, `smaps`).
-
-
-
-**return** How many did not fit in the command or group tables: 0 when all were added.
-
-### add_telegraph_commands
-
-*std::size_t add_telegraph_commands(Console & console, messaging::TelegraphUi & ui)*
-
-
-
-**brief** The Telegraph's commands, on the UI's end of a line:
-
- | Command | Prints | |---|---| | `telegraph` | each capacity and its highest fill since start: both rings (telegrams and data), the cache (entries, text, evictions, drops), the states held back, the lists, and how often the model waited for room or was refused | | `telegraph state` | every value the UI holds from the model, one line each in the text form (`state player.hp 42`), ordered by address |
-
- and their groups for `dump`: `telegraph` and `state`. On the UI thread, as the Console is; `ui` must outlive the commands. Nothing is allocated.
 
 
 

@@ -132,6 +132,16 @@ class Bridge final
          */
         [[nodiscard]] bool send_file( int fd, std::string_view name, std::uint64_t size ) noexcept;
 
+        /**
+         * @brief Whether a command goes on after it returned: a `dump`
+         * queues its lines and runs them one a frame. While busy, every
+         * command's end mark waits, so a client (`sqconsole --run`) reads
+         * on until the work is done; set_busy(false) sends them, in order.
+         * The owner sets it after running a command and after each
+         * `Console::update()`: `set_busy( console.dumping() )`.
+         */
+        void set_busy( bool busy ) noexcept;
+
         /** @brief A file is being sent (send_file) or received (a push). */
         [[nodiscard]] bool transferring() const noexcept { return file_ >= 0 || push_left_ != 0; }
 
@@ -188,10 +198,13 @@ class Bridge final
         std::uint16_t port_{ 0 };
         bool writing_{ false }; // the client's watch includes writing
         bool cutting_{ false }; // the rest of an over-long command is dropped
+        bool busy_{ false };    // set_busy: a command's work goes on (a dump)
         // End marks held back while a file is sent: the command that sent it,
         // and every command (or push) that finished meanwhile. A client takes
         // the first "." after a file's chunks as the file's end, so these go
         // after it, in order (2026-10-20: a push's "." ended a pull early).
+        // Held while busy too, for the same reason: the client stops reading
+        // at its last "." (2026-10-21: `dump sys crash` showed 3 of 12 lines).
         std::uint16_t dones_after_file_{ 0 };
 };
 

@@ -470,9 +470,10 @@ void Bridge::finish_push() noexcept
 
 void Bridge::done() noexcept
 {
-    // Held back while a file is sent, or while earlier ones still wait, so
-    // every "." keeps its command's place.
-    if( file_ >= 0 || dones_after_file_ != 0 ) {
+    // Held back while a file is sent, while a command's work goes on
+    // (set_busy), or while earlier ones still wait, so every "." keeps its
+    // command's place.
+    if( busy_ || file_ >= 0 || dones_after_file_ != 0 ) {
         if( dones_after_file_ != UINT16_MAX ) {
             ++dones_after_file_;
         }
@@ -481,8 +482,23 @@ void Bridge::done() noexcept
     queue( protocol::done, {} );
 }
 
+void Bridge::set_busy( bool busy ) noexcept
+{
+    if( busy == busy_ ) {
+        return;
+    }
+    busy_ = busy;
+    if( !busy && client_ >= 0 && file_ < 0 && dones_after_file_ != 0 ) {
+        release_dones();
+        flush();
+    }
+}
+
 void Bridge::release_dones() noexcept
 {
+    if( busy_ ) {
+        return; // the work goes on: its marks stay behind it
+    }
     while( dones_after_file_ != 0 && append( protocol::done, {} ) ) {
         --dones_after_file_;
     }
@@ -672,7 +688,7 @@ void Bridge::flush() noexcept
         }
         output_head_ = 0;
         // End marks that did not fit when their file ended.
-        if( file_ < 0 && dones_after_file_ != 0 ) {
+        if( file_ < 0 && !busy_ && dones_after_file_ != 0 ) {
             release_dones();
             continue;
         }

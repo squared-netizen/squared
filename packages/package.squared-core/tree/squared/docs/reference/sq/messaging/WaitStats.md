@@ -1,6 +1,6 @@
 # struct WaitStats
 
-*Defined at [messaging/telegraph.hpp:46](../../../../messaging/telegraph.hpp#L46)*
+*Defined at [messaging/telegraph.hpp:48](../../../../messaging/telegraph.hpp#L48)*
 
 
 

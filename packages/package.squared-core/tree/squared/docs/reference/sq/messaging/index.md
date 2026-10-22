@@ -237,11 +237,25 @@
 | too_large |
 
 
-*Defined at [messaging/telegraph.hpp:31](../../../../messaging/telegraph.hpp#L31)*
+*Defined at [messaging/telegraph.hpp:33](../../../../messaging/telegraph.hpp#L33)*
 
 
 
 **brief** What a send did. 
+
+| enum class TapDirection |
+
+--
+
+| to_model |
+| to_ui |
+
+
+*Defined at [messaging/telegraph.hpp:68](../../../../messaging/telegraph.hpp#L68)*
+
+
+
+**brief** Which way a telegram crossed, for a tap. 
 
 | enum class ValueType |
 

@@ -22,7 +22,10 @@ SOURCES := src/actor.cpp \
     src/group.cpp \
     src/image.cpp \
     src/input_event.cpp \
+    src/instantiate.cpp \
     src/label.cpp \
+    src/layout.cpp \
+    src/layout_writer.cpp \
     src/linear_layout.cpp \
     src/margin_container.cpp \
     src/nine_patch_drawable.cpp \
@@ -84,13 +87,31 @@ SKIN_LOADER_TEST := $(BUILD_DIR)/skin_loader_test
 # arrives as itself, with its modifiers.
 KEYS_TEST := $(BUILD_DIR)/ui_keys_test
 
+# Layouts: the checker, the C++ writer (the same table a compiled layout file
+# is, and no allocation), typed taps, and the instantiator with its hooks; a
+# fuzz of random layouts. (console has a layout_test of its own: its text.)
+SCREEN_LAYOUT_TEST := $(BUILD_DIR)/screen_layout_test
+
 .PHONY: test
-TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST)
+TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(SCREEN_LAYOUT_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
 $(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+
+$(SCREEN_LAYOUT_TEST): $(MODULE_DIR)/test/screen_layout_test.cpp $(TARGET) \
+                       $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
+                       $(LIB_DIR)/libsquared_messaging.a $(LIB_DIR)/libsquared_time.a \
+                       $(LIB_DIR)/libsquared_math.a \
+                       $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+	    $(SQUARED_ROOT)/dev/src/dev_log.cpp $(TARGET) \
+	    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
+	    $(LIB_DIR)/libsquared_messaging.a $(LIB_DIR)/libsquared_time.a \
+	    $(LIB_DIR)/libsquared_math.a -ldl -pthread -o $@
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a

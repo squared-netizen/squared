@@ -1,8 +1,11 @@
 #include <squared/messaging/telegraph.hpp>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <string_view>
 
 namespace sq::messaging
 {
@@ -382,6 +385,9 @@ SendResult TelegraphUi::push( const Telegram &telegram, std::span<const std::byt
     switch( line_.to_model_.push( telegram, data ) ) {
         case RingResult::sent:
             wake_model( true, false );
+            if( line_.tap_ != nullptr ) {
+                tapped( TapDirection::to_model, telegram, data );
+            }
             return SendResult::sent;
         case RingResult::too_large:
             return SendResult::too_large;
@@ -413,6 +419,74 @@ SendResult TelegraphUi::send_view( Name rows, RowSpan span ) noexcept
     const std::array<float, 2> first_last{ static_cast<float>( span.first ),
                                            static_cast<float>( span.last() ) };
     return push( Telegram::floats( Verb::do_, { view, 0 }, first_last ), {} );
+}
+
+SendResult TelegraphUi::send( const Telegram &telegram, std::span<const std::byte> data ) noexcept
+{
+    const ValueType type = telegram.type();
+    const bool with_data = type == ValueType::text || type == ValueType::uids;
+    return push( telegram,
+                 with_data ? data.subspan( telegram.as_data().offset, telegram.as_data().length )
+                           : std::span<const std::byte>{} );
+}
+
+void TelegraphUi::tapped( TapDirection direction, const Telegram &telegram,
+                          std::span<const std::byte> data ) const noexcept
+{
+    const ValueType type = telegram.type();
+    if( type != ValueType::text && type != ValueType::uids ) {
+        line_.tap_( line_.tap_context_, direction, telegram, {} );
+        return;
+    }
+    // Where the bytes are, as the tap sees them: all of `data`, from 0.
+    const auto length = static_cast<std::uint32_t>( data.size() );
+    const Telegram rebased =
+        Telegram::data( telegram.verb(), telegram.address(), type, DataRef{ 0, length } );
+    const Telegram tapped = rebased.with_correlation( telegram.correlation() );
+    line_.tap_( line_.tap_context_, direction, tapped, data );
+}
+
+void TelegraphUi::set_tap( Tap tap, void *context ) noexcept
+{
+    line_.tap_ = tap;
+    line_.tap_context_ = tap == nullptr ? nullptr : context;
+}
+
+void TelegraphUi::set_names( NameTable *names ) noexcept
+{
+    line_.names_ = names;
+}
+
+const NameTable *TelegraphUi::names() const noexcept
+{
+    return line_.names_;
+}
+
+void TelegraphUi::note_name( Name name, std::string_view text ) const noexcept
+{
+    // A lookup when it is known (every frame, for a screen's values), an
+    // insertion the first time. A full table or a collision is left as it is:
+    // the name then shows as # and hex.
+    if( line_.names_->text( name ).empty() ) {
+        static_cast<void>( line_.names_->add( text ) );
+    }
+}
+
+void TelegraphUi::note_list( Name rows, std::string_view text ) const noexcept
+{
+    note_name( rows, text );
+    std::array<char, 128> joined{};
+    constexpr std::array<std::string_view, 2> suffixes = { ".view", ".count" };
+    for( const std::string_view suffix : suffixes ) {
+        if( text.size() + suffix.size() > joined.size() ) {
+            return;
+        }
+        std::copy( text.begin(), text.end(), joined.begin() );
+        std::copy( suffix.begin(), suffix.end(),
+                   joined.begin() + static_cast<std::ptrdiff_t>( text.size() ) );
+        const std::string_view whole( joined.data(), text.size() + suffix.size() );
+        note_name( Name::from_id( name_hash( suffix, rows.id ) ), whole );
+    }
 }
 
 std::uint32_t TelegraphUi::drain() noexcept

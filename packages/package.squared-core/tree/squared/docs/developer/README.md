@@ -41,6 +41,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [gles](gles.md)
 - [graphics](graphics.md) &mdash; includes the former `graphics2d`
 - [gui](gui.md) &mdash; includes the former `scene2d`
+  - [layouts](layouts.md) &mdash; the node table, `check`, the writer and `instantiate`: sizes, allocation, patterns, tests
 - [messaging](messaging.md)
 - [math](math.md)
 - [time](time.md)
