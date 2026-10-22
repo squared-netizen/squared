@@ -1,0 +1,8 @@
+{
+  "note": "Wrong on purpose: sqgen_test runs sqgen on this and checks what it says.",
+  "names": {
+    "a_b.c": { "verbs": ["do"] },
+    "a.b_c": { "verbs": ["do"] },
+    "x.new": { "verbs": ["do"] }
+  }
+}

@@ -8,8 +8,8 @@ widget, where it sits in its cell, what it shows and what a tap sends.
 There are two ways to make one, and both make the same thing:
 
 - **A layout file**, `sq_app/layouts/<name>.json`, which the build compiles
-  into a constant table (the `sqgen` tool: the next package). It is also what
-  the visual editor will read and write.
+  into a constant table with `sqgen` ([below](#sqgen-the-build-step)). It is
+  also what the visual editor will read and write.
 - **C++**: a screen's `build()` writes the same table through a
   `LayoutWriter`.
 
@@ -21,8 +21,11 @@ arrives (Sprint 7.1), you call it yourself.
 | `squared/gui/layout.hpp` | `Layout`, `LayoutNode`, `NodeType`, `LayoutKind`, `read_tap`, `check` |
 | `squared/gui/layout_writer.hpp` | `LayoutWriter`, `NodeWriter`, `Navigate` |
 | `squared/gui/instantiate.hpp` | `instantiate`, `LayoutHooks` |
+| `squared/gui/layout_file.hpp` | Reading `names.json` and layout files yourself: what `sqgen` uses |
 
-All three come with `squared/gui/gui.hpp`.
+The first three come with `squared/gui/gui.hpp`. `layout_file.hpp` does not:
+it brings in the JSON reader, which an app does not carry (a release app
+reads no layout file; `sqgen` did that when it was built).
 
 ## The shortest call site
 
@@ -62,18 +65,25 @@ node. A nested `table` node has `rows` of its own; a `scroll` holds one node
 | Key | Means |
 |---|---|
 | `type` | What the node builds; see the table below |
-| `text` | The words it shows; an image's drawable name; a custom node's type |
+| `text` | The words it shows; an image's drawable name |
+| `name` | A custom node's type: the name you register it by |
 | `grow`, `grow_x`, `grow_y` | Take the cell's spare room |
 | `fill`, `fill_x`, `fill_y` | Fill the cell |
 | `pad` | Space around it in its cell |
-| `align` | `"start"`, `"center"` or `"end"`, or two of them: across, then down |
+| `align` | `"start"`, `"center"` or `"end"` across, or two of them: across, then down |
 | `span` | Columns the cell takes |
 | `bind` | An address from `names.json`: the node shows its `state`, and a node that edits sends `set` |
 | `tap` | A button's line: a telegram (`do file.open "a.txt"`) or a navigation (below) |
 | `style` | A style from the skin, in place of `default` |
 | `min`, `max`, `step` | A slider's range and step; a progress bar's range |
 | `vertical` | A separator that runs up and down |
-| `note` | Words for people; ignored |
+| `note` | Words for people; ignored, here and in every object |
+
+A file's own keys are `kind` (`"screen"`, the default, or `"pane"`), `rows`
+and `note`. A key a node or file does not take is a mistake, not ignored:
+`"grwo": true` is reported, so a typo cannot silently do nothing. A layout's
+name in the build is its file's: `settings.json` is the layout `settings`
+(lowercase words, digits and `_`).
 
 | `type` | Widget | Takes |
 |---|---|---|
@@ -88,7 +98,7 @@ node. A nested `table` node has `rows` of its own; a `scroll` holds one node
 | `table` | `Table` | `rows` |
 | `scroll` | `ScrollPane` | one node |
 | `stack` | `Stack` | nodes |
-| `custom` | your type | `text`: the name you register it by |
+| `custom` | your type | `name`: the name you register it by |
 
 ## Taps
 
@@ -109,6 +119,133 @@ and a replay file all read alike.
 `read_tap(line)` reads one: a `Tap` with its `kind` and `target` (the name
 navigated to, or the whole telegram line). `TapKind::invalid` for anything
 else.
+
+In a file, a tap is also checked against the app: a telegram's address must
+be in `names.json`, carry that verb, and take that type of value (a `number`
+is written with a point, `11.0`; `11` is an `int`). A `push` or `replace`
+must name a screen, an `open` a pane: another layout file, or a C++ screen
+listed in `names.json`'s `screens`. `close` belongs in a pane.
+
+## `names.json`
+
+Every address the app's model and screens use, in one file,
+`sq_app/names.json`. `sqgen` makes each one a typed key, and checks every
+`bind` and `tap` in the layout files against it.
+
+```json
+{
+  "names": {
+    "settings.volume": { "type": "number", "verbs": ["state", "set"] },
+    "file.open":       { "type": "text",   "verbs": ["do"] },
+    "game.over":       {                   "verbs": ["event"] },
+    "item.name":       { "type": "text",   "verbs": ["state"], "uid": true },
+    "inventory":       { "list": "item", "note": "What the player carries" }
+  },
+  "screens": ["workspace"]
+}
+```
+
+| Key of an address | Means |
+|---|---|
+| `type` | Its value: `bool`, `int`, `number`, `vec2`, `vec3`, `vec4`, `text`, `uids`; none for a bare `do` or `event` |
+| `verbs` | Which of `state`, `event`, `set`, `do` it carries; at least one. `state` and `set` need a `type` |
+| `uid` | `true`: it is one of many, told apart by a uid (a row of a list) |
+| `note` | Words for people; becomes the key's comment |
+| `list` | Instead of the above: a list whose rows are `<list>.*` addresses. It declares `<name>` (the rows: an `int` `state` with a uid) and `<name>.count` |
+
+`screens` lists the screens and panes written in C++, so a layout may
+navigate to them. A name is lowercase words, digits and `_` between dots.
+
+The keys come out in `names.hpp`, a dot becoming `_`:
+
+| `type` | Key's value type |
+|---|---|
+| none | `void` |
+| `bool`, `int`, `number` | `bool`, `std::int64_t`, `double` |
+| `vec2`, `vec3`, `vec4` | `std::array<float, 2>` (3, 4) |
+| `text` | `std::string_view` |
+| `uids` | `std::span<const std::uint32_t>` |
+
+```cpp
+#include <names.hpp>
+
+ui.set( names::settings_volume, 7.0 );           // a Key<double, state | set>; ui is the TelegraphUi
+root.add<sq::gui::Slider>().bind( names::settings_volume );
+```
+
+## sqgen: the build step
+
+An app with `sq_app/names.json` or any `sq_app/layouts/*.json` has them
+compiled before its own sources, into `build/gen/`. You do nothing to turn
+it on; an app with neither builds as before.
+
+| File | Holds |
+|---|---|
+| `names.hpp` | Every address as a typed key, in `namespace names` |
+| `layouts.hpp` | Every layout, declared (`extern const sq::gui::Layout settings;`), in `namespace layouts`, with `all()` and `find(name)` |
+| `layouts.cpp` | Their tables, as constants in read-only data; compiled into the app |
+
+```cpp
+#include <layouts.hpp>
+
+const sq::gui::LayoutCheck built = sq::gui::instantiate( layouts::settings, table, skin, hooks );
+const sq::gui::Layout *named = layouts::find( "settings" );   // nullptr: none by that name
+```
+
+The build prints one line, `sqgen  3 keys, 2 layouts; 1 file changed`. A
+file is written only when its text changes, so editing one layout rebuilds
+only `layouts.cpp` and what includes `layouts.hpp`, not every source that
+includes `names.hpp`.
+
+**Problems stop the build.** Every file is read and checked before anything
+is written. Each problem is one line, its file first, then where in it:
+a line and column for a file that is not JSON, otherwise the path to the
+value:
+
+```
+sqgen: names.json: names["settings.Volume"]: not a name: lowercase words, digits and _, between dots
+sqgen: settings.json:4:16: not JSON: unexpected character, expected ':' after key
+sqgen: landing.json: rows[1][0].bind: settings.volme is not in names.json
+sqgen: landing.json: rows[2][0].tap: settings.volume takes a number, not an int: write a number with a point (7.0)
+sqgen: 4 problems; nothing written
+```
+
+A name that cannot be a C++ name is reported too: one that becomes a keyword
+(`new`), starts with a digit or `_`, or that two names share
+(`a_b.c` and `a.b_c` are both `a_b_c`).
+
+Run by hand (the build runs it for you):
+
+```sh
+sqgen [--names FILE] [--layouts DIR] --out DIR
+```
+
+| Exit | Means |
+|---|---|
+| 0 | Written, or already current |
+| 1 | Problems, each printed; nothing written. Also a `--names` file that cannot be read, or a `--layouts` that is not a directory |
+| 2 | Wrong arguments: no `--out`, an option without its value, or one sqgen does not know |
+
+Without `--names`, a layout's binds and telegram taps have no address to be
+checked against, so each one is a problem. Without `--layouts`,
+`layouts.hpp` declares none.
+
+## Reading files yourself: `layout_file.hpp`
+
+What `sqgen` is made of, for a tool of your own (an editor, a checker).
+Every problem is added to a `FileProblems` (a list of `{where, what}`) and
+reading goes on, so one pass reports them all.
+
+| Function | Does |
+|---|---|
+| `read_json(file, text, out, problems)` | Parse `text` as the file named `file` into `out`; false when it is not JSON |
+| `read_names(file, root, schema, problems)` | `names.json` into a `NameSchema`: its `names` (sorted; `find(name)`, `find_id(id)`) and `screens` (`has_screen(name)`) |
+| `read_layout_kind(file, root, problems)` | The file's `kind`, alone: screen when it is left out or wrong (and then a problem) |
+| `read_layout(file, root, schema, targets, out, problems)` | The whole file into a `LayoutWriter`, checked against the schema and `targets`, the other layouts (name and kind) |
+
+Each returns false (or adds a problem) when the file was wrong; a writer a
+wrong file was read into is not to be used. Allocates freely: these are for
+tools, not for an app.
 
 ## From C++: `LayoutWriter`
 

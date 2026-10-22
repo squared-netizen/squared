@@ -134,6 +134,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Skin::add_*` | skin load | global `new`, per map node |
 | `Table::add` | every cell added | global `new`, `std::deque` chunk |
 | `Ui::show_window` | per window shown | global `new` |
+| compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
 | `gui::instantiate` | a layout built (a screen pushed): each widget, its words, each tap's line | global `new`; `LayoutWriter` and `check` allocate nothing ([layouts.md](layouts.md)) |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
 | `std::function` assignment | per callback with captures past SBO | global `new` |

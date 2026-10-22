@@ -25,6 +25,7 @@ SOURCES := src/actor.cpp \
     src/instantiate.cpp \
     src/label.cpp \
     src/layout.cpp \
+    src/layout_file.cpp \
     src/layout_writer.cpp \
     src/linear_layout.cpp \
     src/margin_container.cpp \
@@ -92,8 +93,32 @@ KEYS_TEST := $(BUILD_DIR)/ui_keys_test
 # fuzz of random layouts. (console has a layout_test of its own: its text.)
 SCREEN_LAYOUT_TEST := $(BUILD_DIR)/screen_layout_test
 
+# Layout files and names.json: what the reader accepts and refuses, each
+# problem's place and words, and that a file gives the C++ writer's table.
+# The cases are data, read as it runs: a prerequisite, so that a changed case
+# makes a new binary and the test runs again.
+LAYOUT_FILE_TEST := $(BUILD_DIR)/layout_file_test
+LAYOUT_FILE_CASES := $(MODULE_DIR)/test/layout_file_cases.txt
+
+# sqgen end to end: built here against the archives (an app's build compiles
+# it from source, for its machine: mk/pkg_squared_core.mk), run on test/sqgen/,
+# and a test compiled with what it wrote.
+SQGEN := $(BUILD_DIR)/sqgen
+SQGEN_FIXTURE := $(MODULE_DIR)/test/sqgen
+SQGEN_GEN := $(BUILD_DIR)/sqgen_gen
+SQGEN_TEST := $(BUILD_DIR)/sqgen_test
+# The wrong files sqgen must refuse, and what it must say: read as the test runs.
+SQGEN_WRONG := $(wildcard $(SQGEN_FIXTURE)/bad/*.* $(SQGEN_FIXTURE)/bad/layouts/*.json \
+                          $(SQGEN_FIXTURE)/keyword/*.*)
+
+# What a host program that reads layouts links: gui first, then what it uses.
+LAYOUT_LIBS := $(TARGET) $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
+               $(LIB_DIR)/libsquared_messaging.a $(LIB_DIR)/libsquared_data.a \
+               $(LIB_DIR)/libsquared_time.a $(LIB_DIR)/libsquared_math.a
+
 .PHONY: test
-TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(SCREEN_LAYOUT_TEST)
+TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(SCREEN_LAYOUT_TEST) \
+         $(LAYOUT_FILE_TEST) $(SQGEN_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -112,6 +137,28 @@ $(SCREEN_LAYOUT_TEST): $(MODULE_DIR)/test/screen_layout_test.cpp $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
 	    $(LIB_DIR)/libsquared_messaging.a $(LIB_DIR)/libsquared_time.a \
 	    $(LIB_DIR)/libsquared_math.a -ldl -pthread -o $@
+
+$(LAYOUT_FILE_TEST): $(MODULE_DIR)/test/layout_file_test.cpp $(LAYOUT_LIBS) $(LAYOUT_FILE_CASES)
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) -DLAYOUT_FILE_CASES='"$(LAYOUT_FILE_CASES)"' \
+	    $< $(LAYOUT_LIBS) -o $@
+
+$(SQGEN): $(SQUARED_ROOT)/tools/sqgen/sqgen.cpp $(LAYOUT_LIBS) $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(call say,bin,sqgen)
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(LAYOUT_LIBS) -o $@
+
+$(SQGEN_GEN)/layouts.cpp: $(SQGEN) $(SQGEN_FIXTURE)/names.json $(wildcard $(SQGEN_FIXTURE)/layouts/*.json)
+	@mkdir -p $(dir $@)
+	@$(SQGEN) --names $(SQGEN_FIXTURE)/names.json --layouts $(SQGEN_FIXTURE)/layouts --out $(SQGEN_GEN)
+	@touch $@
+
+$(SQGEN_TEST): $(MODULE_DIR)/test/sqgen_test.cpp $(SQGEN_GEN)/layouts.cpp $(LAYOUT_LIBS) $(SQGEN_WRONG)
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) -I$(SQGEN_GEN) -DSQGEN_PATH='"$(SQGEN)"' \
+	    -DSQGEN_FIXTURE='"$(SQGEN_FIXTURE)"' $< $(SQGEN_GEN)/layouts.cpp $(LAYOUT_LIBS) -o $@
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a

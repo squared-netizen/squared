@@ -1,0 +1,16 @@
+{
+  "note": "The test app's addresses: what the model and its screens say to each other.",
+  "names": {
+    "counter.ticks":   { "type": "int",    "verbs": ["state"], "note": "Ticks since start" },
+    "settings.sound":  { "type": "bool",   "verbs": ["state", "set"] },
+    "settings.volume": { "type": "number", "verbs": ["state", "set"] },
+    "settings.name":   { "type": "text",   "verbs": ["state", "set"] },
+    "file.open":       { "type": "text",   "verbs": ["do"] },
+    "game.start":      {                   "verbs": ["do"] },
+    "game.over":       {                   "verbs": ["event"] },
+    "player.pos":      { "type": "vec2",   "verbs": ["state"] },
+    "item.name":       { "type": "text",   "verbs": ["state"], "uid": true },
+    "inventory":       { "list": "item" }
+  },
+  "screens": ["workspace"]
+}

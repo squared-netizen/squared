@@ -1,0 +1,2 @@
+sqgen: names.json: names["new"]: becomes new, a C++ keyword or a name sqgen uses
+sqgen: 1 problem; nothing written

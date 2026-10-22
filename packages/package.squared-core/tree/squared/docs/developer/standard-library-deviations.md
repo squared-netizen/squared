@@ -19,6 +19,7 @@ the existing state, not of choices made during the file split.
 | `std::string` | `FontResource::descriptor_path_` | One per font resource, not per widget. Acceptable. |
 | `std::shared_ptr` | `DrawablePtr`, `FontPtr` | Genuine shared ownership across skins and widgets, but a handle into a skin-owned pool would remove the control block and the atomics. |
 | `std::deque<Cell>` | `Table::cells_` | Chosen for reference stability: `Table::add` returns `Cell&` and later adds must not invalidate it. A chunked vector or a stable pool would give the same guarantee with better locality. |
+| `std::map`, `std::string`, `std::vector`, `<filesystem>` | `gui/src/layout_file.cpp`, `tools/sqgen/` (7.0b) | Build-time only: they read layout files in `sqgen` and in tools. An app links none of it (nothing in it refers to `layout_file.cpp`'s functions, so the archive member stays out). |
 | `std::unique_ptr`, `std::string`, `std::function` | `gui::instantiate` (7.0) | Once per widget when a layout is built, never per frame: today's widgets own children through `unique_ptr`, take `std::string` words, and a button holds its tap (a `TapCall`: hook, context, the line) in its `std::function`. A per-screen arena can replace them behind `instantiate` ([layouts.md](layouts.md)). |
 | `std::vector` | throughout | Fine. This is the intended default. |
 | `std::optional` | `drag_pointer_`, `content_insets` | Fine; no allocation. |

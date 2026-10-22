@@ -1,0 +1,5 @@
+{
+  "rows": [
+    [ { "type": "button", "tap": "do a_b.c" }, { "type": "label", "bind": "a.b_c" } ]
+  ]
+}

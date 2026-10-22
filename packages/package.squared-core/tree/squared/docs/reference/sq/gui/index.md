@@ -18,6 +18,7 @@
 * [ColorDrawable](ColorDrawable.md)
 * [Dialog](Dialog.md)
 * [Drawable](Drawable.md)
+* [FileProblem](FileProblem.md)
 * [FontResource](FontResource.md)
 * [Group](Group.md)
 * [Image](Image.md)
@@ -28,10 +29,13 @@
 * [LayoutCheck](LayoutCheck.md)
 * [LayoutHooks](LayoutHooks.md)
 * [LayoutNode](LayoutNode.md)
+* [LayoutTarget](LayoutTarget.md)
 * [LayoutWriter](LayoutWriter.md)
 * [Layout](Layout.md)
 * [LinearLayout](LinearLayout.md)
 * [MarginContainer](MarginContainer.md)
+* [NameEntry](NameEntry.md)
+* [NameSchema](NameSchema.md)
 * [NinePatchDrawable](NinePatchDrawable.md)
 * [NinePatchSplits](NinePatchSplits.md)
 * [NodeTypeOf](NodeTypeOf.md)
@@ -240,6 +244,38 @@
 
 **brief** A problem in words, for a log line. 
 
+### read_json
+
+*bool read_json(std::string_view file, std::string_view text, data::JsonValue & out, FileProblems & problems)*
+
+
+
+**brief** Parse `text`, the JSON file `file`, into `out`. False, with the problem added, when it is not JSON (its line and column).
+
+### read_layout
+
+*bool read_layout(std::string_view file, const data::JsonValue & root, const NameSchema & schema, std::span<const LayoutTarget> targets, LayoutWriter & out, FileProblems & problems)*
+
+
+
+**brief** Read a layout file into `out`, checking every node: its keys, their values, binds against `schema` (the address exists, carries `state`, and has a type the node can show), taps (a telegram whose address, verb and value type the schema allows; a navigation to one of `targets` or a screen `schema` lists). False when anything was wrong; each problem is added, and what `out` holds is then not to be used.
+
+### read_layout_kind
+
+*LayoutKind read_layout_kind(std::string_view file, const data::JsonValue & root, FileProblems & problems)*
+
+
+
+**brief** A layout file's kind (`"kind": "screen"` or `"pane"`; screen when left out), read first: every file's kind is needed to check navigation. When the kind is neither, or the file is not an object, the problem is added and the kind given is screen.
+
+### read_names
+
+*bool read_names(std::string_view file, const data::JsonValue & root, NameSchema & schema, FileProblems & problems)*
+
+
+
+**brief** Read `names.json` into `schema`. A list (`{ "list": "item" }`) is its rows' key (an integer `state` taking a uid) and `<name>.count`. False when anything was wrong; each problem is added.
+
 ### read_tap
 
 *Tap read_tap(std::string_view line)*
@@ -397,7 +433,7 @@
 | quit |
 
 
-*Defined at [gui/layout_writer.hpp:125](../../../../gui/layout_writer.hpp#L125)*
+*Defined at [gui/layout_writer.hpp:130](../../../../gui/layout_writer.hpp#L130)*
 
 
 

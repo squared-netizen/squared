@@ -177,6 +177,53 @@ console: $(SQ_SQCONSOLE)
 	fi
 	@$(SQ_SQCONSOLE) --conf '$(SQ_BRIDGE_CONF)' --into '$(BUILD)/pulled' $(if $(CMD),--run '$(CMD)',)
 
+# --- sqgen: names.json and layouts/ into C++ --------------------------------
+#
+# An app with sq_app/names.json or sq_app/layouts/*.json gets them compiled by
+# sqgen (squared/tools/sqgen/), built for this machine like sqconsole, into
+# $(BUILD)/gen: names.hpp (every address as a typed key, namespace names),
+# layouts.hpp and layouts.cpp (every layout's node table, namespace layouts).
+# A problem in either stops the build, each one with its file and where in it.
+# An app with neither builds exactly as before: none of this applies.
+SQ_NAMES_FILE := $(wildcard sq_app/names.json)
+SQ_LAYOUT_FILES := $(sort $(wildcard sq_app/layouts/*.json))
+ifneq ($(strip $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES)),)
+  SQ_GEN_DIR := $(BUILD)/gen
+  SQ_SQGEN := $(BUILD)/host/sqgen
+  HOST_CC ?= cc
+  SQ_YYJSON := $(SQ_SQUARED_DIR)/third_party/yyjson
+  SQ_SQGEN_SRC := $(addprefix $(SQ_SQUARED_DIR)/,tools/sqgen/sqgen.cpp \
+      gui/src/layout.cpp gui/src/layout_writer.cpp gui/src/layout_file.cpp \
+      data/src/json.cpp data/src/json_value.cpp \
+      messaging/src/telegram_text.cpp messaging/src/telegram.cpp messaging/src/telegram_data.cpp \
+      messaging/src/name_table.cpp messaging/src/address.cpp)
+  # Which files there are, so adding or removing one regenerates too.
+  $(shell mkdir -p '$(SQ_GEN_DIR)'; \
+    printf '%s\n' $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) | cmp -s - '$(SQ_GEN_DIR)/inputs' || \
+    printf '%s\n' $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) > '$(SQ_GEN_DIR)/inputs')
+  SQ_KIT_SRC += $(SQ_GEN_DIR)/layouts.cpp
+  SQ_KIT_CPPFLAGS += -I$(SQ_GEN_DIR)
+  # Your sources include what sqgen writes, so they wait for it (order only:
+  # the dependency files then say which of them use it).
+  $(patsubst %.cpp,$(BUILD)/%.o,$(shell find sq_app/src -name '*.cpp' 2>/dev/null)): | $(SQ_GEN_DIR)/layouts.cpp
+endif
+
+ifneq ($(SQ_SQGEN),)
+$(SQ_SQGEN): $(SQ_SQGEN_SRC) $(SQ_YYJSON)/yyjson.c \
+             $(wildcard $(SQ_SQUARED_DIR)/gui/layout*.hpp $(SQ_SQUARED_DIR)/messaging/*.hpp \
+                        $(SQ_SQUARED_DIR)/messaging/src/*.hpp $(SQ_SQUARED_DIR)/data/*.hpp)
+	@mkdir -p $(dir $@)
+	@echo "  host c++       sqgen, for this machine"
+	@$(HOST_CC) -O2 -c $(SQ_YYJSON)/yyjson.c -o $(BUILD)/host/yyjson.o
+	@$(HOST_CXX) -std=c++20 -O2 -I$(SQ_SQUARED_DIR)/.. -I$(SQ_YYJSON) $(SQ_SQGEN_SRC) \
+	    $(BUILD)/host/yyjson.o -o $@
+
+$(SQ_GEN_DIR)/layouts.cpp: $(SQ_SQGEN) $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) $(SQ_GEN_DIR)/inputs
+	@$(SQ_SQGEN) $(if $(SQ_NAMES_FILE),--names $(SQ_NAMES_FILE),) \
+	    $(if $(SQ_LAYOUT_FILES),--layouts sq_app/layouts,) --out $(SQ_GEN_DIR)
+	@touch $@
+endif
+
 # --- the framework ----------------------------------------------------------
 
 # Modules that publish headers. A module with no sources still publishes

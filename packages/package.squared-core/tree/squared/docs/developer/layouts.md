@@ -3,9 +3,11 @@
 Programmer docs: [../programmer/layouts.md](../programmer/layouts.md). The
 decision record: the app model's "Screens as data (decided, 7.0)".
 
-Three files in `gui/`: `layout.hpp` (the table, `read_tap`, `check`),
+Four files in `gui/`: `layout.hpp` (the table, `read_tap`, `check`),
 `layout_writer.hpp` (the C++ avenue), `instantiate.hpp` (widgets from
-nodes), each with its `src/` file. Sprint 7.0, 2026-10-21.
+nodes), `layout_file.hpp` (reading `names.json` and layout files), each with
+its `src/` file; and the build-time compiler, `tools/sqgen/sqgen.cpp`.
+Sprint 7.0a (the table) and 7.0b (files and `sqgen`), 2026-10-21 and 22.
 
 ## Why a table
 
@@ -122,12 +124,126 @@ saying so, and an image whose drawable the skin lacks is built empty; the
 first such node is returned, and everything else is still built, so a
 missing piece shows on the screen rather than leaving it blank.
 
+## Layout files: `layout_file.cpp`
+
+Build-time code: it runs in `sqgen` (and in a tool such as the editor),
+never in an app, so it is on the tools side of the standard-library line and
+allocates as it likes.
+
+**JSON** comes from `sq::data` (vendored yyjson, then a `JsonValue` DOM:
+objects are a `std::map`, arrays a `std::vector`). Only a syntax error has a
+line and column: yyjson's DOM keeps no positions per value. So every other
+problem names the **path** to the value (`rows[1][0].bind`), which is as
+exact and survives reformatting the file. Two quirks the reader handles: a
+positive whole number is stored unsigned (`whole_of` reads either signedness
+as `int64_t`), and a duplicate key is refused by the parser already.
+
+**`Reader`** is the file's name, the problem list and an `ok` flag. Reading
+never stops at a problem: a bad value adds one and is skipped, so one run
+reports all of them. A layout's kind is the exception, read on its own
+first: navigation is checked against every file's kind, so `sqgen` reads all
+the kinds before any layout.
+
+**`names.json`** becomes a `NameSchema`: entries sorted by name, so `find`
+is a binary search and a duplicate shows as two neighbours. `find_id` finds
+by the hashed `Name` (a linear scan: tens of entries), which is what a
+telegram read from a tap carries. A list `{ "list": "item" }` becomes two
+entries, its rows' key (`int`, `state`, uid) and `<name>.count`, as decided
+for 7.5's lists.
+
+**`LayoutReader`** walks the rows, writing each node through the same
+`LayoutWriter` the C++ avenue uses, so both avenues make the same table by
+construction and `check` applies to both. Two things the typed API refuses
+at compile time a file needs at run time: adding a node by its `NodeType`
+(not a widget type) and binding by a name (not a `Key`).
+`detail::FileWriting`, a friend of `LayoutWriter` and `NodeWriter`, does
+both; it is not for apps (it is in `detail`, and its definition is in
+`layout_file.cpp`, so nothing else can call it). Each node's keys are
+checked against a per-type list (`takes_key`); a bind against the schema
+(present, carries `state`, no uid, a type the node can show: `shows`); a
+tap by kind: a telegram is parsed with `messaging::read_telegram` into 4 KB
+on the stack and checked for address, verb, uid and value type, then stored
+as written; a navigation against the targets and the schema's `screens`.
+
+## `sqgen`
+
+One program, built for the build machine. Pass by pass:
+
+1. **Arguments.** Usage problems exit 2.
+2. **`names.json`** is read (`read_names`), then each name becomes an
+   identifier: `.` to `_`, refused when it starts with a digit or `_`,
+   holds `__`, is a keyword (C++20's and the alternative tokens) or a name
+   the generated code uses (`sq`, `names`, `layouts`), or another name
+   became it too.
+3. **Layout files**, sorted by name: each one's name (the file's stem, a
+   valid name, a valid identifier, not shared) and kind, then each
+   compiled through `read_layout` into a writer over the most a `Layout`
+   can hold (65,533 nodes, 65,535 bytes of text and 65,535 numbers: about
+   2.4 MB of scratch, allocated once per run and reused), and checked.
+4. **Any problem**: each printed, `N problems; nothing written`, exit 1.
+5. **Writing**: each file's text is made in memory and written only when it
+   differs from what is there, through a `.part` file and a rename, so a
+   build interrupted midway leaves either the old file or the new one.
+
+What it writes:
+
+- `names.hpp`: `inline constexpr sq::messaging::Key<T, verbs[, with_uid]>
+  id{ "name" };` per entry, its note as the comment. A `constexpr` key is
+  its name's hash, so an unused key costs nothing in the app.
+- `layouts.hpp`: `extern const sq::gui::Layout name;` per layout, `all()`
+  and `find()`.
+- `layouts.cpp`: per layout, in an anonymous namespace, its text as one
+  `char` array (escaped: `\"`, `\\`, and octal for `'\0'`, `?` and anything
+  unprintable, so no trigraph or digit after an escape can change it), its
+  nodes as designated initializers (`.bind` through the `constexpr`
+  `Name( "..." )`, so the hash is the same function's), its numbers; then a
+  `constinit const Layout` over them, and a sorted array of pointers that
+  `find` binary-searches.
+
+**Why it compiles from the library and not a copy.** `sqgen` links
+`layout.cpp`, `layout_writer.cpp` and `layout_file.cpp` themselves: the
+tables it writes are the writer's, checked by the same `check`, and
+`sqgen_test` compares one with a C++-written one field by field.
+
+## The app build: `mk/pkg_squared_core.mk`
+
+The package's mk file, not the project template, so no template change. It
+applies only when `sq_app/names.json` or `sq_app/layouts/*.json` exists:
+
+- `$(BUILD)/host/sqgen` is built with `HOST_CXX` from 11 framework sources
+  plus `yyjson.c` (`HOST_CC`), like `sqconsole`, and rebuilt when one of
+  them changes, or a layout, messaging or data header.
+- `$(BUILD)/gen/layouts.cpp` depends on sqgen, every input file, and an
+  `inputs` file listing them, rewritten only when the list changes (a
+  `$(shell)` at parse time), so adding or removing a layout regenerates.
+  The recipe touches it, as sqgen may leave it unchanged.
+- It joins the app through the existing hooks: `SQ_KIT_SRC +=` the
+  generated source, `SQ_KIT_CPPFLAGS += -I$(BUILD)/gen`.
+- Every app object gets an **order-only** prerequisite on it: generation
+  happens before any compile, and the compiler's dependency files then say
+  which objects really include the generated headers.
+
+## Memory
+
+In the app: the tables only, in read-only data. Per layout: 32 bytes a
+node, its text (each word and line once, with a `'\0'`), 4 bytes a number,
+the 72-byte `Layout`, and 8 bytes in the sorted array. The test's
+`settings` (15 nodes, 212 bytes of text, 5 numbers) is 792 bytes. Nothing is allocated
+until `instantiate`. `names.hpp` adds nothing that is not used. No JSON
+reader and no `sqgen` is in the app: `layout_file.cpp` is in
+`libsquared_gui.a`, but a static archive's member is linked only when
+something refers to it, and nothing in an app does.
+
 ## Standard library
 
 Kept, in the push path only: `std::unique_ptr` and `std::string` (the
 widgets' own types) and `std::function` (inside `Button`, which holds the
 `TapCall`). Passed over: `std::function` for the hooks (function pointers).
 See [standard-library-deviations.md](standard-library-deviations.md).
+
+Build-time code (`layout_file.cpp`, `sqgen`) uses the standard library
+freely, `std::map` (in `JsonValue`), `std::string` paths and messages,
+`std::vector` problems, `<filesystem>`: none of it reaches an app.
 
 ## Tested
 
@@ -147,6 +263,25 @@ See [standard-library-deviations.md](standard-library-deviations.md).
 
 Planted bugs, 19 here and 2 in the bridge, each fail a test (the
 `plant70.py` script of the package's checks).
+
+`gui/test/layout_file_test.cpp` and `layout_file_cases.txt`: the reader.
+The cases are data, one a line (kind, JSON, the problem expected: exactly,
+by its start, `ok`, or a count), so a case reads as the file it is about and
+no C++ formatter touches the long JSON. Every case runs and every failing one
+is printed with its line. The file is a prerequisite of the test binary,
+because a test runs again only when its binary is newer than its pass.
+Beside the cases: `names.json` read into its schema, and a file giving the
+same table as the C++ writer.
+
+`gui/test/sqgen_test.cpp`: `sqgen` end to end. The gui Makefile builds it,
+runs it on `test/sqgen/`, and compiles the test with what it wrote: the keys'
+types (`static_assert`), the layouts found, sorted and checked, `settings`
+equal to the writer's table, and built. Then it runs `sqgen` again: unchanged
+input writes nothing; the wrong files in `test/sqgen/bad/` and `keyword/`
+print exactly their `expected.txt` and write nothing; a missing file or
+directory, and bad arguments.
+
+Planted bugs for 7.0b, 29, each fail a test (`plant71.py`).
 
 Not covered: the cell placement itself (grow, pad, span reach `Cell`, which
 no test reads back without laying out with a painter); the Stage's tests will

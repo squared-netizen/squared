@@ -20,7 +20,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing
-  - [layouts](layouts.md) &mdash; screens and panes as data: the node table, writing one from C++, layout files, taps, and building widgets from it
+  - [layouts](layouts.md) &mdash; screens and panes as data: the node table, writing one from C++, layout files, `names.json`, the `sqgen` build step, taps, and building widgets from it
 - [messaging](messaging.md) &mdash; the Telegraph: names, addresses, keys, the 32-byte telegram and its text form, the rings, the cache, lists, both ends, and the model's thread
 - [math](math.md) &mdash; small value types used across the framework
 - [time](time.md) &mdash; the time between ticks (`Timepiece`), the clocks, and a model's timers (`DeadlineQueue`)
@@ -35,7 +35,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `files` | 4 | 5 | `squared/files/files.hpp` |
 | `gles` | 5 | 11 | `squared/gles/gles.hpp` |
 | `graphics` | 11 | 19 | `squared/graphics/graphics.hpp` |
-| `gui` | 32 | 43 | `squared/gui/gui.hpp` |
+| `gui` | 33 | 43 | `squared/gui/gui.hpp` (not `layout_file.hpp`, which is for tools) |
 | `messaging` | 13 | 6 | `squared/messaging/messaging.hpp` |
 | `math` | 2 | 0 | `squared/math/math.hpp` |
 | `time` | 5 | 0 | `squared/time/time.hpp` |

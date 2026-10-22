@@ -119,6 +119,11 @@ template<typename K>
     return K::verbs.has( Verb::do_ ) ? Verb::do_ : Verb::set;
 }
 
+/// The layout-file reader's way in (`layout_file.hpp`): adding a node by its
+/// type and binding by a name read at run time, which C++ code does through
+/// widget types and keys instead.
+struct FileWriting;
+
 } // namespace detail
 
 /** @brief Where a tap goes, when it navigates rather than sends. */
@@ -205,6 +210,7 @@ class NodeWriter final
 
     private:
         friend class LayoutWriter;
+        friend struct detail::FileWriting;
         static constexpr std::uint16_t none = UINT16_MAX; ///< not written
         NodeWriter( LayoutWriter *writer, std::uint16_t index ) noexcept
             : writer_( writer )
@@ -270,6 +276,7 @@ class LayoutWriter final
 
     private:
         friend class NodeWriter;
+        friend struct detail::FileWriting;
 
         /// The layout's own table, as a parent; a layout holds fewer nodes.
         static constexpr std::uint16_t root = UINT16_MAX - 1;

@@ -1,0 +1,16 @@
+{
+  "rows": [
+    [ { "type": "check_box", "text": "Sound", "bind": "settings.sound" } ],
+    [ { "type": "slider", "bind": "settings.volume", "min": 0, "max": 11, "step": 0.5, "fill_x": true } ],
+    [ { "type": "text_field", "text": "", "bind": "settings.name", "pad": 4 } ],
+    [ { "type": "table", "rows": [
+        [ { "type": "button", "text": "Mute", "tap": "set settings.sound false" },
+          { "type": "button", "text": "Loud", "tap": "set settings.volume 11.0" } ],
+        [ { "type": "separator", "vertical": true },
+          { "type": "progress_bar", "bind": "settings.volume", "max": 11 } ] ] } ],
+    [ { "type": "scroll", "node": { "type": "label", "text": "long" } },
+      { "type": "stack", "nodes": [ { "type": "image", "text": "white" }, { "type": "custom", "name": "minimap" } ] } ],
+    [ { "type": "button", "text": "Discard", "tap": "open discard", "align": ["end", "start"] },
+      { "type": "button", "text": "Back", "tap": "back" } ]
+  ]
+}

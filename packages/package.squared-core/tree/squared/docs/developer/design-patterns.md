@@ -88,6 +88,19 @@ bytes for the writer, 16 for a `NodeWriter` (a pointer and an index); nothing
 allocated. Chosen over building widgets directly from C++, which would have
 been a second way to make a screen ([layouts.md](layouts.md)).
 
+## Attorney &mdash; `detail::FileWriting`
+
+A layout file needs two writer calls the typed API rightly refuses at compile
+time: adding a node by its `NodeType`, and binding by a name rather than a
+`Key`. `LayoutWriter` and `NodeWriter` befriend one struct,
+`gui::detail::FileWriting`, defined only in `layout_file.cpp`, which forwards
+exactly those two calls to private members. The textbook attorney grants a
+named client a subset of a class's privates; here the client is a whole
+translation unit, and nothing outside it can call the attorney. Chosen over
+making the calls public (an app could then bypass the checks the typed API
+makes) or a second writer for files (two writers would have to agree). Cost:
+two `friend` lines; no bytes, no indirection.
+
 ## Factory over a type tag &mdash; `instantiate`
 
 Widgets are made from nodes by a `switch` on `NodeType`, with custom types

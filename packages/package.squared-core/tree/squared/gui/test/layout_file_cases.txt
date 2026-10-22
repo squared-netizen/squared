@@ -1,0 +1,89 @@
+# Cases for layout_file_test: one per line, three fields separated by tabs.
+#
+#   kind      names: the whole names.json; layout: the whole layout file, t.json;
+#             node: one node, alone in a layout's first row
+#   input     JSON, on one line
+#   expected  the one problem, exactly ("where: what"); ending " ...": it starts so;
+#             "ok": no problem; "N problems": that many
+#
+# The layouts are read against the names.json in the test (counter.ticks,
+# settings.sound, settings.volume, settings.name, file.open, game.start,
+# player.pos, item.name, the list inventory; the screen workspace) and the
+# layouts landing and settings (screens) and discard (a pane).
+
+# names.json
+names	{ "names": 	names.json:1:12: not JSON: ...
+names	[]	names.json: not an object ...
+names	{ "nams": {} }	names.json: nams: not a key of names.json (names, screens, note)
+names	{ "names": { "Settings.x": { "verbs": ["do"] } } }	names.json: names["Settings.x"]: not a name: lowercase words, digits and _, between dots
+names	{ "names": { "a.b": { "type": "float", "verbs": ["state"] } } }	names.json: names["a.b"].type: not a type: bool, int, number, vec2, vec3, vec4, text, uids
+names	{ "names": { "a.b": { "type": "int", "verbs": ["get"] } } }	names.json: names["a.b"].verbs[0]: not a verb: state, event, set or do
+names	{ "names": { "a.b": { "verbs": ["do", "do"] } } }	names.json: names["a.b"].verbs[1]: given twice
+names	{ "names": { "a.b": { "type": "int" } } }	names.json: names["a.b"]: no verbs: say which of state, event, set and do it carries
+names	{ "names": { "a.b": { "verbs": ["state"] } } }	names.json: names["a.b"]: state and set carry a value: give it a type
+names	{ "names": { "a.b": { "verbs": ["do"], "uid": 1 } } }	names.json: names["a.b"].uid: true or false
+names	{ "names": { "a.b": { "verbs": ["do"], "tpye": "int" } } }	names.json: names["a.b"].tpye: not a key of an address (type, verbs, uid, note; or list)
+names	{ "names": { "rows": { "list": "Item" } } }	names.json: names["rows"].list: a list names its rows' element: "item"
+names	{ "names": { "rows": { "list": "item" }, "rows.count": { "type": "int", "verbs": ["state"] } } }	names.json: names["rows.count"]: declared twice (a list declares <name>.count itself)
+names	{ "screens": ["work", "work"] }	names.json: screens[1]: work given twice
+names	{ "screens": "work" }	names.json: screens: a list ...
+
+# Layout files
+layout	{ "rows": [ [ ] 	t.json:1:17: not JSON: ...
+layout	{ "kind": "page" }	t.json: kind: screen or pane
+layout	{ "rows": [], "colour": 1 }	t.json: colour: not a key of a layout (kind, rows, note)
+layout	{ "rows": {} }	t.json: rows: a list of rows, each a list of nodes
+layout	{ "rows": [ [] ] }	t.json: rows[0]: a row is a list of one node or more
+layout	{ "rows": [ [ { "type": "label", "grwo": 1 }, { "type": "button", "tap": "jump" } ], [] ] }	3 problems
+
+# Nodes: their keys and values, binds, taps, and paths into containers
+node	"label"	t.json: rows[0][0]: a node is an object with a type
+node	{ "text": "x" }	t.json: rows[0][0]: a node is an object with a type
+node	{ "type": "lable" }	t.json: rows[0][0].type: not a type: label, button ...
+node	{ "type": "label", "tap": "back" }	t.json: rows[0][0].tap: not a key of a label
+node	{ "type": "label", "grwo": true }	t.json: rows[0][0].grwo: not a key of a label
+node	{ "type": "label", "text": 5 }	t.json: rows[0][0].text: words, in a string
+node	{ "type": "image" }	t.json: rows[0][0]: an image names its drawable in text
+node	{ "type": "custom" }	t.json: rows[0][0]: a custom node names its type: "name": "minimap"
+node	{ "type": "label", "grow": "yes" }	t.json: rows[0][0].grow: true or false
+node	{ "type": "label", "pad": -1 }	t.json: rows[0][0].pad: a number, 0 or more
+node	{ "type": "label", "span": 0 }	t.json: rows[0][0].span: a whole number of columns, 1 to 255
+node	{ "type": "label", "span": 1.5 }	t.json: rows[0][0].span: a whole number of columns, 1 to 255
+node	{ "type": "label", "align": "left" }	t.json: rows[0][0].align: start, center or end, or two of them: across, down
+node	{ "type": "label", "align": ["start"] }	t.json: rows[0][0].align: two of start, center and end: across, then down
+node	{ "type": "label", "style": "" }	t.json: rows[0][0].style: a style's name from the skin
+node	{ "type": "slider", "min": 2, "max": 1 }	t.json: rows[0][0]: min is not below max
+node	{ "type": "slider", "step": -1 }	t.json: rows[0][0].step: a step of 0 or more
+node	{ "type": "slider", "min": "low" }	t.json: rows[0][0].min: a number
+node	{ "type": "progress_bar", "step": 1 }	t.json: rows[0][0].step: not a key of a progress_bar
+node	{ "type": "separator", "vertical": 1 }	t.json: rows[0][0].vertical: true or false
+node	{ "type": "label", "bind": "counter.tick" }	t.json: rows[0][0].bind: counter.tick is not in names.json
+node	{ "type": "label", "bind": "file.open" }	t.json: rows[0][0].bind: file.open carries no state to show
+node	{ "type": "label", "bind": "item.name" }	t.json: rows[0][0].bind: item.name takes a uid ...
+node	{ "type": "check_box", "bind": "settings.volume" }	t.json: rows[0][0].bind: a check_box cannot show a number (settings.volume)
+node	{ "type": "text_field", "bind": "settings.sound" }	t.json: rows[0][0].bind: a text_field cannot show a bool (settings.sound)
+node	{ "type": "label", "bind": 3 }	t.json: rows[0][0].bind: an address's name, from names.json
+node	{ "type": "button", "tap": "jump" }	t.json: rows[0][0].tap: not a tap ...
+node	{ "type": "button", "tap": "do file.close" }	t.json: rows[0][0].tap: file.close is not in names.json
+node	{ "type": "button", "tap": "set file.open \"x\"" }	t.json: rows[0][0].tap: file.open does not carry set
+node	{ "type": "button", "tap": "set settings.volume 11" }	t.json: rows[0][0].tap: settings.volume takes a number, not an int: write a number with a point (7.0)
+node	{ "type": "button", "tap": "do file.open" }	t.json: rows[0][0].tap: file.open takes text: give it one
+node	{ "type": "button", "tap": "set settings.sound maybe" }	t.json: rows[0][0].tap: not a telegram ...
+node	{ "type": "button", "tap": "push discard" }	t.json: rows[0][0].tap: discard is a pane: open it
+node	{ "type": "button", "tap": "open settings" }	t.json: rows[0][0].tap: settings is a screen: push or replace it
+node	{ "type": "button", "tap": "push nowhere" }	t.json: rows[0][0].tap: no layout or screen is called nowhere ...
+node	{ "type": "button", "tap": "close" }	t.json: rows[0][0].tap: close closes the pane it is in: this is a screen
+node	{ "type": "table", "rows": [ [ { "type": "label" } ], [ { "type": "label", "bind": "x.y" } ] ] }	t.json: rows[0][0].rows[1][0].bind: x.y is not in names.json
+node	{ "type": "scroll", "node": { "type": "label", "text": 1 } }	t.json: rows[0][0].node.text: words, in a string
+node	{ "type": "stack", "nodes": [ { "type": "label" }, { "type": "box" } ] }	t.json: rows[0][0].nodes[1].type: not a type ...
+node	{ "type": "stack", "nodes": {} }	t.json: rows[0][0].nodes: a list of nodes
+
+# Accepted
+layout	{ "rows": [] }	ok
+layout	{ "note": "words", "rows": [ [ { "type": "label", "note": "more words" } ] ] }	ok
+layout	{ "rows": [ [ { "type": "label", "bind": "player.pos" }, { "type": "label", "bind": "inventory.count" } ] ] }	ok
+layout	{ "rows": [ [ { "type": "button", "tap": "replace workspace" }, { "type": "button", "tap": "set settings.volume 11.0" } ] ] }	ok
+layout	{ "kind": "pane", "rows": [ [ { "type": "button", "tap": "close" }, { "type": "button", "tap": "open discard" } ] ] }	ok
+layout	{ "rows": [ [ { "type": "scroll" }, { "type": "stack" }, { "type": "table" } ] ] }	ok
+node	{ "type": "label", "align": ["end", "start"], "grow": true, "pad": 0, "span": 3, "style": "big" }	ok
+node	{ "type": "slider", "min": -1, "max": 1.5, "step": 0.25, "bind": "settings.volume" }	ok

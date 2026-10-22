@@ -1,5 +1,10 @@
 # namespace detail
 
+## Records
+
+* [FileWriting](FileWriting.md)
+
+
 ## Functions
 
 ### tap_verb

@@ -1,6 +1,6 @@
 # class LayoutWriter
 
-*Defined at [gui/layout_writer.hpp:238](../../../../gui/layout_writer.hpp#L238)*
+*Defined at [gui/layout_writer.hpp:244](../../../../gui/layout_writer.hpp#L244)*
 
 
 
@@ -22,37 +22,37 @@
 
 *public void LayoutWriter(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:243](../../../../gui/layout_writer.hpp#L243)*
+*Defined at [gui/layout_writer.hpp:249](../../../../gui/layout_writer.hpp#L249)*
 
 ### operator=
 
 *public LayoutWriter & operator=(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:244](../../../../gui/layout_writer.hpp#L244)*
+*Defined at [gui/layout_writer.hpp:250](../../../../gui/layout_writer.hpp#L250)*
 
 ### LayoutWriter
 
 *public void LayoutWriter(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:245](../../../../gui/layout_writer.hpp#L245)*
+*Defined at [gui/layout_writer.hpp:251](../../../../gui/layout_writer.hpp#L251)*
 
 ### operator=
 
 *public LayoutWriter & operator=(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:246](../../../../gui/layout_writer.hpp#L246)*
+*Defined at [gui/layout_writer.hpp:252](../../../../gui/layout_writer.hpp#L252)*
 
 ### ~LayoutWriter
 
 *public void ~LayoutWriter()*
 
-*Defined at [gui/layout_writer.hpp:247](../../../../gui/layout_writer.hpp#L247)*
+*Defined at [gui/layout_writer.hpp:253](../../../../gui/layout_writer.hpp#L253)*
 
 ### add
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:251](../../../../gui/layout_writer.hpp#L251)*
+*Defined at [gui/layout_writer.hpp:257](../../../../gui/layout_writer.hpp#L257)*
 
 
 
@@ -70,7 +70,7 @@
 
 *public bool complete()*
 
-*Defined at [gui/layout_writer.hpp:266](../../../../gui/layout_writer.hpp#L266)*
+*Defined at [gui/layout_writer.hpp:272](../../../../gui/layout_writer.hpp#L272)*
 
 
 

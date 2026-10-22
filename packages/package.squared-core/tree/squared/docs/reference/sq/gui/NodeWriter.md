@@ -1,6 +1,6 @@
 # class NodeWriter
 
-*Defined at [gui/layout_writer.hpp:135](../../../../gui/layout_writer.hpp#L135)*
+*Defined at [gui/layout_writer.hpp:140](../../../../gui/layout_writer.hpp#L140)*
 
 
 
@@ -58,7 +58,7 @@
 
 *public NodeWriter & bind(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:162](../../../../gui/layout_writer.hpp#L162)*
+*Defined at [gui/layout_writer.hpp:167](../../../../gui/layout_writer.hpp#L167)*
 
 
 
@@ -124,7 +124,7 @@
 
 *public NodeWriter & tap(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:175](../../../../gui/layout_writer.hpp#L175)*
+*Defined at [gui/layout_writer.hpp:180](../../../../gui/layout_writer.hpp#L180)*
 
 
 
@@ -134,7 +134,7 @@
 
 *public NodeWriter & tap(const K & key, const V & value)*
 
-*Defined at [gui/layout_writer.hpp:185](../../../../gui/layout_writer.hpp#L185)*
+*Defined at [gui/layout_writer.hpp:190](../../../../gui/layout_writer.hpp#L190)*
 
 
 
@@ -144,7 +144,7 @@
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:306](../../../../gui/layout_writer.hpp#L306)*
+*Defined at [gui/layout_writer.hpp:313](../../../../gui/layout_writer.hpp#L313)*
 
 
 

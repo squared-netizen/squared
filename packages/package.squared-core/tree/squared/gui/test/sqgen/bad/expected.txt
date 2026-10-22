@@ -1,0 +1,5 @@
+sqgen: names.json: names["a_b.c"]: becomes names::a_b_c, as a.b_c does: rename one
+sqgen: Page.json: a layout's name is its file's: lowercase words, digits and _
+sqgen: broken.json:2:1: not JSON: unexpected end of data
+sqgen: fine.json: rows[0][1].bind: a.b_c carries no state to show
+sqgen: 4 problems; nothing written

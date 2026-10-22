@@ -36,6 +36,18 @@ first few errors and where its log is (`build/release/docs/clang-doc.log`).
 `docs: clang-doc cannot compile #include <cstdint>` means it cannot see the
 C++ standard library at all; the lines under it are where it looked.
 
+## sqgen
+
+Compiles an app's `sq_app/names.json` and `sq_app/layouts/*.json` into C++:
+typed keys (`names.hpp`) and constant layout tables (`layouts.hpp`,
+`layouts.cpp`). The app's build runs it for you whenever those files exist,
+so you rarely run it yourself:
+
+    sqgen [--names FILE] [--layouts DIR] --out DIR
+
+A C++ program in `squared/tools/sqgen/`, built for your machine. Its files,
+its problems and its exit status: [layouts.md](layouts.md#sqgen-the-build-step).
+
 ## docs-archive.sh
 
 Zips documentation into one archive, for reading on another device or sharing.

@@ -6,7 +6,7 @@ Each type lives in its own header. The headers at the module root (`squared/gui/
 
 Developer counterpart: [../developer/gui.md](../developer/gui.md)
 
-Screens and panes as data &mdash; the node table, writing one from C++, and building widgets from it &mdash; are on their own page: [layouts.md](layouts.md).
+Screens and panes as data &mdash; the node table, writing one from C++, layout files and `names.json` compiled by `sqgen`, and building widgets from it &mdash; are on their own page: [layouts.md](layouts.md).
 
 ## Scene graph
 

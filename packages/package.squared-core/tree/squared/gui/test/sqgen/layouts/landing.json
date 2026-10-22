@@ -1,0 +1,13 @@
+{
+  "kind": "screen",
+  "note": "The first screen.",
+  "rows": [
+    [ { "type": "label", "text": "Hello \"world\"", "align": "start" } ],
+    [ { "type": "label", "bind": "counter.ticks" }, { "type": "label", "bind": "inventory.count" } ],
+    [ { "type": "button", "text": "Settings", "tap": "push settings", "grow_x": true, "span": 2 } ],
+    [ { "type": "button", "text": "Play", "tap": "do game.start" },
+      { "type": "button", "text": "Open", "tap": "do file.open \"notes.txt\"" } ],
+    [ { "type": "button", "text": "Work", "tap": "replace workspace" },
+      { "type": "button", "text": "Quit", "tap": "quit", "style": "danger" } ]
+  ]
+}
