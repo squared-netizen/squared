@@ -293,10 +293,11 @@ from the `.so`, which the kernel can drop and read again, where an asset is
 read into the heap first. A read still copies each file into a vector while
 it loads, as before; that is once a window.
 
-**The files** live at `stage/skin/default/` with the skin's sources (`raw/`,
-26 nine-patches and images it is packed from) and its previews, which are not
-compiled in, `NOTICE.md` (choice 4) and `LICENSE-2.0.txt`, the Apache
-License that a redistribution carries a copy of. One skin (choice 5): the template
+**The files** live at `stage/skin/default/`: `skin/`, the four compiled in,
+`NOTICE.md` (choice 4) and `LICENSE-2.0.txt`, the Apache License that a
+redistribution carries a copy of. Only those: the images the atlas is
+packed from (`raw/`) and the previews came along at first and were taken
+out on the user's word (pkg55); they are in libGDX's repository. One skin (choice 5): the template
 and hello no longer carry `sq_android/assets/skins/`; the demo keeps its own
 copy until it moves to `sq::App` (choice 6). An app's own skin is in the
 backlog.

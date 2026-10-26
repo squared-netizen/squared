@@ -10,12 +10,11 @@ Apache License 2.0.
 | Path | What |
 |---|---|
 | `skin/` | the skin as libGDX loads it: `uiskin.atlas`, its page `uiskin.png`, `uiskin.json`, `default.fnt` |
-| `raw/` | the images the atlas is packed from |
-| `preview.png`, `preview-large.png` | what it looks like |
 | `LICENSE-2.0.txt` | the Apache License, Version 2.0 |
 
-Only `skin/` is used: it is compiled into the stage library as
-`stage/src/default_skin.cpp`. After changing a file there, write that again
+Only the skin itself is here, not the images its atlas is packed from: those
+are in libGDX's repository, beside it. `skin/` is compiled into the stage
+library as `stage/src/default_skin.cpp`. After changing a file there, write that again
 from the tree's root:
 
 ```sh
