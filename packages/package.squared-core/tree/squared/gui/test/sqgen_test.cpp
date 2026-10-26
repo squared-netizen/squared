@@ -84,6 +84,8 @@ void layouts_found()
     }
     CHECK( layouts::find( "nothing" ) == nullptr && layouts::find( "" ) == nullptr );
     CHECK( layouts::discard.kind() == LayoutKind::pane );
+    // names.json's C++ screens, for the Stage to check at start.
+    CHECK( layouts::screens().size() == 1 && layouts::screens()[0] == "workspace" );
     CHECK( layouts::settings.kind() == LayoutKind::screen );
     CHECK( layouts::landing.text( layouts::landing.nodes()[0].text ) == "Hello \"world\"" );
     CHECK( layouts::discard.text( layouts::discard.nodes()[0].text ) == "Discard?" );

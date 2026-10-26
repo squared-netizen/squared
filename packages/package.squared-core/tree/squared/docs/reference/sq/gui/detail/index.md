@@ -11,5 +11,5 @@
 
 *Verb tap_verb()*
 
-*Defined at [gui/layout_writer.hpp:117](../../../../../gui/layout_writer.hpp#L117)*
+*Defined at [gui/layout_writer.hpp:121](../../../../../gui/layout_writer.hpp#L121)*
 

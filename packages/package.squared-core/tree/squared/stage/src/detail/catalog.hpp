@@ -3,6 +3,7 @@
 #include <squared/gui/layout.hpp>
 
 #include <span>
+#include <string_view>
 
 // The app's layouts, as sqgen writes them into build/gen/layouts.cpp; the
 // declaration is the one sqgen's layouts.hpp makes. An app without layout
@@ -13,5 +14,8 @@ namespace layouts
 
 /** @brief Every layout of the app, sorted by name. */
 [[nodiscard]] std::span<const sq::gui::Layout *const> all() noexcept;
+
+/** @brief The C++ screens names.json lists, sorted. */
+[[nodiscard]] std::span<const std::string_view> screens() noexcept;
 
 } // namespace layouts

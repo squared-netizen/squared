@@ -90,7 +90,8 @@ int main()
     app.handle_event( event );
     event.type = sq::app::Event::Type::PointerUp;
     app.handle_event( event );
-    CHECK( said.find( "push settings: no layout is called that" ) != std::string::npos );
+    CHECK( said.find( "push settings: no layout or added screen is called that" ) !=
+           std::string::npos );
     CHECK( app.stage.depth() == 1 );
 
     app.update( std::chrono::milliseconds( 16 ) );

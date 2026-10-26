@@ -437,6 +437,9 @@ constexpr std::string_view keywords[] = {
     out << "[[nodiscard]] std::span<const sq::gui::Layout *const> all() noexcept;\n\n";
     out << "/// The layout called `name`; nullptr when there is none.\n";
     out << "[[nodiscard]] const sq::gui::Layout *find( std::string_view name ) noexcept;\n\n";
+    out << "/// The C++ screens names.json lists, sorted: each one added by the app\n";
+    out << "/// (`app.stage.add<T>()`), which the Stage checks at start.\n";
+    out << "[[nodiscard]] std::span<const std::string_view> screens() noexcept;\n\n";
     out << "} // namespace layouts\n";
     return out.str();
 }
@@ -486,6 +489,7 @@ void layout_definition( std::ostringstream &out, const Compiled &layout )
 }
 
 [[nodiscard]] std::string layouts_source( const std::vector<Compiled> &layouts,
+                                          std::vector<std::string> screens,
                                           const std::string &source )
 {
     std::ostringstream out;
@@ -520,6 +524,18 @@ void layout_definition( std::ostringstream &out, const Compiled &layout )
     out << "        std::lower_bound( sorted.begin(), sorted.end(), name, named_below );\n";
     out << "    if( found == sorted.end() || ( *found )->name() != name ) {\n";
     out << "        return nullptr;\n    }\n    return *found;\n}\n\n";
+    std::sort( screens.begin(), screens.end() );
+    out << "namespace\n{\n\n";
+    out << "constexpr std::array<std::string_view, " << screens.size() << "> screen_names = {";
+    for( std::size_t i = 0; i < screens.size(); ++i ) {
+        out << ( i == 0 ? " " : ", " ) << literal( screens[i] );
+    }
+    if( !screens.empty() ) {
+        out << " ";
+    }
+    out << "};\n\n} // namespace\n\n";
+    out << "std::span<const std::string_view> screens() noexcept\n{\n    return "
+           "screen_names;\n}\n\n";
     out << "} // namespace layouts\n";
     return out.str();
 }
@@ -762,7 +778,8 @@ int main( int argc, char **argv )
     if( write_if_changed( out / "layouts.hpp", layouts_header( layouts, layouts_from ) ) ) {
         ++written;
     }
-    if( write_if_changed( out / "layouts.cpp", layouts_source( layouts, layouts_from ) ) ) {
+    const std::string source = layouts_source( layouts, schema.screens, layouts_from );
+    if( write_if_changed( out / "layouts.cpp", source ) ) {
         ++written;
     }
     std::string summary = std::to_string( schema.names.size() ) + " key";

@@ -78,13 +78,18 @@ runner's own precondition is one to a line).
 
 ## The Stage
 
-264 bytes (`static_assert`ed): the screens as 16 pointers, 4 waiting changes
-(a `TapKind` and a pointer each), the report, the text-input service, the
-`Drawing` pointer, the pixel and logical sizes, the safe area, a depth, a
-count and four flags.
+936 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
+the same in both standard libraries): the screens (16 `Shown`s, two pointers
+each), 4 waiting changes (a `TapKind` and a `Shown`), the 16 added C++
+screens (a pointer each), the 16 custom types (a name and a function pointer
+each), the report, the text-input service, the `Drawing` pointer, the pixel
+and logical sizes, the safe area, a depth, three counts and four flags. Was
+264 in 7.1; 7.2's registries and the second pointer per screen are the rest.
 
-**The stack holds pointers to layouts**, nothing else (7.1's choice 7): only
-the top screen has widgets. `show_top` makes a new root `Table`, hands it to
+**The stack holds a layout or a C++ screen per entry**, nothing else (7.1's
+choice 7, 7.2's choice 3): `Shown` is a `const Layout *` and a
+`const detail::ScreenEntry *`, one of them set. Only the top screen has
+widgets. `show_top` makes a new root `Table`, hands it to
 the `Ui` (which frees the old tree), and runs `instantiate` with the Stage's
 hooks: `tapped` is a static member taking the Stage as context. So `back`
 rebuilds the screen beneath from its layout, and 7.6's "release hidden
@@ -120,13 +125,57 @@ when nothing else defines it, and linked as an object beside a strong
 definition (the stage test does both) the strong one wins. No registration
 call, no static constructor. ELF behaviour, on both targets (Linux, Android).
 
+## C++ screens (7.2)
+
+**A screen is a type** (`sq::ScreenType`: a `name` convertible to
+`string_view` and a static `build( LayoutWriter & )`), not an object: the
+Stage keeps `&detail::screen_entry<S>`, an `inline constexpr` variable
+template of the name and the function pointer, one per type in read-only
+data. So pushing a screen allocates nothing and costs no vtable; there is no
+per-screen state to lose (the model holds the values; 7.6's record will hold
+a scroll position). Rejected (7.2's choice 1): the spec's `sq::Screen`
+subclass with a virtual `build()` and an object per push.
+
+**`write`** makes a `LayoutWriter` over the window's scratch
+(`Drawing::Scratch`: 256 nodes, 8 KB of text, 256 numbers, and the `Layout`
+it wrote: 17,480 bytes, the same in both libraries) and calls `build`; an
+incomplete writer (storage out, or a refused call) is reported and what it
+wrote is shown, since the writer's table is always consistent. `instantiate`
+copies what the widgets keep (words, tap lines), so the scratch is free again
+as soon as the screen is built; `back` writes it again.
+
+**By name.** `add<S>()` puts the entry in a table of 16 (`max_added`),
+refusing an invalid name (`messaging::valid_name`), a name a layout file has
+(a layout wins any lookup, so the screen could never be reached), and a name
+another entry has; adding the same entry again is a no-op, which a
+`squared_main` run again after a quit relies on (the tables are cleared on a
+quit anyway). A tap's target resolves to a layout first (`find`, a binary
+search), then an added screen (a linear scan of at most 16). sqgen writes
+`names.json`'s `screens` as `layouts::screens()`, sorted, beside
+`layouts::all()`, with the same weak default; after `squared_main`,
+`check_screens` reports each one not added. That is the check the build
+cannot make: the layouts' targets are checked against the list at build
+time, the list against the app's `add` calls at start.
+
+**Typed taps** live in gui, which knows no Stage: `NodeWriter::tap<S>( how )`
+takes any `S` with a `name` (`gui::detail::named`) and writes the same line
+`tap( how, S::name )` would.
+
+**Custom nodes.** `custom( name, make )` puts a name and a
+`CustomMaker` (`std::unique_ptr<gui::Widget> (*)()`) in a table of 16; the
+Stage's `made`, a static member, is `instantiate`'s `custom` hook and finds
+the maker by a linear scan. No maker: `instantiate` stands a label in, and
+reports the node as built short. A function pointer, not `std::function`: a
+maker needs no captures (it makes a widget, the widget reads the model).
+
 ## `Stage::Drawing`
 
-1,648 bytes under libc++ (Android, Termux) and 1,832 under libstdc++
-(`static_assert`ed for each: the `Ui` holds standard containers, whose sizes
-are the library's), one allocation per window: the atlas, the
-font, the sprite batch, the `Ui`, a `loaded` flag, the camera and the
-painter, **in that order**, so the constructor can load in its member
+19,128 bytes under libc++ (Android, Termux) and 19,312 under libstdc++:
+1,648 and 1,832 for the window's own pieces (`static_assert`ed for each: the
+`Ui` holds standard containers, whose sizes are the library's) and the
+17,480-byte scratch, last, so the two add exactly. One allocation per
+window: the atlas, the font, the sprite batch, the `Ui`, a `loaded` flag, the
+camera, the painter and the scratch, **in that order**, so the constructor can load in its member
 initializers: `loaded( load( files, why ) )` loads the atlas, the font and the
 skin straight into the `Ui`'s own skin (no copy, no move), then the camera and
 the painter (which takes the loaded font) are made; the body sets the
@@ -157,11 +206,15 @@ drawable missing) is reported and shown.
 - **Command queue (bounded)**: the Stage's waiting navigations, above.
 - **Type erasure**: `detail::ModelHolder`, above. Chosen over `std::function`
   (it holds an object, not a call) and over `std::any` (RTTI).
+- **Registry (bounded)**: the added screens and the custom makers, 16 each,
+  no allocation, filled in `squared_main`; a full table refuses and reports.
+- **Static polymorphism**: a C++ screen is any type `sq::ScreenType`
+  accepts, reached through one function pointer; no base class.
 
 ## Standard library
 
 Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
-`std::array` for the stack and the queue; `std::string` and `std::vector`
+`std::array` for the stack, the queue, the registries and the scratch; `std::string` and `std::vector`
 while a skin loads (once per window, in `attach`); `gui::FontPtr`
 (`std::shared_ptr`), gui's own type. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
@@ -172,9 +225,10 @@ hooks and the report (function pointers). See
 
 | What | Where | When | Size |
 |---|---|---|---|
-| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 384 |
+| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,088 (the Stage is 936) |
 | the model's runner | heap | `run` | the runner and the model |
-| `Stage::Drawing` | heap | each window | 1,648 (libc++; 1,832 libstdc++), plus the skin's textures and tables |
+| `Stage::Drawing` | heap | each window | 19,128 (libc++; 19,312 libstdc++), the scratch's 17,480 included, plus the skin's textures and tables |
+| a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
 | a tap's telegram | stack | each tap | 1 KB |
 | a report line | stack | each report | 256 bytes |
@@ -203,6 +257,15 @@ template's default skin in `test/assets/` and layouts written with
 - **No skin:** reported, `failed()`, no widgets, the stack kept; a layout
   `check` refuses: reported, nothing built.
 
+**C++ screens (7.2):** a typed tap reaches one by name; `top_name`,
+`showing`; a custom node made by its maker and one without (stood in,
+reported); no allocation in frames on it; `back` builds the C++ screen again,
+then the layout beneath; a name with neither layout nor screen; a screen
+bigger than the scratch shows what fit and is reported; a C++ screen as the
+root, its Back leaving; names.json's screens checked at start (one not
+added); the refused adds (not a name, a layout's name); after a quit the
+tables are filled again with nothing said twice.
+
 `stage/test/stage_alone_test.cpp`: an App with no layout files links (the
 weak default), shows a C++ layout, and a `push` tap to a name says there is
 none.
@@ -215,6 +278,12 @@ window, the line not made again, a recreated activity shutting down, a quit
 not stopping the model, the Stage's leave not heard, each lifecycle call not
 sent, an inline model never turned, reports not reaching the Stage, back by
 key staying, and the default catalog not weak.
+
+Planted bugs for 7.2, 12 (`plant73.py`), each fail a test: a C++ screen not
+built, an overflow not said, taps not reaching added screens, a bad name or a
+layout's name added, custom makers not used, names.json's screens not checked
+or all said, a typed tap with no name, `top_name` of a layout only,
+`replace<S>` pushing, and sqgen writing no screens.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

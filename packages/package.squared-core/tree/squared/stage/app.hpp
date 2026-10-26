@@ -138,7 +138,7 @@ class App final : public app::Application
 
 // The Telegraph line (88,000 bytes at the default knobs, which size it), then
 // the Stage, the model's runner, and the App's own few bytes.
-static_assert( sizeof( App ) == sizeof( messaging::TelegraphLine ) + 384 );
+static_assert( sizeof( App ) == sizeof( messaging::TelegraphLine ) + 1088 );
 
 } // namespace sq
 

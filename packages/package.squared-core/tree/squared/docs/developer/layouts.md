@@ -190,15 +190,17 @@ What it writes:
 - `names.hpp`: `inline constexpr sq::messaging::Key<T, verbs[, with_uid]>
   id{ "name" };` per entry, its note as the comment. A `constexpr` key is
   its name's hash, so an unused key costs nothing in the app.
-- `layouts.hpp`: `extern const sq::gui::Layout name;` per layout, `all()`
-  and `find()`.
+- `layouts.hpp`: `extern const sq::gui::Layout name;` per layout, `all()`,
+  `find()`, and `screens()` (7.2): `names.json`'s `screens`, sorted, which
+  the Stage checks the app added ([stage.md](stage.md#c-screens-72)).
 - `layouts.cpp`: per layout, in an anonymous namespace, its text as one
   `char` array (escaped: `\"`, `\\`, and octal for `'\0'`, `?` and anything
   unprintable, so no trigraph or digit after an escape can change it), its
   nodes as designated initializers (`.bind` through the `constexpr`
   `Name( "..." )`, so the hash is the same function's), its numbers; then a
   `constinit const Layout` over them, and a sorted array of pointers that
-  `find` binary-searches.
+  `find` binary-searches; the screens as a `constexpr` array of
+  `string_view`s.
 
 **Why it compiles from the library and not a copy.** `sqgen` links
 `layout.cpp`, `layout_writer.cpp` and `layout_file.cpp` themselves: the

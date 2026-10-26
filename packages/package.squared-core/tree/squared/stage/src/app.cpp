@@ -40,6 +40,8 @@ bool App::create( app::Runtime &runtime )
         quit_ = false;
         visible_ = true;
         squared_main( *this );
+        // Every C++ screen names.json lists should be added by now.
+        stage.check_screens();
     }
     // A skin that will not load is not a reason to refuse to start: the
     // Stage draws dark red and has said why.

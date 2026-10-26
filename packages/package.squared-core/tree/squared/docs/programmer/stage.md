@@ -11,11 +11,11 @@ the rest.
 | Header | Gives you |
 |---|---|
 | `squared/stage/app.hpp` | `sq::App`, `squared_main` |
-| `squared/stage/stage.hpp` | `sq::Stage` |
+| `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
-Sprint 7.1. Panes (`open`, `close`) come in 7.3, binding a widget to a value
-in 7.5, C++ screens (a `build()`) in 7.2.
+Sprint 7.1, and 7.2's C++ screens and custom nodes. Panes (`open`, `close`)
+come in 7.3, binding a widget to a value in 7.5.
 
 ## The shortest call site
 
@@ -97,7 +97,12 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 | `replace( layout )` | show `layout` instead of the screen there is, or as the first |
 | `back()` | back to the screen beneath. False at the first screen: nothing to go back to |
 | `depth()` | how many screens, once anything waiting has happened |
-| `top()` | the screen shown; nullptr for none |
+| `push<S>()`, `replace<S>()` | the same for the C++ screen `S` (below) |
+| `add<S>()` | let taps reach the C++ screen `S` by its name (`push about`). In `squared_main`. False, and reported, for a name that is not one, that a layout file or another screen has, or past `max_added` (16) |
+| `custom( name, make )` | make a layout's custom node `name` (`"type": "custom", "name": "minimap"`) with `make`. `name` must outlive the Stage: a literal does. False, and reported, for a name taken or past 16 |
+| `top()` | the table shown: a layout, or what a C++ screen wrote (valid while shown); nullptr for none |
+| `top_name()` | the name of the screen shown; empty for none |
+| `showing<S>()` | whether the C++ screen `S` is the one shown |
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
 | `ui()` | the top screen's widgets (`sq::gui::Ui`); nullptr while no skin is loaded |
@@ -105,6 +110,62 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
 a compiled one (`layouts::settings`) is a constant, so it always does.
+
+## C++ screens
+
+What a layout file cannot say, a screen written in C++ can: a type with a
+name and a `build`, no object (`sq::ScreenType` checks it):
+
+```cpp
+struct About {
+    static constexpr std::string_view name = "about";
+    static void build( sq::gui::LayoutWriter &root )
+    {
+        root.add<sq::gui::Label>( "this screen is written in C++" );
+        root.row();
+        root.add<sq::gui::Button>( "Back" ).tap( sq::gui::Navigate::back );
+    }
+};
+
+app.stage.push<About>();
+```
+
+`build` writes the same table a layout file compiles to
+([layouts.md](layouts.md#from-c-layoutwriter)), and runs **each time the
+screen is shown**, so it keeps nothing between showings: values come from
+the model. It writes into a scratch the Stage keeps per window,
+`scratch_nodes` (256) nodes, `scratch_text` (8 KB) of text and
+`scratch_numbers` (256) numbers; a screen that writes more shows what fit,
+and is reported.
+
+**To reach it by name**, from a layout file's `push about` or another
+screen's tap, add it in `squared_main`, and list it in `names.json`'s
+`screens` (sqgen checks a layout's targets against the files and that list):
+
+```cpp
+void squared_main( sq::App &app )
+{
+    app.stage.add<About>();
+    app.stage.push( layouts::landing );
+}
+```
+
+At start the Stage reports each screen `names.json` lists that was not
+added. In C++, a tap can name the type instead: `.tap<About>(
+sq::gui::Navigate::push )` writes `push about`, checked when it compiles.
+
+## Custom nodes
+
+A layout's `"type": "custom"` node (`add_custom( "minimap" )` in C++) is made
+by a function the app gives:
+
+```cpp
+std::unique_ptr<sq::gui::Widget> make_minimap() { return std::make_unique<Minimap>(); }
+
+app.stage.custom( "minimap", make_minimap );
+```
+
+A custom node with no maker shows a label saying so, and is reported.
 
 **Navigation asked for while an event is being delivered waits** until
 delivery has finished: a tap's `push settings` is applied after the tap,
@@ -120,7 +181,7 @@ A button's tap (its `tap` in a layout file) does what it reads
 | Tap | Does |
 |---|---|
 | `set ...`, `do ...` | the telegram, to the model, as it reads. A full Telegraph drops it, and says so |
-| `push <name>`, `replace <name>` | that layout, found by `Stage::find`; a name with no layout is reported and does nothing |
+| `push <name>`, `replace <name>` | that layout, found by `Stage::find`, or that added C++ screen; a name with neither is reported and does nothing |
 | `back` | back; at the first screen, leave (as the back button does there) |
 | `quit` | quit |
 | `open <name>`, `close` | reported: panes come in 7.3 |
@@ -146,7 +207,11 @@ Nothing stops the app; each failure is one line to the platform's report
 |---|---|
 | `stage: the skin did not load: ...` | and why. The Stage draws dark red |
 | `stage: <layout>: <problem> (node N)` | `instantiate` refused the layout (dark red), or built it short: a custom type or a drawable missing, the rest shown |
-| `stage: tap <line>: no layout is called that` | a `push` or `replace` to a name that is not a layout |
+| `stage: tap <line>: no layout or added screen is called that` | a `push` or `replace` to a name that is neither |
+| `stage: names.json lists the screen <name>, and it is not added: ...` | at start: `add<S>()` it in `squared_main` |
+| `stage: add <name>: ...` | not a name; a layout file or another screen has it; 16 added already |
+| `stage: custom <name>: ...` | no name or maker; another maker has it; 16 already |
+| `stage: <screen>: not all of it was written: ...` | a C++ screen wrote past the scratch, or a call it made was refused; what fit is shown |
 | `stage: tap <line>: not a telegram` | a `set` or `do` line that does not read |
 | `stage: tap <line>: the Telegraph had no room; not sent` | the ring was full |
 | `stage: tap <line>: panes come in 7.3` | `open` or `close` |
@@ -156,11 +221,13 @@ Nothing stops the app; each failure is one line to the platform's report
 ## Memory
 
 The App is made once, in static storage, not on the heap: the Telegraph line
-(88,000 bytes at the default sizes, which its knobs set) and 384 bytes more.
-A model's runner is one allocation, at `run`. Each window allocates the
-skin's textures and tables and one block of 1,648 bytes on Android (batch,
-camera, painter, widgets); each screen shown allocates its widgets. **A frame allocates
-nothing.**
+(88,000 bytes at the default sizes, which its knobs set) and 1,088 bytes more
+(the Stage is 936: its stack, the added screens and custom types). A model's
+runner is one allocation, at `run`. Each window allocates the skin's textures
+and tables and one block of about 19 KB (on Android 19,128 bytes: batch,
+camera, painter, widgets, and the 17 KB scratch C++ screens write into); each
+screen shown allocates its widgets. A C++ screen itself allocates nothing.
+**A frame allocates nothing.**
 
 ## Lua
 

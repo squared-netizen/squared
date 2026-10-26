@@ -113,6 +113,10 @@ concept sets = messaging::sendable<K, Verb::set, V>;
 template<typename K, typename V>
 concept sent_value = ( does<K, V> || sets<K, V> ) && !K::takes_uid;
 
+/// Something with a name a navigation can name: a C++ screen (`S::name`).
+template<typename S>
+concept named = requires { std::string_view( S::name ); };
+
 template<typename K>
 [[nodiscard]] constexpr Verb tap_verb() noexcept
 {
@@ -174,6 +178,13 @@ class NodeWriter final
 
         /** @brief A button's tap that navigates; `target` names the screen or pane. */
         NodeWriter &tap( Navigate how, std::string_view target = {} ) noexcept;
+
+        /** @brief A navigation to the C++ screen `S`, by its name: `.tap<About>( Navigate::push )`. */
+        template<detail::named S>
+        NodeWriter &tap( Navigate how ) noexcept
+        {
+            return tap( how, std::string_view( S::name ) );
+        }
 
         /** @brief A button's tap that sends `do <key>`. */
         template<detail::done_key K>

@@ -1,6 +1,6 @@
 # class NodeWriter
 
-*Defined at [gui/layout_writer.hpp:140](../../../../gui/layout_writer.hpp#L140)*
+*Defined at [gui/layout_writer.hpp:144](../../../../gui/layout_writer.hpp#L144)*
 
 
 
@@ -58,7 +58,7 @@
 
 *public NodeWriter & bind(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:167](../../../../gui/layout_writer.hpp#L167)*
+*Defined at [gui/layout_writer.hpp:171](../../../../gui/layout_writer.hpp#L171)*
 
 
 
@@ -122,9 +122,19 @@
 
 ### tap
 
+*public NodeWriter & tap(Navigate how)*
+
+*Defined at [gui/layout_writer.hpp:184](../../../../gui/layout_writer.hpp#L184)*
+
+
+
+**brief** A navigation to the C++ screen `S`, by its name: `.tap<About>( Navigate::push )`. 
+
+### tap
+
 *public NodeWriter & tap(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:180](../../../../gui/layout_writer.hpp#L180)*
+*Defined at [gui/layout_writer.hpp:191](../../../../gui/layout_writer.hpp#L191)*
 
 
 
@@ -134,7 +144,7 @@
 
 *public NodeWriter & tap(const K & key, const V & value)*
 
-*Defined at [gui/layout_writer.hpp:190](../../../../gui/layout_writer.hpp#L190)*
+*Defined at [gui/layout_writer.hpp:201](../../../../gui/layout_writer.hpp#L201)*
 
 
 
@@ -144,7 +154,7 @@
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:313](../../../../gui/layout_writer.hpp#L313)*
+*Defined at [gui/layout_writer.hpp:324](../../../../gui/layout_writer.hpp#L324)*
 
 
 

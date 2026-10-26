@@ -433,7 +433,7 @@
 | quit |
 
 
-*Defined at [gui/layout_writer.hpp:130](../../../../gui/layout_writer.hpp#L130)*
+*Defined at [gui/layout_writer.hpp:134](../../../../gui/layout_writer.hpp#L134)*
 
 
 

@@ -184,7 +184,7 @@ it on; an app with neither builds as before.
 | File | Holds |
 |---|---|
 | `names.hpp` | Every address as a typed key, in `namespace names` |
-| `layouts.hpp` | Every layout, declared (`extern const sq::gui::Layout settings;`), in `namespace layouts`, with `all()` and `find(name)` |
+| `layouts.hpp` | Every layout, declared (`extern const sq::gui::Layout settings;`), in `namespace layouts`, with `all()` and `find(name)`; and `screens()`, the C++ screens `names.json` lists, which the Stage checks were added |
 | `layouts.cpp` | Their tables, as constants in read-only data; compiled into the app |
 
 ```cpp
@@ -278,6 +278,7 @@ chain:
 | `bind(key)` | Show the key's `state`. Only keys that carry `state` and take no uid compile |
 | `tap(line)` | A button's line, as a file writes it |
 | `tap(Navigate::push, "settings")` | A navigation: `push`, `replace`, `back`, `open`, `close`, `quit` |
+| `tap<About>(Navigate::push)` | A navigation to the C++ screen `About`, by its `name`, checked when it compiles ([stage.md](stage.md#c-screens)) |
 | `tap(key)`, `tap(key, value)` | A telegram: `do <key>`, or `do`/`set <key> <value>`; the type is checked when it compiles |
 | `add<W>(text)`, `add_custom(name)` | A node inside this table, scroll (one only) or stack |
 | `row()` | In this table, the next node starts a new row |

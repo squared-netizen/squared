@@ -25,6 +25,7 @@
 #include <squared/gui/src/skin_load_severity.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/ui.hpp>
+#include <squared/messaging/name.hpp>
 #include <squared/messaging/telegram_data.hpp>
 #include <squared/messaging/telegram_text.hpp>
 #include <squared/stage/stage.hpp>
@@ -102,6 +103,16 @@ struct Stage::Drawing final
         bool loaded;
         graphics::OrthographicCamera camera{ logical_short_side, logical_short_side };
         gui::BatchPainter painter{ batch, font.get() };
+
+        /// What a C++ screen writes into, and the table it wrote. Last, so
+        /// the window's size is the rest plus exactly this.
+        struct Scratch final
+        {
+                std::array<gui::LayoutNode, scratch_nodes> nodes{};
+                std::array<char, scratch_text> text{};
+                std::array<float, scratch_numbers> numbers{};
+                gui::Layout written;
+        } scratch;
 
     private:
         /// Load the skin from `files` into the widgets': false, with `why`, when it cannot be.
@@ -222,13 +233,15 @@ void Stage::attach( app::Runtime &runtime )
     drawing_.reset();
     failed_ = false;
     // The one allocation a window makes here, besides what the skin holds:
-    // the skin's pieces, the batch, the camera, the painter and the widgets.
-    // The widgets hold standard containers, whose sizes are the library's:
-    // libc++ (Android, Termux) and libstdc++ (desktop Linux) differ.
+    // the skin's pieces, the batch, the camera, the painter, the widgets,
+    // and the scratch a C++ screen writes into. The widgets hold standard
+    // containers, whose sizes are the library's: libc++ (Android, Termux)
+    // and libstdc++ (desktop Linux) differ. The scratch is the same in both.
+    static_assert( sizeof( Drawing::Scratch ) == 17480 );
 #if defined( _LIBCPP_VERSION )
-    static_assert( sizeof( Drawing ) == 1648 );
+    static_assert( sizeof( Drawing ) == 1648 + sizeof( Drawing::Scratch ) );
 #else
-    static_assert( sizeof( Drawing ) == 1832 );
+    static_assert( sizeof( Drawing ) == 1832 + sizeof( Drawing::Scratch ) );
 #endif
     std::string why;
     auto drawing = std::make_unique<Drawing>( runtime.files, why );
@@ -254,7 +267,11 @@ void Stage::clear() noexcept
     pending_count_ = 0;
     broken_ = false;
     leave_ = false;
-    screens_.fill( nullptr );
+    screens_.fill( {} );
+    added_.fill( nullptr );
+    customs_.fill( {} );
+    added_count_ = 0;
+    custom_count_ = 0;
     if( drawing_ != nullptr ) {
         show_top();
     }
@@ -400,13 +417,24 @@ bool Stage::push( const gui::Layout &layout ) noexcept
              static_cast<int>( name_of( layout ).size() ), name_of( layout ).data(), max_depth );
         return false;
     }
-    change( gui::TapKind::push, &layout );
+    change( gui::TapKind::push, { &layout, nullptr } );
+    return true;
+}
+
+bool Stage::push_screen( const detail::ScreenEntry &screen ) noexcept
+{
+    if( depth() >= max_depth ) {
+        say( "stage: push %.*s: the stack holds %zu screens",
+             static_cast<int>( screen.name.size() ), screen.name.data(), max_depth );
+        return false;
+    }
+    change( gui::TapKind::push, { nullptr, &screen } );
     return true;
 }
 
 void Stage::replace( const gui::Layout &layout ) noexcept
 {
-    change( gui::TapKind::replace, &layout );
+    change( gui::TapKind::replace, { &layout, nullptr } );
 }
 
 bool Stage::back() noexcept
@@ -414,7 +442,7 @@ bool Stage::back() noexcept
     if( depth() <= 1 ) {
         return false;
     }
-    change( gui::TapKind::back, nullptr );
+    change( gui::TapKind::back, {} );
     return true;
 }
 
@@ -441,13 +469,113 @@ std::size_t Stage::depth() const noexcept
 
 const gui::Layout *Stage::top() const noexcept
 {
-    return depth_ == 0 ? nullptr : screens_[depth_ - 1];
+    if( depth_ == 0 ) {
+        return nullptr;
+    }
+    const Shown &shown = screens_[depth_ - 1];
+    if( shown.layout != nullptr ) {
+        return shown.layout;
+    }
+    return drawing_ != nullptr ? &drawing_->scratch.written : nullptr;
 }
 
-void Stage::change( gui::TapKind kind, const gui::Layout *layout ) noexcept
+std::string_view Stage::top_name() const noexcept
+{
+    if( depth_ == 0 ) {
+        return {};
+    }
+    const Shown &shown = screens_[depth_ - 1];
+    return shown.layout != nullptr ? shown.layout->name() : shown.screen->name;
+}
+
+// --- names -----------------------------------------------------------------
+
+const detail::ScreenEntry *Stage::added( std::string_view name ) const noexcept
+{
+    for( std::size_t i = 0; i < added_count_; ++i ) {
+        if( added_[i]->name == name ) {
+            return added_[i];
+        }
+    }
+    return nullptr;
+}
+
+Stage::Shown Stage::resolve( std::string_view name ) const noexcept
+{
+    if( const gui::Layout *layout = find( name ) ) {
+        return { layout, nullptr };
+    }
+    return { nullptr, added( name ) };
+}
+
+bool Stage::add_screen( const detail::ScreenEntry &screen ) noexcept
+{
+    const auto name_size = static_cast<int>( screen.name.size() );
+    const char *name = screen.name.data();
+    if( !messaging::valid_name( screen.name ) ) {
+        say( "stage: add %.*s: not a name: lowercase words, digits and _", name_size, name );
+        return false;
+    }
+    if( const detail::ScreenEntry *there = added( screen.name ) ) {
+        if( there == &screen ) {
+            return true;
+        }
+        say( "stage: add %.*s: another screen has that name", name_size, name );
+        return false;
+    }
+    if( find( screen.name ) != nullptr ) {
+        say( "stage: add %.*s: a layout file has that name", name_size, name );
+        return false;
+    }
+    if( added_count_ == max_added ) {
+        say( "stage: add %.*s: %zu screens are added already", name_size, name, max_added );
+        return false;
+    }
+    added_[added_count_++] = &screen;
+    return true;
+}
+
+bool Stage::custom( std::string_view name, CustomMaker make ) noexcept
+{
+    const auto name_size = static_cast<int>( name.size() );
+    if( name.empty() || make == nullptr ) {
+        say( "stage: custom %.*s: a name and a maker", name_size, name.data() );
+        return false;
+    }
+    for( std::size_t i = 0; i < custom_count_; ++i ) {
+        if( customs_[i].name == name ) {
+            if( customs_[i].make == make ) {
+                return true;
+            }
+            say( "stage: custom %.*s: another maker has that name", name_size, name.data() );
+            return false;
+        }
+    }
+    if( custom_count_ == max_added ) {
+        say( "stage: custom %.*s: %zu types are there already", name_size, name.data(), max_added );
+        return false;
+    }
+    customs_[custom_count_++] = { name, make };
+    return true;
+}
+
+void Stage::check_screens() noexcept
+{
+    for( const std::string_view name : layouts::screens() ) {
+        if( added( name ) == nullptr ) {
+            say( "stage: names.json lists the screen %.*s, and it is not added: "
+                 "app.stage.add<...>() in squared_main",
+                 static_cast<int>( name.size() ), name.data() );
+        }
+    }
+}
+
+// --- the stack -------------------------------------------------------------
+
+void Stage::change( gui::TapKind kind, Shown shown ) noexcept
 {
     if( !dispatching_ ) {
-        apply( { kind, layout } );
+        apply( { kind, shown } );
         return;
     }
     if( pending_count_ == pending_.size() ) {
@@ -455,7 +583,7 @@ void Stage::change( gui::TapKind kind, const gui::Layout *layout ) noexcept
              pending_.size() );
         return;
     }
-    pending_[pending_count_++] = { kind, layout };
+    pending_[pending_count_++] = { kind, shown };
 }
 
 void Stage::apply( Change change ) noexcept
@@ -466,19 +594,19 @@ void Stage::apply( Change change ) noexcept
                 say( "stage: push: the stack holds %zu screens", max_depth );
                 return;
             }
-            screens_[depth_++] = change.layout;
+            screens_[depth_++] = change.shown;
             break;
         case gui::TapKind::replace:
             if( depth_ == 0 ) {
                 depth_ = 1;
             }
-            screens_[depth_ - 1] = change.layout;
+            screens_[depth_ - 1] = change.shown;
             break;
         case gui::TapKind::back:
             if( depth_ <= 1 ) {
                 return;
             }
-            screens_[--depth_] = nullptr;
+            screens_[--depth_] = {};
             break;
         default:
             return;
@@ -507,11 +635,18 @@ void Stage::show_top() noexcept
     auto table = std::make_unique<gui::Table>();
     gui::Table &root = *table;
     static_cast<void>( widgets->set_content( std::move( table ) ) );
-    const gui::Layout *layout = top();
-    if( layout == nullptr ) {
+    if( depth_ == 0 ) {
         return;
     }
-    const gui::LayoutHooks hooks{ .tapped = &Stage::tapped, .context = this };
+    const Shown &shown = screens_[depth_ - 1];
+    if( shown.screen != nullptr ) {
+        write( *shown.screen );
+    }
+    const gui::Layout *layout = top();
+    gui::LayoutHooks hooks;
+    hooks.tapped = &Stage::tapped;
+    hooks.custom = &Stage::made;
+    hooks.context = this;
     const gui::LayoutCheck built = gui::instantiate( *layout, root, widgets->skin(), hooks );
     if( !built.ok() ) {
         const std::string_view name = name_of( *layout );
@@ -522,6 +657,20 @@ void Stage::show_top() noexcept
         broken_ = !builds_short( built.problem );
     }
     lay_out();
+}
+
+void Stage::write( const detail::ScreenEntry &screen ) noexcept
+{
+    Drawing::Scratch &scratch = drawing_->scratch;
+    gui::LayoutWriter writer( scratch.nodes, scratch.text, scratch.numbers, screen.name );
+    screen.build( writer );
+    if( !writer.complete() ) {
+        say( "stage: %.*s: not all of it was written: a call was refused, or the scratch "
+             "(%zu nodes, %zu bytes of text, %zu numbers) is full",
+             static_cast<int>( screen.name.size() ), screen.name.data(), scratch_nodes,
+             scratch_text, scratch_numbers );
+    }
+    scratch.written = writer.layout();
 }
 
 void Stage::lay_out() noexcept
@@ -539,6 +688,17 @@ void Stage::tapped( void *context, std::string_view line ) noexcept
     static_cast<Stage *>( context )->tap( line );
 }
 
+std::unique_ptr<gui::Widget> Stage::made( void *context, std::string_view name )
+{
+    const auto &stage = *static_cast<const Stage *>( context );
+    for( std::size_t i = 0; i < stage.custom_count_; ++i ) {
+        if( stage.customs_[i].name == name ) {
+            return stage.customs_[i].make();
+        }
+    }
+    return nullptr;
+}
+
 void Stage::tap( std::string_view line ) noexcept
 {
     const gui::Tap read = gui::read_tap( line );
@@ -548,16 +708,18 @@ void Stage::tap( std::string_view line ) noexcept
             return;
         case gui::TapKind::push:
         case gui::TapKind::replace: {
-            const gui::Layout *to = find( read.target );
-            if( to == nullptr ) {
-                say( "stage: tap %.*s: no layout is called that", static_cast<int>( line.size() ),
-                     line.data() );
+            const Shown to = resolve( read.target );
+            if( to.layout == nullptr && to.screen == nullptr ) {
+                say( "stage: tap %.*s: no layout or added screen is called that",
+                     static_cast<int>( line.size() ), line.data() );
                 return;
             }
-            if( read.kind == gui::TapKind::push ) {
-                static_cast<void>( push( *to ) );
+            if( read.kind == gui::TapKind::replace ) {
+                change( gui::TapKind::replace, to );
+            } else if( to.layout != nullptr ) {
+                static_cast<void>( push( *to.layout ) );
             } else {
-                replace( *to );
+                static_cast<void>( push_screen( *to.screen ) );
             }
             return;
         }
