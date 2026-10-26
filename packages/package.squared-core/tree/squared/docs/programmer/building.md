@@ -132,6 +132,7 @@ make install      # adb install -r on this phone when adb reaches it, else the i
 make run          # install, then start it (adb)
 make logcat       # the app's lines, a library that failed to load, the crash summary (adb)
 make devices      # what adb reaches, which is this phone, and how to connect
+make dev          # the build you debug with: CONSOLE=app DEV_LOG=1 install
 make console      # a CONSOLE build's Console in this terminal, no adb (see console.md)
 make console-only # start it with only the Console running
 ```

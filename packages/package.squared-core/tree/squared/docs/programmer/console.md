@@ -9,10 +9,17 @@ Developer side: [../developer/console.md](../developer/console.md).
 The Console is off unless you ask for it, and then it is compiled in, with its sizes fixed at compile time:
 
 ```sh
-make CONSOLE=app DEV_LOG=1 install                  # the in-app console
+make dev                                            # the in-app console and the dev log: CONSOLE=app DEV_LOG=1 install
+make dev console                                    # the same, then its Console here in Termux
 make CONSOLE=monitor DEV_LOG=1 install              # plus the monitor process (Sprint 4.7)
 make CONSOLE=app CONSOLE_SCROLLBACK=1048576 install # a bigger history
 ```
+
+`make dev` is the build you debug with, in one word; `CONSOLE` or `DEV_LOG`
+beside it win (`make dev CONSOLE=monitor`). The names are case-sensitive, so
+one in the wrong case (`make console=app install`) would set nothing and
+install a build without the Console: the build stops instead, with `console=
+is not a setting: did you mean CONSOLE=?`.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -126,6 +133,10 @@ Each frame is an offset into a library, which is what `addr2line -C -f -e build/
 
 A `CONSOLE` build also listens for Termux, so the Console can be used from a terminal on the same phone: everything it prints appears there as it is written (errors in red, warnings in amber), and every line you type runs as a command, exactly as if typed into the Console. No adb, no Wi-Fi, no computer.
 
+`make console` needs nothing on its command line: it finds the bridge's
+file the CONSOLE build made, and says so when there is none, or when the
+last build here had no Console (make one with `make dev`).
+
 ```sh
 make console                       # interactive; Ctrl-D (or Ctrl-C) ends it
 make console CMD='mem'             # one command: its output, then back to the shell
@@ -161,6 +172,8 @@ push build/x.lua game.lua      under another name
 
 | `sqconsole` says | Meaning |
 |---|---|
+| `make console: no CONSOLE build has been made here` | `make dev` (or `make dev console`) |
+| `make console: the last build here has no Console` | The last build was a plain one: `make dev` builds and installs one with the Console |
 | `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
 | `no answer for 30 s; an app in the background can be frozen by Android` | Connected, but the app did not answer: bring it to the front, or keep it on screen beside Termux (split screen) |
 | `the app closed the connection` | It quit or crashed during a `CMD=` run; `log previous` after it starts again |

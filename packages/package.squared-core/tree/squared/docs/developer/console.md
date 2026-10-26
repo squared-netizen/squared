@@ -159,6 +159,27 @@ Tested (`test/telegraph_tools_test.cpp`, a real `TelegraphLine`, the model inlin
 
 **Memory.** `sizeof(Bridge)` is 17,376 bytes (`static_assert` at 17.5 KB): the 16 KB ring, 256 bytes of command, 160 of hello, 64 of secret, 256 of push directory, 97 of push name, and bookkeeping. The 4 KB receive buffer and the 4 KB chunk buffer are on the stack while a socket is served. Inside the template's `Platform`, so no allocation; nothing at run time allocates (the test sends until 100 lines drop, counting allocations: none). The mirror adds 16 bytes to `Console` (now 71,352). On the client side, `sqconsole` is a tool, so `std::string` and `std::vector` are used freely (priority 1 does not apply).
 
+**`make console` and `make dev` (2026-10-26).** `SQ_BRIDGE_CONF` is set in
+every build, not only a CONSOLE one, so `make console` (and the template's
+`make console-only`) find the bridge without `CONSOLE=app` on their command
+line; before, the variable was empty in a plain invocation and `make console`
+always said "not a CONSOLE build", even beside a CONSOLE install (found on the
+phone). With no file it says to make one; with a file but a flags stamp
+(`$(SQ_FLAGS_STAMP)`, which the template's Makefile defines) holding no
+`SQUARED_CONSOLE=`, it says the last build had no Console, rather than
+waiting for an app that will never answer. The stamp says what was built
+last, not what was installed: a plain `make apk` after a CONSOLE install
+makes it refuse wrongly, and `make dev` puts it right. `make dev` is a
+recursive `$(MAKE) CONSOLE=app DEV_LOG=1 install` (values given beside it
+win), so `make dev console` builds, installs and then connects in one line.
+**The case check:** every variable whose `origin` is `command line` is
+upper-cased by one `tr` in one `$(shell)` loop; one that is a known setting
+(`SQ_SETTINGS`: the Console's, the dev log's, `CMD`, `DEVICE`, `SQ_ADB`,
+`SQ_DEBUGGABLE`, the Telegraph's knobs) but was written in another case stops
+the build with `$(error)` before anything runs. The case pattern is written
+`(*" $u "*)`, with its opening parenthesis, because an unbalanced `)` ends
+make's `$(shell`.
+
 **The template.** Opens it in the `Platform` constructor of a CONSOLE build, sets the Console's mirror to it, logs `bridge: listening on 127.0.0.1:<port>`; on connect replays the newest 200 lines and logs `bridge: Termux connected`; closes it first in the destructor. `make console-only` passes the extra `squared.console_only=true`; the constructor reads it (`getIntent().getBooleanExtra`, JNI) and sets `app_stopped`, so `attach` creates nothing until `app start`.
 
 **Patterns.** The mirror is an Observer with one slot, a function pointer and a context (no `std::function`, no list). The `watch` handler is the Strategy the event loop supplies, again a function pointer. Both called per printed line, not per frame.

@@ -71,6 +71,9 @@ endif
 
 # --- the Console ------------------------------------------------------------
 #
+#   make dev                       a development build, installed: the Console
+#                                  and the dev log (CONSOLE=app DEV_LOG=1 install)
+#   make dev console               the same, then its Console in this terminal
 #   make CONSOLE=app install       the in-app console (Sprint 4)
 #   make CONSOLE=monitor install   the same, plus the monitor process (Sprint 4.7)
 #   CONSOLE_SCROLLBACK=<bytes>     its history, default 65536 (about 1,000 lines)
@@ -140,8 +143,11 @@ SQ_CPPFLAGS += $(SQ_TELEGRAPH_SIZES)
 # that are not looking for it, not one that reads this app's APK: dev builds
 # only. sqconsole, the client, is built for this machine (HOST_CXX) from
 # squared/console/client/.
+#
+# Where the bridge's port and secret are is the same in every build, so `make
+# console` finds them without being told which kind of build is installed.
+SQ_BRIDGE_CONF := $(BUILD)/dev/bridge.conf
 ifneq ($(CONSOLE),0)
-  SQ_BRIDGE_CONF := $(BUILD)/dev/bridge.conf
   SQ_BRIDGE_PORT := $(shell printf '%s' '$(SQ_PACKAGE)' | cksum | awk '{ print 20000 + $$1 % 20000 }')
   $(shell mkdir -p '$(BUILD)/dev'; \
     grep -qx 'port=$(SQ_BRIDGE_PORT)' '$(SQ_BRIDGE_CONF)' 2>/dev/null || { \
@@ -169,13 +175,47 @@ $(SQ_SQCONSOLE): $(SQ_SQUARED_DIR)/console/client/sqconsole.cpp \
 	@echo "  host c++       sqconsole, for this machine"
 	@$(HOST_CXX) -std=c++20 -O2 -I$(SQ_SQUARED_DIR)/.. $< -o $@
 
-.PHONY: console
+# `make console` needs no CONSOLE=: it reads the bridge's file, and the build's
+# flags stamp says whether the last build was a CONSOLE build. A CONSOLE build
+# made, then a plain one, means the app installed last is likely the plain one:
+# said, rather than waiting for an app that will never answer.
+.PHONY: console dev
 console: $(SQ_SQCONSOLE)
 	@if [ ! -f '$(SQ_BRIDGE_CONF)' ]; then \
-	  echo "make console: this is not a CONSOLE build; build and install one first:" >&2; \
-	  echo "  make CONSOLE=app install   (or CONSOLE := app in local.mk)" >&2; exit 1; \
+	  echo "make console: no CONSOLE build has been made here. Make one and install it:" >&2; \
+	  echo "  make dev   (CONSOLE=app DEV_LOG=1 install), or: make dev console" >&2; exit 1; \
+	fi
+	@if [ -n '$(SQ_FLAGS_STAMP)' ] && [ -f '$(SQ_FLAGS_STAMP)' ] && \
+	   ! grep -q 'SQUARED_CONSOLE=' '$(SQ_FLAGS_STAMP)'; then \
+	  echo "make console: the last build here has no Console. Make one and install it:" >&2; \
+	  echo "  make dev   (CONSOLE=app DEV_LOG=1 install), or: make dev console" >&2; exit 1; \
 	fi
 	@$(SQ_SQCONSOLE) --conf '$(SQ_BRIDGE_CONF)' --into '$(BUILD)/pulled' $(if $(CMD),--run '$(CMD)',)
+
+# One word for the build you debug with. CONSOLE and DEV_LOG given beside it
+# win (`make dev CONSOLE=monitor`). Its own make, so the flags are the dev
+# build's whatever this one was started with; `make dev console` then runs the
+# Console here, after the install.
+dev:
+	@$(MAKE) --no-print-directory CONSOLE=$(if $(filter-out 0,$(CONSOLE)),$(CONSOLE),app) \
+	    DEV_LOG=$(if $(DEV_LOG),$(DEV_LOG),1) install
+
+# --- a setting in the wrong case ---------------------------------------------
+#
+# make's variables are case-sensitive: `make console=app install` sets a
+# variable nothing reads, and builds and installs a plain build in place of the
+# CONSOLE one. So a command-line setting that is one of these in another case
+# stops the build at once, naming the one meant.
+SQ_SETTINGS := CONSOLE CONSOLE_SCROLLBACK CONSOLE_COMMANDS DEV_LOG DEV_LOG_PORT CMD DEVICE \
+               SQ_ADB SQ_DEBUGGABLE $(addprefix TELEGRAPH_,$(SQ_TELEGRAPH_KNOBS))
+SQ_COMMAND_LINE := $(foreach v,$(.VARIABLES),$(if $(filter command line,$(origin $(v))),$(v)))
+SQ_MISCASED := $(if $(strip $(SQ_COMMAND_LINE)),$(shell for v in $(SQ_COMMAND_LINE); do \
+    u=$$(printf '%s' "$$v" | tr 'a-z' 'A-Z'); [ "$$u" = "$$v" ] && continue; \
+    case ' $(SQ_SETTINGS) ' in (*" $$u "*) printf '%s %s' "$$v" "$$u"; break ;; esac; \
+  done))
+ifneq ($(SQ_MISCASED),)
+  $(error $(word 1,$(SQ_MISCASED))= is not a setting: did you mean $(word 2,$(SQ_MISCASED))=? (make's names are case-sensitive))
+endif
 
 # --- sqgen: names.json and layouts/ into C++ --------------------------------
 #

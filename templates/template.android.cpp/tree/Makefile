@@ -15,7 +15,9 @@
 #   make run             install, then start it (needs adb)
 #   make logcat          its log, and Android's crash lines (needs adb)
 #   make devices         what adb reaches, and how to connect it to this phone
-#   make console         a CONSOLE build's Console, in this terminal (Termux)
+#   make dev             the build you debug with: CONSOLE=app DEV_LOG=1 install
+#   make console         a CONSOLE build's Console, in this terminal (Termux);
+#                        `make dev console` builds, installs, then connects
 #   make console-only    start it with only the Console running; `app start` in it
 #                        starts your App
 #   make status          what the build found on this host

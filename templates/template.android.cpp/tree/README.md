@@ -12,7 +12,9 @@ make apk          # package and sign
 make install      # install it (with adb on this phone: no prompt)
 make run          # install, then start it (adb)
 make logcat       # its log, and Android's crash lines (adb)
-make console      # a CONSOLE build's Console, here in Termux (no adb)
+make dev          # the build you debug with: CONSOLE=app DEV_LOG=1 install
+make console      # a CONSOLE build's Console, here in Termux (no adb);
+                  # make dev console: build, install, then connect
                   # in it: ls, pull <path>, push <file>, logcat, libs,
                   # dump sys (every system command; dump lists the groups)
 ```
