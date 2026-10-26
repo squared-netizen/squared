@@ -1,6 +1,6 @@
 # struct LayoutCheck
 
-*Defined at [gui/layout.hpp:247](../../../../gui/layout.hpp#L247)*
+*Defined at [gui/layout.hpp:280](../../../../gui/layout.hpp#L280)*
 
 
 
@@ -22,7 +22,7 @@ public std::uint16_t node
 
 *public bool ok()*
 
-*Defined at [gui/layout.hpp:252](../../../../gui/layout.hpp#L252)*
+*Defined at [gui/layout.hpp:285](../../../../gui/layout.hpp#L285)*
 
 
 

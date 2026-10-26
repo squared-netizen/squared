@@ -1,6 +1,6 @@
 # struct LayoutNode
 
-*Defined at [gui/layout.hpp:54](../../../../gui/layout.hpp#L54)*
+*Defined at [gui/layout.hpp:82](../../../../gui/layout.hpp#L82)*
 
 
 

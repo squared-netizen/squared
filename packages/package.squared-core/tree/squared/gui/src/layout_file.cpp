@@ -953,6 +953,56 @@ LayoutKind read_layout_kind( std::string_view file, const data::JsonValue &root,
     return LayoutKind::screen;
 }
 
+namespace
+{
+
+/// The keys a layout file has: `place` and `modal` a pane's only.
+[[nodiscard]] bool layout_key( std::string_view key ) noexcept
+{
+    constexpr std::array<std::string_view, 5> keys{ "kind", "rows", "note", "place", "modal" };
+    return std::find( keys.begin(), keys.end(), key ) != keys.end();
+}
+
+/// A pane's `place` and `modal`; a screen has neither.
+[[nodiscard]] PaneShape read_pane_shape( Reader &reader, const JsonValue &root, LayoutKind kind )
+{
+    PaneShape shape;
+    const JsonValue *place = root.find( "place" );
+    const JsonValue *modal = root.find( "modal" );
+    if( kind != LayoutKind::pane ) {
+        if( place != nullptr ) {
+            reader.problem( "place", "a pane's: this is a screen (\"kind\": \"pane\")" );
+        }
+        if( modal != nullptr ) {
+            reader.problem( "modal", "a pane's: this is a screen (\"kind\": \"pane\")" );
+        }
+        return shape;
+    }
+    if( place != nullptr ) {
+        const std::string *word = place->string_if();
+        std::optional<PanePlace> read;
+        if( word != nullptr ) {
+            read = pane_place_named( *word );
+        }
+        if( read ) {
+            shape.place = *read;
+        } else {
+            reader.problem( "place", "center, left, right, top or bottom" );
+        }
+    }
+    if( modal != nullptr ) {
+        const bool *read = modal->boolean_if();
+        if( read != nullptr ) {
+            shape.modal = *read;
+        } else {
+            reader.problem( "modal", "true or false" );
+        }
+    }
+    return shape;
+}
+
+} // namespace
+
 bool read_layout( std::string_view file, const data::JsonValue &root, const NameSchema &schema,
                   std::span<const LayoutTarget> targets, LayoutWriter &out, FileProblems &problems )
 {
@@ -963,10 +1013,11 @@ bool read_layout( std::string_view file, const data::JsonValue &root, const Name
     }
     Reader reader( file, problems );
     for( const auto &[key, ignored] : *root.object_if() ) {
-        if( key != "kind" && key != "rows" && key != "note" ) {
-            reader.problem( key, "not a key of a layout (kind, rows, note)" );
+        if( !layout_key( key ) ) {
+            reader.problem( key, "not a key of a layout (kind, rows, note; a pane: place, modal)" );
         }
     }
+    out.set_pane( read_pane_shape( reader, root, kind ) );
     LayoutReader layout( reader, schema, targets, kind, out );
     if( const JsonValue *rows = root.find( "rows" ) ) {
         layout.rows( "rows", *rows, nullptr );

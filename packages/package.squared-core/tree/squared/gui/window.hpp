@@ -86,6 +86,19 @@ class Window : public Widget
         [[nodiscard]] bool movable() const noexcept { return movable_; }
 
         /**
+     * @brief Control the title bar.
+     * @param titled false leaves the window no title bar, title, or close
+     * button: the content takes the whole window (a Stage pane's).
+     */
+        void set_titled( bool titled ) noexcept;
+
+        /**
+     * @brief Read the titled state.
+     * @return true while the window has a title bar (the default).
+     */
+        [[nodiscard]] bool titled() const noexcept { return titled_; }
+
+        /**
      * @brief Control the close button.
      * @param closable true shows the close button.
      */
@@ -196,6 +209,7 @@ class Window : public Widget
         std::string style_;
         Table *content_{ nullptr };
         bool modal_{ false };
+        bool titled_{ true };
         bool movable_{ true };
         bool closable_{ false };
         bool resizable_{ false };

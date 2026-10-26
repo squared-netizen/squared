@@ -1,6 +1,6 @@
 # struct Tap
 
-*Defined at [gui/layout.hpp:193](../../../../gui/layout.hpp#L193)*
+*Defined at [gui/layout.hpp:226](../../../../gui/layout.hpp#L226)*
 
 
 

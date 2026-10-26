@@ -47,8 +47,16 @@ compiled layout's words can be read in a `static_assert`. **Numbers** are a
 separate `float` pool, used by sliders (minimum, maximum, step) and progress
 bars (minimum, maximum) only, so other nodes pay nothing for them.
 
-**`Layout`** is a 72-byte view: name, kind, and spans of nodes, text and
-numbers. It owns nothing.
+**`Layout`** is a 72-byte view: name, kind, a pane's shape, and spans of
+nodes, text and numbers. It owns nothing. The shape (`PaneShape`: a
+`PanePlace` and `modal`, 2 bytes, 7.3) sits after the kind in what was tail
+padding, so it costs nothing; a screen carries the default and ignores it.
+The constructor takes it last, after the numbers, so a screen's definition is
+unchanged. `pane_place_name` / `pane_place_named` map a place to its file
+word and back, like the node types' pair. The writer carries a shape too
+(`set_pane`, kept by `clear` like the name and kind), and gives it to the
+layout it writes: a C++ pane's comes from its type's constants that way
+([stage.md](stage.md#panes-73)).
 
 ## `check`
 
@@ -142,7 +150,10 @@ as `int64_t`), and a duplicate key is refused by the parser already.
 never stops at a problem: a bad value adds one and is skipped, so one run
 reports all of them. A layout's kind is the exception, read on its own
 first: navigation is checked against every file's kind, so `sqgen` reads all
-the kinds before any layout.
+the kinds before any layout. A pane's `place` and `modal` (7.3) are read
+with the file's own keys, before its rows, into the writer's shape; on a
+screen either is a problem ("a pane's: this is a screen"), as is a place
+that is not one of the five or a `modal` that is not a bool.
 
 **`names.json`** becomes a `NameSchema`: entries sorted by name, so `find`
 is a binary search and a duplicate shows as two neighbours. `find_id` finds
@@ -198,7 +209,9 @@ What it writes:
   unprintable, so no trigraph or digit after an escape can change it), its
   nodes as designated initializers (`.bind` through the `constexpr`
   `Name( "..." )`, so the hash is the same function's), its numbers; then a
-  `constinit const Layout` over them, and a sorted array of pointers that
+  `constinit const Layout` over them (a pane's with its shape last:
+  `{}` for numbers it has none of, then `sq::gui::PaneShape{
+  sq::gui::PanePlace::bottom, true }`), and a sorted array of pointers that
   `find` binary-searches; the screens as a `constexpr` array of
   `string_view`s.
 
@@ -253,6 +266,8 @@ freely, `std::map` (in `JsonValue`), `std::string` paths and messages,
 `layout_test` is about its text):
 
 - **`read_tap`:** every kind, and seven lines it refuses.
+- **Pane shapes:** every place's name read back, a word that is not one, the
+  writer's shape reaching its layout and surviving `clear`.
 - **`check`:** every problem, from hand-made tables.
 - **The two avenues meet:** the writer's table for `settings` equals, field
   by field and in its text, the constant table `sqgen` will write.
@@ -277,8 +292,9 @@ same table as the C++ writer.
 
 `gui/test/sqgen_test.cpp`: `sqgen` end to end. The gui Makefile builds it,
 runs it on `test/sqgen/`, and compiles the test with what it wrote: the keys'
-types (`static_assert`), the layouts found, sorted and checked, `settings`
-equal to the writer's table, and built. Then it runs `sqgen` again: unchanged
+types (`static_assert`), the layouts found, sorted and checked, the pane
+`discard`'s place and modal from its file, `settings` equal to the writer's
+table, and built. Then it runs `sqgen` again: unchanged
 input writes nothing; the wrong files in `test/sqgen/bad/` and `keyword/`
 print exactly their `expected.txt` and write nothing; a missing file or
 directory, and bad arguments.

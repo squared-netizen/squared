@@ -30,6 +30,7 @@ namespace sq::gui
 {
 class Ui;
 class Widget;
+class Window;
 } // namespace sq::gui
 
 namespace sq
@@ -50,6 +51,14 @@ class App;
  * `build` writes the screen's table, as a layout file compiles to; it runs
  * each time the screen is shown. The name is what a tap navigates to
  * (`push about`); lowercase words, digits and `_`.
+ *
+ * The same type opens as a pane (`open<S>()`, `open about`). Two constants,
+ * both optional, say how it shows then, as a pane file's `place` and `modal`:
+ *
+ * ```cpp
+ *     static constexpr sq::gui::PanePlace place = sq::gui::PanePlace::bottom;
+ *     static constexpr bool modal = true;
+ * ```
  */
 template<typename S>
 concept ScreenType = requires( gui::LayoutWriter &root ) {
@@ -63,16 +72,31 @@ using CustomMaker = std::unique_ptr<gui::Widget> ( * )();
 namespace detail
 {
 
-/** @brief A C++ screen, as the Stage keeps it: its name and its build. */
+/** @brief A C++ screen, as the Stage keeps it: its name, its build, how it shows as a pane. */
 struct ScreenEntry final
 {
         std::string_view name;
         void ( *build )( gui::LayoutWriter &root ) = nullptr;
+        gui::PaneShape pane{};
 };
+
+/** @brief How the screen type `S` shows as a pane: its `place` and `modal`, if it has them. */
+template<typename S>
+[[nodiscard]] consteval gui::PaneShape shape_of() noexcept
+{
+    gui::PaneShape shape;
+    if constexpr( requires { S::place; } ) {
+        shape.place = S::place;
+    }
+    if constexpr( requires { S::modal; } ) {
+        shape.modal = S::modal;
+    }
+    return shape;
+}
 
 /** @brief The one entry of the screen type `S`. */
 template<ScreenType S>
-inline constexpr ScreenEntry screen_entry{ std::string_view( S::name ), &S::build };
+inline constexpr ScreenEntry screen_entry{ std::string_view( S::name ), &S::build, shape_of<S>() };
 
 } // namespace detail
 
@@ -81,11 +105,12 @@ inline constexpr ScreenEntry screen_entry{ std::string_view( S::name ), &S::buil
  * the skin, the drawing, input, and the UI end of the Telegraph.
  *
  * Only the top screen has widgets: a screen that comes back (`back`) is
- * built again (a layout from its table, a C++ screen by its `build`). A
- * button's tap is sent as it reads: a telegram to the model, or a navigation
- * to this stack. The App owns the Stage and calls the rest; an app calls
- * `push`, `replace`, `back`, and `add` and `custom` to name what its layout
- * files reach.
+ * built again (a layout from its table, a C++ screen by its `build`). Panes
+ * open over the top screen and belong to it: leaving the screen closes them.
+ * A button's tap is sent as it reads: a telegram to the model, or a
+ * navigation to this stack. The App owns the Stage and calls the rest; an app
+ * calls `push`, `replace`, `back`, `open`, `close`, and `add` and `custom` to
+ * name what its layout files reach.
  *
  * Navigation asked for while an event is being delivered (a tap) waits until
  * delivery has finished: building the next screen replaces the widgets, and
@@ -99,6 +124,9 @@ class Stage final
 
         /** @brief How many C++ screens, and how many custom types, can be added. */
         static constexpr std::size_t max_added = 16;
+
+        /** @brief How many panes can be open over a screen at once. */
+        static constexpr std::size_t max_panes = 4;
 
         /** @brief The scratch a C++ screen writes into: nodes, bytes of text, numbers. */
         static constexpr std::size_t scratch_nodes = 256;
@@ -114,14 +142,18 @@ class Stage final
 
         /**
          * @brief Show `layout` over the screen there is, which keeps nothing
-         * but its layout. False when the stack is full (`max_depth`); the
-         * problem is reported. `layout` must outlive its place on the stack:
-         * a compiled one (`layouts::settings`) does.
+         * but its layout, and closes its panes. False when the stack is full
+         * (`max_depth`) or `layout` is a pane; the problem is reported.
+         * `layout` must outlive its place on the stack: a compiled one
+         * (`layouts::settings`) does.
          */
         bool push( const gui::Layout &layout ) noexcept;
 
-        /** @brief Show `layout` instead of the screen there is (or as the first). */
-        void replace( const gui::Layout &layout ) noexcept;
+        /**
+         * @brief Show `layout` instead of the screen there is (or as the
+         * first). False, and reported, when `layout` is a pane.
+         */
+        bool replace( const gui::Layout &layout ) noexcept;
 
         /** @brief Show the C++ screen `S` over the screen there is; as `push( layout )`. */
         template<ScreenType S>
@@ -134,11 +166,33 @@ class Stage final
         template<ScreenType S>
         void replace() noexcept
         {
-            change( gui::TapKind::replace, { nullptr, &detail::screen_entry<S> } );
+            change( { gui::TapKind::replace, top_pane, { nullptr, &detail::screen_entry<S> } } );
         }
 
-        /** @brief Back to the screen beneath. False at the root: nothing to go back to. */
+        /**
+         * @brief What the back button does: close the top pane if one is
+         * open, or else go back to the screen beneath. False at the root
+         * with no pane open: nothing to go back to.
+         */
         bool back() noexcept;
+
+        /**
+         * @brief Open the pane `layout` over the screen shown: its file's
+         * `place` and `modal` say where and how. False, and reported, when
+         * `max_panes` are open or `layout` is a screen. The pane is built
+         * when it opens and freed when it closes; it outlives nothing.
+         */
+        bool open( const gui::Layout &layout ) noexcept;
+
+        /** @brief Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. */
+        template<ScreenType S>
+        bool open() noexcept
+        {
+            return open_screen( detail::screen_entry<S> );
+        }
+
+        /** @brief Close the top pane. False when none is open. */
+        bool close() noexcept;
 
         /**
          * @brief Let taps reach the C++ screen `S` by its name (`push about`),
@@ -161,15 +215,22 @@ class Stage final
         /** @brief How many screens there are, once what waits has happened. */
         [[nodiscard]] std::size_t depth() const noexcept;
 
+        /** @brief How many panes are open, once what waits has happened. */
+        [[nodiscard]] std::size_t panes() const noexcept;
+
         /**
          * @brief The table of the screen shown: a layout, or what a C++
-         * screen wrote (valid while it is shown); nullptr when there is
+         * screen wrote (valid while it is shown, until a C++ pane is
+         * written over it: they share one scratch); nullptr when there is
          * none, or it is not built (no window yet).
          */
         [[nodiscard]] const gui::Layout *top() const noexcept;
 
         /** @brief The name of the screen shown; empty when there is none. */
         [[nodiscard]] std::string_view top_name() const noexcept;
+
+        /** @brief The name of the top pane; empty when none is open. */
+        [[nodiscard]] std::string_view pane_name() const noexcept;
 
         /** @brief Whether the C++ screen `S` is the one shown. */
         template<ScreenType S>
@@ -188,8 +249,8 @@ class Stage final
         [[nodiscard]] messaging::TelegraphUi &telegraph() noexcept { return telegraph_; }
 
         /**
-         * @brief The top screen's widgets; nullptr while the skin is not
-         * loaded (no window yet, or it failed).
+         * @brief The top screen's widgets, its panes' among them; nullptr
+         * while the skin is not loaded (no window yet, or it failed).
          */
         [[nodiscard]] gui::Ui *ui() noexcept;
 
@@ -206,11 +267,38 @@ class Stage final
                 const detail::ScreenEntry *screen = nullptr;
         };
 
+        /** @brief `Change::pane` for the top pane, whichever it is. */
+        static constexpr std::uint8_t top_pane = 0xFF;
+
         /** @brief A navigation waiting for an event's delivery to finish. */
         struct Change final
         {
                 gui::TapKind kind = gui::TapKind::none;
+                /// The pane a `close` closes: its slot, or `top_pane`.
+                std::uint8_t pane = top_pane;
                 Shown shown;
+        };
+
+        /**
+         * @brief A slot a pane opens in: what it shows, and its window while
+         * built. A slot keeps its address while the pane is open, so its
+         * buttons' taps say which pane they are in (`close`).
+         */
+        struct Pane final
+        {
+                Stage *stage = nullptr;
+                Shown shown;
+                gui::Window *window = nullptr;
+                /// 0: free; else its place among the open panes, 1 the lowest.
+                std::uint8_t order = 0;
+                gui::PanePlace place = gui::PanePlace::center;
+        };
+
+        /** @brief The screens and panes there will be, once what waits has happened. */
+        struct Counts final
+        {
+                std::size_t depth = 0;
+                std::size_t panes = 0;
         };
 
         /** @brief A custom node's type, and what makes it. */
@@ -240,19 +328,33 @@ class Stage final
 
         // The stack.
         bool push_screen( const detail::ScreenEntry &screen ) noexcept;
+        bool open_screen( const detail::ScreenEntry &screen ) noexcept;
         bool add_screen( const detail::ScreenEntry &screen ) noexcept;
         [[nodiscard]] Shown resolve( std::string_view name ) const noexcept;
         [[nodiscard]] const detail::ScreenEntry *added( std::string_view name ) const noexcept;
-        void change( gui::TapKind kind, Shown shown ) noexcept;
+        [[nodiscard]] Counts after() const noexcept;
+        void change( Change change ) noexcept;
         void apply( Change change ) noexcept;
         void flush() noexcept;
         void show_top() noexcept;
-        void write( const detail::ScreenEntry &screen ) noexcept;
+        void write( const detail::ScreenEntry &screen, gui::LayoutKind kind ) noexcept;
+        [[nodiscard]] bool built( const gui::Layout &layout, gui::LayoutCheck check ) noexcept;
         void lay_out() noexcept;
+
+        // Panes.
+        void open_pane( Shown shown ) noexcept;
+        void build_pane( Pane &pane ) noexcept;
+        void close_pane( Pane &pane ) noexcept;
+        void drop_panes() noexcept;
+        void place_panes() noexcept;
+        [[nodiscard]] Pane *top_pane_slot() noexcept;
+        [[nodiscard]] const Pane *top_pane_slot() const noexcept;
 
         // Taps and custom nodes.
         static void tapped( void *context, std::string_view line ) noexcept;
+        static void tapped_in_pane( void *context, std::string_view line ) noexcept;
         static std::unique_ptr<gui::Widget> made( void *context, std::string_view name );
+        static std::unique_ptr<gui::Widget> made_in_pane( void *context, std::string_view name );
         void tap( std::string_view line ) noexcept;
         void send( std::string_view line ) noexcept;
 
@@ -266,6 +368,7 @@ class Stage final
         std::array<Change, 4> pending_{};
         std::array<const detail::ScreenEntry *, max_added> added_{};
         std::array<Custom, max_added> customs_{};
+        std::array<Pane, max_panes> panes_{};
         app::SafeArea safe_area_{};
         int pixel_width_ = 0;
         int pixel_height_ = 0;
@@ -275,6 +378,7 @@ class Stage final
         std::uint8_t pending_count_ = 0;
         std::uint8_t added_count_ = 0;
         std::uint8_t custom_count_ = 0;
+        std::uint8_t pane_count_ = 0;
         bool dispatching_ = false;
         bool failed_ = false;
         bool broken_ = false;
@@ -282,7 +386,7 @@ class Stage final
 };
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
-// custom types, as a pointer and a name each.
-static_assert( sizeof( Stage ) == 936 );
+// custom types, as a pointer and a name each; 4 pane slots of 40 bytes.
+static_assert( sizeof( Stage ) == 1104 );
 
 } // namespace sq

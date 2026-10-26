@@ -140,7 +140,7 @@ bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Window` | `squared/gui/window.hpp` | Floating table-backed panel with a draggable title bar |
+| `Window` | `squared/gui/window.hpp` | Floating table-backed panel with a draggable title bar; `set_titled( false )` leaves no bar, title or close button (a Stage pane's) |
 | `Dialog` | `squared/gui/dialog.hpp` | Modal Window with separate content and action-button tables |
 
 ## Host

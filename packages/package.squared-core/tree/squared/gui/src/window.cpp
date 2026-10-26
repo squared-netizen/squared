@@ -45,6 +45,15 @@ void Window::set_style( std::string style )
     invalidate_layout();
 }
 
+void Window::set_titled( bool titled ) noexcept
+{
+    if( titled_ == titled ) {
+        return;
+    }
+    titled_ = titled;
+    invalidate_layout();
+}
+
 void Window::set_closable( bool closable ) noexcept
 {
     if( closable_ == closable ) {
@@ -64,38 +73,41 @@ Size Window::minimum_size( Painter &painter, const Skin &skin ) const
 {
     const WindowStyle &style = skin.window_style( style_ );
     const Size table = content_->minimum_size( painter, skin );
-    const Size title = painter.measure_text( title_, style.title_font.get() );
+    const Size title = titled_ ? painter.measure_text( title_, style.title_font.get() ) : Size{};
     const Size background = style.background ? style.background->minimum_size() : Size{};
-    const float title_controls =
-        closable_ ? std::max( 0.0F, style.close_size ) + style.content_insets.right : 0.0F;
+    float title_controls = 0.0F;
+    if( closable_ && titled_ ) {
+        title_controls = std::max( 0.0F, style.close_size ) + style.content_insets.right;
+    }
+    const float bar = titled_ ? style.title_height : 0.0F;
+    const float down = table.height + bar + style.content_insets.top + style.content_insets.bottom;
     return { std::max( { table.width + style.content_insets.left + style.content_insets.right,
                          title.width + style.content_insets.left + title_controls +
                              style.content_insets.right,
                          background.width, requested_minimum_.width } ),
-             std::max( { table.height + style.title_height + style.content_insets.top +
-                             style.content_insets.bottom,
-                         background.height, requested_minimum_.height } ) };
+             std::max( { down, background.height, requested_minimum_.height } ) };
 }
 
 Size Window::preferred_size( Painter &painter, const Skin &skin ) const
 {
     const auto &style = skin.window_style( style_ );
     const Size table = content_->preferred_size( painter, skin );
-    const Size title = painter.measure_text( title_, style.title_font.get() );
-    const float title_controls = closable_ ? style.close_size + style.content_insets.right : 0.0F;
+    const Size title = titled_ ? painter.measure_text( title_, style.title_font.get() ) : Size{};
+    const bool close = closable_ && titled_;
+    const float title_controls = close ? style.close_size + style.content_insets.right : 0.0F;
+    const float bar = titled_ ? style.title_height : 0.0F;
     return { std::max( { table.width + style.content_insets.left + style.content_insets.right,
                          title.width + style.content_insets.left + title_controls,
                          requested_minimum_.width } ),
-             std::max( table.height + style.title_height + style.content_insets.top +
-                           style.content_insets.bottom,
+             std::max( table.height + bar + style.content_insets.top + style.content_insets.bottom,
                        requested_minimum_.height ) };
 }
 
 void Window::layout( Painter &painter, const Skin &skin )
 {
     const WindowStyle &style = skin.window_style( style_ );
-    title_height_ = std::max( style.title_height,
-                              painter.measure_text( title_, style.title_font.get() ).height );
+    const float title_text = painter.measure_text( title_, style.title_font.get() ).height;
+    title_height_ = titled_ ? std::max( style.title_height, title_text ) : 0.0F;
     close_size_ = std::min( title_height_, std::max( 0.0F, style.close_size ) );
     resize_border_ = std::max( 1.0F, style.resize_border );
     measured_minimum_ = minimum_size( painter, skin );
@@ -118,6 +130,9 @@ void Window::paint( Painter &painter, const Skin &skin, float x, float y ) const
     const WindowStyle &style = skin.window_style( style_ );
     if( style.background ) {
         style.background->draw( painter, bounds_of( *this, x, y ) );
+    }
+    if( !titled_ ) {
+        return; // no title bar, so no title and no close button
     }
     if( style.title_background ) {
         style.title_background->draw( painter, { x, y, width(), title_height_ } );
@@ -221,6 +236,9 @@ bool Window::pointer_event( const PointerEvent &event )
 
 Rectangle Window::close_bounds() const noexcept
 {
+    if( !titled_ ) {
+        return { -1.0F, -1.0F, -1.0F, -1.0F }; // no title bar: nothing is over its close button
+    }
     const float size = std::min( title_height_, close_size_ );
     return { std::max( 0.0F, width() - size - 4.0F ),
              std::max( 0.0F, ( title_height_ - size ) * 0.5F ), size, size };

@@ -276,6 +276,9 @@ class LayoutWriter final
         /** @brief The next node added to the layout's own table starts a new row. */
         LayoutWriter &row() noexcept;
 
+        /** @brief How the layout shows when it is a pane (`Layout::pane`). */
+        void set_pane( PaneShape shape ) noexcept { pane_ = shape; }
+
         /** @brief What was written, as a layout. Points into the storage. */
         [[nodiscard]] Layout layout() const noexcept;
 
@@ -316,6 +319,7 @@ class LayoutWriter final
         std::uint16_t depth_ = 0;
         std::uint16_t root_children_ = 0;
         LayoutKind kind_;
+        PaneShape pane_{};
         bool root_row_next_ = false;
         bool complete_ = true;
 };

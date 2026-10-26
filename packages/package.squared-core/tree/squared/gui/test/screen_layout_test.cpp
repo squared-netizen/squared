@@ -132,6 +132,28 @@ void taps_read()
     CHECK( node_type_name( static_cast<NodeType>( 99 ) ).empty() );
 }
 
+void pane_shapes()
+{
+    for( std::size_t i = 0; i < pane_place_count; ++i ) {
+        const auto place = static_cast<PanePlace>( i );
+        CHECK( pane_place_named( pane_place_name( place ) ) == place );
+    }
+    CHECK( !pane_place_named( "middle" ) && !pane_place_named( "" ) );
+    CHECK( pane_place_name( static_cast<PanePlace>( 9 ) ).empty() );
+    CHECK( Layout().pane() == PaneShape{} );
+
+    // A writer's shape is its layout's, and survives a clear.
+    std::array<LayoutNode, 4> nodes{};
+    std::array<char, 64> text{};
+    std::array<float, 1> numbers{};
+    LayoutWriter root( nodes, text, numbers, "ask", LayoutKind::pane );
+    root.set_pane( { PanePlace::top, true } );
+    root.add<Label>( "Sure?" );
+    CHECK( root.layout().pane() == PaneShape{ PanePlace::top, true } );
+    root.clear();
+    CHECK( root.layout().pane().modal && root.layout().nodes().empty() );
+}
+
 void check_trees()
 {
     using P = LayoutProblem;
@@ -589,6 +611,7 @@ void fuzz()
 int main()
 {
     taps_read();
+    pane_shapes();
     check_trees();
     check_words();
     check_numbers();

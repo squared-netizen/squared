@@ -82,7 +82,22 @@ node. A nested `table` node has `rows` of its own; a `scroll` holds one node
 | `note` | Words for people; ignored, here and in every object |
 
 A file's own keys are `kind` (`"screen"`, the default, or `"pane"`), `rows`
-and `note`. A key a node or file does not take is a mistake, not ignored:
+and `note`; a pane's also `place` and `modal`:
+
+| Key | Means |
+|---|---|
+| `place` | Where the pane sits: `"center"` (the default), `"left"`, `"right"` (the screen's height), `"top"`, `"bottom"` (its width) |
+| `modal` | `true`: the screen beneath dims and takes no taps until the pane closes. Default `false` |
+
+```json
+{ "kind": "pane", "place": "bottom", "modal": true, "rows": [
+  [ { "type": "label", "text": "Discard?" } ],
+  [ { "type": "button", "text": "No", "tap": "close" } ] ] }
+```
+
+How panes open, close and show: [stage.md](stage.md#panes).
+
+A key a node or file does not take is a mistake, not ignored:
 `"grwo": true` is reported, so a typo cannot silently do nothing. A layout's
 name in the build is its file's: `settings.json` is the layout `settings`
 (lowercase words, digits and `_`).
@@ -261,9 +276,10 @@ allocates nothing. Words are copied into the text storage, so a temporary
 | `add<W>(text)` | Add a widget to the layout's own table: `Label`, `Button`, `CheckBox`, `TextField`, `Slider`, `ProgressBar`, `Image`, `Separator`, `Table`, `ScrollPane`, `Stack`. Another type does not compile |
 | `add_custom(name)` | Add a custom node |
 | `row()` | The next node added to the layout's own table starts a new row |
+| `set_pane(shape)` | How it shows as a pane: `{ PanePlace::bottom, true }`, a file's `place` and `modal` |
 | `layout()` | What was written, as a `Layout` pointing into your storage |
 | `complete()` | False when something was not written: storage ran out, or it went where it cannot (below) |
-| `clear()` | Start again in the same storage |
+| `clear()` | Start again in the same storage, with the same name, kind and pane shape |
 
 `add` returns a `NodeWriter`; every call on it returns it again, so they
 chain:
@@ -349,9 +365,12 @@ first `problem` and its `node` index; `ok()` when there is none.
 ## The table itself
 
 You will rarely touch it: the build and the writer make it. A `Layout` is a
-view of `LayoutNode`s (32 bytes each), their text and numbers, a `name` and a
-`kind` (`screen` or `pane`). `layout.text(offset)` gives the words at an
-offset. The details are in the developer page.
+view of `LayoutNode`s (32 bytes each), their text and numbers, a `name`, a
+`kind` (`screen` or `pane`) and `pane()`, a `PaneShape` (`place`, a
+`PanePlace`, and `modal`; a screen's is the default and ignored).
+`layout.text(offset)` gives the words at an offset. `pane_place_name` and
+`pane_place_named` turn a place into its file word and back. The details are
+in the developer page.
 
 ## Lua
 

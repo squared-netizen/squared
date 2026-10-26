@@ -31,7 +31,13 @@ names	{ "screens": "work" }	names.json: screens: a list ...
 # Layout files
 layout	{ "rows": [ [ ] 	t.json:1:17: not JSON: ...
 layout	{ "kind": "page" }	t.json: kind: screen or pane
-layout	{ "rows": [], "colour": 1 }	t.json: colour: not a key of a layout (kind, rows, note)
+layout	{ "rows": [], "colour": 1 }	t.json: colour: not a key of a layout (kind, rows, note; a pane: place, modal)
+layout	{ "rows": [], "place": "left" }	t.json: place: a pane's: this is a screen ("kind": "pane")
+layout	{ "kind": "screen", "rows": [], "modal": true }	t.json: modal: a pane's: this is a screen ("kind": "pane")
+layout	{ "kind": "pane", "rows": [], "place": "middle" }	t.json: place: center, left, right, top or bottom
+layout	{ "kind": "pane", "rows": [], "place": 2 }	t.json: place: center, left, right, top or bottom
+layout	{ "kind": "pane", "rows": [], "modal": "yes" }	t.json: modal: true or false
+layout	{ "kind": "pane", "rows": [], "place": "bottom", "modal": true }	ok
 layout	{ "rows": {} }	t.json: rows: a list of rows, each a list of nodes
 layout	{ "rows": [ [] ] }	t.json: rows[0]: a row is a list of one node or more
 layout	{ "rows": [ [ { "type": "label", "grwo": 1 }, { "type": "button", "tap": "jump" } ], [] ] }	3 problems

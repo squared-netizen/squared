@@ -20,11 +20,14 @@
 #include <squared/gui/src/font_ptr.hpp>
 #include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/insets.hpp>
+#include <squared/gui/src/size.hpp>
+#include <squared/gui/src/size_hints.hpp>
 #include <squared/gui/src/skin_load_issue.hpp>
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/ui.hpp>
+#include <squared/gui/window.hpp>
 #include <squared/messaging/name.hpp>
 #include <squared/messaging/telegram_data.hpp>
 #include <squared/messaging/telegram_text.hpp>
@@ -203,7 +206,11 @@ bool Stage::Drawing::load( files::FileSystem &files, std::string &why )
 
 Stage::Stage( messaging::TelegraphUi &telegraph ) noexcept
     : telegraph_( telegraph )
-{}
+{
+    for( Pane &pane : panes_ ) {
+        pane.stage = this;
+    }
+}
 
 Stage::~Stage() = default;
 
@@ -258,7 +265,10 @@ void Stage::attach( app::Runtime &runtime )
 
 void Stage::detach() noexcept
 {
-    drawing_.reset();
+    drawing_.reset(); // and the panes' windows with it
+    for( Pane &pane : panes_ ) {
+        pane.window = nullptr;
+    }
 }
 
 void Stage::clear() noexcept
@@ -268,6 +278,7 @@ void Stage::clear() noexcept
     broken_ = false;
     leave_ = false;
     screens_.fill( {} );
+    drop_panes();
     added_.fill( nullptr );
     customs_.fill( {} );
     added_count_ = 0;
@@ -412,12 +423,19 @@ const gui::Layout *Stage::find( std::string_view name ) noexcept
 
 bool Stage::push( const gui::Layout &layout ) noexcept
 {
-    if( depth() >= max_depth ) {
-        say( "stage: push %.*s: the stack holds %zu screens",
-             static_cast<int>( name_of( layout ).size() ), name_of( layout ).data(), max_depth );
+    // A name is said with its size beside it, in the same call: the view
+    // ends where it says, not at a '\0'.
+    const std::string_view name = name_of( layout );
+    if( layout.kind() == gui::LayoutKind::pane ) {
+        say( "stage: push %.*s: a pane: open it", static_cast<int>( name.size() ), name.data() );
         return false;
     }
-    change( gui::TapKind::push, { &layout, nullptr } );
+    if( depth() >= max_depth ) {
+        say( "stage: push %.*s: the stack holds %zu screens", static_cast<int>( name.size() ),
+             name.data(), max_depth );
+        return false;
+    }
+    change( { gui::TapKind::push, top_pane, { &layout, nullptr } } );
     return true;
 }
 
@@ -428,43 +446,108 @@ bool Stage::push_screen( const detail::ScreenEntry &screen ) noexcept
              static_cast<int>( screen.name.size() ), screen.name.data(), max_depth );
         return false;
     }
-    change( gui::TapKind::push, { nullptr, &screen } );
+    change( { gui::TapKind::push, top_pane, { nullptr, &screen } } );
     return true;
 }
 
-void Stage::replace( const gui::Layout &layout ) noexcept
+bool Stage::replace( const gui::Layout &layout ) noexcept
 {
-    change( gui::TapKind::replace, { &layout, nullptr } );
+    const std::string_view name = name_of( layout );
+    if( layout.kind() == gui::LayoutKind::pane ) {
+        say( "stage: replace %.*s: a pane: open it", static_cast<int>( name.size() ), name.data() );
+        return false;
+    }
+    change( { gui::TapKind::replace, top_pane, { &layout, nullptr } } );
+    return true;
 }
 
 bool Stage::back() noexcept
 {
-    if( depth() <= 1 ) {
+    const Counts counts = after();
+    if( counts.panes == 0 && counts.depth <= 1 ) {
         return false;
     }
-    change( gui::TapKind::back, {} );
+    change( { gui::TapKind::back, top_pane, {} } );
     return true;
 }
 
-std::size_t Stage::depth() const noexcept
+bool Stage::open( const gui::Layout &layout ) noexcept
 {
-    std::size_t depth = depth_;
+    const std::string_view name = name_of( layout );
+    if( layout.kind() != gui::LayoutKind::pane ) {
+        say( "stage: open %.*s: a screen: push it", static_cast<int>( name.size() ), name.data() );
+        return false;
+    }
+    if( after().panes >= max_panes ) {
+        say( "stage: open %.*s: %zu panes are open already", static_cast<int>( name.size() ),
+             name.data(), max_panes );
+        return false;
+    }
+    change( { gui::TapKind::open, top_pane, { &layout, nullptr } } );
+    return true;
+}
+
+bool Stage::open_screen( const detail::ScreenEntry &screen ) noexcept
+{
+    if( after().panes >= max_panes ) {
+        say( "stage: open %.*s: %zu panes are open already", static_cast<int>( screen.name.size() ),
+             screen.name.data(), max_panes );
+        return false;
+    }
+    change( { gui::TapKind::open, top_pane, { nullptr, &screen } } );
+    return true;
+}
+
+bool Stage::close() noexcept
+{
+    if( after().panes == 0 ) {
+        return false;
+    }
+    change( { gui::TapKind::close, top_pane, {} } );
+    return true;
+}
+
+Stage::Counts Stage::after() const noexcept
+{
+    Counts counts{ depth_, pane_count_ };
     for( std::size_t i = 0; i < pending_count_; ++i ) {
         switch( pending_[i].kind ) {
             case gui::TapKind::push:
-                ++depth;
+                ++counts.depth;
+                counts.panes = 0;
                 break;
             case gui::TapKind::replace:
-                depth = depth == 0 ? 1 : depth;
+                counts.depth = std::max<std::size_t>( counts.depth, 1 );
+                counts.panes = 0;
                 break;
             case gui::TapKind::back:
-                depth = depth > 1 ? depth - 1 : depth;
+                if( counts.panes > 0 ) {
+                    --counts.panes;
+                } else if( counts.depth > 1 ) {
+                    --counts.depth;
+                }
+                break;
+            case gui::TapKind::open:
+                counts.panes = std::min( counts.panes + 1, max_panes );
+                break;
+            case gui::TapKind::close:
+                counts.panes = counts.panes > 0 ? counts.panes - 1 : 0;
                 break;
             default:
                 break;
         }
     }
-    return depth;
+    return counts;
+}
+
+std::size_t Stage::depth() const noexcept
+{
+    return after().depth;
+}
+
+std::size_t Stage::panes() const noexcept
+{
+    return after().panes;
 }
 
 const gui::Layout *Stage::top() const noexcept
@@ -486,6 +569,15 @@ std::string_view Stage::top_name() const noexcept
     }
     const Shown &shown = screens_[depth_ - 1];
     return shown.layout != nullptr ? shown.layout->name() : shown.screen->name;
+}
+
+std::string_view Stage::pane_name() const noexcept
+{
+    const Pane *pane = top_pane_slot();
+    if( pane == nullptr ) {
+        return {};
+    }
+    return pane->shown.layout != nullptr ? pane->shown.layout->name() : pane->shown.screen->name;
 }
 
 // --- names -----------------------------------------------------------------
@@ -537,9 +629,9 @@ bool Stage::add_screen( const detail::ScreenEntry &screen ) noexcept
 
 bool Stage::custom( std::string_view name, CustomMaker make ) noexcept
 {
-    const auto name_size = static_cast<int>( name.size() );
     if( name.empty() || make == nullptr ) {
-        say( "stage: custom %.*s: a name and a maker", name_size, name.data() );
+        say( "stage: custom %.*s: a name and a maker", static_cast<int>( name.size() ),
+             name.data() );
         return false;
     }
     for( std::size_t i = 0; i < custom_count_; ++i ) {
@@ -547,12 +639,14 @@ bool Stage::custom( std::string_view name, CustomMaker make ) noexcept
             if( customs_[i].make == make ) {
                 return true;
             }
-            say( "stage: custom %.*s: another maker has that name", name_size, name.data() );
+            say( "stage: custom %.*s: another maker has that name", static_cast<int>( name.size() ),
+                 name.data() );
             return false;
         }
     }
     if( custom_count_ == max_added ) {
-        say( "stage: custom %.*s: %zu types are there already", name_size, name.data(), max_added );
+        say( "stage: custom %.*s: %zu types are there already", static_cast<int>( name.size() ),
+             name.data(), max_added );
         return false;
     }
     customs_[custom_count_++] = { name, make };
@@ -572,10 +666,10 @@ void Stage::check_screens() noexcept
 
 // --- the stack -------------------------------------------------------------
 
-void Stage::change( gui::TapKind kind, Shown shown ) noexcept
+void Stage::change( Change change ) noexcept
 {
     if( !dispatching_ ) {
-        apply( { kind, shown } );
+        apply( change );
         return;
     }
     if( pending_count_ == pending_.size() ) {
@@ -583,7 +677,7 @@ void Stage::change( gui::TapKind kind, Shown shown ) noexcept
              pending_.size() );
         return;
     }
-    pending_[pending_count_++] = { kind, shown };
+    pending_[pending_count_++] = change;
 }
 
 void Stage::apply( Change change ) noexcept
@@ -603,14 +697,32 @@ void Stage::apply( Change change ) noexcept
             screens_[depth_ - 1] = change.shown;
             break;
         case gui::TapKind::back:
+            if( Pane *pane = top_pane_slot() ) {
+                close_pane( *pane ); // the back button closes the top pane first
+                return;
+            }
             if( depth_ <= 1 ) {
                 return;
             }
             screens_[--depth_] = {};
             break;
+        case gui::TapKind::open:
+            open_pane( change.shown );
+            return;
+        case gui::TapKind::close:
+            if( change.pane == top_pane ) {
+                if( Pane *pane = top_pane_slot() ) {
+                    close_pane( *pane );
+                }
+            } else if( change.pane < panes_.size() && panes_[change.pane].order != 0 ) {
+                close_pane( panes_[change.pane] );
+            }
+            return;
         default:
             return;
     }
+    // A screen left takes its panes with it.
+    drop_panes();
     show_top();
 }
 
@@ -634,35 +746,52 @@ void Stage::show_top() noexcept
     }
     auto table = std::make_unique<gui::Table>();
     gui::Table &root = *table;
+    // The panes' windows go with the old content: they are built again below.
     static_cast<void>( widgets->set_content( std::move( table ) ) );
+    for( Pane &pane : panes_ ) {
+        pane.window = nullptr;
+    }
     if( depth_ == 0 ) {
         return;
     }
     const Shown &shown = screens_[depth_ - 1];
     if( shown.screen != nullptr ) {
-        write( *shown.screen );
+        write( *shown.screen, gui::LayoutKind::screen );
     }
     const gui::Layout *layout = top();
     gui::LayoutHooks hooks;
     hooks.tapped = &Stage::tapped;
     hooks.custom = &Stage::made;
     hooks.context = this;
-    const gui::LayoutCheck built = gui::instantiate( *layout, root, widgets->skin(), hooks );
-    if( !built.ok() ) {
-        const std::string_view name = name_of( *layout );
-        const std::string_view problem = gui::problem_text( built.problem );
-        say( "stage: %.*s: %.*s (node %u)", static_cast<int>( name.size() ), name.data(),
-             static_cast<int>( problem.size() ), problem.data(),
-             static_cast<unsigned>( built.node ) );
-        broken_ = !builds_short( built.problem );
+    const gui::LayoutCheck check = gui::instantiate( *layout, root, widgets->skin(), hooks );
+    broken_ = !built( *layout, check );
+    for( std::uint8_t order = 1; order <= pane_count_; ++order ) {
+        for( Pane &pane : panes_ ) {
+            if( pane.order == order ) {
+                build_pane( pane );
+            }
+        }
     }
     lay_out();
 }
 
-void Stage::write( const detail::ScreenEntry &screen ) noexcept
+bool Stage::built( const gui::Layout &layout, gui::LayoutCheck check ) noexcept
+{
+    if( check.ok() ) {
+        return true;
+    }
+    const std::string_view name = name_of( layout );
+    const std::string_view problem = gui::problem_text( check.problem );
+    say( "stage: %.*s: %.*s (node %u)", static_cast<int>( name.size() ), name.data(),
+         static_cast<int>( problem.size() ), problem.data(), static_cast<unsigned>( check.node ) );
+    return builds_short( check.problem );
+}
+
+void Stage::write( const detail::ScreenEntry &screen, gui::LayoutKind kind ) noexcept
 {
     Drawing::Scratch &scratch = drawing_->scratch;
-    gui::LayoutWriter writer( scratch.nodes, scratch.text, scratch.numbers, screen.name );
+    gui::LayoutWriter writer( scratch.nodes, scratch.text, scratch.numbers, screen.name, kind );
+    writer.set_pane( screen.pane );
     screen.build( writer );
     if( !writer.complete() ) {
         say( "stage: %.*s: not all of it was written: a call was refused, or the scratch "
@@ -677,7 +806,154 @@ void Stage::lay_out() noexcept
 {
     gui::Ui *widgets = ui();
     if( widgets != nullptr && widgets->content() != nullptr ) {
+        place_panes();
         widgets->layout( drawing_->painter );
+    }
+}
+
+// --- panes -----------------------------------------------------------------
+
+Stage::Pane *Stage::top_pane_slot() noexcept
+{
+    for( Pane &pane : panes_ ) {
+        if( pane.order != 0 && pane.order == pane_count_ ) {
+            return &pane;
+        }
+    }
+    return nullptr;
+}
+
+const Stage::Pane *Stage::top_pane_slot() const noexcept
+{
+    for( const Pane &pane : panes_ ) {
+        if( pane.order != 0 && pane.order == pane_count_ ) {
+            return &pane;
+        }
+    }
+    return nullptr;
+}
+
+void Stage::open_pane( Shown shown ) noexcept
+{
+    if( depth_ == 0 ) {
+        say( "stage: open: no screen to open a pane over" );
+        return;
+    }
+    for( Pane &pane : panes_ ) {
+        if( pane.order != 0 ) {
+            continue;
+        }
+        pane.shown = shown;
+        pane.order = ++pane_count_;
+        build_pane( pane );
+        lay_out();
+        return;
+    }
+    say( "stage: open: %zu panes are open already", max_panes );
+}
+
+void Stage::build_pane( Pane &pane ) noexcept
+{
+    gui::Ui *widgets = ui();
+    if( widgets == nullptr ) {
+        return; // built when the window comes
+    }
+    if( pane.shown.screen != nullptr ) {
+        write( *pane.shown.screen, gui::LayoutKind::pane );
+    }
+    const gui::Layout *layout = pane.shown.layout;
+    if( layout == nullptr ) {
+        layout = &drawing_->scratch.written;
+    }
+    // Over a modal pane every pane is modal too: what is beneath one takes
+    // no taps, so a pane over it would take none either.
+    bool modal = layout->pane().modal;
+    for( const Pane &below : panes_ ) {
+        if( below.order != 0 && below.order < pane.order && below.window != nullptr ) {
+            modal = modal || below.window->modal();
+        }
+    }
+    auto window = std::make_unique<gui::Window>();
+    window->set_titled( false );
+    window->set_movable( false );
+    window->set_modal( modal );
+    gui::LayoutHooks hooks;
+    hooks.tapped = &Stage::tapped_in_pane;
+    hooks.custom = &Stage::made_in_pane;
+    hooks.context = &pane;
+    gui::Table &table = window->content_table();
+    const gui::LayoutCheck check = gui::instantiate( *layout, table, widgets->skin(), hooks );
+    // A pane that did not build still opens, empty, so back closes it.
+    static_cast<void>( built( *layout, check ) );
+    pane.place = layout->pane().place;
+    pane.window = &widgets->show_window( std::move( window ), false );
+}
+
+void Stage::close_pane( Pane &pane ) noexcept
+{
+    if( pane.window != nullptr ) {
+        if( gui::Ui *widgets = ui() ) {
+            widgets->close_window( *pane.window ); // frees its widgets
+        }
+    }
+    for( Pane &other : panes_ ) {
+        if( other.order > pane.order ) {
+            --other.order;
+        }
+    }
+    --pane_count_;
+    pane.shown = {};
+    pane.window = nullptr;
+    pane.order = 0;
+}
+
+void Stage::drop_panes() noexcept
+{
+    // Their windows, if built, go with the screen's content.
+    for( Pane &pane : panes_ ) {
+        pane.shown = {};
+        pane.window = nullptr;
+        pane.order = 0;
+    }
+    pane_count_ = 0;
+}
+
+void Stage::place_panes() noexcept
+{
+    gui::Ui &widgets = drawing_->ui;
+    const gui::Insets safe = widgets.safe_area();
+    const float left = safe.left;
+    const float top = safe.top;
+    const float across = std::max( 0.0F, logical_width_ - safe.left - safe.right );
+    const float down = std::max( 0.0F, logical_height_ - safe.top - safe.bottom );
+    for( Pane &pane : panes_ ) {
+        if( pane.window == nullptr ) {
+            continue;
+        }
+        gui::Window &window = *pane.window;
+        const gui::Size wanted = window.size_hints( drawing_->painter, widgets.skin() ).preferred;
+        float width = std::min( wanted.width, across );
+        float height = std::min( wanted.height, down );
+        float x = left + ( across - width ) * 0.5F;
+        float y = top + ( down - height ) * 0.5F;
+        switch( pane.place ) {
+            case gui::PanePlace::center:
+                break;
+            case gui::PanePlace::left:
+            case gui::PanePlace::right:
+                x = pane.place == gui::PanePlace::left ? left : left + across - width;
+                y = top;
+                height = down;
+                break;
+            case gui::PanePlace::top:
+            case gui::PanePlace::bottom:
+                x = left;
+                y = pane.place == gui::PanePlace::top ? top : top + down - height;
+                width = across;
+                break;
+        }
+        window.set_bounds( x, y, width, height );
+        window.invalidate_layout();
     }
 }
 
@@ -686,6 +962,24 @@ void Stage::lay_out() noexcept
 void Stage::tapped( void *context, std::string_view line ) noexcept
 {
     static_cast<Stage *>( context )->tap( line );
+}
+
+void Stage::tapped_in_pane( void *context, std::string_view line ) noexcept
+{
+    Pane &pane = *static_cast<Pane *>( context );
+    Stage &stage = *pane.stage;
+    if( gui::read_tap( line ).kind != gui::TapKind::close ) {
+        stage.tap( line );
+        return;
+    }
+    // This pane, whichever is on top.
+    const auto slot = static_cast<std::uint8_t>( &pane - stage.panes_.data() );
+    stage.change( { gui::TapKind::close, slot, {} } );
+}
+
+std::unique_ptr<gui::Widget> Stage::made_in_pane( void *context, std::string_view name )
+{
+    return made( static_cast<Pane *>( context )->stage, name );
 }
 
 std::unique_ptr<gui::Widget> Stage::made( void *context, std::string_view name )
@@ -714,8 +1008,10 @@ void Stage::tap( std::string_view line ) noexcept
                      static_cast<int>( line.size() ), line.data() );
                 return;
             }
-            if( read.kind == gui::TapKind::replace ) {
-                change( gui::TapKind::replace, to );
+            if( read.kind == gui::TapKind::replace && to.layout != nullptr ) {
+                static_cast<void>( replace( *to.layout ) );
+            } else if( read.kind == gui::TapKind::replace ) {
+                change( { gui::TapKind::replace, top_pane, to } );
             } else if( to.layout != nullptr ) {
                 static_cast<void>( push( *to.layout ) );
             } else {
@@ -732,10 +1028,21 @@ void Stage::tap( std::string_view line ) noexcept
         case gui::TapKind::quit:
             leave_ = true;
             return;
-        case gui::TapKind::open:
+        case gui::TapKind::open: {
+            const Shown to = resolve( read.target );
+            if( to.layout != nullptr ) {
+                static_cast<void>( open( *to.layout ) );
+            } else if( to.screen != nullptr ) {
+                static_cast<void>( open_screen( *to.screen ) );
+            } else {
+                say( "stage: tap %.*s: no layout or added screen is called that",
+                     static_cast<int>( line.size() ), line.data() );
+            }
+            return;
+        }
         case gui::TapKind::close:
-            say( "stage: tap %.*s: panes come in 7.3", static_cast<int>( line.size() ),
-                 line.data() );
+            // A pane's own close comes through tapped_in_pane.
+            say( "stage: tap close: this is a screen, not a pane" );
             return;
         case gui::TapKind::none:
         case gui::TapKind::invalid:

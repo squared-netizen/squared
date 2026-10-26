@@ -84,6 +84,9 @@ void layouts_found()
     }
     CHECK( layouts::find( "nothing" ) == nullptr && layouts::find( "" ) == nullptr );
     CHECK( layouts::discard.kind() == LayoutKind::pane );
+    // A pane's place and modal, from its file; a screen has the defaults.
+    CHECK( layouts::discard.pane() == PaneShape{ PanePlace::bottom, true } );
+    CHECK( layouts::settings.pane() == PaneShape{} );
     // names.json's C++ screens, for the Stage to check at start.
     CHECK( layouts::screens().size() == 1 && layouts::screens()[0] == "workspace" );
     CHECK( layouts::settings.kind() == LayoutKind::screen );

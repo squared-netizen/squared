@@ -3,7 +3,8 @@
 // window comes and squared_main runs once; taps navigate and reach the model;
 // frames allocate nothing; back at the root and a quit tap leave; quitting
 // stops the model after it saves, and the next start begins afresh; an
-// activity made again reattaches to the running model.
+// activity made again reattaches to the running model. C++ screens (7.2), and
+// panes over a screen (7.3).
 
 #include <squared/app/event.hpp>
 #include <squared/app/runtime.hpp>
@@ -16,8 +17,13 @@
 #include <squared/gui/label.hpp>
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
+#include <squared/gui/src/pointer_action.hpp>
+#include <squared/gui/src/pointer_event.hpp>
+#include <squared/gui/src/size.hpp>
+#include <squared/gui/table.hpp>
 #include <squared/gui/ui.hpp>
 #include <squared/gui/widget.hpp>
+#include <squared/gui/window.hpp>
 #include <squared/messaging/key.hpp>
 #include <squared/messaging/model_runner.hpp>
 #include <squared/messaging/telegraph.hpp>
@@ -66,6 +72,12 @@ struct Written final
 Written landing;
 Written settings;
 Written broken;
+// Panes: one modal at the bottom, one on the right.
+Written discard;
+Written side;
+
+/// Every layout, sorted by name, as sqgen gives them.
+std::array<const sq::gui::Layout *, 4> sorted = {};
 
 // --- C++ screens -------------------------------------------------------------
 
@@ -78,6 +90,8 @@ struct Gauges final
             root.add_custom( "gauge" );
             root.row();
             root.add_custom( "dial" );
+            root.row();
+            root.add_custom( "opener" );
             root.row();
             root.add<sq::gui::Button>( "Back" ).tap( sq::gui::Navigate::back );
         }
@@ -122,12 +136,58 @@ struct Clash final
         static void build( sq::gui::LayoutWriter & /*root*/ ) {}
 };
 
+/// A C++ pane: on the left, not modal.
+struct Ask final
+{
+        static constexpr std::string_view name = "ask";
+        static constexpr sq::gui::PanePlace place = sq::gui::PanePlace::left;
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add<sq::gui::Label>( "Ask" );
+            root.row();
+            root.add<sq::gui::Button>( "Done" ).tap( sq::gui::Navigate::close );
+        }
+};
+
+static_assert( sq::detail::screen_entry<Ask>.pane.place == sq::gui::PanePlace::left );
+static_assert( sq::detail::screen_entry<About>.pane == sq::gui::PaneShape{} );
+
 static_assert( sq::ScreenType<About> );
 static_assert( !sq::ScreenType<Written> );
 
 std::unique_ptr<sq::gui::Widget> make_gauge()
 {
     return std::make_unique<sq::gui::Label>( "made gauge" );
+}
+
+/// The Stage an Opener opens panes on, and what it saw while its event was delivered.
+sq::Stage *opening = nullptr;
+bool opener_opened = false;
+std::size_t opener_saw = 0;
+
+/// A custom widget that opens two panes from inside its event: they wait.
+class Opener final : public sq::gui::Widget
+{
+    public:
+        [[nodiscard]] sq::gui::Size preferred_size( sq::gui::Painter & /*painter*/,
+                                                    const sq::gui::Skin & /*skin*/ ) const override
+        {
+            return { 100.0F, 60.0F };
+        }
+
+        bool pointer_event( const sq::gui::PointerEvent &event ) override
+        {
+            if( event.action == sq::gui::PointerAction::up && opening != nullptr ) {
+                opener_opened = opening->open( side.layout ) && opening->open( side.layout );
+                opener_saw = opening->panes();
+            }
+            return true;
+        }
+};
+
+std::unique_ptr<sq::gui::Widget> make_opener()
+{
+    return std::make_unique<Opener>();
 }
 
 void write_layouts()
@@ -157,9 +217,34 @@ void write_layouts()
     two.add<sq::gui::Button>( "Again" ).tap( "replace landing" );
     CHECK( two.complete() );
     settings.layout = two.layout();
-}
 
-const std::array<const sq::gui::Layout *, 2> sorted = { &landing.layout, &settings.layout };
+    using sq::gui::LayoutKind;
+    sq::gui::LayoutWriter three( discard.nodes, discard.text, discard.numbers, "discard",
+                                 LayoutKind::pane );
+    three.set_pane( { sq::gui::PanePlace::bottom, true } );
+    three.add<sq::gui::Label>( "Discard?" );
+    three.row();
+    three.add<sq::gui::Button>( "No" ).tap( sq::gui::Navigate::close );
+    three.row();
+    three.add<sq::gui::Button>( "Side" ).tap( "open side" );
+    three.row();
+    three.add<sq::gui::Button>( "Away" ).tap( "push settings" );
+    three.row();
+    three.add<sq::gui::Button>( "Ask" ).tap<Ask>( sq::gui::Navigate::open );
+    CHECK( three.complete() );
+    discard.layout = three.layout();
+
+    sq::gui::LayoutWriter four( side.nodes, side.text, side.numbers, "side", LayoutKind::pane );
+    four.set_pane( { sq::gui::PanePlace::right, false } );
+    four.add<sq::gui::Button>( "Shut" ).tap( sq::gui::Navigate::close );
+    CHECK( four.complete() );
+    side.layout = four.layout();
+
+    sorted[0] = &discard.layout;
+    sorted[1] = &landing.layout;
+    sorted[2] = &settings.layout;
+    sorted[3] = &side.layout;
+}
 
 /// names.json's screens, as sqgen writes them: one the app never adds.
 constexpr std::array<std::string_view, 3> screen_names = { "about", "gauges", "missing" };
@@ -271,9 +356,11 @@ void squared_main( sq::App &app )
     CHECK( app.stage.add<About>() );
     CHECK( app.stage.add<About>() ); // again: the same screen
     CHECK( app.stage.add<Gauges>() );
+    CHECK( app.stage.add<Ask>() );
     CHECK( !app.stage.add<BadName>() );
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
+    CHECK( app.stage.custom( "opener", make_opener ) );
     app.stage.push( landing.layout );
 }
 
@@ -347,15 +434,12 @@ struct Platform final
         }
 };
 
-/// The top screen's button that says `text`; nullptr when there is none.
-sq::gui::Button *button( sq::App &app, std::string_view text )
+/// The button in `table` that says `text`; nullptr when there is none.
+sq::gui::Button *button_in( sq::gui::Widget &table, std::string_view text )
 {
-    sq::gui::Ui *ui = app.stage.ui();
-    CHECK( ui != nullptr && ui->content() != nullptr );
-    sq::gui::Widget &root = *ui->content();
-    for( std::size_t i = 0; i < root.child_count(); ++i ) {
+    for( std::size_t i = 0; i < table.child_count(); ++i ) {
         // In these screens the buttons are the widgets that take focus.
-        auto *widget = static_cast<sq::gui::Widget *>( root.child_at( i ) );
+        auto *widget = static_cast<sq::gui::Widget *>( table.child_at( i ) );
         if( !widget->focusable() ) {
             continue;
         }
@@ -367,14 +451,46 @@ sq::gui::Button *button( sq::App &app, std::string_view text )
     return nullptr;
 }
 
-/// Tap the button that says `text`, as a finger would: in pixels.
-void tap( sq::App &app, std::string_view text )
+/// The `index`th pane's window, the lowest first: after the screen's content.
+sq::gui::Window &window( sq::App &app, std::size_t index )
 {
-    sq::gui::Button *pressed = button( app, text );
-    CHECK( pressed != nullptr );
-    const sq::gui::Widget &root = *app.stage.ui()->content();
-    const float x = root.x() + pressed->x() + pressed->width() * 0.5F;
-    const float y = root.y() + pressed->y() + pressed->height() * 0.5F;
+    sq::gui::Group &root = *app.stage.ui()->content()->parent();
+    CHECK( index + 1 < root.child_count() );
+    return *static_cast<sq::gui::Window *>( root.child_at( index + 1 ) );
+}
+
+/// The button that says `text`, in a pane (the top one first) or the screen.
+sq::gui::Button *button( sq::App &app, std::string_view text )
+{
+    sq::gui::Ui *ui = app.stage.ui();
+    CHECK( ui != nullptr && ui->content() != nullptr );
+    for( std::size_t i = ui->window_count(); i > 0; --i ) {
+        if( sq::gui::Button *found = button_in( window( app, i - 1 ).content_table(), text ) ) {
+            return found;
+        }
+    }
+    return button_in( *ui->content(), text );
+}
+
+/// Where `actor` is on the stage, in logical units.
+void stage_position( const sq::gui::Actor &actor, float &x, float &y )
+{
+    x = 0.0F;
+    y = 0.0F;
+    for( const sq::gui::Actor *at = &actor; at != nullptr; at = at->parent() ) {
+        x += at->x();
+        y += at->y();
+    }
+}
+
+/// Tap the middle of `pressed`, as a finger would: in pixels.
+void tap_on( sq::App &app, const sq::gui::Actor &pressed )
+{
+    float x = 0.0F;
+    float y = 0.0F;
+    stage_position( pressed, x, y );
+    x += pressed.width() * 0.5F;
+    y += pressed.height() * 0.5F;
     sq::app::Event event;
     event.x = x * static_cast<float>( pixel_width ) / logical_width;
     event.y = y * static_cast<float>( pixel_height ) / logical_height;
@@ -382,6 +498,14 @@ void tap( sq::App &app, std::string_view text )
     app.handle_event( event );
     event.type = sq::app::Event::Type::PointerUp;
     app.handle_event( event );
+}
+
+/// Tap the button that says `text`.
+void tap( sq::App &app, std::string_view text )
+{
+    sq::gui::Button *pressed = button( app, text );
+    CHECK( pressed != nullptr );
+    tap_on( app, *pressed );
 }
 
 void press_back( sq::App &app )
@@ -439,8 +563,6 @@ void starts_and_navigates()
     // Taps that go nowhere say so, and change nothing.
     tap( app, "Nowhere" );
     CHECK( reported( "push nowhere: no layout or added screen is called that" ) );
-    tap( app, "Pane" );
-    CHECK( reported( "panes come in 7.3" ) );
     CHECK( app.stage.depth() == 1 );
 
     // The stack holds max_depth.
@@ -564,6 +686,14 @@ void cpp_screens()
         CHECK( sq::dev::frame_end().count == 0 );
     }
 
+    // Panes opened from inside an event wait for it, and count as open.
+    opening = &app.stage;
+    tap_on( app, *root.child_at( 2 ) );
+    CHECK( opener_opened && opener_saw == 2 );
+    CHECK( app.stage.panes() == 2 && app.stage.ui()->window_count() == 2 );
+    CHECK( app.stage.close() && app.stage.close() && !app.stage.close() );
+    opening = nullptr;
+
     // Back builds the C++ screen again, then the layout beneath it.
     press_back( app );
     CHECK( app.stage.showing<About>() && button( app, "Gauges" ) != nullptr );
@@ -595,6 +725,129 @@ void cpp_screens()
     tap( app, "About" );
     CHECK( app.stage.showing<About>() );
     app.quit();
+    app.dispose();
+}
+
+void panes()
+{
+    start = Start::no_model;
+    reports.clear();
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    sq::gui::Ui &ui = *app.stage.ui();
+
+    // A tap opens a pane over the screen, which stays: modal, at the bottom,
+    // the width of the screen, no title bar.
+    tap( app, "Pane" );
+    CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "discard" );
+    CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
+    CHECK( ui.window_count() == 1 );
+    const sq::gui::Window &bottom = window( app, 0 );
+    CHECK( bottom.modal() && !bottom.titled() && !bottom.movable() );
+    // No title bar (36 tall by default): the content starts at the insets.
+    CHECK( bottom.content_table().y() < 36.0F );
+    CHECK( bottom.x() == 0.0F && bottom.width() == logical_width );
+    CHECK( bottom.y() + bottom.height() == logical_height );
+    CHECK( bottom.height() < logical_height );
+
+    // Modal: the screen beneath takes no taps.
+    tap( app, "Settings" );
+    CHECK( app.stage.depth() == 1 && app.stage.panes() == 1 );
+
+    // A pane opens another; over a modal pane it is modal too. On the
+    // right: the height of the screen.
+    tap( app, "Side" );
+    CHECK( app.stage.panes() == 2 && app.stage.pane_name() == "side" );
+    const sq::gui::Window &right = window( app, 1 );
+    CHECK( right.modal() );
+    CHECK( right.x() + right.width() == logical_width && right.x() > 0.0F );
+    CHECK( right.y() == 0.0F && right.height() == logical_height );
+
+    // Back closes the top pane first; a close closes the pane it is in.
+    press_back( app );
+    CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "discard" );
+    CHECK( ui.window_count() == 1 );
+    tap( app, "No" );
+    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 && app.stage.depth() == 1 );
+    CHECK( app.stage.pane_name().empty() );
+
+    // Not modal: a tap outside reaches the screen. Leaving the screen closes
+    // its panes, and they do not come back with it.
+    CHECK( app.stage.open( side.layout ) );
+    CHECK( !window( app, 0 ).modal() );
+    tap( app, "Settings" );
+    CHECK( app.stage.depth() == 2 && app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.back() );
+    CHECK( app.stage.depth() == 1 && app.stage.panes() == 0 && ui.window_count() == 0 );
+
+    // A C++ pane, by its type: on the left. A close in a pane that is not
+    // the top one closes that one.
+    CHECK( app.stage.open( side.layout ) );
+    CHECK( app.stage.open<Ask>() );
+    CHECK( app.stage.pane_name() == "ask" && app.stage.panes() == 2 );
+    const sq::gui::Window &left = window( app, 1 );
+    CHECK( left.x() == 0.0F && left.height() == logical_height && !left.modal() );
+    tap( app, "Shut" );
+    CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "ask" );
+    tap( app, "Done" );
+    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+
+    // A pane's tap navigates the screen: away, and the panes go with it.
+    tap( app, "Pane" );
+    tap( app, "Away" );
+    CHECK( app.stage.depth() == 2 && app.stage.top() == &settings.layout );
+    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.back() );
+
+    // By name, an added C++ screen opens as a pane.
+    tap( app, "Pane" );
+    tap( app, "Ask" );
+    CHECK( app.stage.pane_name() == "ask" && window( app, 1 ).modal() );
+    while( app.stage.close() ) {
+    }
+    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+
+    // What is refused, and said.
+    CHECK( !app.stage.open( landing.layout ) );
+    CHECK( reported( "open landing: a screen: push it" ) );
+    CHECK( !app.stage.push( discard.layout ) );
+    CHECK( reported( "push discard: a pane: open it" ) );
+    CHECK( !app.stage.replace( discard.layout ) );
+    CHECK( reported( "replace discard: a pane: open it" ) );
+    CHECK( !app.stage.close() );
+    CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
+
+    // Four at most; a frame with them allocates nothing.
+    for( std::size_t i = 0; i < sq::Stage::max_panes; ++i ) {
+        CHECK( app.stage.open( side.layout ) );
+    }
+    CHECK( !app.stage.open( side.layout ) && !app.stage.open<Ask>() );
+    CHECK( reported( "open side: 4 panes are open already" ) );
+    CHECK( ui.window_count() == 4 );
+    platform.frame( app );
+    for( int i = 0; i < 10; ++i ) {
+        sq::dev::frame_begin();
+        platform.frame( app );
+        CHECK( sq::dev::frame_end().count == 0 );
+    }
+
+    // An activity made again: the screen and its panes come back, built anew.
+    app.dispose();
+    CHECK( app.stage.ui() == nullptr && app.stage.panes() == 4 );
+    Platform again( assets_directory() );
+    again.open( app );
+    CHECK( app.stage.panes() == 4 && app.stage.ui()->window_count() == 4 );
+    CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
+
+    // Back closes them one by one, then leaves at the root.
+    for( std::size_t i = 0; i < sq::Stage::max_panes; ++i ) {
+        press_back( app );
+    }
+    CHECK( app.stage.panes() == 0 && app.stage.ui()->window_count() == 0 );
+    CHECK( !app.quit_requested() );
+    press_back( app );
+    CHECK( app.quit_requested() );
     app.dispose();
 }
 
@@ -658,6 +911,7 @@ int main()
     starts_and_navigates();
     model_on_its_thread();
     cpp_screens();
+    panes();
     back_tap_at_the_root_leaves();
     no_skin_draws_red();
     a_bad_layout_is_said();

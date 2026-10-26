@@ -55,6 +55,7 @@ struct Compiled
         std::string name;
         std::string identifier;
         LayoutKind kind = LayoutKind::screen;
+        sq::gui::PaneShape pane{};
         std::vector<LayoutNode> nodes;
         std::string text;
         std::vector<float> numbers;
@@ -484,6 +485,13 @@ void layout_definition( std::ostringstream &out, const Compiled &layout )
     out << ", std::string_view( " << id << "_text, sizeof( " << id << "_text ) - 1 )";
     if( !layout.numbers.empty() ) {
         out << ", " << id << "_numbers";
+    } else if( layout.kind == LayoutKind::pane ) {
+        out << ", {}";
+    }
+    if( layout.kind == LayoutKind::pane ) {
+        out << ", sq::gui::PaneShape{ sq::gui::PanePlace::";
+        out << sq::gui::pane_place_name( layout.pane.place ) << ", ";
+        out << ( layout.pane.modal ? "true" : "false" ) << " }";
     }
     out << " };\n";
 }
@@ -671,6 +679,7 @@ struct Read
         layout.nodes.assign( written.nodes().begin(), written.nodes().end() );
         layout.text.assign( written.text() );
         layout.numbers.assign( written.numbers().begin(), written.numbers().end() );
+        layout.pane = written.pane();
         out.push_back( std::move( layout ) );
     }
     return out;

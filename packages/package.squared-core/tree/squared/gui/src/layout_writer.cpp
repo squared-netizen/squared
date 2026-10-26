@@ -75,7 +75,8 @@ void LayoutWriter::clear() noexcept
 Layout LayoutWriter::layout() const noexcept
 {
     const std::string_view text( text_.data(), text_used_ );
-    return Layout( name_, kind_, nodes_.first( count_ ), text, numbers_.first( numbers_used_ ) );
+    const std::span<const float> numbers = numbers_.first( numbers_used_ );
+    return Layout( name_, kind_, nodes_.first( count_ ), text, numbers, pane_ );
 }
 
 LayoutWriter &LayoutWriter::row() noexcept

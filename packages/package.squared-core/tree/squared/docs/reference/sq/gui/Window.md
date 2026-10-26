@@ -52,40 +52,6 @@ Inherits from Widget
 
 **return** Reference to the content table.
 
-### minimum_size
-
-*public Size minimum_size(Painter & , const Skin & )*
-
-
-
-**brief** Report the minimum size constrained by layout.
-
-**note** Parameters match Widget::minimum_size: an active painter and the skin providing the window style.
-
-**return** Minimum extent in logical units.
-
-### paint
-
-*public void paint(Painter & , const Skin & , float , float )*
-
-
-
-**brief** Paint the title bar, background, and content.
-
-**note** Parameters match the Widget::paint signature: the active painter, the skin providing the window style, and the stage-space origin.
-
-### pointer_event
-
-*public bool pointer_event(const PointerEvent & )*
-
-
-
-**brief** Handle drag, resize, and close-button events.
-
-**note** The parameter matches Widget::pointer_event: a pointer payload in widget-local coordinates.
-
-**return** true when the event was handled.
-
 ### title
 
 *public const std::string & title()*
@@ -146,17 +112,59 @@ Inherits from Widget
 
 **return** true while the window can be dragged by its title bar.
 
+### titled
+
+*public bool titled()*
+
+*Defined at [gui/window.hpp:99](../../../../gui/window.hpp#L99)*
+
+
+
+**brief** Read the titled state.
+
+**return** true while the window has a title bar (the default).
+
 ### closable
 
 *public bool closable()*
 
-*Defined at [gui/window.hpp:98](../../../../gui/window.hpp#L98)*
+*Defined at [gui/window.hpp:111](../../../../gui/window.hpp#L111)*
 
 
 
 **brief** Read the closable state.
 
 **return** true while the window shows a close button.
+
+### set_title
+
+*public void set_title(std::string title)*
+
+
+
+**brief** Replace the title-bar text.
+
+**title** New title text.
+
+### set_style
+
+*public void set_style(std::string style)*
+
+
+
+**brief** Change the applied window style.
+
+**style** Named window style to apply.
+
+### set_titled
+
+*public void set_titled(bool titled)*
+
+
+
+**brief** Control the title bar.
+
+**titled** false leaves the window no title bar, title, or close button: the content takes the whole window (a Stage pane's).
 
 ### set_closable
 
@@ -168,6 +176,78 @@ Inherits from Widget
 
 **closable** true shows the close button.
 
+### set_resizable
+
+*public void set_resizable(bool resizable)*
+
+*Defined at [gui/window.hpp:117](../../../../gui/window.hpp#L117)*
+
+
+
+**brief** Control edge resizing.
+
+**resizable** true enables resize grabs on the window border.
+
+### resizable
+
+*public bool resizable()*
+
+*Defined at [gui/window.hpp:123](../../../../gui/window.hpp#L123)*
+
+
+
+**brief** Read the resizable state.
+
+**return** true while the window can be resized.
+
+### minimum_window_size
+
+*public Size minimum_window_size()*
+
+*Defined at [gui/window.hpp:135](../../../../gui/window.hpp#L135)*
+
+
+
+**brief** Read the minimum window size.
+
+**return** Requested minimum extent in logical units.
+
+### request_close
+
+*public void request_close()*
+
+*Defined at [gui/window.hpp:142](../../../../gui/window.hpp#L142)*
+
+
+
+**brief** Request the window to close.
+
+ The host Ui prunes windows marked close-requested on the next update.
+
+### close_requested
+
+*public bool close_requested()*
+
+*Defined at [gui/window.hpp:148](../../../../gui/window.hpp#L148)*
+
+
+
+**brief** Read the close-requested flag.
+
+**return** true after request_close() was called.
+
+### escape_closes
+
+*protected bool escape_closes()*
+
+*Defined at [gui/window.hpp:193](../../../../gui/window.hpp#L193)*
+
+
+
+**brief** Decide whether Escape closes the window.
+
+**return** false by default; overridden by Dialog.
+
 ### set_minimum_window_size
 
 *public void set_minimum_window_size(Size size)*
@@ -177,6 +257,18 @@ Inherits from Widget
 **brief** Set the smallest allowed window size.
 
 **size** Minimum extent in logical units.
+
+### minimum_size
+
+*public Size minimum_size(Painter & , const Skin & )*
+
+
+
+**brief** Report the minimum size constrained by layout.
+
+**note** Parameters match Widget::minimum_size: an active painter and the skin providing the window style.
+
+**return** Minimum extent in logical units.
 
 ### preferred_size
 
@@ -202,97 +294,27 @@ Inherits from Widget
 
 **note** Parameters match Widget::layout: an active painter and the skin providing the window style.
 
-### set_resizable
+### paint
 
-*public void set_resizable(bool resizable)*
-
-*Defined at [gui/window.hpp:104](../../../../gui/window.hpp#L104)*
+*public void paint(Painter & , const Skin & , float , float )*
 
 
 
-**brief** Control edge resizing.
+**brief** Paint the title bar, background, and content.
 
-**resizable** true enables resize grabs on the window border.
+**note** Parameters match the Widget::paint signature: the active painter, the skin providing the window style, and the stage-space origin.
 
-### resizable
+### pointer_event
 
-*public bool resizable()*
-
-*Defined at [gui/window.hpp:110](../../../../gui/window.hpp#L110)*
+*public bool pointer_event(const PointerEvent & )*
 
 
 
-**brief** Read the resizable state.
+**brief** Handle drag, resize, and close-button events.
 
-**return** true while the window can be resized.
+**note** The parameter matches Widget::pointer_event: a pointer payload in widget-local coordinates.
 
-### minimum_window_size
-
-*public Size minimum_window_size()*
-
-*Defined at [gui/window.hpp:122](../../../../gui/window.hpp#L122)*
-
-
-
-**brief** Read the minimum window size.
-
-**return** Requested minimum extent in logical units.
-
-### request_close
-
-*public void request_close()*
-
-*Defined at [gui/window.hpp:129](../../../../gui/window.hpp#L129)*
-
-
-
-**brief** Request the window to close.
-
- The host Ui prunes windows marked close-requested on the next update.
-
-### close_requested
-
-*public bool close_requested()*
-
-*Defined at [gui/window.hpp:135](../../../../gui/window.hpp#L135)*
-
-
-
-**brief** Read the close-requested flag.
-
-**return** true after request_close() was called.
-
-### escape_closes
-
-*protected bool escape_closes()*
-
-*Defined at [gui/window.hpp:180](../../../../gui/window.hpp#L180)*
-
-
-
-**brief** Decide whether Escape closes the window.
-
-**return** false by default; overridden by Dialog.
-
-### set_title
-
-*public void set_title(std::string title)*
-
-
-
-**brief** Replace the title-bar text.
-
-**title** New title text.
-
-### set_style
-
-*public void set_style(std::string style)*
-
-
-
-**brief** Change the applied window style.
-
-**style** Named window style to apply.
+**return** true when the event was handled.
 
 
 

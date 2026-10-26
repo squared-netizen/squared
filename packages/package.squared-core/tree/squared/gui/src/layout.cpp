@@ -119,6 +119,34 @@ std::optional<NodeType> node_type_named( std::string_view name ) noexcept
     return std::nullopt;
 }
 
+std::string_view pane_place_name( PanePlace place ) noexcept
+{
+    switch( place ) {
+        case PanePlace::center:
+            return "center";
+        case PanePlace::left:
+            return "left";
+        case PanePlace::right:
+            return "right";
+        case PanePlace::top:
+            return "top";
+        case PanePlace::bottom:
+            return "bottom";
+    }
+    return {};
+}
+
+std::optional<PanePlace> pane_place_named( std::string_view name ) noexcept
+{
+    for( std::size_t i = 0; i < pane_place_count; ++i ) {
+        const auto place = static_cast<PanePlace>( i );
+        if( !name.empty() && pane_place_name( place ) == name ) {
+            return place;
+        }
+    }
+    return std::nullopt;
+}
+
 Tap read_tap( std::string_view line ) noexcept
 {
     if( line.empty() ) {

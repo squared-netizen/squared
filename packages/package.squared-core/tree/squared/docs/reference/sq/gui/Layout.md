@@ -1,6 +1,6 @@
 # class Layout
 
-*Defined at [gui/layout.hpp:137](../../../../gui/layout.hpp#L137)*
+*Defined at [gui/layout.hpp:165](../../../../gui/layout.hpp#L165)*
 
 
 
@@ -16,19 +16,19 @@
 
 *public void Layout()*
 
-*Defined at [gui/layout.hpp:142](../../../../gui/layout.hpp#L142)*
+*Defined at [gui/layout.hpp:170](../../../../gui/layout.hpp#L170)*
 
 ### Layout
 
-*public void Layout(std::string_view name, LayoutKind kind, std::span<const LayoutNode> nodes, std::string_view text, std::span<const float> numbers)*
+*public void Layout(std::string_view name, LayoutKind kind, std::span<const LayoutNode> nodes, std::string_view text, std::span<const float> numbers, PaneShape pane)*
 
-*Defined at [gui/layout.hpp:143](../../../../gui/layout.hpp#L143)*
+*Defined at [gui/layout.hpp:171](../../../../gui/layout.hpp#L171)*
 
 ### name
 
 *public std::string_view name()*
 
-*Defined at [gui/layout.hpp:153](../../../../gui/layout.hpp#L153)*
+*Defined at [gui/layout.hpp:183](../../../../gui/layout.hpp#L183)*
 
 
 
@@ -38,25 +38,35 @@
 
 *public LayoutKind kind()*
 
-*Defined at [gui/layout.hpp:154](../../../../gui/layout.hpp#L154)*
+*Defined at [gui/layout.hpp:184](../../../../gui/layout.hpp#L184)*
+
+### pane
+
+*public PaneShape pane()*
+
+*Defined at [gui/layout.hpp:186](../../../../gui/layout.hpp#L186)*
+
+
+
+**brief** How it shows when it is a pane: its file's `place` and `modal`. 
 
 ### nodes
 
 *public Nodes nodes()*
 
-*Defined at [gui/layout.hpp:155](../../../../gui/layout.hpp#L155)*
+*Defined at [gui/layout.hpp:187](../../../../gui/layout.hpp#L187)*
 
 ### numbers
 
 *public std::span<const float> numbers()*
 
-*Defined at [gui/layout.hpp:156](../../../../gui/layout.hpp#L156)*
+*Defined at [gui/layout.hpp:188](../../../../gui/layout.hpp#L188)*
 
 ### text
 
 *public std::string_view text()*
 
-*Defined at [gui/layout.hpp:159](../../../../gui/layout.hpp#L159)*
+*Defined at [gui/layout.hpp:191](../../../../gui/layout.hpp#L191)*
 
 
 
@@ -66,7 +76,7 @@
 
 *public std::string_view text(std::uint16_t offset)*
 
-*Defined at [gui/layout.hpp:162](../../../../gui/layout.hpp#L162)*
+*Defined at [gui/layout.hpp:194](../../../../gui/layout.hpp#L194)*
 
 
 

@@ -21,7 +21,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing
   - [layouts](layouts.md) &mdash; screens and panes as data: the node table, writing one from C++, layout files, `names.json`, the `sqgen` build step, taps, and building widgets from it
-- [stage](stage.md) &mdash; the App and the Stage: `squared_main`, the model at the Telegraph's far end, the stack of screens, C++ screens and custom nodes, taps, the window, and what is reported
+- [stage](stage.md) &mdash; the App and the Stage: `squared_main`, the model at the Telegraph's far end, the stack of screens, C++ screens and custom nodes, panes, taps, the window, and what is reported
 - [messaging](messaging.md) &mdash; the Telegraph: names, addresses, keys, the 32-byte telegram and its text form, the rings, the cache, lists, both ends, and the model's thread
 - [math](math.md) &mdash; small value types used across the framework
 - [time](time.md) &mdash; the time between ticks (`Timepiece`), the clocks, and a model's timers (`DeadlineQueue`)

@@ -66,16 +66,6 @@
 
 **brief** Add a custom node: a type the app registers by `name`. 
 
-### complete
-
-*public bool complete()*
-
-*Defined at [gui/layout_writer.hpp:283](../../../../gui/layout_writer.hpp#L283)*
-
-
-
-**brief** Everything asked for was written: nothing ran out of room or went where it cannot. 
-
 ### row
 
 *public LayoutWriter & row()*
@@ -99,6 +89,26 @@
 
 
 **brief** Start again, with the same storage. 
+
+### set_pane
+
+*public void set_pane(PaneShape shape)*
+
+*Defined at [gui/layout_writer.hpp:280](../../../../gui/layout_writer.hpp#L280)*
+
+
+
+**brief** How the layout shows when it is a pane (`Layout::pane`). 
+
+### complete
+
+*public bool complete()*
+
+*Defined at [gui/layout_writer.hpp:286](../../../../gui/layout_writer.hpp#L286)*
+
+
+
+**brief** Everything asked for was written: nothing ran out of room or went where it cannot. 
 
 
 

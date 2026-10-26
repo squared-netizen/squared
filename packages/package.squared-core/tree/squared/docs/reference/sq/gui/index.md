@@ -52,6 +52,7 @@
 * [NodeTypeOf](NodeTypeOf.md)
 * [NodeWriter](NodeWriter.md)
 * [Painter](Painter.md)
+* [PaneShape](PaneShape.md)
 * [PanelStyle](PanelStyle.md)
 * [Panel](Panel.md)
 * [PointerEvent](PointerEvent.md)
@@ -132,7 +133,7 @@
 
 *bool holds_nodes(NodeType type)*
 
-*Defined at [gui/layout.hpp:95](../../../../gui/layout.hpp#L95)*
+*Defined at [gui/layout.hpp:123](../../../../gui/layout.hpp#L123)*
 
 
 
@@ -202,7 +203,7 @@
 
 *std::size_t node_numbers(NodeType type)*
 
-*Defined at [gui/layout.hpp:116](../../../../gui/layout.hpp#L116)*
+*Defined at [gui/layout.hpp:144](../../../../gui/layout.hpp#L144)*
 
 
 
@@ -228,13 +229,35 @@
 
 *bool operator==(const LayoutCheck & , const LayoutCheck & )*
 
-*Defined at [gui/layout.hpp:254](../../../../gui/layout.hpp#L254)*
+*Defined at [gui/layout.hpp:287](../../../../gui/layout.hpp#L287)*
 
 ### operator==
 
 *bool operator==(const LayoutNode & , const LayoutNode & )*
 
-*Defined at [gui/layout.hpp:89](../../../../gui/layout.hpp#L89)*
+*Defined at [gui/layout.hpp:117](../../../../gui/layout.hpp#L117)*
+
+### operator==
+
+*bool operator==(const PaneShape & , const PaneShape & )*
+
+*Defined at [gui/layout.hpp:71](../../../../gui/layout.hpp#L71)*
+
+### pane_place_name
+
+*std::string_view pane_place_name(PanePlace place)*
+
+
+
+**brief** A place's name in a layout file: `left`. 
+
+### pane_place_named
+
+*std::optional<PanePlace> pane_place_named(std::string_view name)*
+
+
+
+**brief** The place a layout file names; nothing for a name that is not one. 
 
 ### problem_text
 
@@ -302,7 +325,7 @@
 
 *bool shows_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:101](../../../../gui/layout.hpp#L101)*
+*Defined at [gui/layout.hpp:129](../../../../gui/layout.hpp#L129)*
 
 
 
@@ -415,7 +438,7 @@
 | unknown_drawable |
 
 
-*Defined at [gui/layout.hpp:214](../../../../gui/layout.hpp#L214)*
+*Defined at [gui/layout.hpp:247](../../../../gui/layout.hpp#L247)*
 
 
 
@@ -463,6 +486,23 @@
 
 **brief** What a layout node builds. A layout file names it as `type` (`"check_box"`); C++ names it through the widget (`add<CheckBox>`).
 
+| enum class PanePlace |
+
+--
+
+| center |
+| left |
+| right |
+| top |
+| bottom |
+
+
+*Defined at [gui/layout.hpp:51](../../../../gui/layout.hpp#L51)*
+
+
+
+**brief** Where a pane sits on its screen. `center` at the size it asks for; `left` and `right` the screen's height, `top` and `bottom` its width. Always inside the safe area.
+
 | enum class PointerAction |
 
 --
@@ -508,7 +548,7 @@
 | invalid |
 
 
-*Defined at [gui/layout.hpp:180](../../../../gui/layout.hpp#L180)*
+*Defined at [gui/layout.hpp:213](../../../../gui/layout.hpp#L213)*
 
 
 

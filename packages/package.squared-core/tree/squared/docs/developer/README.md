@@ -43,6 +43,6 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [gui](gui.md) &mdash; includes the former `scene2d`
   - [layouts](layouts.md) &mdash; the node table, `check`, the writer and `instantiate`; reading layout files and `names.json`; `sqgen` and its app-build wiring: sizes, allocation, patterns, tests
 - [messaging](messaging.md)
-- [stage](stage.md) &mdash; the App and the Stage (Sprint 7.1): lifetimes, a recreated activity and a quit, the model's holder, the stack and its waiting navigations, taps, the weak layout catalog, `Drawing`, sizes, tests
+- [stage](stage.md) &mdash; the App and the Stage (Sprint 7.1 to 7.3): lifetimes, a recreated activity and a quit, the model's holder, the stack and its waiting navigations, C++ screens, panes and their slots, taps, the weak layout catalog, `Drawing`, sizes, tests
 - [math](math.md)
 - [time](time.md)

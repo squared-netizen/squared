@@ -1,14 +1,14 @@
 # stage &mdash; internals
 
 Programmer docs: [../programmer/stage.md](../programmer/stage.md). The
-decision record: the refactor plan's 7.1 ("yes to all", 2026-10-26) and the
-app model's Ownership and Lifecycle sections.
+decision record: the refactor plan's 7.1, 7.2 and 7.3 ("yes to all",
+2026-10-26) and the app model's Ownership and Lifecycle sections.
 
 `stage/app.hpp` (`sq::App`, `squared_main`), `stage/stage.hpp`
 (`sq::Stage`), `src/app.cpp`, `src/stage.cpp`, and `src/catalog.cpp` with
 `src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
-screen stack folded in.
+C++ screens and 7.3's panes folded in.
 
 Depends on app (headers), gui, graphics, assets (the `Runtime`'s), files,
 messaging, time, data (through gui's skin loader) and math. Nothing depends
@@ -26,6 +26,7 @@ is linked only when something refers to it.
 | `Stage` | inside the App | the App |
 | `Stage::Drawing` (skin pieces, batch, camera, painter, widgets) | a window: `attach` to `detach` | the Stage, one allocation |
 | the top screen's widgets | from shown to replaced | `instantiate`, on each navigation |
+| a pane's window and widgets | from opened to closed, or its screen left | `build_pane`, on each open |
 
 **Member order is the start order.** `line_` is the App's first member,
 private and declared before the public `stage`, so it is made first and
@@ -78,13 +79,16 @@ runner's own precondition is one to a line).
 
 ## The Stage
 
-936 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
+1,104 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
 the same in both standard libraries): the screens (16 `Shown`s, two pointers
-each), 4 waiting changes (a `TapKind` and a `Shown`), the 16 added C++
-screens (a pointer each), the 16 custom types (a name and a function pointer
-each), the report, the text-input service, the `Drawing` pointer, the pixel
-and logical sizes, the safe area, a depth, three counts and four flags. Was
-264 in 7.1; 7.2's registries and the second pointer per screen are the rest.
+each), 4 waiting changes (a `TapKind`, a pane slot and a `Shown`), the 16
+added C++ screens (a pointer each), the 16 custom types (a name and a
+function pointer each), the 4 pane slots (40 bytes each, below), the report,
+the text-input service, the `Drawing` pointer, the pixel and logical sizes,
+the safe area, a depth, four counts and four flags. Was 264 in 7.1 and 936 in
+7.2; the pane slots are 7.3's 168. In the App it costs less than it adds:
+the App is `TelegraphLine`-aligned (64), so it grew from line + 1,088 to
+line + 1,216.
 
 **The stack holds a layout or a C++ screen per entry**, nothing else (7.1's
 choice 7, 7.2's choice 3): `Shown` is a `const Layout *` and a
@@ -168,6 +172,85 @@ the maker by a linear scan. No maker: `instantiate` stands a label in, and
 reports the node as built short. A function pointer, not `std::function`: a
 maker needs no captures (it makes a widget, the widget reads the model).
 
+## Panes (7.3)
+
+**A pane is a layout of kind `pane`**, shown over the top screen in a
+`gui::Window` (7.3's choices 1 and 3): `open( layout )` takes a compiled one,
+`open<S>()` a C++ screen type, and the `open <name>` tap either. Its shape
+(`gui::PaneShape`: a `PanePlace` and `modal`, 2 bytes) is the file's `place`
+and `modal`, which sqgen writes as a sixth constructor argument; it lives in
+`Layout`'s tail padding, so a layout stays 72 bytes (choice 2). A C++ type's
+comes from its optional `place` and `modal` constants: `detail::shape_of<S>()`
+is `consteval` and reads them with `if constexpr( requires ... )`, into the
+`ScreenEntry` beside the name and the build. `write` gives the writer the
+entry's shape, so the table a C++ pane writes carries it the way a compiled
+one does, and one path builds both. The kinds are checked at the door:
+`push` and `replace` refuse a pane, `open` a screen (sqgen already refuses
+them in a file's taps; this is the C++ side).
+
+**Slots, not a stack.** 4 `Pane` slots (`max_panes`, choice 5): the Stage's
+address, a `Shown`, the `gui::Window *` while built, its place, and an
+`order` (0 free, else 1 for the lowest open pane). The panes' widgets get the
+slot's address as their hooks' context (`tapped_in_pane`, `made_in_pane`),
+so a `close` tap knows which pane it is in, whichever is on top; a slot keeps
+its address while the pane is open, which a compacted array would not
+(closing a lower pane would move the upper one under its buttons' contexts).
+The top pane is the slot whose `order` is the count. A linear scan of 4 for
+each, no allocation. Cost: the Stage pointer in each slot (32 bytes), chosen
+over recovering the Stage from a slot's address (`offsetof` on a
+non-standard-layout class is only conditionally supported).
+
+**Changes wait like navigation does.** `open` and `close` are `TapKind`s in
+the same 4-entry queue, a `close` carrying its slot (`top_pane` for "the top
+one"). `after()` replays the queue over a copy of the depth and the pane
+count, so `depth()`, `panes()`, `back()` and the four-pane limit answer for
+the state after it; a push or replace there counts the panes as gone.
+
+**Built when opened, freed when closed** (choice 4, which changed the spec's
+"reused, not rebuilt"): `build_pane` makes a `Window` (no title bar, not
+movable, modal as asked), instantiates the layout into its content table and
+hands it to `Ui::show_window` without centring; `close_pane` calls
+`Ui::close_window`, which frees the tree, then renumbers the slots above.
+Keeping a closed pane's widgets would hold memory for something not shown;
+priority 1 over the speed of a second open.
+
+**They belong to their screen** (choice 5): a push, a replace or a back to
+the screen beneath drops every slot (`drop_panes`) before `show_top`, whose
+`Ui::set_content` frees the windows with the old content. They do not come
+back with the screen. A window made again (`attach` after `detach`, or a lost
+context) is the same screen, so `show_top` builds its panes again, lowest
+first; `detach` and `show_top` null the windows first, so no slot points at a
+freed one.
+
+**Back closes the top pane first** (choice 6), for the back key and the
+`back` tap alike, so `back()` means what the back key does and is false only
+at the root with no pane open.
+
+**Modal.** gui's `Ui` blocks everything outside its top modal window, a
+window above it included. So a pane opened over a modal one is made modal
+too (`build_pane` looks at the open slots below it); otherwise it would show
+and take no taps. A tap outside a non-modal pane reaches the screen
+(`Window::pointer_event` takes only what is inside it).
+
+**Placement** (`place_panes`, before each `Ui::layout`): the safe area is the
+frame; `center` is the pane's preferred size, capped to it and centred in it;
+`left` and `right` are its preferred width and the frame's height, `top` and
+`bottom` its preferred height and the frame's width. Rotation and safe-area
+changes come through `lay_out`, so they place again.
+
+**One scratch.** A C++ pane writes into the same `Drawing::Scratch` as a C++
+screen: `instantiate` copies what the widgets keep, so the screen's widgets
+are unaffected, but `top()` for a C++ screen points into that scratch and is
+documented as valid until a C++ pane is written over it. A second 17 KB
+scratch for panes was the alternative: priority 1.
+
+**gui changed for it:** `Window::set_titled( false )` leaves no title bar
+(`title_height_` 0: no title text, background or close button, and the
+content takes the whole window; `close_bounds` is an empty rectangle so no
+tap lands on a close button that is not there). A bool in the existing
+padding: `Window` is still 304 bytes. 7.7 folds `Window` and `Dialog` into
+the pane.
+
 ## `Stage::Drawing`
 
 19,128 bytes under libc++ (Android, Termux) and 19,312 under libstdc++:
@@ -209,12 +292,15 @@ drawable missing) is reported and shown.
 - **Registry (bounded)**: the added screens and the custom makers, 16 each,
   no allocation, filled in `squared_main`; a full table refuses and reports.
 - **Static polymorphism**: a C++ screen is any type `sq::ScreenType`
-  accepts, reached through one function pointer; no base class.
+  accepts, reached through one function pointer; no base class. Its pane
+  shape is read at compile time from optional constants.
+- **Object pool (fixed slots)**: the 4 pane slots, whose addresses are the
+  panes' hook contexts; free is `order == 0`.
 
 ## Standard library
 
 Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
-`std::array` for the stack, the queue, the registries and the scratch; `std::string` and `std::vector`
+`std::array` for the stack, the queue, the registries, the pane slots and the scratch; `std::string` and `std::vector`
 while a skin loads (once per window, in `attach`); `gui::FontPtr`
 (`std::shared_ptr`), gui's own type. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
@@ -225,11 +311,12 @@ hooks and the report (function pointers). See
 
 | What | Where | When | Size |
 |---|---|---|---|
-| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,088 (the Stage is 936) |
+| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,104) |
 | the model's runner | heap | `run` | the runner and the model |
 | `Stage::Drawing` | heap | each window | 19,128 (libc++; 19,312 libstdc++), the scratch's 17,480 included, plus the skin's textures and tables |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
+| a pane | heap | each open | a `gui::Window` (304) and its widgets; freed when it closes |
 | a tap's telegram | stack | each tap | 1 KB |
 | a report line | stack | each report | 256 bytes |
 | a frame | &mdash; | &mdash; | nothing (tested) |
@@ -244,7 +331,7 @@ template's default skin in `test/assets/` and layouts written with
   `run` is refused and reported.
 - **Taps:** a telegram reaches an inline model and its answer comes back
   through the drain; `push`, `replace`, `back` by tap and by key; a name with
-  no layout and a pane are reported and change nothing; the stack's limit.
+  no layout is reported and changes nothing; the stack's limit.
 - **No allocation** in 20 frames, under the frame-allocation counter.
 - **Lifecycle:** background, foreground and low memory reach the model.
 - **A recreated activity:** the model runs on, `squared_main` does not run
@@ -266,6 +353,20 @@ root, its Back leaving; names.json's screens checked at start (one not
 added); the refused adds (not a name, a layout's name); after a quit the
 tables are filled again with nothing said twice.
 
+**Panes (7.3):** a tap opens one over the screen, which stays; modal, at the
+bottom, the screen's width, no title bar (the content above the 36 units a
+bar takes); a modal pane keeps taps from the screen; a pane opens another,
+modal over a modal one, on the right at the screen's height; back closes the
+top pane first; a `close` closes the pane it is in, the top one or not; a tap
+outside a non-modal pane reaches the screen, and leaving the screen closes
+its panes, which do not come back; a C++ pane by type (on the left, from its
+constant) and by name (an added screen); a pane's tap navigating the screen;
+`open` a screen, `push` and `replace` a pane, `close` with none: refused and
+said; four at most; no allocation in frames with four open; a window made
+again builds the four again; back closes them one by one, then leaves. Two
+panes opened from inside an event (a custom widget's) wait, and `panes()`
+counts them while they do.
+
 `stage/test/stage_alone_test.cpp`: an App with no layout files links (the
 weak default), shows a C++ layout, and a `push` tap to a name says there is
 none.
@@ -284,6 +385,18 @@ built, an overflow not said, taps not reaching added screens, a bad name or a
 layout's name added, custom makers not used, names.json's screens not checked
 or all said, a typed tap with no name, `top_name` of a layout only,
 `replace<S>` pushing, and sqgen writing no screens.
+
+Planted bugs for 7.3, 27 (`plant74.py`), 26 caught: back skipping the panes,
+a screen left keeping them, a pane's `close` closing the top one, modal never
+set or not passed up, panes not placed, right placed left, bottom placed top,
+sides not full height, panes not rebuilt, four not enforced, a screen opened
+as a pane, a pane pushed, a waiting open not counted, a title bar kept or
+never cleared, sqgen dropping `modal`, a file's `place` or `modal` ignored, a
+screen taking `place`, the writer dropping the shape, a C++ pane's shape
+ignored, `shape_of` dropping `place` (a `static_assert`), `pane_name` of a
+layout only, slots not renumbered, the `open` tap missing C++ panes. The one
+not caught is equivalent: `detach` not nulling the windows, which nothing
+reads before `show_top` nulls them again; kept as hygiene.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

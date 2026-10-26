@@ -14,8 +14,8 @@ the rest.
 | `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
-Sprint 7.1, and 7.2's C++ screens and custom nodes. Panes (`open`, `close`)
-come in 7.3, binding a widget to a value in 7.5.
+Sprint 7.1, 7.2's C++ screens and custom nodes, and 7.3's panes. Binding a
+widget to a value comes in 7.5.
 
 ## The shortest call site
 
@@ -93,19 +93,24 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 
 | Member | Does |
 |---|---|
-| `push( layout )` | show `layout` over the screen there is. False, and reported, when the stack holds `max_depth` (16) |
-| `replace( layout )` | show `layout` instead of the screen there is, or as the first |
-| `back()` | back to the screen beneath. False at the first screen: nothing to go back to |
+| `push( layout )` | show `layout` over the screen there is. False, and reported, when the stack holds `max_depth` (16), or `layout` is a pane |
+| `replace( layout )` | show `layout` instead of the screen there is, or as the first. False, and reported, for a pane |
+| `back()` | what the back button does: close the top pane if one is open, or else back to the screen beneath. False at the first screen with no pane open: nothing to go back to |
+| `open( layout )` | open the pane `layout` over the screen shown (below). False, and reported, when `max_panes` (4) are open or `layout` is a screen |
+| `open<S>()` | open the C++ screen `S` as a pane |
+| `close()` | close the top pane. False when none is open |
 | `depth()` | how many screens, once anything waiting has happened |
+| `panes()` | how many panes are open, once anything waiting has happened |
 | `push<S>()`, `replace<S>()` | the same for the C++ screen `S` (below) |
 | `add<S>()` | let taps reach the C++ screen `S` by its name (`push about`). In `squared_main`. False, and reported, for a name that is not one, that a layout file or another screen has, or past `max_added` (16) |
 | `custom( name, make )` | make a layout's custom node `name` (`"type": "custom", "name": "minimap"`) with `make`. `name` must outlive the Stage: a literal does. False, and reported, for a name taken or past 16 |
-| `top()` | the table shown: a layout, or what a C++ screen wrote (valid while shown); nullptr for none |
+| `top()` | the table shown: a layout, or what a C++ screen wrote (valid while shown, until a C++ pane is opened over it: they share one scratch); nullptr for none |
 | `top_name()` | the name of the screen shown; empty for none |
+| `pane_name()` | the name of the top pane; empty for none |
 | `showing<S>()` | whether the C++ screen `S` is the one shown |
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
-| `ui()` | the top screen's widgets (`sq::gui::Ui`); nullptr while no skin is loaded |
+| `ui()` | the top screen's widgets, its panes' among them (`sq::gui::Ui`); nullptr while no skin is loaded |
 | `failed()` | the skin did not load |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
@@ -154,6 +159,54 @@ At start the Stage reports each screen `names.json` lists that was not
 added. In C++, a tap can name the type instead: `.tap<About>(
 sq::gui::Navigate::push )` writes `push about`, checked when it compiles.
 
+## Panes
+
+A pane is a layout over the screen shown: a question, a menu, a drawer. In a
+file it is `"kind": "pane"`, with two keys of its own
+([layouts.md](layouts.md#a-layout-file)):
+
+```json
+{ "kind": "pane", "place": "bottom", "modal": true, "rows": [
+  [ { "type": "label", "text": "Quit?", "span": 2 } ],
+  [ { "type": "button", "text": "Yes", "tap": "quit" },
+    { "type": "button", "text": "No", "tap": "close" } ] ] }
+```
+
+A screen's button opens it, `"tap": "open quit"`; in C++,
+`app.stage.open( layouts::quit )`. A button in it closes it, `"tap":
+"close"`, as does back.
+
+| `place` | Where |
+|---|---|
+| `center` (the default) | the middle, at the size it asks for |
+| `left`, `right` | that edge, the screen's height |
+| `top`, `bottom` | that edge, the screen's width |
+
+Always inside the safe area, and never bigger than it. **Modal** (`true`;
+the default is false): the screen dims and takes no taps until the pane
+closes. Not modal: a tap outside the pane reaches the screen. A pane opened
+over a modal pane is modal too, since nothing beneath a modal pane takes
+taps.
+
+A C++ screen opens as a pane too, `open<About>()` or `open about` (when it
+is added); two constants, both optional, give its place and modal:
+
+```cpp
+struct Ask {
+    static constexpr std::string_view name = "ask";
+    static constexpr sq::gui::PanePlace place = sq::gui::PanePlace::bottom;
+    static constexpr bool modal = true;
+    static void build( sq::gui::LayoutWriter &root );
+};
+```
+
+**A pane belongs to its screen.** Up to `max_panes` (4) are open at once;
+the last opened is on top. Leaving the screen (a push, a replace, a back to
+the screen beneath) closes them, and they do not come back with it. A pane
+is built when it opens and freed when it closes, so a pane opened again
+starts afresh: its values come from the model. A window made again (Android
+recreating the activity) builds the screen and its open panes again.
+
 ## Custom nodes
 
 A layout's `"type": "custom"` node (`add_custom( "minimap" )` in C++) is made
@@ -182,9 +235,10 @@ A button's tap (its `tap` in a layout file) does what it reads
 |---|---|
 | `set ...`, `do ...` | the telegram, to the model, as it reads. A full Telegraph drops it, and says so |
 | `push <name>`, `replace <name>` | that layout, found by `Stage::find`, or that added C++ screen; a name with neither is reported and does nothing |
-| `back` | back; at the first screen, leave (as the back button does there) |
+| `open <name>` | that pane, or that added C++ screen as a pane, over the screen shown |
+| `close` | the pane the button is in (whichever is on top) |
+| `back` | what the back button does: the top pane, else back; at the first screen with no pane open, leave |
 | `quit` | quit |
-| `open <name>`, `close` | reported: panes come in 7.3 |
 
 ## The window
 
@@ -214,20 +268,24 @@ Nothing stops the app; each failure is one line to the platform's report
 | `stage: <screen>: not all of it was written: ...` | a C++ screen wrote past the scratch, or a call it made was refused; what fit is shown |
 | `stage: tap <line>: not a telegram` | a `set` or `do` line that does not read |
 | `stage: tap <line>: the Telegraph had no room; not sent` | the ring was full |
-| `stage: tap <line>: panes come in 7.3` | `open` or `close` |
+| `stage: push <layout>: a pane: open it` | `push` or `replace` of a pane |
+| `stage: open <layout>: a screen: push it` | `open` of a screen |
+| `stage: open <name>: 4 panes are open already` | `max_panes` |
+| `stage: tap close: this is a screen, not a pane` | a C++ screen's `close` tap |
 | `stage: push <layout>: the stack holds 16 screens` | `max_depth` |
 | `app: run: a model runs already; an app has one` | a second `run` |
 
 ## Memory
 
 The App is made once, in static storage, not on the heap: the Telegraph line
-(88,000 bytes at the default sizes, which its knobs set) and 1,088 bytes more
-(the Stage is 936: its stack, the added screens and custom types). A model's
-runner is one allocation, at `run`. Each window allocates the skin's textures
-and tables and one block of about 19 KB (on Android 19,128 bytes: batch,
-camera, painter, widgets, and the 17 KB scratch C++ screens write into); each
-screen shown allocates its widgets. A C++ screen itself allocates nothing.
-**A frame allocates nothing.**
+(88,000 bytes at the default sizes, which its knobs set) and 1,216 bytes more
+(the Stage is 1,104: its stack, the added screens and custom types, the pane
+slots). A model's runner is one allocation, at `run`. Each window allocates
+the skin's textures and tables and one block of about 19 KB (on Android
+19,128 bytes: batch, camera, painter, widgets, and the 17 KB scratch C++
+screens and panes write into); each screen shown allocates its widgets, and
+each pane opened its window (304 bytes) and widgets, freed when it closes. A
+C++ screen itself allocates nothing. **A frame allocates nothing.**
 
 ## Lua
 

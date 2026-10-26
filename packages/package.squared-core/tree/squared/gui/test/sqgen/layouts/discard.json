@@ -1,1 +1,1 @@
-{ "kind": "pane", "rows": [ [ { "type": "label", "text": "Discard?" } ], [ { "type": "button", "text": "No", "tap": "close" } ] ] }
+{ "kind": "pane", "place": "bottom", "modal": true, "rows": [ [ { "type": "label", "text": "Discard?" } ], [ { "type": "button", "text": "No", "tap": "close" } ] ] }

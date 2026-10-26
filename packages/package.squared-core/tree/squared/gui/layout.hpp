@@ -44,6 +44,34 @@ inline constexpr std::size_t node_type_count = 12;
 enum class LayoutKind : std::uint8_t { screen, pane };
 
 /**
+ * @brief Where a pane sits on its screen. `center` at the size it asks for;
+ * `left` and `right` the screen's height, `top` and `bottom` its width.
+ * Always inside the safe area.
+ */
+enum class PanePlace : std::uint8_t { center, left, right, top, bottom };
+
+/** @brief How many places there are. */
+inline constexpr std::size_t pane_place_count = 5;
+
+/** @brief A place's name in a layout file: `left`. */
+[[nodiscard]] std::string_view pane_place_name( PanePlace place ) noexcept;
+
+/** @brief The place a layout file names; nothing for a name that is not one. */
+[[nodiscard]] std::optional<PanePlace> pane_place_named( std::string_view name ) noexcept;
+
+/**
+ * @brief How a pane shows: where, and whether it is modal (the screen dims
+ * and takes no taps until it closes). A screen's is ignored.
+ */
+struct PaneShape final
+{
+        PanePlace place = PanePlace::center;
+        bool modal = false;
+
+        friend bool operator==( const PaneShape &, const PaneShape & ) noexcept = default;
+};
+
+/**
  * @brief One node of a layout: the widget it builds, where that sits in its
  * cell, what it shows and what a tap sends. 32 bytes, read-only once made.
  *
@@ -141,17 +169,21 @@ class Layout final
 
         constexpr Layout() noexcept = default;
         constexpr Layout( std::string_view name, LayoutKind kind, std::span<const LayoutNode> nodes,
-                          std::string_view text, std::span<const float> numbers = {} ) noexcept
+                          std::string_view text, std::span<const float> numbers = {},
+                          PaneShape pane = {} ) noexcept
             : name_( name )
             , nodes_( nodes )
             , text_( text )
             , numbers_( numbers )
             , kind_( kind )
+            , pane_( pane )
         {}
 
         /** @brief Its name: what `push` and a saved screen stack call it. */
         [[nodiscard]] constexpr std::string_view name() const noexcept { return name_; }
         [[nodiscard]] constexpr LayoutKind kind() const noexcept { return kind_; }
+        /** @brief How it shows when it is a pane: its file's `place` and `modal`. */
+        [[nodiscard]] constexpr PaneShape pane() const noexcept { return pane_; }
         [[nodiscard]] constexpr Nodes nodes() const noexcept { return nodes_; }
         [[nodiscard]] constexpr std::span<const float> numbers() const noexcept { return numbers_; }
 
@@ -174,6 +206,7 @@ class Layout final
         std::string_view text_;
         std::span<const float> numbers_;
         LayoutKind kind_ = LayoutKind::screen;
+        PaneShape pane_{}; // in the padding: a layout stays 72 bytes
 };
 
 /** @brief What a tap's line does. */

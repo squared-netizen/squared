@@ -154,7 +154,7 @@
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:324](../../../../gui/layout_writer.hpp#L324)*
+*Defined at [gui/layout_writer.hpp:328](../../../../gui/layout_writer.hpp#L328)*
 
 
 
