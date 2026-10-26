@@ -31,12 +31,12 @@ SQUARED_GRAPHICS_BACKEND ?= null
 
 MODULES := math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
-           gui messaging time dev console
+           gui messaging time dev console stage
 
 .PHONY: all clean docs docs-check headers lint test retest $(MODULES)
 
 # The modules with tests, in the order they are run.
-TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage
 
 all: $(MODULES)
 
@@ -45,6 +45,7 @@ gui: graphics math data files messaging
 assets: files
 gles: graphics
 messaging: time
+stage: gui graphics assets files messaging data time math
 
 $(MODULES):
 	$(MAKE) -C $@ -f Makefile

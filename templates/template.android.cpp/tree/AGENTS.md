@@ -29,9 +29,9 @@ without warning.
 
 ## Rendering
 
-Guard the kit include with `__has_include`, as `app.cpp` does. It costs two
-lines and means adding or swapping a rendering kit later does not require
-editing code you have already written.
+Your code draws through the framework (`sq::App`'s Stage), never through GL or
+EGL directly, so a rendering backend can be added or swapped without editing
+code you have already written.
 
 `sq::gl::Context::present()` returns false when the surface is lost — normal
 every time the app is backgrounded. Do not ignore it; stop drawing and wait for

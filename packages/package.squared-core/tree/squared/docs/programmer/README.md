@@ -21,13 +21,14 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing
   - [layouts](layouts.md) &mdash; screens and panes as data: the node table, writing one from C++, layout files, `names.json`, the `sqgen` build step, taps, and building widgets from it
+- [stage](stage.md) &mdash; the App and the Stage: `squared_main`, the model at the Telegraph's far end, the stack of screens, taps, the window, and what is reported
 - [messaging](messaging.md) &mdash; the Telegraph: names, addresses, keys, the 32-byte telegram and its text form, the rings, the cache, lists, both ends, and the model's thread
 - [math](math.md) &mdash; small value types used across the framework
 - [time](time.md) &mdash; the time between ticks (`Timepiece`), the clocks, and a model's timers (`DeadlineQueue`)
 
 | Module | Headers at the root | Headers in `src/` | Aggregate header |
 |---|---:|---:|---|
-| `app` | 4 | 7 | `squared/app/application.hpp` |
+| `app` | 4 | 8 | `squared/app/application.hpp` |
 | `assets` | 1 | 8 | `squared/assets/assets.hpp` |
 | `console` | 11 | 9 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`, `copy_command.hpp`, `crash_file.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
 | `data` | 2 | 6 | `squared/data/json.hpp` |
@@ -38,6 +39,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `gui` | 33 | 43 | `squared/gui/gui.hpp` (not `layout_file.hpp`, which is for tools) |
 | `messaging` | 13 | 6 | `squared/messaging/messaging.hpp` |
 | `math` | 2 | 0 | `squared/math/math.hpp` |
+| `stage` | 2 | 0 | `squared/squared.hpp`, which is everything an app is written against |
 | `time` | 5 | 0 | `squared/time/time.hpp` |
 
 The root counts leave out the aggregate header itself, where a module has a

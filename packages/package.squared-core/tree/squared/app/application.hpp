@@ -3,6 +3,7 @@
 #include <squared/app/event.hpp>
 #include <squared/app/runtime.hpp>
 #include <squared/app/safe_area.hpp>
+#include <squared/app/src/report.hpp>
 #include <squared/app/src/text_input.hpp>
 #include <squared/app/src/text_input_service.hpp>
 
@@ -30,6 +31,12 @@ class Application
 
         /** Supply the portable application-to-platform text-input service. */
         virtual void set_text_input_service( TextInputService * ) noexcept {}
+
+        /**
+         * @brief Where to say what went wrong. Given before create(), and
+         * again whenever the platform changes it.
+         */
+        virtual void set_report( Report report ) noexcept { static_cast<void>( report ); }
 
         /**
      * @brief Initialize logical state once.
@@ -68,6 +75,21 @@ class Application
 
         /** @brief Notify the application that frame updates are resuming. */
         virtual void resume() {}
+
+        /**
+         * @brief The application is visible again (Android's start). Not
+         * called before create(); the first start precedes it.
+         */
+        virtual void foreground() {}
+
+        /**
+         * @brief The application is no longer visible (Android's stop): it may
+         * never come back, so this is where state is made safe.
+         */
+        virtual void background() {}
+
+        /** @brief The system is short of memory: drop what can be made again. */
+        virtual void low_memory() {}
 
         /** @brief Notify the application of current drawable dimensions. */
         virtual void resize( int, int ) {}

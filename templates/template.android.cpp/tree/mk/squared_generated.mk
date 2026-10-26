@@ -196,7 +196,7 @@ SQ_KITS_PRESENT ?=
 #
 #   {{project_name}}: flags as before
 #   squared release: flags as before
-#     cc   sq_app/src/app.cpp
+#     cc   sq_app/src/main.cpp
 #     link lib{{project_name}}.so
 #
 # The flags are said once per make: all of them, one to a line, when they

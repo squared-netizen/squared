@@ -229,7 +229,7 @@ endif
 # Modules that publish headers. A module with no sources still publishes
 # headers, which is why this is a list rather than the archive list.
 SQ_SQUARED_MODULES := app assets console data dev files gles graphics gui \
-                      math messaging time
+                      math messaging stage time
 
 # One include root for every header, workhorse or supporting: the directory
 # that holds squared/. Headers are written <squared/<module>/...>.
@@ -237,11 +237,15 @@ SQ_SQUARED_INC := -I$(SQ_SQUARED_DIR)/..
 
 # Link order matters for static archives: a dependent must precede what it
 # depends on, because the linker resolves left to right and does not go back.
-# gui needs graphics; graphics needs math and files; assets needs files;
-# everything that parses needs data. gles stands alone.
+# stage (the App and the Stage) needs gui, assets, messaging and time; gui
+# needs graphics; graphics needs math and files; assets needs files;
+# everything that parses needs data. gles stands alone. An app that has no
+# sq::App (the demo, still on its own) links nothing of stage: an archive's
+# member comes in only when something refers to it.
 SQ_SQUARED_LIB_DIR := $(SQ_SQUARED_DIR)/build/release/lib
 SQ_SQUARED_LIBS := \
   $(if $(filter-out 0,$(CONSOLE)),$(SQ_SQUARED_LIB_DIR)/libsquared_console.a,) \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_stage.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_gui.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_graphics.a \
   $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),\

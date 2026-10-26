@@ -309,8 +309,9 @@ cache.unbind( name );                                 // the label is gone: may 
 What a model sees: `sq::messaging::Telegraph` (`squared/messaging/telegraph.hpp`),
 its end of the line to the UI. It sends `state` and `event` by key, declares
 lists, and runs the model's side of a turn. The UI's end, `TelegraphUi`, is
-the Stage's; both live in one `TelegraphLine`, which the App will own, and a
-`ModelRunner` runs the model, on its own thread or the UI's.
+the Stage's; both live in one `TelegraphLine`, which the App owns
+([stage.md](stage.md): `app.run<Model>()`), and a `ModelRunner` runs the
+model, on its own thread or the UI's.
 
 ```cpp
 namespace names {
@@ -437,7 +438,10 @@ ModelRunner<Shop> runner( *line, on_ui_thread );           // or the UI's: runne
 | `threaded()` | whether the model has its own thread |
 | `~ModelRunner()` | asks the model to quit (it saves: `background` if the app was visible), wakes it, and waits for it to end; `M` is destroyed on the thread it lived on |
 
-Preconditions: one runner to a line, and the line outlives the runner. The
+Preconditions: one runner to a line, and the line outlives the runner. A
+line serves one model: after its runner is gone it keeps that model's quit and
+values, so a second model needs a new line (the App makes one after a quit).
+The
 model's thread never touches the UI's end, nor the UI the model; on its own
 thread the model is not reachable from the UI at all. Failure modes: none
 returned; a thread the system cannot make ends the program at start.

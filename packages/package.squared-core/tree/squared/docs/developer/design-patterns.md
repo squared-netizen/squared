@@ -101,6 +101,34 @@ making the calls public (an app could then bypass the checks the typed API
 makes) or a second writer for files (two writers would have to agree). Cost:
 two `friend` lines; no bytes, no indirection.
 
+## Facade &mdash; `sq::App`
+
+An app sees three things: `stage`, `run<Model>()` and `quit()`. Behind them
+the App holds the Telegraph line, the model's runner and the Stage, and routes
+the platform's lifecycle to each (it is the platform's
+`sq::app::Application`). Cost: the vtable of that interface, one per process,
+and nothing per call beyond the virtual dispatch the platform already made.
+Chosen over handing the platform the Stage and the model separately, which
+would make every platform layer know the start and shutdown order
+([stage.md](stage.md)).
+
+## Command queue (bounded) &mdash; the Stage's waiting navigations
+
+A tap runs inside the button it tapped; building the next screen there would
+free the button mid-call. Navigation asked for during an event goes into a
+fixed queue of 4 (a `TapKind` and a layout pointer each, 64 bytes), applied
+after delivery. Deviation from the textbook: no command objects, no undo, no
+allocation; a full queue drops and reports. The demo's `ScreenStack` used a
+`std::vector` of owning `unique_ptr<Screen>`s for the same job.
+
+## Type erasure &mdash; `detail::ModelHolder`
+
+The App holds a `ModelRunner<M>` without knowing `M`: `ModelOf<M>` derives
+from `ModelHolder` (a virtual destructor, a virtual `turn()`), made once by
+`run`. Cost: one allocation for the process's model, a vtable, and one
+virtual call a frame for a model on the UI thread. Chosen over a fixed buffer
+in the App (a size knob users would hit) and over `App<Model>`.
+
 ## Factory over a type tag &mdash; `instantiate`
 
 Widgets are made from nodes by a `switch` on `NodeType`, with custom types

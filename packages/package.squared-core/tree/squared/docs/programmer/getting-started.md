@@ -1,6 +1,30 @@
 # Getting started
 
-## The shortest real call site
+## An app
+
+An app is a layout file and one function. `sq_app/layouts/landing.json`:
+
+```json
+{ "rows": [ [ { "type": "label", "text": "Hello" } ],
+            [ { "type": "button", "text": "Quit", "tap": "quit" } ] ] }
+```
+
+and `sq_app/src/main.cpp`:
+
+```cpp
+#include <layouts.hpp>
+#include <squared/squared.hpp>
+
+void squared_main( sq::App &app ) { app.stage.push( layouts::landing ); }
+```
+
+The build compiles the layout ([layouts.md](layouts.md)); the App loads the
+skin, shows the screen, routes touches, and quits on the button
+([stage.md](stage.md)). A generated Android project starts as exactly this.
+The rest of this page is the layer beneath: the widgets and the `Ui`, for a
+program that drives them itself.
+
+## The shortest real call site, without the App
 
 `Ui` owns the widget tree; you give it a `Painter` implementation and feed it
 events. Building a screen is three statements:

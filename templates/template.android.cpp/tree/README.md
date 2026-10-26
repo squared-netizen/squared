@@ -30,7 +30,8 @@ A build prints one short line as each step starts and says the flags once:
 ```
 {{project_name}}: flags as before
 squared release: flags as before
-  cc   sq_app/src/app.cpp
+  sqgen          0 keys, 1 layout; 3 files changed
+  cc   sq_app/src/main.cpp
   link lib{{project_name}}.so
 ```
 
@@ -98,21 +99,22 @@ work.
 
 ## Where to start
 
-`sq_app/src/app.cpp`. It clears the screen to a slowly pulsing colour and
-reacts to touch — enough to prove the whole chain works, and the first thing to
-delete.
+`sq_app/src/main.cpp` and `sq_app/layouts/landing.json`: a screen that says
+Hello and has a Quit button. `squared_main` pushes it; the build compiles the
+layout file into `layouts::landing`. Add a screen by adding a layout file, a
+model with `app.run<YourModel>()`. `sq_app/README.md` has the rest.
 
 Note what `sq_app/` does **not** include: no `<android/...>`, no EGL, no GLES.
-The platform layer calls into your `App`; the same class compiles under other
-templates with a different platform layer. Keeping Android out of `sq_app/` is
-worth defending as you add code.
+The platform layer runs your app through `sq::App`; the same code compiles
+under other templates with a different platform layer. Keeping Android out of
+`sq_app/` is worth defending as you add code.
 
 ## Rendering
 
-The renderer is optional and swappable. `sq_android/entry.cpp` and
-`sq_app/src/app.cpp` both guard their include with `__has_include`, so this
-project builds and runs with no rendering kit — you get a black window and a
-log line saying so.
+The renderer is chosen when the framework is linked: `sq::graphics::Context`
+always exists, and with no GLES backend the null one draws nothing, so this
+project builds and runs without one — you get a black window and a log line
+saying so.
 
 With `kit.opengl` you get `sq::gl`: EGL context management and GLES 3.0.
 Shaders are GLSL ES 3.00 (`#version 300 es`), which needs explicit precision

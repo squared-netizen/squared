@@ -1,11 +1,13 @@
 # app &mdash; internals
 
-The platform-neutral boundary: eleven types, no translation units, no
-dependencies beyond `sq::graphics::Context` (forward declared).
+The platform-neutral boundary: twelve types, no translation units, no
+dependencies beyond `sq::graphics::Context` (forward declared). Since 7.1 its
+`Application` is implemented by `sq::App` ([stage.md](stage.md)), not by an
+app.
 
 Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 
-- Public types: 11
+- Public types: 12
 - Translation units: 0 &mdash; every type is a value type or a pure interface
 
 ## Layout
@@ -13,7 +15,7 @@ Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 ```
 app/
   application.hpp event.hpp runtime.hpp safe_area.hpp
-  src/   the eight supporting headers: key, modifiers, navigation, and text input
+  src/   the nine supporting headers: key, modifiers, navigation, text input, and report
 ```
 
 No `Makefile`, because there is nothing to compile. The headers are still
@@ -33,6 +35,21 @@ with the class already holding it.
 `event.hpp` is likewise the `Event` struct rather than a group umbrella. It
 includes `key.hpp`, `key_modifiers.hpp` and `navigation.hpp`, because `Event`
 holds all three by value.
+
+## The report sink and the lifecycle calls (7.1)
+
+`Report` is a function pointer and a `void *` context, 16 bytes, with an
+`operator()` that does nothing when empty: the platform gives one
+(`set_report`, before `create()`), and the App and the Stage say each failure
+through it, one line, with no allocation and no logging library of their own
+(the framework above the porting layer names no Android header). Chosen over
+`std::function` (heap and type erasure, `standard-library-deviations.md`) and
+over a virtual sink interface (a vtable for one call).
+
+`foreground()`, `background()` and `low_memory()` are Android's start, stop
+and low-memory commands, which the glue already delivers: three virtual calls
+with empty defaults, so an `Application` written before them (the demo's)
+compiles and behaves as it did. They are events: nothing polls.
 
 ## Memory
 

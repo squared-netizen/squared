@@ -5,6 +5,7 @@
 * [Application](Application.md)
 * [Event](Event.md)
 * [KeyModifiers](KeyModifiers.md)
+* [Report](Report.md)
 * [Runtime](Runtime.md)
 * [SafeArea](SafeArea.md)
 * [TextInputArea](TextInputArea.md)

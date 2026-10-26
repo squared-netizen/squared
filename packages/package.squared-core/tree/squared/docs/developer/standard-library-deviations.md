@@ -20,6 +20,8 @@ the existing state, not of choices made during the file split.
 | `std::shared_ptr` | `DrawablePtr`, `FontPtr` | Genuine shared ownership across skins and widgets, but a handle into a skin-owned pool would remove the control block and the atomics. |
 | `std::deque<Cell>` | `Table::cells_` | Chosen for reference stability: `Table::add` returns `Cell&` and later adds must not invalidate it. A chunked vector or a stable pool would give the same guarantee with better locality. |
 | `std::map`, `std::string`, `std::vector`, `<filesystem>` | `gui/src/layout_file.cpp`, `tools/sqgen/` (7.0b) | Build-time only: they read layout files in `sqgen` and in tools. An app links none of it (nothing in it refers to `layout_file.cpp`'s functions, so the archive member stays out). |
+| `std::unique_ptr` with a virtual destructor | `sq::App`'s model (`detail::ModelHolder`, 7.1) | Once a process: the App cannot name the model's type. A fixed buffer would need a size knob ([stage.md](stage.md)). |
+| `std::string`, `std::vector`, `std::shared_ptr` (`gui::FontPtr`) | `Stage::Drawing` while the skin loads (7.1) | Once a window, in `attach`: paths, the font's pages, gui's font type. Nothing of it on a frame. |
 | `std::unique_ptr`, `std::string`, `std::function` | `gui::instantiate` (7.0) | Once per widget when a layout is built, never per frame: today's widgets own children through `unique_ptr`, take `std::string` words, and a button holds its tap (a `TapCall`: hook, context, the line) in its `std::function`. A per-screen arena can replace them behind `instantiate` ([layouts.md](layouts.md)). |
 | `std::vector` | throughout | Fine. This is the intended default. |
 | `std::optional` | `drag_pointer_`, `content_insets` | Fine; no allocation. |
@@ -31,6 +33,8 @@ the existing state, not of choices made during the file split.
 | Facility | Site | Why |
 |---|---|---|
 | `std::function` | `gui::LayoutHooks` (7.0) | Function pointers and one context: nothing allocated to hold a hook, no type erasure. |
+| `std::function` | `app::Report` (7.1) | The same: a function pointer and a context, 16 bytes. |
+| `std::vector` | `sq::Stage`'s stack and waiting navigations (7.1) | Fixed at 16 screens and 4 changes: `std::array`, no growth, no allocation. |
 | `<filesystem>`, `<fstream>` | `files::PosixFileSystem` (2026-10-19) | Measured on the phone: +613 KB in the demo's stripped `libdemo.so` (+55%), 79 allocations per iteration of everyday file work against 9, for a third fewer statements; and libc++ and libstdc++ answered one `create_directories` case differently. POSIX calls kept. Tools and tests may use both. The numbers: [files.md](files.md#posixfilesystem) |
 
 `sq::Result`, an interned string table, a flat hash map, and a handle pool are

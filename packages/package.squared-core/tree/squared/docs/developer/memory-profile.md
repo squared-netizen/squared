@@ -135,6 +135,9 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Table::add` | every cell added | global `new`, `std::deque` chunk |
 | `Ui::show_window` | per window shown | global `new` |
 | compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
+| `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (88,384 bytes at the default knobs, `static_assert`ed against the line) ([stage.md](stage.md#memory-profile)) | none |
+| `App::run` | once, at the model's start: its runner, the model inside | global `new`, one `unique_ptr` |
+| `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (1,648 bytes with libc++, 1,832 with libstdc++) | global `new` |
 | `gui::instantiate` | a layout built (a screen pushed): each widget, its words, each tap's line | global `new`; `LayoutWriter` and `check` allocate nothing ([layouts.md](layouts.md)) |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
 | `std::function` assignment | per callback with captures past SBO | global `new` |

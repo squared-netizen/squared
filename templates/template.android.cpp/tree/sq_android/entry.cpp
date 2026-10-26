@@ -13,6 +13,8 @@
 //   * owns the sq::graphics::Context and its surface lifetime
 //   * owns the file system and asset manager, and hands the application a
 //     sq::app::Runtime referring to all three
+//   * runs your app through sq::App, which lives as long as the process: an
+//     activity Android makes again reattaches to it, and your model runs on
 //   * translates NativeActivity lifecycle and input into sq::app::Event
 //   * measures the system bars and camera cut-out and tells the application
 //     (sq::app::SafeArea), because Android draws the app edge to edge
@@ -27,7 +29,6 @@
 // guard was for.
 
 #include "android_text.hpp"
-#include "app.hpp"
 
 #include <squared/app/event.hpp>
 #include <squared/app/runtime.hpp>
@@ -39,6 +40,7 @@
 #include <squared/app/src/navigation.hpp>
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
+#include <squared/stage/app.hpp>
 
 #include <android/configuration.h>
 #include <android/log.h>
@@ -57,6 +59,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <string_view>
 
 // Development builds only (`make DEV_LOG=1`): every log line below is also sent
 // to a UDP port on this device, a fatal signal sends a backtrace, and frames
@@ -471,7 +474,23 @@ sq::files::AndroidStorageRoots storage_roots(const android_app* native) {
                              ? activity->externalDataPath : ""};
 }
 
-/// Everything the platform layer owns for the lifetime of the process.
+/// The App: one for the whole process, made the first time it is asked for.
+///
+/// Not a member of Platform, which lives as long as one activity. Android can
+/// destroy an activity and make another in the same process, and then the App,
+/// its model's thread and its screens carry on; only the window's half (the
+/// skin's textures, the widgets) is made again. A quit stops the model, so the
+/// next launch, even in this process, starts afresh.
+sq::App& process_app() {
+    static sq::App app;
+    return app;
+}
+
+/// What the App says went wrong: the system log, and the Console when it is
+/// built in, opened so the line is seen.
+void report_line(void* context, std::string_view line) noexcept;
+
+/// Everything the platform layer owns for the lifetime of one activity.
 ///
 /// Held in one struct rather than as globals so that the glue's userData
 /// pointer is the only piece of shared state, and so ownership is obvious when
@@ -564,7 +583,8 @@ struct Platform {
     sq::files::AndroidAssetFileSystem files;
     sq::assets::AssetManager assets;
     sq::app::Runtime runtime;
-    {{project_name}}::App app;
+    /// The process's App (process_app()), which outlives this Platform.
+    sq::App& app = process_app();
 
     /// The keyboard, key characters and the clipboard, through JNI; and the
     /// text-input service the application's text fields use.
@@ -1114,6 +1134,7 @@ struct Platform {
     /// Create the application and hand it the text-input service. False, and
     /// logged, if its create() failed.
     bool start_app() {
+        app.set_report({.write = report_line, .context = this});
         if (!app.create(runtime)) {
             SQ_LOGW("app: create() failed");
             return false;
@@ -1371,6 +1392,15 @@ Platform& platform_of(android_app* app) {
     return *static_cast<Platform*>(app->userData);
 }
 
+void report_line(void* context, std::string_view line) noexcept {
+    SQ_LOGW("%.*s", static_cast<int>(line.size()), line.data());
+#ifdef SQUARED_CONSOLE
+    static_cast<Platform*>(context)->console.show();
+#else
+    static_cast<void>(context);
+#endif
+}
+
 void on_command(android_app* app, int32_t command) {
     Platform& platform = platform_of(app);
 
@@ -1425,13 +1455,25 @@ void on_command(android_app* app, int32_t command) {
             SQ_LOGI("destroy");
             break;
 
-#ifdef SQUARED_CONSOLE
+        case APP_CMD_START:
+            // On the screen again: the model hears how long it was away.
+            if (platform.created) platform.app.foreground();
+            break;
+
         case APP_CMD_STOP:
             // Off the screen: it may never come back (swiped away, killed for
-            // memory), so the log is saved now for the next run.
+            // memory), so the model saves now, and the log is kept for the
+            // next run.
+            if (platform.created) platform.app.background();
+#ifdef SQUARED_CONSOLE
             platform.save_console_log();
-            break;
 #endif
+            break;
+
+        case APP_CMD_LOW_MEMORY:
+            SQ_LOGI("low memory");
+            if (platform.created) platform.app.low_memory();
+            break;
 
         default:
             break;

@@ -13,8 +13,9 @@ There are two ways to make one, and both make the same thing:
 - **C++**: a screen's `build()` writes the same table through a
   `LayoutWriter`.
 
-Either way, one function, `instantiate`, builds the widgets. Until the Stage
-arrives (Sprint 7.1), you call it yourself.
+Either way, one function, `instantiate`, builds the widgets. The Stage calls
+it when a screen is shown (`app.stage.push( layouts::settings )`,
+[stage.md](stage.md)); a program without the App calls it itself.
 
 | Header | Gives you |
 |---|---|
@@ -42,8 +43,9 @@ sq::gui::Table table;
 const sq::gui::LayoutCheck built = sq::gui::instantiate( root.layout(), table, skin, hooks );
 ```
 
-Once the Stage exists, the first four lines are its job, and the last two
-happen when the screen is pushed: a screen keeps only the `add` lines.
+With the Stage, the last two lines happen when the screen is pushed; once C++
+screens come (7.2), the first four are its job too, and a screen keeps only
+the `add` lines.
 
 ## A layout file
 

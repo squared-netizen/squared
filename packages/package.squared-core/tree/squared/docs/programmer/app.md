@@ -1,8 +1,13 @@
 # app
 
-The platform-neutral boundary. Developer code implements `Application`; the
-platform adapter owns process setup, the event pump and the soft keyboard.
-Nothing above this layer names SDL or Android.
+The platform-neutral boundary. The platform adapter owns process setup, the
+event pump and the soft keyboard, and drives an `Application`. Nothing above
+this layer names SDL or Android.
+
+**An app does not implement `Application` any more** (Sprint 7.1): `sq::App`
+does, and an app writes `squared_main` and its model ([stage.md](stage.md)).
+This page is for a platform layer, and for a program that wants the bare
+boundary without the App.
 
 Developer counterpart: [../developer/app.md](../developer/app.md)
 
@@ -16,7 +21,8 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 | `TextInputArea` | `squared/app/src/text_input_area.hpp` | Soft-keyboard target rectangle in stage/logical coordinates |
 | `TextInputRequest` | `squared/app/src/text_input_request.hpp` | Request sent when platform text input starts |
 | `TextInputService` | `squared/app/src/text_input_service.hpp` | Portable application-to-platform soft-keyboard boundary |
-| `Application` | `squared/app/application.hpp` | Developer-owned application behind a platform-neutral lifecycle |
+| `Report` | `squared/app/src/report.hpp` | Where an application says what went wrong: a function pointer and its context, given by the platform |
+| `Application` | `squared/app/application.hpp` | The application behind a platform-neutral lifecycle; `sq::App` is the one an app uses |
 
 ## Aggregate headers
 
@@ -72,10 +78,18 @@ private:
 
 `create`, `handle_event`, `update`, `render`, `dispose` and `quit_requested`
 are required. `pause`, `resume`, `resize`, `surface_created`,
-`surface_destroyed` and `set_text_input_service` have empty defaults, so a
-desktop-only application can ignore them &mdash; but on Android
-`surface_destroyed` and `surface_created` are where GPU resources are
-invalidated and restored, and ignoring them is a bug that only shows on device.
+`surface_destroyed`, `set_text_input_service`, `set_report`, `foreground`,
+`background` and `low_memory` have empty defaults, so a desktop-only
+application can ignore them &mdash; but on Android `surface_destroyed` and
+`surface_created` are where GPU resources are invalidated and restored, and
+ignoring them is a bug that only shows on device.
+
+| Call | When the platform makes it |
+|---|---|
+| `set_report(report)` | before `create()`: `report(line)` says something went wrong (Android: the system log, and the Console when built in) |
+| `foreground()` | the app is visible again (Android's start); not before the first `create()` |
+| `background()` | the app is no longer visible (Android's stop): it may never come back, so state is made safe here |
+| `low_memory()` | the system is short of memory |
 
 ## Feeding the GUI
 
