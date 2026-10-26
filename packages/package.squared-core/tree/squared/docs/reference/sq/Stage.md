@@ -1,6 +1,6 @@
 # class Stage
 
-*Defined at [stage/stage.hpp:119](../../../stage/stage.hpp#L119)*
+*Defined at [stage/stage.hpp:127](../../../stage/stage.hpp#L127)*
 
 
 
@@ -34,13 +34,13 @@ public static const std::size_t scratch_numbers
 
 *public void Stage(const Stage & )*
 
-*Defined at [stage/stage.hpp:138](../../../stage/stage.hpp#L138)*
+*Defined at [stage/stage.hpp:146](../../../stage/stage.hpp#L146)*
 
 ### Stage
 
 *public void Stage(Stage && )*
 
-*Defined at [stage/stage.hpp:140](../../../stage/stage.hpp#L140)*
+*Defined at [stage/stage.hpp:148](../../../stage/stage.hpp#L148)*
 
 ### Stage
 
@@ -50,7 +50,7 @@ public static const std::size_t scratch_numbers
 
 *public bool add()*
 
-*Defined at [stage/stage.hpp:203](../../../stage/stage.hpp#L203)*
+*Defined at [stage/stage.hpp:211](../../../stage/stage.hpp#L211)*
 
 
 
@@ -120,19 +120,19 @@ public static const std::size_t scratch_numbers
 
 *public Stage & operator=(const Stage & )*
 
-*Defined at [stage/stage.hpp:139](../../../stage/stage.hpp#L139)*
+*Defined at [stage/stage.hpp:147](../../../stage/stage.hpp#L147)*
 
 ### operator=
 
 *public Stage & operator=(Stage && )*
 
-*Defined at [stage/stage.hpp:141](../../../stage/stage.hpp#L141)*
+*Defined at [stage/stage.hpp:149](../../../stage/stage.hpp#L149)*
 
 ### push
 
 *public bool push()*
 
-*Defined at [stage/stage.hpp:160](../../../stage/stage.hpp#L160)*
+*Defined at [stage/stage.hpp:168](../../../stage/stage.hpp#L168)*
 
 
 
@@ -142,7 +142,7 @@ public static const std::size_t scratch_numbers
 
 *public void replace()*
 
-*Defined at [stage/stage.hpp:167](../../../stage/stage.hpp#L167)*
+*Defined at [stage/stage.hpp:175](../../../stage/stage.hpp#L175)*
 
 
 
@@ -152,7 +152,7 @@ public static const std::size_t scratch_numbers
 
 *public bool open()*
 
-*Defined at [stage/stage.hpp:189](../../../stage/stage.hpp#L189)*
+*Defined at [stage/stage.hpp:197](../../../stage/stage.hpp#L197)*
 
 
 
@@ -202,7 +202,7 @@ public static const std::size_t scratch_numbers
 
 *public bool showing()*
 
-*Defined at [stage/stage.hpp:237](../../../stage/stage.hpp#L237)*
+*Defined at [stage/stage.hpp:245](../../../stage/stage.hpp#L245)*
 
 
 
@@ -212,7 +212,7 @@ public static const std::size_t scratch_numbers
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/stage.hpp:249](../../../stage/stage.hpp#L249)*
+*Defined at [stage/stage.hpp:257](../../../stage/stage.hpp#L257)*
 
 
 
@@ -222,7 +222,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:258](../../../stage/stage.hpp#L258)*
+*Defined at [stage/stage.hpp:266](../../../stage/stage.hpp#L266)*
 
 
 

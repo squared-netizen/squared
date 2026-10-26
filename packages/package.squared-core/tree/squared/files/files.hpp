@@ -5,6 +5,7 @@
 
 // android_asset_file_system.hpp is deliberately not included here: it names
 // AAssetManager, and this header is included on every platform.
+#include <squared/files/embedded_file_system.hpp>
 #include <squared/files/file_handle.hpp>
 #include <squared/files/file_system.hpp>
 #include <squared/files/posix_file_system.hpp>

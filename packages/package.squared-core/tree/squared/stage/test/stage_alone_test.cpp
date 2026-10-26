@@ -69,7 +69,7 @@ int main()
     config.logical_height = 1280;
     CHECK( graphics.create( config ) );
     sq::files::PosixFileSystemRoots roots;
-    roots.internal_root = STAGE_TEST_ASSETS;
+    roots.internal_root = "no-such-directory"; // the skin is compiled in
     sq::files::PosixFileSystem files( roots );
     sq::assets::AssetManager cache( files );
     sq::app::Runtime runtime{ graphics, files, cache };

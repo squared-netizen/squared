@@ -1,14 +1,14 @@
 # stage &mdash; internals
 
 Programmer docs: [../programmer/stage.md](../programmer/stage.md). The
-decision record: the refactor plan's 7.1, 7.2 and 7.3 ("yes to all",
+decision record: the refactor plan's 7.1 to 7.4 ("yes to all",
 2026-10-26) and the app model's Ownership and Lifecycle sections.
 
 `stage/app.hpp` (`sq::App`, `squared_main`), `stage/stage.hpp`
 (`sq::Stage`), `src/app.cpp`, `src/stage.cpp`, and `src/catalog.cpp` with
 `src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
-C++ screens and 7.3's panes folded in.
+C++ screens, 7.3's panes and 7.4's compiled-in skin folded in.
 
 Depends on app (headers), gui, graphics, assets (the `Runtime`'s), files,
 messaging, time, data (through gui's skin loader) and math. Nothing depends
@@ -79,16 +79,18 @@ runner's own precondition is one to a line).
 
 ## The Stage
 
-1,104 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
+1,112 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
 the same in both standard libraries): the screens (16 `Shown`s, two pointers
 each), 4 waiting changes (a `TapKind`, a pane slot and a `Shown`), the 16
 added C++ screens (a pointer each), the 16 custom types (a name and a
 function pointer each), the 4 pane slots (40 bytes each, below), the report,
-the text-input service, the `Drawing` pointer, the pixel and logical sizes,
+the text-input service, the skin's file system (a test's; below), the
+`Drawing` pointer, the pixel and logical sizes,
 the safe area, a depth, four counts and four flags. Was 264 in 7.1 and 936 in
-7.2; the pane slots are 7.3's 168. In the App it costs less than it adds:
-the App is `TelegraphLine`-aligned (64), so it grew from line + 1,088 to
-line + 1,216.
+7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8. In the App
+it costs less than it adds: the App is `TelegraphLine`-aligned (64), so it
+grew from line + 1,088 to line + 1,216, and 7.4's 8 bytes fit in its
+padding.
 
 **The stack holds a layout or a C++ screen per entry**, nothing else (7.1's
 choice 7, 7.2's choice 3): `Shown` is a `const Layout *` and a
@@ -265,9 +267,45 @@ the painter (which takes the loaded font) are made; the body sets the
 painter's fill from the skin's `white` region. Whole or not at all: the Stage
 keeps a `Drawing` only when `loaded`, so every member is always there and
 nothing is an `optional` (an earlier version had four, and clang-tidy's
-unchecked-optional-access could not see the invariant). The skin directory
-is `skins/default/skin` in the app's bundled files (7.4 moves the skin into
-the package). The loading is the demo's `Services`, moved.
+unchecked-optional-access could not see the invariant). The skin is read
+from `skins/default/skin` in the compiled-in files (below). The loading is
+the demo's `Services`, moved.
+
+## The default skin (7.4)
+
+**Compiled into the stage library** (7.4's choice 1): `src/default_skin.cpp`
+holds the four files (`uiskin.atlas`, its page `uiskin.png`, `uiskin.json`,
+`default.fnt`: 46,305 bytes of read-only data, and a 128-byte table) as
+constant bytes, which `tools/embed_files.sh` writes from
+`stage/skin/default/skin/` (choice 3); `detail::default_skin()` returns the
+table. The Stage reads them through one `files::EmbeddedFileSystem`, a
+function-local static in `stage.cpp`, so the atlas, the font and the skin
+loader are unchanged, and the atlas page's texture reloads from the same
+bytes after a lost context (choice 2). An app ships no skin, and nothing it
+bundles is read for one: `attach` no longer uses `runtime.files`.
+
+Why not assets in the APK (the rejected choice): the package would add a
+second assets directory to the template's `aapt2` line and merge the asset
+index, a template change for every app, and the skin would still be missing
+on desktop Linux and in tests without a copy. Compiled in, it is the same
+everywhere, and on priority 1 it is better: the bytes are clean pages mapped
+from the `.so`, which the kernel can drop and read again, where an asset is
+read into the heap first. A read still copies each file into a vector while
+it loads, as before; that is once a window.
+
+**The files** live at `stage/skin/default/` with the skin's sources (`raw/`,
+26 nine-patches and images it is packed from) and its previews, which are not
+compiled in, `NOTICE.md` (choice 4) and `LICENSE-2.0.txt`, the Apache
+License that a redistribution carries a copy of. One skin (choice 5): the template
+and hello no longer carry `sq_android/assets/skins/`; the demo keeps its own
+copy until it moves to `sq::App` (choice 6). An app's own skin is in the
+backlog.
+
+**The test seam.** `skin_files_` is nullptr (the compiled-in files) unless a
+test sets it, through `detail::StageProbe`, a friend declared here and
+defined only by a test: `stage_test` points it at an empty
+`EmbeddedFileSystem` to see a skin fail. 8 bytes, chosen over losing the
+failure test.
 
 **Logical units**: the short side is 720 and the long side follows the
 drawable's aspect, as in the demo. Pointers are scaled once in `event`; the
@@ -311,7 +349,8 @@ hooks and the report (function pointers). See
 
 | What | Where | When | Size |
 |---|---|---|---|
-| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,104) |
+| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,112) |
+| the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
 | `Stage::Drawing` | heap | each window | 19,128 (libc++; 19,312 libstdc++), the scratch's 17,480 included, plus the skin's textures and tables |
 | a C++ screen | read-only data | build time | a name and a function pointer |
@@ -323,9 +362,13 @@ hooks and the report (function pointers). See
 
 ## Tested
 
-`stage/test/stage_test.cpp`, on the null backend, with a copy of the
-template's default skin in `test/assets/` and layouts written with
-`LayoutWriter`; it defines `layouts::all()` as sqgen would:
+`stage/test/stage_test.cpp`, on the null backend, with the compiled-in skin
+(the app's bundled files are a directory that does not exist) and layouts
+written with `LayoutWriter`; it defines `layouts::all()` as sqgen would:
+
+- **The skin is its files:** every compiled-in file equals its file in
+  `stage/skin/default/skin/`, byte for byte (the files are the test's
+  prerequisites, so changing one runs it again).
 
 - **A start:** `squared_main` runs once, its first `push` shows, a second
   `run` is refused and reported.
@@ -341,7 +384,8 @@ template's default skin in `test/assets/` and layouts written with
   a `back` tap at the root.
 - **A model on its own thread:** a tap's telegram is answered across
   threads; the quit joins it after it saves (and ThreadSanitizer is clean).
-- **No skin:** reported, `failed()`, no widgets, the stack kept; a layout
+- **No skin** (an empty file system, through the probe): reported,
+  `failed()`, no widgets, the stack kept; a layout
   `check` refuses: reported, nothing built.
 
 **C++ screens (7.2):** a typed tap reaches one by name; `top_name`,

@@ -23,6 +23,7 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/file_handle.cpp \
     src/file_system.cpp \
+    src/embedded_file_system.cpp \
     src/posix_file_system.cpp \
     $(if $(filter android,$(SQUARED_PLATFORM)),src/android_asset_file_system.cpp,)
 
@@ -42,7 +43,11 @@ TEST_BINARY := $(BUILD_DIR)/android_asset_test
 # the allocations its everyday calls make.
 POSIX_TEST := $(BUILD_DIR)/posix_file_system_test
 
-TESTS := $(TEST_BINARY) $(POSIX_TEST)
+# The embedded backend over a table made in the test: lookups, directories,
+# listing, the refusals, and a handle reading through it.
+EMBEDDED_TEST := $(BUILD_DIR)/embedded_file_system_test
+
+TESTS := $(TEST_BINARY) $(POSIX_TEST) $(EMBEDDED_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -64,6 +69,14 @@ $(POSIX_TEST): $(MODULE_DIR)/test/posix_file_system_test.cpp \
                $(MODULE_DIR)/src/posix_file_system.cpp \
                $(MODULE_DIR)/src/file_handle.cpp \
                $(MODULE_DIR)/src/file_system.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+
+$(EMBEDDED_TEST): $(MODULE_DIR)/test/embedded_file_system_test.cpp \
+                  $(MODULE_DIR)/src/embedded_file_system.cpp \
+                  $(MODULE_DIR)/src/file_handle.cpp \
+                  $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@

@@ -5,6 +5,7 @@
 * [ModelHolder](ModelHolder.md)
 * [ModelOf](ModelOf.md)
 * [ScreenEntry](ScreenEntry.md)
+* [StageProbe](StageProbe.md)
 
 
 ## Functions
@@ -13,7 +14,7 @@
 
 *gui::PaneShape shape_of()*
 
-*Defined at [stage/stage.hpp:85](../../../../stage/stage.hpp#L85)*
+*Defined at [stage/stage.hpp:90](../../../../stage/stage.hpp#L90)*
 
 
 

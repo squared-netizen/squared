@@ -21,6 +21,11 @@ namespace sq::app
 struct Runtime;
 } // namespace sq::app
 
+namespace sq::files
+{
+class FileSystem;
+} // namespace sq::files
+
 namespace sq::graphics
 {
 class Context;
@@ -93,6 +98,9 @@ template<typename S>
     }
     return shape;
 }
+
+/** @brief A test's way in: defined by a test, never by the framework. */
+struct StageProbe;
 
 /** @brief The one entry of the screen type `S`. */
 template<ScreenType S>
@@ -259,6 +267,7 @@ class Stage final
 
     private:
         friend class App;
+        friend struct detail::StageProbe;
 
         /** @brief A screen on the stack: a layout, or a C++ screen. */
         struct Shown final
@@ -363,6 +372,8 @@ class Stage final
         messaging::TelegraphUi &telegraph_;
         app::Report report_{};
         app::TextInputService *text_input_ = nullptr;
+        /// Where the skin is read from; nullptr: the compiled-in default. A test's.
+        files::FileSystem *skin_files_ = nullptr;
         std::unique_ptr<Drawing> drawing_;
         std::array<Shown, max_depth> screens_{};
         std::array<Change, 4> pending_{};
@@ -387,6 +398,6 @@ class Stage final
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
 // custom types, as a pointer and a name each; 4 pane slots of 40 bytes.
-static_assert( sizeof( Stage ) == 1104 );
+static_assert( sizeof( Stage ) == 1112 );
 
 } // namespace sq

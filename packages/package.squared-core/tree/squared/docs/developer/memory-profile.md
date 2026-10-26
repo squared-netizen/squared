@@ -137,7 +137,9 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
 | `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (89,216 bytes at the default knobs, `static_assert`ed against the line) ([stage.md](stage.md#memory-profile)) | none |
 | `App::run` | once, at the model's start: its runner, the model inside | global `new`, one `unique_ptr` |
-| `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (19,128 bytes with libc++, 19,312 with libstdc++; the C++ screens' 17,480-byte scratch among them) | global `new` |
+| `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (19,128 bytes with libc++, 19,312 with libstdc++; the C++ screens' 17,480-byte scratch among them); while it loads, each skin file copied once out of the compiled-in bytes (46 KB in all, freed when loaded) | global `new` |
+| the default skin (`stage/src/default_skin.cpp`) | never: 46,305 bytes of read-only data in the program, mapped from its file ([stage.md](stage.md#the-default-skin-74)) | none |
+| `EmbeddedFileSystem::read`, `list` | a copy of the file's bytes; the names listed | global `new`, the result's vector and strings |
 | `Stage::open` | each pane opened: its `gui::Window` (304 bytes) through `Ui::show_window`, and its widgets through `instantiate`; freed when it closes or its screen is left | global `new` |
 | `gui::instantiate` | a layout built (a screen pushed, a pane opened): each widget, its words, each tap's line | global `new`; `LayoutWriter` and `check` allocate nothing ([layouts.md](layouts.md)) |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |

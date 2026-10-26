@@ -16,7 +16,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [console](console.md) &mdash; the Console, compiled in with `CONSOLE=app`: commands and the built-ins, input, history, scrollback, crash reports, and drawing it
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
 - [dev](dev.md) &mdash; development aids: a loopback log sink and its listener, crash reporter and frame-allocation counter (not in release builds)
-- [files](files.md) &mdash; virtual filesystem and libGDX-style file handles
+- [files](files.md) &mdash; virtual filesystem and libGDX-style file handles; files compiled into the program (`EmbeddedFileSystem`, `tools/embed_files.sh`)
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing

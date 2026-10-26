@@ -4,6 +4,8 @@
 
 * [AndroidAssetFileSystem](AndroidAssetFileSystem.md)
 * [AndroidStorageRoots](AndroidStorageRoots.md)
+* [EmbeddedFileSystem](EmbeddedFileSystem.md)
+* [EmbeddedFile](EmbeddedFile.md)
 * [FileError](FileError.md)
 * [FileHandle](FileHandle.md)
 * [FileReadResult](FileReadResult.md)

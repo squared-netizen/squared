@@ -14,8 +14,8 @@ the rest.
 | `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
-Sprint 7.1, 7.2's C++ screens and custom nodes, and 7.3's panes. Binding a
-widget to a value comes in 7.5.
+Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, and 7.4's
+compiled-in skin. Binding a widget to a value comes in 7.5.
 
 ## The shortest call site
 
@@ -247,10 +247,12 @@ longer one follows its shape, so a widget is the same size on every screen
 and a unit is square either way up. Touches arrive in pixels and are scaled
 once, here. The safe area (the bars over the screen's edges) is kept clear.
 
-The skin is the default one in the app's bundled files,
-`skins/default/skin/` (`uiskin.atlas`, `uiskin.json`, `default.fnt`), which
-the Android template ships; 7.4 moves it into the package. Rotation re-lays
-out the screen without rebuilding it.
+**The skin comes with the framework**: the default one, libGDX's uiskin, is
+compiled into the stage library, so an app ships no skin files and has
+nothing to load or say where. Its files are in the package at
+`stage/skin/default/` (with their notice and the Apache License 2.0 they
+come under). One skin for now: an app's own
+comes later. Rotation re-lays out the screen without rebuilding it.
 
 ## When something goes wrong
 
@@ -259,7 +261,7 @@ Nothing stops the app; each failure is one line to the platform's report
 
 | Line | Means |
 |---|---|
-| `stage: the skin did not load: ...` | and why. The Stage draws dark red |
+| `stage: the skin did not load: ...` | and why (with the compiled-in skin, only a graphics failure). The Stage draws dark red |
 | `stage: <layout>: <problem> (node N)` | `instantiate` refused the layout (dark red), or built it short: a custom type or a drawable missing, the rest shown |
 | `stage: tap <line>: no layout or added screen is called that` | a `push` or `replace` to a name that is neither |
 | `stage: names.json lists the screen <name>, and it is not added: ...` | at start: `add<S>()` it in `squared_main` |
@@ -279,9 +281,11 @@ Nothing stops the app; each failure is one line to the platform's report
 
 The App is made once, in static storage, not on the heap: the Telegraph line
 (88,000 bytes at the default sizes, which its knobs set) and 1,216 bytes more
-(the Stage is 1,104: its stack, the added screens and custom types, the pane
-slots). A model's runner is one allocation, at `run`. Each window allocates
-the skin's textures and tables and one block of about 19 KB (on Android
+(the Stage is 1,112: its stack, the added screens and custom types, the pane
+slots). The skin's files are 46 KB of read-only data in the program, mapped
+from its file, not the heap. A model's runner is one allocation, at `run`.
+Each window allocates the skin's textures and tables (reading them copies
+each file once, briefly) and one block of about 19 KB (on Android
 19,128 bytes: batch, camera, painter, widgets, and the 17 KB scratch C++
 screens and panes write into); each screen shown allocates its widgets, and
 each pane opened its window (304 bytes) and widgets, freed when it closes. A

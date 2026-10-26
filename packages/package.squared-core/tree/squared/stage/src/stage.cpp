@@ -1,6 +1,8 @@
 #include "detail/catalog.hpp"
+#include "detail/default_skin.hpp"
 
 #include <squared/app/runtime.hpp>
+#include <squared/files/embedded_file_system.hpp>
 #include <squared/files/file_handle.hpp>
 #include <squared/files/file_system.hpp>
 #include <squared/files/src/file_text_result.hpp>
@@ -48,8 +50,16 @@ namespace sq
 namespace
 {
 
-/// Where the default skin is, under the app's bundled files (7.4 moves it into the package).
+/// Where the default skin is, in the files compiled into the stage library.
 constexpr std::string_view skin_directory = "skins/default/skin";
+
+/// The default skin's files, compiled in: one table in read-only data, read
+/// through a file system so a texture can reload from it after a lost context.
+[[nodiscard]] files::EmbeddedFileSystem &default_skin_files() noexcept
+{
+    static files::EmbeddedFileSystem files( detail::default_skin() );
+    return files;
+}
 
 /// The logical length of the drawable's shorter side: a widget is the same
 /// size on every screen, and one logical unit is square either way up.
@@ -250,8 +260,10 @@ void Stage::attach( app::Runtime &runtime )
 #else
     static_assert( sizeof( Drawing ) == 1832 + sizeof( Drawing::Scratch ) );
 #endif
+    // The skin is compiled in: the app's own files are not read for it.
+    files::FileSystem &skin = skin_files_ != nullptr ? *skin_files_ : default_skin_files();
     std::string why;
-    auto drawing = std::make_unique<Drawing>( runtime.files, why );
+    auto drawing = std::make_unique<Drawing>( skin, why );
     if( !drawing->loaded ) {
         failed_ = true;
         say( "stage: the skin did not load: %s", why.c_str() );

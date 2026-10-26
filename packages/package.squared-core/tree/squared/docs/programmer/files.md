@@ -12,6 +12,8 @@ Developer counterpart: [../developer/files.md](../developer/files.md)
 | `FileSystem` | `squared/files/file_system.hpp` | The framework's porting layer for storage |
 | `PosixFileSystem` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
 | `PosixFileSystemRoots` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
+| `EmbeddedFileSystem` | `squared/files/embedded_file_system.hpp` | A read-only `Internal` over files compiled into the program |
+| `EmbeddedFile` | `squared/files/embedded_file_system.hpp` | One compiled-in file: its path and its bytes |
 | `FileReadResult` | `squared/files/src/file_read_result.hpp` | Bytes read from one file, or the failure that prevented it |
 | `FileTextResult` | `squared/files/src/file_text_result.hpp` | Text read from one file, or the failure that prevented it |
 | `FileError` | `squared/files/src/file_error.hpp` | Structured file system failure information |
@@ -125,6 +127,38 @@ A relative path containing `..`, or starting with `/`, is **refused** rather
 than normalised, with `FileErrorCode::NotSupported`. Asking for something under
 a root and quietly getting something outside it would be worse than failing.
 Use `FileType::Absolute` when you mean an absolute path.
+
+## Files compiled in: `EmbeddedFileSystem`
+
+Small files the program cannot do without (the Stage's default skin is one)
+can be compiled into it and read like bundled files, with nothing to
+package. `tools/embed_files.sh` turns a directory into a C++ source: the
+files' bytes as constants, and a table of `EmbeddedFile`s that a function
+returns:
+
+```sh
+tools/embed_files.sh sq_app/data data my_data detail/my_data.hpp sq_app/src/my_data.cpp
+```
+
+(the directory, the path its files appear under, the function's name in
+`sq::detail`, the header that declares it, the output). Then:
+
+```cpp
+sq::files::EmbeddedFileSystem files( sq::detail::my_data() );
+const auto text = files.internal( "data/levels.json" ).read_string();
+```
+
+| Call | Answers |
+|---|---|
+| `exists`, `is_directory`, `length` | from the table: a directory is any path some file is under; only `Internal` holds anything |
+| `read` | a copy of the bytes; `NotFound`, `IsADirectory`; `NotSupported` outside `Internal` |
+| `list` | the names directly under a path, each once, sorted; `NotADirectory`, `NotFound` |
+| `write`, `make_directories`, `remove` | `ReadOnly` |
+
+The table must outlive the file system: a generated one is a constant. The
+bytes are read-only data in the program, mapped from its file and shared,
+not heap; a `read` copies them. Lookups scan the table, so keep it to a
+handful of files.
 
 ## Nested assets on Android
 

@@ -190,6 +190,41 @@ Built only when `SQUARED_PLATFORM=android`. That is a separate variable from
 `SQUARED_GRAPHICS_BACKEND` on purpose: "has GLES" and "is Android" coincide
 today and are not the same question.
 
+## `EmbeddedFileSystem` (7.4)
+
+The third implementation, made for the Stage's default skin
+([stage.md](stage.md#the-default-skin-74)): the skin's files are compiled
+into the stage library, and reading them through a `FileSystem` keeps every
+loader (`TextureAtlas`, `BitmapFont`, the skin loader) and a texture's
+reload after a lost context (`ReloadFromAsset` keeps its `FileHandle`)
+exactly as they are for bundled files. Rejected: from-memory overloads in
+graphics, which would have doubled each loader's surface and given textures
+a second reload path.
+
+24 bytes: the vtable pointer and a span over a table of `EmbeddedFile`s (a
+`string_view` path and a `span<const unsigned char>`, 32 bytes each, in
+relocated read-only data). Only `Internal` holds anything. Every lookup is a
+linear scan, O(n) in the files, which is the right cost for the handful it
+holds; a directory is any prefix some path continues with `/`, so there is
+no directory list to keep. `read` copies the bytes into the result's
+vector, as every backend does; `list` builds its names, sorts them and
+drops repeats. Writing returns `ReadOnly`.
+
+**`tools/embed_files.sh`** writes the table: `od -An -v -t x1` and `sed`,
+16 bytes to a line as `unsigned char` arrays, files in byte order of their
+names, then the table and one function returning it, inside
+`// clang-format off` (the formatter would repack the lists). It writes the
+file only when it changes. POSIX tools only, so it runs in Termux. The
+output is committed: no build step, no host tool, and the source tree
+builds anywhere; a test where it is used (the stage test, for the skin)
+checks the output against the files.
+
+Tested by `files/test/embedded_file_system_test.cpp`: lookups (a prefix
+that is not a directory, the root, other file types), reads (bytes with
+zeros, an empty file, the errors), listing (direct children, each once,
+sorted; a file; a missing path), the refusals, and reading through a
+handle.
+
 ## Not yet written
 
 Nothing in this module.

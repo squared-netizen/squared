@@ -4,12 +4,17 @@
 // frames allocate nothing; back at the root and a quit tap leave; quitting
 // stops the model after it saves, and the next start begins afresh; an
 // activity made again reattaches to the running model. C++ screens (7.2), and
-// panes over a screen (7.3).
+// panes over a screen (7.3). The skin is the compiled-in default (7.4): the
+// app's bundled files are a directory that does not exist, and the embedded
+// bytes are checked against the skin's files.
+
+#include "detail/default_skin.hpp"
 
 #include <squared/app/event.hpp>
 #include <squared/app/runtime.hpp>
 #include <squared/assets/asset_manager.hpp>
 #include <squared/dev/frame_allocations.hpp>
+#include <squared/files/embedded_file_system.hpp>
 #include <squared/files/posix_file_system.hpp>
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
@@ -34,12 +39,23 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <memory>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
+
+/// What lets a test point the Stage at another skin.
+struct sq::detail::StageProbe final
+{
+        static void read_skin_from( sq::Stage &stage, sq::files::FileSystem *files ) noexcept
+        {
+            stage.skin_files_ = files;
+        }
+};
 
 namespace
 {
@@ -515,9 +531,10 @@ void press_back( sq::App &app )
     app.handle_event( event );
 }
 
+/// The app's bundled files: none at all. The Stage's skin is compiled in.
 std::string assets_directory()
 {
-    return std::string( STAGE_TEST_ASSETS );
+    return "no-such-directory";
 }
 
 sq::App the_app;
@@ -869,9 +886,12 @@ void back_tap_at_the_root_leaves()
 void no_skin_draws_red()
 {
     start = Start::no_model;
-    Platform platform( assets_directory() + "/nowhere" );
+    Platform platform( assets_directory() );
     sq::App &app = the_app;
     reports.clear();
+    // A skin that is not there: an embedded file system with nothing in it.
+    sq::files::EmbeddedFileSystem nothing( {} );
+    sq::detail::StageProbe::read_skin_from( app.stage, &nothing );
     platform.open( app );
     CHECK( app.stage.failed() );
     CHECK( reported( "stage: the skin did not load: skins/default/skin/uiskin.atlas" ) );
@@ -881,6 +901,31 @@ void no_skin_draws_red()
     press_back( app );
     CHECK( app.quit_requested() );
     app.dispose();
+    sq::detail::StageProbe::read_skin_from( app.stage, nullptr );
+}
+
+/// The compiled-in skin is its files, byte for byte, and all of them.
+void the_skin_is_its_files()
+{
+    const std::span<const sq::files::EmbeddedFile> table = sq::detail::default_skin();
+    CHECK( table.size() == 4 );
+    constexpr std::string_view under = "skins/default/skin/";
+    for( const sq::files::EmbeddedFile &file : table ) {
+        CHECK( file.path.starts_with( under ) );
+        const std::string name( file.path.substr( under.size() ) );
+        std::ifstream in( std::string( STAGE_SKIN_DIR ) + "/" + name, std::ios::binary );
+        CHECK( in.good() );
+        std::ostringstream read;
+        read << in.rdbuf();
+        const std::string bytes = read.str();
+        CHECK( bytes.size() == file.bytes.size() );
+        for( std::size_t i = 0; i < bytes.size(); ++i ) {
+            CHECK( static_cast<unsigned char>( bytes[i] ) == file.bytes[i] );
+        }
+    }
+    for( const char *name : { "default.fnt", "uiskin.atlas", "uiskin.json", "uiskin.png" } ) {
+        CHECK( std::ifstream( std::string( STAGE_SKIN_DIR ) + "/" + name ).good() );
+    }
 }
 
 void a_bad_layout_is_said()
@@ -907,6 +952,7 @@ void a_bad_layout_is_said()
 
 int main()
 {
+    the_skin_is_its_files();
     write_layouts();
     starts_and_navigates();
     model_on_its_thread();
