@@ -230,19 +230,84 @@ is fixed (2026-10-19):
 3. **Every test ran on every `make test`.** Each module's `test` target is now
    `$(call run_tests,$(TESTS))` (`build/common.mk`): a test runs when its
    binary is newer than its `<binary>.passed` mark, which only a pass writes.
-   Every test binary depends on all of the tree's headers
-   (`SQUARED_HEADERS`), its sources and the archives it links, so an
-   unchanged binary means unchanged inputs; the tests read nothing that
+   Every test binary depends on the headers its sources include (its `.d`,
+   since 7b.2; until then every header in the tree, `SQUARED_HEADERS`), its
+   sources and the archives it links, so an unchanged binary means unchanged
+   inputs; the tests read nothing that
    varies between runs except the host's `/proc`, whose answers they check
    for shape. This reverses graphics' earlier rule ("every test runs on
    every `make test`"), which was right while tests did not depend on their
    headers: then an unchanged binary could hide a changed header. Recipes that
-   passed `$^` to the compiler now pass `$(filter-out %.hpp
-   $(SQUARED_FLAGS_STAMP),$^)` (the flags stamp is a prerequisite too, since
-   2026-10-20). Checked:
+   passed `$^` to the compiler now pass `$(SQUARED_TEST_INPUTS)`, the sources,
+   objects and archives among the prerequisites (7b.2; it was `$(filter-out
+   %.hpp $(SQUARED_FLAGS_STAMP),$^)`, which the headers a `.d` adds, `.h`
+   and `.inc` among them, would have passed to the compiler). Checked in
+   2026-10-19:
    nothing changed, all 18 kept in under a second; a console `.cpp` touched,
    only console's 4 ran; a header touched, all ran; a failing test left no
    mark and ran again.
+
+## Build speed (7b.2)
+
+Measured on the phone first (2026-10-27, `measure_build.sh`, the 7b.1
+package): 8 cores, clang 21.1.8, libc++ 21 on both sides, NDK 29.
+
+| What | Time |
+|---|---|
+| the framework, clean, `-j8` | 124.6 s, 95 files |
+| `make test`, every test built | 757 s, 39 binaries |
+| `make test` after `stage/save.hpp`, which only stage includes | 766 s: 38 of 39 rebuilt |
+| one framework file, whole / front end | 3.0 to 8.8 s / 2.7 to 5.5 s |
+| the 47 standard headers squared includes, parsed alone | 4.3 s |
+| the same files with those precompiled, whole / front end | 0.9 to 5.8 s / 0.6 to 2.7 s |
+
+So two changes, decided with the user (plan, 7b):
+
+**A test depends on what it includes.** Tests are built through
+`tools/test_cc.sh` (`TEST_CXX`, `build/common.mk`), which takes the
+compile-and-link a recipe would have run, compiles each source on its own
+with `-MMD` (one command with several sources keeps only the last one's
+dependencies), links the objects, and writes `<binary>.d`; each module
+includes its tests' `.d` files. After `stage/save.hpp`: the two stage tests,
+where it was 38. The objects are kept in `build/<BUILD>/test-objects/<key>/`,
+the key a checksum of the compiler, the flags and the precompiled header, and
+shared between tests: the tests had compiled the same sources 230 times for
+39 binaries (`dev_log.cpp` into 13 of them, each Console source into 6). An
+object is used again when nothing its `.d` names, nor the precompiled header,
+is newer; each is written beside its name and renamed into place, so two tests
+building at once under `-j` cannot leave half of one. Here (x86, 2 cores):
+the first `make test` 214 s to 150 s.
+
+**The standard headers are precompiled.** `build/std_pch.hpp` names every
+standard header the sources include (written by `tools/std_pch.sh`; `make
+headers` runs its `--check`, which fails when a source includes one the list
+lacks). It is compiled once per flag set, `-MD` so a new libc++ makes it
+again: `build/<BUILD>/pch/std.pch` with `SQUARED_CXXFLAGS` for the objects
+(the root `Makefile` makes it before the modules, which build at once under
+`-j`), `std-test.pch` with `TESTFLAGS` and `-pthread` for the tests (clang
+refuses a precompiled header made with the other thread choice; every test
+source is compiled with `-pthread` for it). Every object and test source is
+compiled with `-include-pch`. 22 MB each on the phone. clang only; `make
+SQUARED_PCH=off` turns it off, and g++ builds as before. The flags stamp now
+names the tests' flags, the choice and the compiler's version, so a new
+clang makes everything again (a precompiled header from another version is
+refused).
+
+What the precompiled header costs: every source sees all 47 headers, so a
+`.cpp` that forgets `#include <vector>` still builds here. `make lint`
+(clang-tidy, which compiles without it) and `make headers` (each header
+alone, without it) still catch that. A pattern, in effect: a Flyweight of the
+standard library's parse, shared by every file of one configuration.
+
+`make headers` runs one compile per core by default (`nproc`; `JOBS=1` for
+one at a time). The printed steps of a package no longer run `make
+docs-check` after `make docs`, which has just written the pages it checks.
+
+Not done: `import std`. Termux's libc++ ships no `std.cppm`; the NDK's does
+(`toolchains/llvm/prebuilt/linux-arm64/share/libc++/v1/`), and it failed to
+build against the NDK's headers as tried (`std/cctype.inc:11`). The
+precompiled header takes the same parse off today; squared's own headers as
+modules come after this (7b).
 
 **The link check** (template `Makefile`, `verify-link`) refuses a library that
 needs `libc++_shared.so` (the runtime was not linked in) and, when
@@ -365,7 +430,8 @@ Each header is a full compile, so the second check takes minutes on a phone. Two
 things make that bearable:
 
 ```sh
-JOBS=4 ./tools/check_headers.sh        # compile in parallel
+./tools/check_headers.sh               # one compile per core (nproc)
+JOBS=1 ./tools/check_headers.sh        # one at a time
 ./tools/check_headers.sh gui           # one module
 ```
 

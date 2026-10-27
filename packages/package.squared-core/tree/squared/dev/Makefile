@@ -47,34 +47,37 @@ TESTS := $(TEST_BINARY) $(FRAME_TEST) $(LISTENER_TEST)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+
+# What each test includes, from its last build (tools/test_cc.sh).
+-include $(TESTS:=.d)
 
 $(LISTENER_TEST): $(MODULE_DIR)/test/log_listener_test.cpp \
                   $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(TEST_BINARY): $(MODULE_DIR)/test/dev_log_test.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -o $@
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -o $@
 
 $(FRAME_TEST): $(MODULE_DIR)/test/frame_allocations_test.cpp \
                $(MODULE_DIR)/src/frame_allocations.cpp $(MODULE_DIR)/src/dev_log.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(filter %.cpp,$^) -ldl -pthread -o $@
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/dev/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/dev/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/dev $(TARGET)

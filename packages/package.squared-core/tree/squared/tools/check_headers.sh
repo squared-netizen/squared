@@ -5,7 +5,8 @@
 #
 #   ./tools/check_headers.sh          all modules
 #   ./tools/check_headers.sh gui      one module
-#   JOBS=4 ./tools/check_headers.sh   compile in parallel
+#   JOBS=1 ./tools/check_headers.sh   one compile at a time (the default is
+#                                     one per core)
 #
 # Two checks, both protecting the layout (docs/developer/file-layout.md):
 #
@@ -36,7 +37,7 @@ fi
 
 : "${CXX:=g++}"
 : "${SQUARED_EXTERNAL_INCLUDES:=}"
-: "${JOBS:=1}"
+: "${JOBS:=$(nproc 2>/dev/null || echo 1)}"
 
 # Supporting headers that no workhorse header includes, on purpose: only
 # someone extending squared needs them, and no everyday include should pull
@@ -170,6 +171,11 @@ if [ "$unreachable" -gt 0 ]; then
   echo "  (docs/developer/file-layout.md)"
 fi
 
+# The standard headers the build precompiles: the list must name every one
+# the sources include (build/std_pch.hpp; tools/std_pch.sh writes it).
+std_pch_ok=1
+bash "$root/tools/std_pch.sh" --check || std_pch_ok=0
+
 # ---- 2. Self-containment ---------------------------------------------------
 
 echo "checking $total headers with $CXX (JOBS=$JOBS)"
@@ -222,4 +228,4 @@ if [ "$failed" -gt 0 ]; then
 fi
 
 echo "checked $total headers, $failed not self-contained, $unreachable not reachable"
-[ "$failed" -eq 0 ] && [ "$unreachable" -eq 0 ]
+[ "$failed" -eq 0 ] && [ "$unreachable" -eq 0 ] && [ "$std_pch_ok" = 1 ]

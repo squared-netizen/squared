@@ -67,6 +67,28 @@ SQUARED_EXTERNAL_INCLUDES ?=
 
 -include $(SQUARED_ROOT)/local.mk
 
+# The compiler, named in the flags stamp below: a new clang rebuilds what the
+# old one made (a precompiled header from another version is refused).
+# One word, for the stamp: `clang_version_21.1.8`.
+SQUARED_CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1 | tr ' ' '_')
+
+# Whether the standard headers are precompiled (below, "the standard headers,
+# precompiled").
+SQUARED_PCH_HEADER := $(SQUARED_ROOT)/build/std_pch.hpp
+ifneq ($(findstring clang,$(SQUARED_CXX_VERSION)),)
+  SQUARED_PCH ?= on
+endif
+SQUARED_PCH_ON := $(filter on,$(SQUARED_PCH))
+ifneq ($(SQUARED_PCH_ON),)
+  SQUARED_PCH_FILE := $(BUILD_DIR)/pch/std.pch
+  SQUARED_TEST_PCH_FILE := $(BUILD_DIR)/pch/std-test.pch
+  SQUARED_PCH_USE := -include-pch $(SQUARED_PCH_FILE)
+else
+  SQUARED_PCH_FILE :=
+  SQUARED_TEST_PCH_FILE :=
+  SQUARED_PCH_USE :=
+endif
+
 DEPFLAGS = -MMD -MP
 
 # --- what a build prints -----------------------------------------------------
@@ -107,7 +129,12 @@ say = $(if $(filter 1,$(V)),,@printf '  %-4s %s\n' '$(1)' '$(2)')
 # happen only for a make that builds or tests; `make clean`, `make lint` (whose
 # tools ask the Makefiles for variables) and the rest leave the file alone.
 SQUARED_FLAGS_STAMP := $(BUILD_DIR)/flags
-squared_flags := $(strip $(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES))
+# Then, one word each: the tests' flags, whether the standard headers are
+# precompiled, and the compiler's version.
+squared_space := $(subst ,, )
+squared_flags := $(strip $(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES) \
+    tests:$(subst $(squared_space),:,$(strip $(TESTFLAGS))) \
+    pch:$(if $(SQUARED_PCH_ON),on,off) $(SQUARED_CXX_VERSION))
 
 squared_goals := $(or $(MAKECMDGOALS),all)
 squared_building := $(strip $(filter all test retest,$(squared_goals)) \
@@ -151,11 +178,56 @@ $(SQUARED_FLAGS_STAMP):
 	@mkdir -p $(dir $@)
 	$(file >$@,$(squared_flags))
 
+# --- the standard headers, precompiled (7b.2) -------------------------------
+#
+# The standard headers are most of each compile (measured on the phone,
+# 2026-10-27: the 47 squared includes take 4.3 s to parse alone, and a file's
+# front end is 2.7 to 5.5 s). build/std_pch.hpp includes them all, and is
+# compiled once per flag set into a precompiled header (22 MB): the
+# framework's objects, with SQUARED_CXXFLAGS, and the tests, with TESTFLAGS.
+# Every source is then compiled with -include-pch, which takes a third to
+# three quarters off each.
+#
+# clang only (-include-pch); g++ builds as before. Off with SQUARED_PCH=off.
+# The precompiled header is included into every file, so a .cpp that forgets
+# a standard include still builds here: `make lint` (clang-tidy, no
+# precompiled header) and `make headers` still find it.
+# The tests' precompiled header is made with -pthread, and tools/test_cc.sh
+# compiles every test source with it: some tests run threads, and clang
+# refuses a precompiled header made with the other choice ("POSIX thread
+# support was disabled in PCH file").
+#
+# A test, or a host tool built beside the tests, through tools/test_cc.sh:
+# each source compiled on its own (with the test precompiled header), so the
+# binary's .d lists what it really includes, then linked. The objects are kept
+# in build/<BUILD>/test-objects/ and shared between the tests that compile the
+# same source with the same flags.
+TEST_CXX = SQUARED_TEST_PCH='$(SQUARED_TEST_PCH_FILE)' SQUARED_TEST_OBJECTS='$(BUILD_DIR)/test-objects' \
+    bash $(SQUARED_ROOT)/tools/test_cc.sh $(CXX)
+
+ifneq ($(SQUARED_PCH_ON),)
+# -MD, not -MMD: the standard headers are system headers, and a new libc++
+# must make the precompiled header again (clang refuses a stale one).
+$(SQUARED_PCH_FILE): $(SQUARED_PCH_HEADER) $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(call say,pch,standard headers ($(notdir $@)))
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES) -x c++-header $< -MD -MP -MF $@.d -o $@
+
+$(SQUARED_TEST_PCH_FILE): $(SQUARED_PCH_HEADER) $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(call say,pch,standard headers ($(notdir $@)))
+	$(CXX) $(TESTFLAGS) -pthread -x c++-header $< -MD -MP -MF $@.d -o $@
+
+-include $(SQUARED_PCH_FILE).d $(SQUARED_TEST_PCH_FILE).d
+endif
+
 # --- tests: run again only when something they cover changed ---------------
 #
-# Every test binary depends on its sources, the archives it links, every
-# header in the tree (SQUARED_HEADERS) and the flags, so it is rebuilt
-# whenever anything it could include changes. A test that passed leaves
+# Every test binary depends on its sources, the archives it links, the
+# headers its sources include (its .d, written by tools/test_cc.sh) and the
+# flags, so it is rebuilt whenever anything it includes changes, and not when
+# another module's header does. (Until 7b.2 it depended on every header in the
+# tree: one header changed rebuilt 38 of 39 tests, 13 minutes on the phone.) A test that passed leaves
 # <binary>.passed beside the binary; `make test` runs a test only when its
 # binary is newer than that mark, so with nothing changed it runs none, and
 # after a change to one module's .cpp it runs only the tests built from it.
@@ -170,7 +242,10 @@ $(SQUARED_FLAGS_STAMP):
 # Reversed 2026-10-19, from "every test runs on every make test" (graphics):
 # that rule was right while a test did not depend on its headers, so an
 # unchanged binary could hide a changed header. Now it cannot.
-SQUARED_HEADERS := $(shell find $(SQUARED_ROOT) \( -path $(SQUARED_ROOT)/build -o -path $(SQUARED_ROOT)/third_party \) -prune -o -name '*.hpp' -print)
+# What a test recipe hands the compiler from its prerequisites: sources,
+# objects and archives, in their order. Not the headers its .d adds, nor the
+# flags stamp or the precompiled header.
+SQUARED_TEST_INPUTS = $(filter %.cpp %.c %.o %.a,$^)
 
 # $(call run_tests,<test binaries>): the recipe of a module's `test` target.
 define run_tests

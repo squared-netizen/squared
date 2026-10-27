@@ -72,7 +72,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/image_decode_test.cpp \
                 $(STB_OBJECT)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -o $@
+	$(TEST_CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src $(SQUARED_TEST_INPUTS) -o $@
 
 # Texture against the headless backend. Recovery runs once per context loss on
 # a device; here every branch of it runs in microseconds.
@@ -96,7 +96,10 @@ TESTS := $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+
+# What each test includes, from its last build (tools/test_cc.sh).
+-include $(TESTS:=.d)
 
 $(FONT_ERROR_TEST): $(MODULE_DIR)/test/bitmap_font_error_test.cpp \
                     $(MODULE_DIR)/src/glyph_layout.cpp \
@@ -105,7 +108,7 @@ $(FONT_ERROR_TEST): $(MODULE_DIR)/test/bitmap_font_error_test.cpp \
                     $(SQUARED_ROOT)/dev/src/dev_log.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(MODULE_DIR)/src $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -ldl -pthread -o $@
+	$(TEST_CXX) $(TESTFLAGS) -I$(MODULE_DIR)/src $(INCLUDES) $(SQUARED_TEST_INPUTS) -ldl -pthread -o $@
 
 $(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
                $(MODULE_DIR)/src/glyph_layout.cpp \
@@ -114,7 +117,7 @@ $(GLYPH_TEST): $(MODULE_DIR)/test/glyph_layout_test.cpp \
                $(SQUARED_ROOT)/dev/src/dev_log.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(MODULE_DIR)/src $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) -ldl -pthread -o $@
+	$(TEST_CXX) $(TESTFLAGS) -I$(MODULE_DIR)/src $(INCLUDES) $(SQUARED_TEST_INPUTS) -ldl -pthread -o $@
 
 $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(MODULE_DIR)/src/common/sprite_batch_common.cpp \
@@ -127,8 +130,8 @@ $(BATCH_TEST): $(MODULE_DIR)/test/sprite_batch_test.cpp \
                $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) $(LIB_DIR)/libsquared_graphics.a \
+	$(TEST_CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
+	    $(INCLUDES) $(SQUARED_TEST_INPUTS) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
 $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
@@ -141,8 +144,8 @@ $(ATLAS_TEST): $(MODULE_DIR)/test/texture_atlas_test.cpp \
                $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) $(LIB_DIR)/libsquared_graphics.a \
+	$(TEST_CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
+	    $(INCLUDES) $(SQUARED_TEST_INPUTS) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
@@ -154,8 +157,8 @@ $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
                  $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_graphics.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
-	    $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) $(LIB_DIR)/libsquared_graphics.a \
+	$(TEST_CXX) $(TESTFLAGS) -I$(STB_DIR) -I$(MODULE_DIR)/src \
+	    $(INCLUDES) $(SQUARED_TEST_INPUTS) $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a -o $@
 
 $(TARGET): $(OBJECTS)
@@ -163,10 +166,10 @@ $(TARGET): $(OBJECTS)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/graphics/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/graphics/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 $(STB_DIR)/stb_image.h:
 	@echo "graphics: third_party/stb/stb_image.h is missing."

@@ -157,6 +157,18 @@ Defaults are `-std=c++20 -O2 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
 -fvisibility=hidden` so the linker can drop what an application does not use.
 The tree builds warning-free at that level.
 
+**The standard headers are precompiled** with clang (7b.2): the build makes
+`build/<BUILD>/pch/std.pch` (and `std-test.pch` for the tests) once per
+flag set, about 22 MB each, and compiles every source with it, which takes a
+third to three quarters off each compile on the phone. `make SQUARED_PCH=off`
+builds without it. A standard header your change starts to include, that
+`build/std_pch.hpp` does not list, still works but is not precompiled: `make
+headers` says so, and `tools/std_pch.sh` writes the list again.
+
+**A test is rebuilt only when something it includes changes**, and the
+objects of the sources tests share are kept in
+`build/<BUILD>/test-objects/` and reused.
+
 `SQUARED_ABI` carries `-fno-rtti`, which builds and passes every test
 (`make SQUARED_ABI=-fno-rtti test`); `-fno-exceptions` does not build yet.
 See [../developer/build-and-toolchain.md](

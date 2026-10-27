@@ -63,10 +63,10 @@ $(TARGET): $(OBJECTS)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/gui $(TARGET)
@@ -127,7 +127,10 @@ TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(PA
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+
+# What each test includes, from its last build (tools/test_cc.sh).
+-include $(TESTS:=.d) $(SQGEN).d
 
 $(SCREEN_LAYOUT_TEST): $(MODULE_DIR)/test/screen_layout_test.cpp $(TARGET) \
                        $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
@@ -136,7 +139,7 @@ $(SCREEN_LAYOUT_TEST): $(MODULE_DIR)/test/screen_layout_test.cpp $(TARGET) \
                        $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(SQUARED_ROOT)/dev/src/frame_allocations.cpp \
 	    $(SQUARED_ROOT)/dev/src/dev_log.cpp $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
 	    $(LIB_DIR)/libsquared_messaging.a $(LIB_DIR)/libsquared_time.a \
@@ -145,13 +148,13 @@ $(SCREEN_LAYOUT_TEST): $(MODULE_DIR)/test/screen_layout_test.cpp $(TARGET) \
 $(LAYOUT_FILE_TEST): $(MODULE_DIR)/test/layout_file_test.cpp $(LAYOUT_LIBS) $(LAYOUT_FILE_CASES)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) -DLAYOUT_FILE_CASES='"$(LAYOUT_FILE_CASES)"' \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) -DLAYOUT_FILE_CASES='"$(LAYOUT_FILE_CASES)"' \
 	    $< $(LAYOUT_LIBS) -o $@
 
-$(SQGEN): $(SQUARED_ROOT)/tools/sqgen/sqgen.cpp $(LAYOUT_LIBS) $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP)
+$(SQGEN): $(SQUARED_ROOT)/tools/sqgen/sqgen.cpp $(LAYOUT_LIBS) $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,bin,sqgen)
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(LAYOUT_LIBS) -o $@
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(LAYOUT_LIBS) -o $@
 
 $(SQGEN_GEN)/layouts.cpp: $(SQGEN) $(SQGEN_FIXTURE)/names.json $(wildcard $(SQGEN_FIXTURE)/layouts/*.json)
 	@mkdir -p $(dir $@)
@@ -161,14 +164,14 @@ $(SQGEN_GEN)/layouts.cpp: $(SQGEN) $(SQGEN_FIXTURE)/names.json $(wildcard $(SQGE
 $(SQGEN_TEST): $(MODULE_DIR)/test/sqgen_test.cpp $(SQGEN_GEN)/layouts.cpp $(LAYOUT_LIBS) $(SQGEN_WRONG)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) -I$(SQGEN_GEN) -DSQGEN_PATH='"$(SQGEN)"' \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) -I$(SQGEN_GEN) -DSQGEN_PATH='"$(SQGEN)"' \
 	    -DSQGEN_FIXTURE='"$(SQGEN_FIXTURE)"' $< $(SQGEN_GEN)/layouts.cpp $(LAYOUT_LIBS) -o $@
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -176,7 +179,7 @@ $(PANE_TEST): $(MODULE_DIR)/test/pane_frame_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -186,7 +189,7 @@ $(SKIN_LOADER_TEST): $(MODULE_DIR)/test/skin_loader_test.cpp $(TARGET) \
                      $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a \
 	    $(LIB_DIR)/libsquared_data.a $(LIB_DIR)/libsquared_time.a \
 	    $(LIB_DIR)/libsquared_math.a -o $@
@@ -195,7 +198,7 @@ $(SAFE_AREA_TEST): $(MODULE_DIR)/test/ui_safe_area_test.cpp $(TARGET) \
                    $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -206,7 +209,7 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
                  $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $(filter-out %.hpp $(SQUARED_FLAGS_STAMP),$^) \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $(SQUARED_TEST_INPUTS) \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
 
@@ -218,6 +221,7 @@ $(PAINTER_TEST): $(MODULE_DIR)/test/batch_painter_test.cpp \
 # It is how a skin is proved loadable end to end - atlas, .fnt, font pages,
 # the JSON, the painter and the widgets - without a device.
 SKIN_SPIKE := $(BUILD_DIR)/skin_spike
+-include $(SKIN_SPIKE).d
 SKIN ?=
 
 .PHONY: spike
@@ -230,10 +234,10 @@ spike: $(SKIN_SPIKE)
 $(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
                $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
               $(LIB_DIR)/libsquared_time.a \
-              $(LIB_DIR)/libsquared_math.a
+              $(LIB_DIR)/libsquared_math.a $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< \
 	    $(LIB_DIR)/libsquared_gui.a \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \

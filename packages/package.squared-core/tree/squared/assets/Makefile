@@ -24,10 +24,10 @@ $(TARGET): $(OBJECTS)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/assets/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/assets/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/assets $(TARGET)

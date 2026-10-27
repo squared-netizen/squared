@@ -42,10 +42,10 @@ $(TARGET): $(OBJECTS)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/data/%.o: $(MODULE_DIR)/%.cpp $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/data/%.o: $(MODULE_DIR)/%.cpp $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 # Third-party code is compiled as C with squared's warning set switched off.
 # It is not ours to keep clean, and -Wconversion on a JSON parser is noise that

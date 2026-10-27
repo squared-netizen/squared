@@ -51,19 +51,22 @@ TESTS := $(STAGE_TEST) $(STAGE_ALONE_TEST)
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_HEADERS) $(SQUARED_FLAGS_STAMP) $(STAGE_LIBS)
+$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE) $(STAGE_LIBS)
+
+# What each test includes, from its last build (tools/test_cc.sh).
+-include $(TESTS:=.d)
 
 $(STAGE_TEST): $(MODULE_DIR)/test/stage_test.cpp $(CATALOG_OBJECT) $(wildcard $(STAGE_SKIN_DIR)/*)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) -DSTAGE_SKIN_DIR='"$(STAGE_SKIN_DIR)"' $< \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) -DSTAGE_SKIN_DIR='"$(STAGE_SKIN_DIR)"' $< \
 	    $(SQUARED_ROOT)/dev/src/frame_allocations.cpp $(SQUARED_ROOT)/dev/src/dev_log.cpp \
 	    $(CATALOG_OBJECT) $(STAGE_LIBS) -ldl -pthread -o $@
 
 $(STAGE_ALONE_TEST): $(MODULE_DIR)/test/stage_alone_test.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
-	$(CXX) $(TESTFLAGS) $(INCLUDES) $< \
+	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< \
 	    $(STAGE_LIBS) -ldl -pthread -o $@
 
 $(TARGET): $(OBJECTS)
@@ -71,10 +74,10 @@ $(TARGET): $(OBJECTS)
 	$(call say,ar,$(notdir $@))
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/stage/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
+$(OBJ_DIR)/stage/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
 	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/stage $(TARGET)

@@ -47,7 +47,9 @@ gles: graphics
 messaging: time
 stage: gui graphics assets files messaging data time math
 
-$(MODULES):
+# The standard headers' precompiled header first, here, once: the modules
+# build at the same time under -j, and would each make it (build/common.mk).
+$(MODULES): $(SQUARED_PCH_FILE)
 	$(MAKE) -C $@ -f Makefile
 
 headers:
