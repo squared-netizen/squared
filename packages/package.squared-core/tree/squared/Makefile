@@ -12,6 +12,7 @@
 #   make lint LINT_ARGS=--changed   options for tools/lint.sh (also --only tidy)
 #   make <module>        build one module
 #   make V=1             every command, and every test's output, in full
+#   make SQUARED_CACHE=off   no build cache (build/common.mk, "the build cache")
 #   make clean
 #
 # Header-only modules are built too, so their headers stay compilable.
@@ -38,7 +39,11 @@ MODULES := math data files assets graphics \
 # The modules with tests, in the order they are run.
 TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage
 
+# Then the build cache, back under its size (build/common.mk, "the build
+# cache"). Quick when it is under: one du.
 all: $(MODULES)
+	@if [ "$(SQUARED_CACHE)" != off ] && [ -n "$(SQUARED_CACHE)" ]; then \
+	  bash tools/cache_prune.sh '$(SQUARED_CACHE)' '$(SQUARED_CACHE_SIZE)'; fi
 
 graphics: math files
 gui: graphics math data files messaging

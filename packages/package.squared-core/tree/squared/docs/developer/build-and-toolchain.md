@@ -17,7 +17,8 @@ make gui             # one module
 make headers         # compile every public header standalone
 make lint            # format, source-rule and clang-tidy checks
 make V=1             # every command in full
-make clean
+make SQUARED_CACHE=off   # no build cache (below)
+make clean           # keeps build/cache
 ```
 
 Module dependency order is declared in the top-level `Makefile`, so `make -j`
@@ -34,7 +35,7 @@ directory" lines and a "Nothing to be done". The same build now prints:
 ```
 squared release: flags as before
   cc   gui/src/stage.cpp
-  ar   libsquared_gui.a
+  ar   libsquared_gui.a (38 from the cache)
   bin  gui/ui_keys_test
   test gui/ui_keys_test
        ok
@@ -51,6 +52,9 @@ How, all in `build/common.mk`, with no filter and no pipe:
   The path is from `squared/` (`$(MODULE)/$*.cpp`). Every line names its
   module because `make -j` interleaves modules; a heading per module would be
   wrong as soon as two build at once.
+- An object's compile is said by `tools/cached_cc.sh` (`SQUARED_SAY`), and
+  only when it compiles: an object from the build cache prints nothing, and
+  the archive's line counts them, `(38 from the cache)` (7b.3, below).
 - The flags, said once (below).
 - `run_tests` prints the test's name, runs it with its output in
   `<binary>.log`, then `ok`, or `FAIL (exit N)` / `FAIL (signal N)` and the
@@ -312,6 +316,91 @@ modules come after this (7b).
 **The link check** (template `Makefile`, `verify-link`) refuses a library that
 needs `libc++_shared.so` (the runtime was not linked in) and, when
 `SQ_MIN_SDK` is below 23, one without `DT_HASH`.
+
+## The build cache (7b.3)
+
+A fresh workspace compiled all 95 framework files, though the device had
+compiled the very same files with the same compiler and flags in the last
+workspace; so did `make clean`, and the project's own clean when its flags
+change and change back. Now every framework object is compiled through
+`tools/cached_cc.sh` (`SQUARED_CC`, `build/common.mk`), which keeps the
+object in a cache keyed by what the compile read, and takes it from there
+when a compile would read the same again. Tests stay on `tools/test_cc.sh`
+(above), which shares their objects within one workspace.
+
+Decided with the user (plan, 7b.3): one cache for every workspace in a
+squared-pg tree, `~/sqsysroot/.sqpg/cache`, and a tree without squared-pg's
+directory gets the workspace's own `build/cache` (outside
+`build/<BUILD>/`, so `make clean` keeps it); keyed by the content of what
+each compile reads; a cap, oldest out, 500 MB by default; filled lazily, by
+builds (squared-pg's `initialize` fills nothing). squared's source stays in
+each workspace, as before: only objects are shared.
+
+**The key.** Two steps, as ccache's direct mode:
+
+- `k1`, an md5 of the compiler's version line, the flags, the source's path
+  and the source's content. The workspace's own directory (`PUBLIC_ROOT`,
+  the one holding `squared/`) is written `@ROOT@` in the flags and paths, so
+  two workspaces compiling the same file with the same flags have one `k1`.
+- `manifests/<k1>/` holds what such a compile read, one list per set of
+  headers seen (a list is the `.d`, one file a line, `@ROOT@` for the
+  workspace), up to 4: an old workspace and a new one with different includes
+  do not push each other out.
+- `k2`, an md5 of `k1` and what each file of a list holds now: squared's own
+  files by content (`md5sum`; a vendored copy is dated when it was copied,
+  so its dates say nothing), the compiler's and the system's by size and
+  date (`stat`; they change only with a package update, and hashing 400
+  system headers for every object would cost more than a compile). The
+  object is `objects/<k2>.o`.
+
+A lookup tries each list, newest first: a `k2` with an object is a hit, and
+the object is copied out and the list written as the workspace's `.d`, with
+its paths. A miss compiles, with `-MD -MP` (system headers too: a new libc++
+or NDK rebuilds), then stores the list and the object. The precompiled
+header needs no key of its own: a compile with it lists `build/std_pch.hpp`
+and every standard header it pulls, and its flags are the object's.
+
+**Objects that do not name their workspace.** `SQUARED_CXXFLAGS` carries
+`-ffile-prefix-map=<PUBLIC_ROOT>/=`, so the paths an object holds (debug
+information, `__FILE__`) start at `squared/`. Checked here: two workspaces,
+95 objects, byte for byte the same. The cost is to debugging: gdb finds the
+sources from the workspace's directory (`directory <it>`, or run it there),
+and `addr2line` prints `squared/gui/src/ui.cpp:42`.
+
+**Never half a file.** Each file is written beside its name (`.<name>.<pid>`)
+and renamed into place, so builds at once under `-j`, or in two workspaces,
+share the cache safely; a lookup that loses a race (an object pruned between
+finding and copying it) compiles. An object is not stored when one of
+squared's files it read changed while it compiled (newer than a mark made as
+the compile started): it would be of neither version.
+
+**The cap.** The root `Makefile`'s `all` runs `tools/cache_prune.sh` after
+the modules: one `du` when under `SQUARED_CACHE_SIZE` (megabytes, 500); over
+it, the files used least lately go first, objects and lists alike, to nine
+tenths (so the next build does not prune again). A hit touches the object and
+its list.
+
+**Measured here** (x86, 8 jobs, clang 18): the framework into an empty cache
+58 s (the script costs nothing visible); a second workspace 5.8 s, every
+object from the cache; `make clean` then `make` 6.0 s, most of it the
+precompiled header, which each workspace makes itself; a header edited, its
+6 includers compiled, and edited back, the 6 from the cache; one at a time
+(`-j1`) a hit is about 40 ms. 95 objects and their lists, release: 6.5 MB, so
+500 MB holds some 70 configurations (release, debug, the NDK's, each version
+of squared). g++ builds use it too, under their own keys.
+
+What it allocates: nothing in a squared program; on disk, at most
+`SQUARED_CACHE_SIZE`. Patterns: a content-addressed store (Memoization of the
+compiler, keyed by its inputs); nothing from the standard library (it is
+shell).
+
+Known limits. A header that would now be found first on the include path,
+where an older one was found before, is not seen (the list names what was
+read, not what was looked for); ccache's direct mode has the same hole, and
+`make SQUARED_CACHE=off` or deleting the cache settles it. A path with a
+space in it is split. The precompiled header is not cached (clang checks
+the headers it was made from by path and date, so another workspace's would
+be refused).
 
 ## Android: debuggable builds and adb
 

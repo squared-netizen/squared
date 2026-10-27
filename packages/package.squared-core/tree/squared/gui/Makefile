@@ -60,13 +60,12 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
-	$(call say,ar,$(notdir $@))
+	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
 $(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
-	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/gui $(TARGET)

@@ -39,21 +39,19 @@ $(YYJSON_DIR)/yyjson.h:
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
-	$(call say,ar,$(notdir $@))
+	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
 $(OBJ_DIR)/data/%.o: $(MODULE_DIR)/%.cpp $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
-	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
 
 # Third-party code is compiled as C with squared's warning set switched off.
 # It is not ours to keep clean, and -Wconversion on a JSON parser is noise that
 # would bury a real warning from squared.
 $(YYJSON_OBJECT): $(YYJSON_DIR)/yyjson.c $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(call say,cc,$(patsubst $(SQUARED_ROOT)/%,%,$<))
-	$(CXX) -x c -std=c11 $(OPTIMISE) $(CODEGEN) -w $(DEPFLAGS) \
+	$(SQUARED_CC) -x c -std=c11 $(OPTIMISE) $(CODEGEN) $(SQUARED_PREFIX_MAP) -w \
 	    -I$(YYJSON_DIR) -c $< -o $@
 
 clean:

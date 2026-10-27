@@ -47,11 +47,19 @@ SQUARED_ABI ?=
 
 CXXFLAGS ?= $(STANDARD) $(OPTIMISE) $(WARNINGS) $(CODEGEN) $(SQUARED_ABI)
 
+# Paths in an object (debug information, __FILE__) are written from the
+# directory that holds squared/, as squared/gui/src/ui.cpp, not from /: so an
+# object does not name its workspace, and the build cache (below) gives one
+# workspace's object to another. A debugger finds the sources from the
+# workspace's directory (gdb: `directory <it>`); addr2line prints the same
+# short paths.
+SQUARED_PREFIX_MAP = -ffile-prefix-map=$(PUBLIC_ROOT)/=
+
 # What every object is compiled with: CXXFLAGS, then CXXFLAGS_EXTRA. Kept out
 # of CXXFLAGS itself because the root Makefile reads this file too: a CXXFLAGS
 # from the environment would reach the modules with the extra flags already in
 # it, and they would get them twice.
-SQUARED_CXXFLAGS = $(CXXFLAGS) $(CXXFLAGS_EXTRA)
+SQUARED_CXXFLAGS = $(CXXFLAGS) $(CXXFLAGS_EXTRA) $(SQUARED_PREFIX_MAP)
 
 # Tests and the small tools built beside them: quick to compile, with symbols,
 # and the same SQUARED_ABI as the archives they link (a test built with RTTI
@@ -89,7 +97,44 @@ else
   SQUARED_PCH_USE :=
 endif
 
-DEPFLAGS = -MMD -MP
+# --- the build cache (7b.3) ---------------------------------------------------
+#
+# Every framework object is compiled through tools/cached_cc.sh, which keeps
+# it in a cache keyed by what the compile read: the source and every header,
+# by content, the compiler and the flags. A compile that read the same again,
+# in this workspace or another, takes the object instead (a fresh workspace,
+# a `make clean`, the template's flags changed and changed back, a header
+# edited and edited back). The cache is one for every workspace on this
+# device when squared-pg is set up (~/sqsysroot/.sqpg), else this workspace's
+# build/cache, which `make clean` keeps. It is pruned after each build to
+# SQUARED_CACHE_SIZE megabytes, least lately used first.
+#
+#   make SQUARED_CACHE=off           compile everything, keep nothing
+#   make SQUARED_CACHE=/somewhere    another cache
+#   make SQUARED_CACHE_SIZE=2000     a bigger one (megabytes)
+#
+# Tests are not cached here: tools/test_cc.sh shares their objects within
+# the workspace.
+SQUARED_SQPG_HOME ?= $(HOME)/sqsysroot/.sqpg
+SQUARED_CACHE ?= $(if $(wildcard $(SQUARED_SQPG_HOME)/.),$(SQUARED_SQPG_HOME)/cache,$(SQUARED_ROOT)/build/cache)
+SQUARED_CACHE_SIZE ?= 500
+
+# The compile of one object, in an object rule's recipe: then its flags, then
+# -c $< -o $@. It writes the object's .d (the headers, system ones too: a new
+# libc++ rebuilds), and says `  cc   <source>` when it compiles.
+SQUARED_CC = SQUARED_CACHE='$(SQUARED_CACHE)' SQUARED_PUBLIC_ROOT='$(PUBLIC_ROOT)' \
+    SQUARED_CXX_VERSION='$(SQUARED_CXX_VERSION)' \
+    SQUARED_SAY='$(if $(filter 1,$(V)),,$(patsubst $(SQUARED_ROOT)/%,%,$<))' \
+    SQUARED_HITS='$(OBJ_DIR)/$(MODULE)/.cache-hits' \
+    bash $(SQUARED_ROOT)/tools/cached_cc.sh $(CXX)
+
+# $(call say_archive,<archive>): the `ar` line, with how many of its objects
+# this build took from the cache.
+say_archive = @n=$$(cat '$(OBJ_DIR)/$(MODULE)/.cache-hits' 2>/dev/null | wc -l); \
+    rm -f '$(OBJ_DIR)/$(MODULE)/.cache-hits'; \
+    $(if $(filter 1,$(V)),:,if [ "$$n" -gt 0 ]; then \
+      printf '  %-4s %s (%s from the cache)\n' ar '$(notdir $(1))' "$$n"; \
+    else printf '  %-4s %s\n' ar '$(notdir $(1))'; fi)
 
 # --- what a build prints -----------------------------------------------------
 #

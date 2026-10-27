@@ -163,13 +163,12 @@ $(TEXTURE_TEST): $(MODULE_DIR)/test/texture_test.cpp \
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(LIB_DIR)
-	$(call say,ar,$(notdir $@))
+	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
 $(OBJ_DIR)/graphics/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
 	@mkdir -p $(dir $@)
-	$(call say,cc,$(MODULE)/$*.cpp)
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
 
 $(STB_DIR)/stb_image.h:
 	@echo "graphics: third_party/stb/stb_image.h is missing."
@@ -178,8 +177,7 @@ $(STB_DIR)/stb_image.h:
 
 $(STB_OBJECT): $(STB_DIR)/stb_image_impl.c $(STB_DIR)/stb_image.h $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(call say,cc,$(patsubst $(SQUARED_ROOT)/%,%,$<))
-	$(CXX) -x c -std=c11 $(OPTIMISE) $(CODEGEN) -w $(DEPFLAGS) \
+	$(SQUARED_CC) -x c -std=c11 $(OPTIMISE) $(CODEGEN) $(SQUARED_PREFIX_MAP) -w \
 	    -I$(STB_DIR) -c $< -o $@
 
 clean:

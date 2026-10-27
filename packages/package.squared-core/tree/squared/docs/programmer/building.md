@@ -169,6 +169,30 @@ headers` says so, and `tools/std_pch.sh` writes the list again.
 objects of the sources tests share are kept in
 `build/<BUILD>/test-objects/` and reused.
 
+**Framework objects are cached** (7b.3), by what each compile reads: the
+source and every header by content, the compiler and the flags. A compile
+that would read the same again takes the object instead: a new workspace, a
+`make clean`, a header edited and edited back. With squared-pg set up the
+cache is one for every workspace on the device, `~/sqsysroot/.sqpg/cache`;
+otherwise it is the workspace's `build/cache`, which `make clean` keeps. The
+archive's line says how many came from it:
+
+```
+  ar   libsquared_gui.a (39 from the cache)
+```
+
+It is kept under 500 MB, least lately used out first:
+
+```sh
+make SQUARED_CACHE_SIZE=2000    # megabytes
+make SQUARED_CACHE=off          # compile everything, keep nothing
+make SQUARED_CACHE=/elsewhere   # another cache
+```
+
+So that one workspace's objects suit another, paths in objects start at
+`squared/` (`-ffile-prefix-map`): a debugger finds the sources when started
+from the directory that holds `squared/`.
+
 `SQUARED_ABI` carries `-fno-rtti`, which builds and passes every test
 (`make SQUARED_ABI=-fno-rtti test`); `-fno-exceptions` does not build yet.
 See [../developer/build-and-toolchain.md](
