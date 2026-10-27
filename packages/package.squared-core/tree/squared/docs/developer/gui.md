@@ -57,6 +57,21 @@ false. `Ui` reads it in three places and no longer names `TextField` at all,
 which is why `ui.cpp` does not include `text_field.hpp`. Any custom text-entry
 widget can opt in by overriding it.
 
+## A text field's commit, and a slider held (7.5a)
+
+The Stage needs to know when a text edit is finished, and whether the user
+holds a widget. `TextField` gained a commit callback (a function pointer and
+a `void *`, 16 bytes, over `std::function`'s 32: priority 1, and the Stage
+needs no captures), an `edited_` flag set by every change the user makes
+(typing, Backspace, Delete; not `set_text`), and `focused()`. Enter commits;
+losing the focus commits only when `edited_`, so tapping in and out sends
+nothing. `TextField` grew from 248 to 264 bytes; `edited_` fits in padding.
+`Slider::dragging()` reads the existing `drag_pointer_`: no new state.
+
+The check box and the slider keep their `std::function` change callbacks
+(debt from before); the Stage's lambdas capture two pointers, which both
+libraries store in place, so binding allocates nothing for them.
+
 ## Downcasting without RTTI
 
 `Actor::actor_interface(ActorInterfaceId)` is the framework's replacement for

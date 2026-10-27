@@ -58,11 +58,11 @@
 
 *public NodeWriter & bind(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:171](../../../../gui/layout_writer.hpp#L171)*
+*Defined at [gui/layout_writer.hpp:175](../../../../gui/layout_writer.hpp#L175)*
 
 
 
-**brief** Show `key`'s `state` (a label, check box, text field, slider or progress bar). 
+**brief** Show `key`'s `state` (a label, check box, text field, slider or progress bar); a node that edits sends `set` when the key carries it. A value type the node cannot show is refused.
 
 ### span
 
@@ -124,7 +124,7 @@
 
 *public NodeWriter & tap(Navigate how)*
 
-*Defined at [gui/layout_writer.hpp:184](../../../../gui/layout_writer.hpp#L184)*
+*Defined at [gui/layout_writer.hpp:189](../../../../gui/layout_writer.hpp#L189)*
 
 
 
@@ -134,7 +134,7 @@
 
 *public NodeWriter & tap(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:191](../../../../gui/layout_writer.hpp#L191)*
+*Defined at [gui/layout_writer.hpp:196](../../../../gui/layout_writer.hpp#L196)*
 
 
 
@@ -144,7 +144,7 @@
 
 *public NodeWriter & tap(const K & key, const V & value)*
 
-*Defined at [gui/layout_writer.hpp:201](../../../../gui/layout_writer.hpp#L201)*
+*Defined at [gui/layout_writer.hpp:206](../../../../gui/layout_writer.hpp#L206)*
 
 
 
@@ -154,7 +154,7 @@
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:328](../../../../gui/layout_writer.hpp#L328)*
+*Defined at [gui/layout_writer.hpp:334](../../../../gui/layout_writer.hpp#L334)*
 
 
 

@@ -136,7 +136,11 @@ the tests compare the bytes instead.
 
 ## The text form (6.2)
 
-`write_telegram` and `read_telegram`, in `telegram_text.cpp`.
+`write_telegram` and `read_telegram`, in `telegram_text.cpp`, and
+`write_value` (7.5a): the value alone, which a bound label shows. Both
+writers go through one `put_value`, so a label shows a value exactly as the
+line writes it; the test checks `write_value` against each exact line's
+tail.
 
 - **Numbers:** `std::to_chars` and `std::from_chars`, so no locale and the
   shortest form that reads back to the same bits (doubles and floats). A
@@ -450,8 +454,15 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   to `model.receive`. The list's own telegrams go through `send_state`, so
   they are held back like any state.
 - **The UI's end** drains at most a ring's worth a call: states into the
-  cache (a value the cache cannot keep is counted there), events to the
-  handler's `event` if it has one. `value(key)` reads the cache as the key's
+  cache (a value the cache cannot keep is counted there), then to the
+  handler's `state` if it has one (7.5a: the Stage shows bound widgets from
+  it, so a value is shown the frame it comes and nothing polls the cache);
+  events to the handler's `event` if it has one. Both are found with
+  `if constexpr( requires ... )`: a handler without one costs nothing. The
+  hook runs after the cache stored the state, so `find` in it answers with
+  the new value; a `Received` text's bytes are its `data` from 0, while the
+  telegram's `DataRef` still says where it was in the ring (the Stage reads
+  through `find`, whose `CachedValue` is normalized to `{0, size}`). `value(key)` reads the cache as the key's
   type; a uid list is read with `find` (its bytes may be unaligned).
 - **Not yet:** `set` coalesced per frame (the Stage's frame, Sprint 7); the
   looper watching `wake_fd` (Sprint 7); names registered for the text form

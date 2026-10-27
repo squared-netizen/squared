@@ -214,6 +214,7 @@ std::size_t n = sq::messaging::write_telegram( *telegram, data.bytes(), names, l
 | Call | Does | Fails with |
 |---|---|---|
 | `write_telegram(t, data, names, out)` | the line, into `out`; the length | 0: `out` too small, `t` not valid, or its data outside `data` |
+| `write_value(t, data, out)` | its value alone, as the line writes it (`2.0`, `"ann"`, `[17 4]`): what a bound label shows | 0: as above, or `t` has no value |
 | `read_telegram(line, data)` | the telegram; text and uids appended to `data` | nothing: not a telegram, or `data` full; nothing is left in `data` |
 
 `read_telegram` needs no name table: names are hashed. It reads more than the
@@ -378,8 +379,8 @@ the pending table is full too, after its thread waited up to
 data ring, never sendable).
 
 **The UI's end, `TelegraphUi`:** `set`, `do_` (returns the correlation), `view`
-(a list widget's rows), `drain` (states into the cache, events to a handler's
-`event`), `find` and `value` (typed; text valid until the next `drain`),
+(a list widget's rows), `drain` (states into the cache, then to a handler's
+`state` if it has one; events to its `event`), `find` and `value` (typed; text valid until the next `drain`),
 `bind`/`unbind`, and `background`, `foreground(elapsed_ms)`, `low_memory`,
 `quit` for the model's next turn. It never waits. Each send wakes a sleeping
 model.
@@ -407,6 +408,20 @@ if( ui.ready_to_sleep() ) {
 }
 ui.drain( screens );
 ```
+
+**A handler's `state`** is told of each state after the cache has it, so
+`find` already answers with the new value; the Stage shows bound widgets this
+way. Both members are optional, and `drain()` with no handler only caches:
+
+```cpp
+struct Showing {
+    void state( const sq::messaging::Received &received ) noexcept; // a value changed
+    void event( const sq::messaging::Received &received ) noexcept; // an event came
+};
+```
+
+A `Received` text's bytes are its `data`, all of it, from 0; the telegram's
+own `DataRef` is where it was in the ring, not in `data`.
 
 **Capacities** are compile-time knobs, set as make variables in a project
 (`make TELEGRAPH_RING=512`; the framework and the app are built with the same

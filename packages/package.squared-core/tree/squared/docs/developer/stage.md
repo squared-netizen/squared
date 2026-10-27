@@ -1,14 +1,15 @@
 # stage &mdash; internals
 
 Programmer docs: [../programmer/stage.md](../programmer/stage.md). The
-decision record: the refactor plan's 7.1 to 7.4 ("yes to all",
+decision record: the refactor plan's 7.1 to 7.5 ("yes to all",
 2026-10-26) and the app model's Ownership and Lifecycle sections.
 
 `stage/app.hpp` (`sq::App`, `squared_main`), `stage/stage.hpp`
 (`sq::Stage`), `src/app.cpp`, `src/stage.cpp`, and `src/catalog.cpp` with
 `src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
-C++ screens, 7.3's panes and 7.4's compiled-in skin folded in.
+C++ screens, 7.3's panes, 7.4's compiled-in skin and 7.5a's bound values
+folded in.
 
 Depends on app (headers), gui, graphics, assets (the `Runtime`'s), files,
 messaging, time, data (through gui's skin loader) and math. Nothing depends
@@ -86,8 +87,9 @@ added C++ screens (a pointer each), the 16 custom types (a name and a
 function pointer each), the 4 pane slots (40 bytes each, below), the report,
 the text-input service, the skin's file system (a test's; below), the
 `Drawing` pointer, the pixel and logical sizes,
-the safe area, a depth, four counts and four flags. Was 264 in 7.1 and 936 in
-7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8. In the App
+the safe area, a depth, four counts and six flags. Was 264 in 7.1 and 936 in
+7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8; 7.5a's two
+flags fit in padding. In the App
 it costs less than it adds: the App is `TelegraphLine`-aligned (64), so it
 grew from line + 1,088 to line + 1,216, and 7.4's 8 bytes fit in its
 padding.
@@ -253,12 +255,65 @@ tap lands on a close button that is not there). A bool in the existing
 padding: `Window` is still 304 bytes. 7.7 folds `Window` and `Dialog` into
 the pane.
 
+## Bound values (7.5a)
+
+A node's `bind` carries its value type and whether it sends `set`
+([layouts.md](layouts.md#layoutnode-32-bytes)); the Stage does the rest.
+
+**The table.** `Drawing::bindings`, 128 `Binding`s (`max_bindings`) of 32
+bytes, after the scratch: the `Address`, the widget, a pending slider value,
+the node and value types, the owner (a pane's slot, or `screen_owner`
+0xFF), and three bits (`sends_set`, `sending`, `stale`). A free slot has no
+widget; the scans are linear over 128, which the frames do twice (one pass
+in `send_edits`, one per state that comes). In the `Drawing`, not the Stage,
+since widgets exist only with a window: 4 KB a window, freed with it.
+Priority 1 over a growing vector: the size is known before the first
+screen. Rejected: a pointer in each widget (every widget pays for the few
+that are bound, and gui would learn of the Telegraph).
+
+**Bound as built.** `instantiate`'s `bound` hook (`bound` for the screen,
+`bound_in_pane` for a pane, its slot the owner) takes a free slot, calls
+`TelegraphUi::bind` so the cache keeps the value while it is shown, wires
+the widget's callback when the node sends `set`, and shows the cached value
+if there is one: a pane opened later shows the latest at once. A full table
+says so once (until the next `unbind_all`) and the rest show their own
+text. `show_top` and `detach` unbind all (the old content's widgets go);
+`close_pane` unbinds its owner's.
+
+**Shown as it comes** (7.5's choice: no per-frame poll). `update` drains
+with a local handler whose `state` calls `changed`, which finds the bound
+slots for the address and shows the cached value (`find`), or marks the slot
+`stale` while the user holds the widget (`held`: a slider `dragging()`, a
+text field `focused()`). `send_edits`, after the drain, shows a stale slot
+once it is let go. `show` refuses a telegram of another type than the node
+was bound as, which only a model whose key disagrees with `names.json` can
+send, and sets the widget with `applying_` up, so its change callback does
+not send the value back.
+
+**What the user does goes out** (`edited`): a check box at once
+(`Telegram::boolean` set); a slider's moves into `pending`, `sending` set,
+and `send_edits` sends the last once a frame (an integer key gets
+`lround`); a text field on commit (Enter, or the focus lost after an edit),
+its text through a 1 KB `TelegramData` on the stack. A full ring is
+reported; the widget keeps what the user did, and the model's next state
+corrects it.
+
+**Text** shown on a label or a field is a `string_view`: a text value's
+cached bytes as they are, anything else written by `messaging::write_value`
+into 128 bytes on the stack (four floats is the longest). `set_text` takes a
+view and assigns it into the widget's `std::string`, which keeps its
+capacity, so a value shown again allocates only when it is longer than any
+the widget held (tested past the short-string size). 7.5a changed both
+widgets' `set_text` from a `std::string` by value, which made every caller
+build a string first.
+
 ## `Stage::Drawing`
 
-19,128 bytes under libc++ (Android, Termux) and 19,312 under libstdc++:
+23,224 bytes under libc++ (Android, Termux) and 23,408 under libstdc++:
 1,648 and 1,832 for the window's own pieces (`static_assert`ed for each: the
-`Ui` holds standard containers, whose sizes are the library's) and the
-17,480-byte scratch, last, so the two add exactly. One allocation per
+`Ui` holds standard containers, whose sizes are the library's), the
+17,480-byte scratch and the 4,096-byte table of bound values, last, so they
+add exactly. One allocation per
 window: the atlas, the font, the sprite batch, the `Ui`, a `loaded` flag, the
 camera, the painter and the scratch, **in that order**, so the constructor can load in its member
 initializers: `loaded( load( files, why ) )` loads the atlas, the font and the
@@ -334,16 +389,22 @@ drawable missing) is reported and shown.
   accepts, reached through one function pointer; no base class. Its pane
   shape is read at compile time from optional constants.
 - **Object pool (fixed slots)**: the 4 pane slots, whose addresses are the
-  panes' hook contexts; free is `order == 0`.
+  panes' hook contexts; free is `order == 0`. The 128 bound-value slots;
+  free is no widget.
+- **Observer (low frequency)**: the drain's `state` hook tells the Stage a
+  value changed, through a compile-time handler, not a list of callbacks.
 
 ## Standard library
 
 Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
-`std::array` for the stack, the queue, the registries, the pane slots and the scratch; `std::string` and `std::vector`
+`std::array` for the stack, the queue, the registries, the pane slots, the scratch and the bound values; `std::string` and `std::vector`
 while a skin loads (once per window, in `attach`); `gui::FontPtr`
 (`std::shared_ptr`), gui's own type. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
-hooks and the report (function pointers). See
+hooks, the report and the text field's commit (function pointers). The
+check box's and the slider's change callbacks are gui's `std::function`s,
+kept: the Stage's lambdas capture two pointers, stored in place by both
+libraries, so binding allocates nothing for them. See
 [standard-library-deviations.md](standard-library-deviations.md).
 
 ## Memory profile
@@ -353,11 +414,13 @@ hooks and the report (function pointers). See
 | `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,112) |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
-| `Stage::Drawing` | heap | each window | 19,128 (libc++; 19,312 libstdc++), the scratch's 17,480 included, plus the skin's textures and tables |
+| `Stage::Drawing` | heap | each window | 23,224 (libc++; 23,408 libstdc++), the scratch's 17,480 and the bound values' 4,096 included, plus the skin's textures and tables |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
 | a pane | heap | each open | a `gui::Window` (304) and its widgets; freed when it closes |
 | a tap's telegram | stack | each tap | 1 KB |
+| a text field's edit | stack | each commit | 1 KB |
+| a bound label's text | stack, then the label's string | each value shown | 128 bytes; the string grows only for a longer text |
 | a report line | stack | each report | 256 bytes |
 | a frame | &mdash; | &mdash; | nothing (tested) |
 
@@ -412,6 +475,20 @@ again builds the four again; back closes them one by one, then leaves. Two
 panes opened from inside an event (a custom widget's) wait, and `panes()`
 counts them while they do.
 
+**Bound values (7.5a):** seven widgets on five addresses (one shown
+three times): each shows its own text until the model's first states, then
+the values; a check box's tap sends `set`, the answer shows and is not sent
+back; a held slider sends one `set` a frame, the last, while a value the
+model states meanwhile shows on the label and the bar but waits on the
+slider until it is let go; a text field sends on Done, not before, keeps the
+model's value off itself while focused, shows it when left, and sends when
+left after an edit; a slider bound to an integer sends a whole number; a
+value of another type than bound is not shown; no allocation in frames; a
+text shown again allocates nothing when no longer than the last; a
+pane's bound label shows the cached value at once and closing it unbinds
+it; leaving the screen unbinds all; 130 bound labels: 128 bound, the rest
+said once.
+
 `stage/test/stage_alone_test.cpp`: an App with no layout files links (the
 weak default), shows a C++ layout, and a `push` tap to a name says there is
 none.
@@ -442,6 +519,23 @@ ignored, `shape_of` dropping `place` (a `static_assert`), `pane_name` of a
 layout only, slots not renumbered, the `open` tap missing C++ panes. The one
 not caught is equivalent: `detach` not nulling the windows, which nothing
 reads before `show_top` nulls them again; kept as hygiene.
+
+Planted bugs for 7.5a, 37 (`plant76.py`), each fail a test: in the Stage,
+the type ignored, a held slider or a focused field not held, shown values
+sent back, a stale value never shown, an integer sent as a number, a slider
+sending every move, a text never sent, a pane keeping its bindings, an old
+screen staying bound, a full table not said, a check box sending nothing, a
+new binding not showing the cached value, the cache not kept; in the text
+field, Enter not committing, leaving not committing, typing not an edit,
+leaving always committing, its text copied into a new string; in messaging, the state hook not called or called
+before caching, `write_value` writing for no value; in gui, a label showing
+uids, a check box an integer, a slider text, the check skipping the type or
+allowing a set unbound or on a label, the writer dropping the type, setting
+on a label, never setting, taking a wrong type, a key's verbs ignored; a
+file never setting or dropping the type; sqgen dropping `sends_set` or the
+value. Five were missed at first (the type, an integer slider, leaving with
+an edit, typing, a set with nothing bound); the tests above were added for
+them.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

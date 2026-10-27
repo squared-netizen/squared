@@ -140,6 +140,30 @@ Inherits from Widget
 
 **return** true when the key adjusted the value.
 
+### value
+
+*public float value()*
+
+*Defined at [gui/slider.hpp:52](../../../../gui/slider.hpp#L52)*
+
+
+
+**brief** Read the current value.
+
+**return** Current value in the configured range.
+
+### dragging
+
+*public bool dragging()*
+
+*Defined at [gui/slider.hpp:116](../../../../gui/slider.hpp#L116)*
+
+
+
+**brief** Whether a pointer is dragging the knob.
+
+**return** true from the press on the slider until its release or cancel.
+
 ### focus_changed
 
 *public void focus_changed(bool )*
@@ -159,18 +183,6 @@ Inherits from Widget
 **brief** Report focusability.
 
 **return** true; sliders take keyboard focus.
-
-### value
-
-*public float value()*
-
-*Defined at [gui/slider.hpp:52](../../../../gui/slider.hpp#L52)*
-
-
-
-**brief** Read the current value.
-
-**return** Current value in the configured range.
 
 
 

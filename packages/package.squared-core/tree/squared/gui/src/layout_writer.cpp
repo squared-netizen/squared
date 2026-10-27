@@ -341,18 +341,25 @@ NodeWriter &NodeWriter::step( float step ) noexcept
     return *this;
 }
 
-NodeWriter &NodeWriter::bind_name( messaging::Name name, std::string_view text ) noexcept
+NodeWriter &NodeWriter::bind_name( messaging::Name name, std::string_view text,
+                                   messaging::ValueType value, bool settable ) noexcept
 {
     LayoutNode *n = node();
     if( n == nullptr ) {
         return *this;
     }
-    if( !shows_value( n->type ) ) {
+    if( !shows_value( n->type ) || !shows_type( n->type, value ) ) {
         writer_->refuse();
         return *this;
     }
     n->bind_text = writer_->put_text( text );
-    n->bind = n->bind_text != 0 ? name : messaging::Name{};
+    if( n->bind_text == 0 ) {
+        n->bind = {};
+        return *this;
+    }
+    n->bind = name;
+    n->value = value;
+    n->sends_set = settable && edits_value( n->type );
     return *this;
 }
 

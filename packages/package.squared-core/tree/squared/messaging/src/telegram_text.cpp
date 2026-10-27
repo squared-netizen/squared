@@ -326,40 +326,10 @@ std::optional<Telegram> read_value( Verb verb, Address to, In &in, TelegramData 
     return Telegram::integer( verb, to, value );
 }
 
-} // namespace
-
-std::string_view verb_text( Verb verb ) noexcept
+/// The value of `telegram`, as the text form writes it; false when its data is outside `data`.
+bool put_value( Out &line, const Telegram &telegram, std::span<const std::byte> data ) noexcept
 {
-    switch( verb ) {
-        case Verb::set:
-            return "set";
-        case Verb::do_:
-            return "do";
-        case Verb::state:
-            return "state";
-        case Verb::event:
-            return "event";
-    }
-    return "?";
-}
-
-std::size_t write_telegram( const Telegram &telegram, std::span<const std::byte> data,
-                            const NameTable &names, std::span<char> out ) noexcept
-{
-    if( !telegram.valid() ) {
-        return 0;
-    }
-    Out line( out );
-    line.put( verb_text( telegram.verb() ) );
-    line.put( ' ' );
-    std::array<char, 300> address{};
-    const std::size_t address_length = names.format( telegram.address(), address );
-    line.put( std::string_view( address.data(), address_length ) );
-
     const ValueType type = telegram.type();
-    if( type != ValueType::none ) {
-        line.put( ' ' );
-    }
     switch( type ) {
         case ValueType::none:
             break;
@@ -390,7 +360,7 @@ std::size_t write_telegram( const Telegram &telegram, std::span<const std::byte>
         case ValueType::uids: {
             const DataRef where = telegram.as_data();
             if( where.offset > data.size() || where.length > data.size() - where.offset ) {
-                return 0;
+                return false;
             }
             const auto bytes = data.subspan( where.offset, where.length );
             if( type == ValueType::text ) {
@@ -410,9 +380,61 @@ std::size_t write_telegram( const Telegram &telegram, std::span<const std::byte>
             break;
         }
     }
+    return true;
+}
+
+} // namespace
+
+std::string_view verb_text( Verb verb ) noexcept
+{
+    switch( verb ) {
+        case Verb::set:
+            return "set";
+        case Verb::do_:
+            return "do";
+        case Verb::state:
+            return "state";
+        case Verb::event:
+            return "event";
+    }
+    return "?";
+}
+
+std::size_t write_telegram( const Telegram &telegram, std::span<const std::byte> data,
+                            const NameTable &names, std::span<char> out ) noexcept
+{
+    if( !telegram.valid() ) {
+        return 0;
+    }
+    Out line( out );
+    line.put( verb_text( telegram.verb() ) );
+    line.put( ' ' );
+    std::array<char, 300> address{};
+    const std::size_t address_length = names.format( telegram.address(), address );
+    line.put( std::string_view( address.data(), address_length ) );
+
+    if( telegram.type() != ValueType::none ) {
+        line.put( ' ' );
+    }
+    if( !put_value( line, telegram, data ) ) {
+        return 0;
+    }
     if( telegram.correlation() != 0 ) {
         line.put( " @" );
         put_number( line, telegram.correlation() );
+    }
+    return line.result();
+}
+
+std::size_t write_value( const Telegram &telegram, std::span<const std::byte> data,
+                         std::span<char> out ) noexcept
+{
+    if( !telegram.valid() || telegram.type() == ValueType::none ) {
+        return 0;
+    }
+    Out line( out );
+    if( !put_value( line, telegram, data ) ) {
+        return 0;
     }
     return line.result();
 }

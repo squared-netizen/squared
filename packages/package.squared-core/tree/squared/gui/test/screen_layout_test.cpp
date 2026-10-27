@@ -57,6 +57,7 @@ namespace
 inline constexpr Key<bool, state | set> settings_sound{ "settings.sound" };
 inline constexpr Key<std::int64_t, state | set> settings_volume{ "settings.volume" };
 inline constexpr Key<std::string_view, do_> file_open{ "file.open" };
+inline constexpr Key<std::string_view, state> player_name{ "player.name" };
 inline constexpr Key<void, do_> game_start{ "game.start" };
 inline constexpr Key<std::string_view, state, with_uid> item_name{ "item.name" };
 
@@ -73,8 +74,17 @@ static_assert( !bindable<decltype( item_name )> );
 inline constexpr Name sound = settings_sound.name();
 inline constexpr char settings_text[] = "\0Sound\0settings.sound\0Back\0back\0";
 inline constexpr std::string_view settings_words( settings_text, sizeof( settings_text ) - 1 );
+/// The check box: a bool it shows, and sets, since the key carries `set`.
+constexpr LayoutNode sound_box()
+{
+    LayoutNode made{ .bind = sound, .text = 1, .bind_text = 7, .type = NodeType::check_box };
+    made.sends_set = true;
+    made.value = sq::messaging::ValueType::boolean;
+    return made;
+}
+
 inline constexpr LayoutNode settings_nodes[] = {
-    { .bind = sound, .text = 1, .bind_text = 7, .type = NodeType::check_box },
+    sound_box(),
     { .text = 22, .tap = 27, .type = NodeType::button, .new_row = true },
 };
 inline constexpr Layout settings{ "settings", LayoutKind::screen, settings_nodes, settings_words };
@@ -208,17 +218,38 @@ void check_words()
     one[0].text = 40;
     CHECK( check_of( one, words ).problem == P::bad_text );
 
+    using sq::messaging::ValueType;
     one = { node( NodeType::button ) };
     one[0].bind = Name( "x.y" );
     one[0].bind_text = 4;
+    one[0].value = ValueType::text;
     CHECK( check_of( one, words ).problem == P::bad_bind ); // a button shows no value
     one[0].type = NodeType::label;
     CHECK( check_of( one, words ).ok() );
+    one[0].value = ValueType::uids;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // a label cannot show uids
+    one[0].value = ValueType::none;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // bound, with no type
+    one[0].value = ValueType::text;
+    one[0].sends_set = true;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // a label edits nothing
+    one[0].type = NodeType::text_field;
+    CHECK( check_of( one, words ).ok() );
+    one[0].type = NodeType::check_box;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // a check box shows a bool
+    one[0].type = NodeType::label;
+    one[0].sends_set = false;
     one[0].bind = Name( "x.z" );
     CHECK( check_of( one, words ).problem == P::bad_bind ); // not what its text hashes to
     one[0].bind = Name( "x.y" );
     one[0].bind_text = 0;
     CHECK( check_of( one, words ).problem == P::bad_bind ); // no text
+    one = { node() };
+    one[0].value = ValueType::text;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // a type with nothing bound
+    one = { node( NodeType::text_field ) };
+    one[0].sends_set = true;
+    CHECK( check_of( one, words ).problem == P::bad_bind ); // a set with nothing bound
 
     one = { node() };
     one[0].tap = 8;
@@ -257,6 +288,31 @@ void check_numbers()
     CHECK( check_of( one, {}, range ).problem == P::bad_numbers ); // from 10 to 1
     one[0].type = NodeType::label;
     CHECK( check_of( one, {}, range ).problem == P::bad_numbers ); // takes none
+}
+
+void binds_carry_type_and_set()
+{
+    using sq::messaging::ValueType;
+    std::array<LayoutNode, 8> nodes{};
+    std::array<char, 256> text{};
+    std::array<float, 8> numbers{};
+    LayoutWriter root( nodes, text, numbers, "binds" );
+    // A label shows a bool and edits nothing; a slider sets an integer; the
+    // text field's key carries no set.
+    root.add<Label>().bind( settings_sound );
+    root.add<CheckBox>( "S" ).bind( settings_sound );
+    root.add<Slider>().bind( settings_volume );
+    root.add<TextField>().bind( player_name );
+    CHECK( root.complete() );
+    const Layout written = root.layout();
+    CHECK( written.nodes()[0].value == ValueType::boolean && !written.nodes()[0].sends_set );
+    CHECK( written.nodes()[1].value == ValueType::boolean && written.nodes()[1].sends_set );
+    CHECK( written.nodes()[2].value == ValueType::integer && written.nodes()[2].sends_set );
+    CHECK( written.nodes()[3].value == ValueType::text && !written.nodes()[3].sends_set );
+    CHECK( check( written ).ok() );
+    CHECK( edits_value( NodeType::slider ) && !edits_value( NodeType::progress_bar ) );
+    CHECK( shows_type( NodeType::progress_bar, ValueType::number ) );
+    CHECK( !shows_type( NodeType::progress_bar, ValueType::text ) );
 }
 
 void writer_writes_the_same_table()
@@ -355,6 +411,9 @@ void writer_refuses()
     } ) );
     CHECK( refused( root, [&root] { root.add<Label>( "x" ).add<Label>( "y" ); } ) );
     CHECK( refused( root, [&root] { root.add<Table>().bind( settings_sound ); } ) );
+    // A type the node cannot show: a text field shows text, a check box a bool.
+    CHECK( refused( root, [&root] { root.add<TextField>().bind( settings_volume ); } ) );
+    CHECK( refused( root, [&root] { root.add<CheckBox>( "x" ).bind( settings_volume ); } ) );
     CHECK( refused( root, [&root] { root.add<Label>( "x" ).tap( Navigate::back ); } ) );
     CHECK( refused( root, [&root] { root.add<Button>( "x" ).tap( "jump" ); } ) );
     CHECK( refused( root, [&root] { root.add<Button>( "x" ).tap( Navigate::back, "where" ); } ) );
@@ -574,7 +633,7 @@ void write_one( std::mt19937 &random, LayoutWriter &root, std::vector<NodeWriter
             add<ProgressBar>( root, at, written ).range( 0.0F, 9.0F );
             break;
         case 12:
-            add<TextField>( root, at, written ).bind( settings_volume ).pad( 2.0F );
+            add<TextField>( root, at, written ).bind( player_name ).pad( 2.0F );
             break;
         default:
             add<Label>( root, at, written ).tap( "back" ); // refused: a label
@@ -612,6 +671,7 @@ int main()
 {
     taps_read();
     pane_shapes();
+    binds_carry_type_and_set();
     check_trees();
     check_words();
     check_numbers();

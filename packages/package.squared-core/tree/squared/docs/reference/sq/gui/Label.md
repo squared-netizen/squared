@@ -1,6 +1,6 @@
 # class Label
 
-*Defined at [gui/label.hpp:15](../../../../gui/label.hpp#L15)*
+*Defined at [gui/label.hpp:16](../../../../gui/label.hpp#L16)*
 
 
 
@@ -26,11 +26,11 @@ Inherits from Widget
 
 ### set_text
 
-*public void set_text(std::string text)*
+*public void set_text(std::string_view text)*
 
 
 
-**brief** Replace the label text.
+**brief** Replace the label text, copied into the label's own: no allocation when it is no longer than a text the label held.
 
 **text** New text content.
 
@@ -72,7 +72,7 @@ Inherits from Widget
 
 *public const std::string & text()*
 
-*Defined at [gui/label.hpp:34](../../../../gui/label.hpp#L34)*
+*Defined at [gui/label.hpp:36](../../../../gui/label.hpp#L36)*
 
 
 
@@ -84,7 +84,7 @@ Inherits from Widget
 
 *public const std::string & style()*
 
-*Defined at [gui/label.hpp:43](../../../../gui/label.hpp#L43)*
+*Defined at [gui/label.hpp:45](../../../../gui/label.hpp#L45)*
 
 
 
@@ -94,7 +94,7 @@ Inherits from Widget
 
 *public void set_muted(bool muted)*
 
-*Defined at [gui/label.hpp:49](../../../../gui/label.hpp#L49)*
+*Defined at [gui/label.hpp:51](../../../../gui/label.hpp#L51)*
 
 
 

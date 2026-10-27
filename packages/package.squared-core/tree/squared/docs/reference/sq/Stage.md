@@ -1,6 +1,6 @@
 # class Stage
 
-*Defined at [stage/stage.hpp:127](../../../stage/stage.hpp#L127)*
+*Defined at [stage/stage.hpp:134](../../../stage/stage.hpp#L134)*
 
 
 
@@ -20,6 +20,8 @@ public static const std::size_t max_added
 
 public static const std::size_t max_panes
 
+public static const std::size_t max_bindings
+
 public static const std::size_t scratch_nodes
 
 public static const std::size_t scratch_text
@@ -34,13 +36,13 @@ public static const std::size_t scratch_numbers
 
 *public void Stage(const Stage & )*
 
-*Defined at [stage/stage.hpp:146](../../../stage/stage.hpp#L146)*
+*Defined at [stage/stage.hpp:156](../../../stage/stage.hpp#L156)*
 
 ### Stage
 
 *public void Stage(Stage && )*
 
-*Defined at [stage/stage.hpp:148](../../../stage/stage.hpp#L148)*
+*Defined at [stage/stage.hpp:158](../../../stage/stage.hpp#L158)*
 
 ### Stage
 
@@ -50,7 +52,7 @@ public static const std::size_t scratch_numbers
 
 *public bool add()*
 
-*Defined at [stage/stage.hpp:211](../../../stage/stage.hpp#L211)*
+*Defined at [stage/stage.hpp:221](../../../stage/stage.hpp#L221)*
 
 
 
@@ -120,19 +122,19 @@ public static const std::size_t scratch_numbers
 
 *public Stage & operator=(const Stage & )*
 
-*Defined at [stage/stage.hpp:147](../../../stage/stage.hpp#L147)*
+*Defined at [stage/stage.hpp:157](../../../stage/stage.hpp#L157)*
 
 ### operator=
 
 *public Stage & operator=(Stage && )*
 
-*Defined at [stage/stage.hpp:149](../../../stage/stage.hpp#L149)*
+*Defined at [stage/stage.hpp:159](../../../stage/stage.hpp#L159)*
 
 ### push
 
 *public bool push()*
 
-*Defined at [stage/stage.hpp:168](../../../stage/stage.hpp#L168)*
+*Defined at [stage/stage.hpp:178](../../../stage/stage.hpp#L178)*
 
 
 
@@ -142,7 +144,7 @@ public static const std::size_t scratch_numbers
 
 *public void replace()*
 
-*Defined at [stage/stage.hpp:175](../../../stage/stage.hpp#L175)*
+*Defined at [stage/stage.hpp:185](../../../stage/stage.hpp#L185)*
 
 
 
@@ -152,7 +154,7 @@ public static const std::size_t scratch_numbers
 
 *public bool open()*
 
-*Defined at [stage/stage.hpp:197](../../../stage/stage.hpp#L197)*
+*Defined at [stage/stage.hpp:207](../../../stage/stage.hpp#L207)*
 
 
 
@@ -198,11 +200,19 @@ public static const std::size_t scratch_numbers
 
 **brief** The app's layout called `name`, from its layout files (sqgen's `layouts::all()`); nullptr when there is none.
 
+### bindings
+
+*public std::size_t bindings()*
+
+
+
+**brief** How many widgets on the screen and its panes show a value of the model's. 
+
 ### showing
 
 *public bool showing()*
 
-*Defined at [stage/stage.hpp:245](../../../stage/stage.hpp#L245)*
+*Defined at [stage/stage.hpp:255](../../../stage/stage.hpp#L255)*
 
 
 
@@ -212,7 +222,7 @@ public static const std::size_t scratch_numbers
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/stage.hpp:257](../../../stage/stage.hpp#L257)*
+*Defined at [stage/stage.hpp:267](../../../stage/stage.hpp#L267)*
 
 
 
@@ -222,7 +232,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:266](../../../stage/stage.hpp#L266)*
+*Defined at [stage/stage.hpp:279](../../../stage/stage.hpp#L279)*
 
 
 

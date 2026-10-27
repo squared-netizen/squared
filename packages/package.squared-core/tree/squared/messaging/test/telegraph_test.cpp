@@ -201,6 +201,20 @@ struct Ui
         }
 };
 
+// A handler told of each state too, after it is in the cache (what a screen's
+// bound widgets are updated from).
+struct Showing
+{
+        std::vector<Telegram> states;
+        bool cached = true;
+        TelegraphUi *ui = nullptr;
+        void state( const Received &r )
+        {
+            states.push_back( r.telegram );
+            cached = cached && ui->find( r.telegram.address() ).has_value();
+        }
+};
+
 // ---- round trips --------------------------------------------------------------------------
 void round_trips()
 {
@@ -212,7 +226,11 @@ void round_trips()
 
     t.start( model );
     CHECK( !ui.value( names::sound ) );
-    CHECK( ui.drain( events ) == 1 && ui.value( names::sound ) == true );
+    Showing showing;
+    showing.ui = &ui;
+    CHECK( ui.drain( showing ) == 1 && ui.value( names::sound ) == true );
+    CHECK( showing.states.size() == 1 && showing.cached );
+    CHECK( showing.states[0].address().name == names::sound.name() );
 
     // set, through the model and back.
     CHECK( ui.set( names::sound, false ) == SendResult::sent );

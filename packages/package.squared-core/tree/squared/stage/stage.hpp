@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string_view>
 
 namespace sq::app
@@ -33,10 +34,16 @@ class Context;
 
 namespace sq::gui
 {
+class TextField;
 class Ui;
 class Widget;
 class Window;
 } // namespace sq::gui
+
+namespace sq::messaging
+{
+struct Received;
+} // namespace sq::messaging
 
 namespace sq
 {
@@ -135,6 +142,9 @@ class Stage final
 
         /** @brief How many panes can be open over a screen at once. */
         static constexpr std::size_t max_panes = 4;
+
+        /** @brief How many bound widgets the screen and its panes have at most, together. */
+        static constexpr std::size_t max_bindings = 128;
 
         /** @brief The scratch a C++ screen writes into: nodes, bytes of text, numbers. */
         static constexpr std::size_t scratch_nodes = 256;
@@ -256,6 +266,9 @@ class Stage final
         /** @brief The UI end of the Telegraph: send, and read what the model said. */
         [[nodiscard]] messaging::TelegraphUi &telegraph() noexcept { return telegraph_; }
 
+        /** @brief How many widgets on the screen and its panes show a value of the model's. */
+        [[nodiscard]] std::size_t bindings() const noexcept;
+
         /**
          * @brief The top screen's widgets, its panes' among them; nullptr
          * while the skin is not loaded (no window yet, or it failed).
@@ -317,6 +330,26 @@ class Stage final
                 CustomMaker make = nullptr;
         };
 
+        /// A widget showing a value of the model's: where, what it is, and
+        /// an edit waiting to be sent. A free slot has no widget; slots keep
+        /// their place, so a pane's closing leaves the others where they are.
+        struct Binding final
+        {
+                messaging::Address address;
+                gui::Widget *widget = nullptr;
+                /// A slider's value, waiting for the frame to send it.
+                float pending = 0.0F;
+                gui::NodeType type = gui::NodeType::label;
+                messaging::ValueType value = messaging::ValueType::none;
+                /// The screen (`screen_owner`) or a pane's slot.
+                std::uint8_t owner = 0;
+                bool sends_set : 1 = false;
+                /// `pending` is to be sent.
+                bool sending : 1 = false;
+                /// A value came while the widget was held: shown on release.
+                bool stale : 1 = false;
+        };
+
         /** @brief What the window has: the skin's pieces, the batch, the camera, the widgets. */
         struct Drawing;
 
@@ -359,6 +392,27 @@ class Stage final
         [[nodiscard]] Pane *top_pane_slot() noexcept;
         [[nodiscard]] const Pane *top_pane_slot() const noexcept;
 
+        // Bound widgets.
+        static void bound( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                           gui::Widget &widget ) noexcept;
+        static void bound_in_pane( void *context, const gui::Layout &layout,
+                                   const gui::LayoutNode &node, gui::Widget &widget ) noexcept;
+        static void committed( void *context, gui::TextField &field ) noexcept;
+        void bind( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
+                   gui::Widget &widget ) noexcept;
+        void unbind_all() noexcept;
+        void unbind_owner( std::uint8_t owner ) noexcept;
+        void changed( const messaging::Received &received ) noexcept;
+        void show( Binding &binding, const messaging::Telegram &telegram,
+                   std::span<const std::byte> data ) noexcept;
+        [[nodiscard]] static bool held( const Binding &binding ) noexcept;
+        [[nodiscard]] Binding *binding_of( const gui::Widget &widget ) noexcept;
+        void set( const messaging::Telegram &telegram, std::span<const std::byte> data ) noexcept;
+        void edited( gui::Widget &widget, bool on ) noexcept;
+        void edited( gui::Widget &widget, float value ) noexcept;
+        void edited( gui::TextField &field ) noexcept;
+        void send_edits() noexcept;
+
         // Taps and custom nodes.
         static void tapped( void *context, std::string_view line ) noexcept;
         static void tapped_in_pane( void *context, std::string_view line ) noexcept;
@@ -391,6 +445,8 @@ class Stage final
         std::uint8_t custom_count_ = 0;
         std::uint8_t pane_count_ = 0;
         bool dispatching_ = false;
+        bool applying_ = false;
+        bool bindings_full_ = false;
         bool failed_ = false;
         bool broken_ = false;
         bool leave_ = false;
@@ -398,6 +454,7 @@ class Stage final
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
 // custom types, as a pointer and a name each; 4 pane slots of 40 bytes.
+// The bindings are the window's, in its Drawing.
 static_assert( sizeof( Stage ) == 1112 );
 
 } // namespace sq

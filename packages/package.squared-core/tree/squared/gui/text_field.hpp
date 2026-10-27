@@ -29,10 +29,11 @@ class TextField final : public Widget
         explicit TextField( std::string text = {} );
 
         /**
-     * @brief Replace the field text and reset the cursor.
+     * @brief Replace the field text and reset the cursor; copied into the
+     * field's own, with no allocation when it is no longer than a text it held.
      * @param text New text content.
      */
-        void set_text( std::string text );
+        void set_text( std::string_view text );
 
         /**
      * @brief Read the current text.
@@ -45,6 +46,23 @@ class TextField final : public Widget
      * @return Byte offset into the UTF-8 text, or text length at the end.
      */
         [[nodiscard]] std::size_t cursor() const noexcept { return cursor_; }
+
+        /** @brief What `set_on_commit` takes: `context`, and the field, whose `text()` is the edit. */
+        using CommitCallback = void ( * )( void *context, TextField &field );
+
+        /**
+     * @brief What is told when an edit is finished: Enter (the keyboard's
+     * Done), or the field losing focus after its text changed.
+     * @param callback Called with `context` and this field; nullptr for none.
+     * @param context Passed back as it is.
+     */
+        void set_on_commit( CommitCallback callback, void *context ) noexcept;
+
+        /**
+     * @brief Whether the field has focus: it is being edited.
+     * @return true while focused.
+     */
+        [[nodiscard]] bool focused() const noexcept { return focused_; }
 
         /**
      * @brief Change the applied text-field style.
@@ -128,8 +146,13 @@ class TextField final : public Widget
     private:
         std::string text_;
         std::string style_{ "default" };
+        void commit();
+
         std::size_t cursor_{ 0 };
+        CommitCallback commit_{ nullptr };
+        void *commit_context_{ nullptr };
         bool focused_{ false };
+        bool edited_{ false };
         std::string composition_;
 };
 

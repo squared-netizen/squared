@@ -166,11 +166,16 @@ class NodeWriter final
         /** @brief A slider's step; 0: none. */
         NodeWriter &step( float step ) noexcept;
 
-        /** @brief Show `key`'s `state` (a label, check box, text field, slider or progress bar). */
+        /**
+         * @brief Show `key`'s `state` (a label, check box, text field, slider
+         * or progress bar); a node that edits sends `set` when the key carries
+         * it. A value type the node cannot show is refused.
+         */
         template<detail::shown_key K>
         NodeWriter &bind( const K &key ) noexcept
         {
-            return bind_name( key.name(), key.text() );
+            constexpr bool settable = K::verbs.has( messaging::Verb::set );
+            return bind_name( key.name(), key.text(), K::type, settable );
         }
 
         /** @brief A button's tap: a line as a layout file writes it (`do file.open "a.txt"`, `push settings`). */
@@ -228,7 +233,8 @@ class NodeWriter final
             , index_( index )
         {}
         [[nodiscard]] LayoutNode *node() noexcept;
-        NodeWriter &bind_name( messaging::Name name, std::string_view text ) noexcept;
+        NodeWriter &bind_name( messaging::Name name, std::string_view text,
+                               messaging::ValueType value, bool settable ) noexcept;
         NodeWriter &tap_telegram( const messaging::Telegram &telegram,
                                   std::span<const std::byte> data, std::string_view name ) noexcept;
         [[nodiscard]] float *numbers() noexcept;

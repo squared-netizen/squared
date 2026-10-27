@@ -1,6 +1,6 @@
 # struct PaneShape
 
-*Defined at [gui/layout.hpp:66](../../../../gui/layout.hpp#L66)*
+*Defined at [gui/layout.hpp:67](../../../../gui/layout.hpp#L67)*
 
 
 

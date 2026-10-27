@@ -320,6 +320,32 @@ constexpr std::string_view keywords[] = {
 }
 
 /// One node as a designated initializer: only what differs from the defaults.
+/// A value type's enumerator, as the generated code names it.
+[[nodiscard]] std::string_view value_type_name( ValueType type ) noexcept
+{
+    switch( type ) {
+        case ValueType::none:
+            return "none";
+        case ValueType::boolean:
+            return "boolean";
+        case ValueType::integer:
+            return "integer";
+        case ValueType::number:
+            return "number";
+        case ValueType::vec2:
+            return "vec2";
+        case ValueType::vec3:
+            return "vec3";
+        case ValueType::vec4:
+            return "vec4";
+        case ValueType::text:
+            return "text";
+        case ValueType::uids:
+            return "uids";
+    }
+    return "none";
+}
+
 [[nodiscard]] std::string node_literal( const LayoutNode &node, const std::string &text )
 {
     std::vector<std::string> fields;
@@ -353,7 +379,7 @@ constexpr std::string_view keywords[] = {
     if( !( node.pad < 0.0F ) ) {
         fields.push_back( ".pad = " + float_literal( node.pad ) );
     }
-    const std::array<std::pair<std::string_view, bool>, 7> flags = { {
+    const std::array<std::pair<std::string_view, bool>, 8> flags = { {
         { "grow_x", node.grow_x },
         { "grow_y", node.grow_y },
         { "fill_x", node.fill_x },
@@ -361,11 +387,16 @@ constexpr std::string_view keywords[] = {
         { "new_row", node.new_row },
         { "vertical", node.vertical },
         { "has_numbers", node.has_numbers },
+        { "sends_set", node.sends_set },
     } };
     for( const auto &[name, on] : flags ) {
         if( on ) {
             fields.push_back( "." + std::string( name ) + " = true" );
         }
+    }
+    if( node.value != ValueType::none ) {
+        const std::string value( value_type_name( node.value ) );
+        fields.push_back( ".value = sq::messaging::ValueType::" + value );
     }
     std::string out = "{ ";
     for( std::size_t i = 0; i < fields.size(); ++i ) {

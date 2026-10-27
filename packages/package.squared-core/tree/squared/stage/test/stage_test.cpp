@@ -19,13 +19,17 @@
 #include <squared/graphics/context.hpp>
 #include <squared/graphics/src/context_config.hpp>
 #include <squared/gui/button.hpp>
+#include <squared/gui/check_box.hpp>
 #include <squared/gui/label.hpp>
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
+#include <squared/gui/progress_bar.hpp>
+#include <squared/gui/slider.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
 #include <squared/gui/src/size.hpp>
 #include <squared/gui/table.hpp>
+#include <squared/gui/text_field.hpp>
 #include <squared/gui/ui.hpp>
 #include <squared/gui/widget.hpp>
 #include <squared/gui/window.hpp>
@@ -37,6 +41,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -74,6 +79,12 @@ using sq::messaging::Received;
 using sq::messaging::Telegraph;
 
 constexpr Key<bool, sq::messaging::state | sq::messaging::set> sound{ "settings.sound" };
+constexpr Key<double, sq::messaging::state | sq::messaging::set> volume{ "settings.volume" };
+constexpr Key<std::string_view, sq::messaging::state | sq::messaging::set> player{ "player.name" };
+constexpr Key<std::int64_t, sq::messaging::state> ticks{ "counter.ticks" };
+constexpr Key<std::int64_t, sq::messaging::state | sq::messaging::set> level{ "settings.level" };
+// The same address as a double: a model whose key and the layout disagree.
+constexpr Key<double, sq::messaging::state> level_as_number{ "settings.level" };
 
 // --- the layouts, written in C++ as a screen's build() will --------------
 
@@ -150,6 +161,56 @@ struct Clash final
 {
         static constexpr std::string_view name = "landing";
         static void build( sq::gui::LayoutWriter & /*root*/ ) {}
+};
+
+/// A pane with one bound label: its binding goes when it closes.
+struct Meter final
+{
+        static constexpr std::string_view name = "meter";
+        static constexpr sq::gui::PanePlace place = sq::gui::PanePlace::right;
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add<sq::gui::Label>( "-" ).bind( volume );
+            root.row();
+            root.add<sq::gui::Button>( "Shut" ).tap( sq::gui::Navigate::close );
+        }
+};
+
+/// Every kind of bound widget: what the model says, shown; what the user edits, sent.
+struct Bound final
+{
+        static constexpr std::string_view name = "bound";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add<sq::gui::Label>( "no ticks yet" ).bind( ticks );
+            root.row();
+            root.add<sq::gui::CheckBox>( "Sound" ).bind( sound );
+            root.row();
+            root.add<sq::gui::Slider>().range( 0.0F, 10.0F ).fill_x().bind( volume );
+            root.row();
+            root.add<sq::gui::Label>( "-" ).bind( volume );
+            root.row();
+            root.add<sq::gui::ProgressBar>().range( 0.0F, 10.0F ).bind( volume );
+            root.row();
+            root.add<sq::gui::TextField>( "" ).fill_x().bind( player );
+            root.row();
+            root.add<sq::gui::Slider>().range( 0.0F, 10.0F ).fill_x().bind( level );
+            root.row();
+            root.add<sq::gui::Button>( "Meter" ).tap<Meter>( sq::gui::Navigate::open );
+        }
+};
+
+/// More bound widgets than a window holds.
+struct Crowded final
+{
+        static constexpr std::string_view name = "crowded";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            for( std::size_t i = 0; i < sq::Stage::max_bindings + 2; ++i ) {
+                root.add<sq::gui::Label>().bind( ticks );
+                root.row();
+            }
+        }
 };
 
 /// A C++ pane: on the left, not modal.
@@ -311,15 +372,37 @@ struct Prefs final
         void start( Telegraph &telegraph ) noexcept
         {
             static_cast<void>( telegraph.state( sound, sound_on_ ) );
+            static_cast<void>( telegraph.state( volume, volume_ ) );
+            static_cast<void>( telegraph.state( player, std::string_view( name_ ) ) );
+            static_cast<void>( telegraph.state( ticks, received_ ) );
+            static_cast<void>( telegraph.state( level, level_ ) );
         }
 
+        // Each set is taken and stated back; each telegram counts a tick.
         void receive( Telegraph &telegraph, const Received &received ) noexcept
         {
             ++counts_->received;
-            if( received.telegram.address().name == sound.name() ) {
+            const sq::messaging::Name to = received.telegram.address().name;
+            if( to == sound.name() ) {
                 sound_on_ = received.telegram.as_boolean();
                 static_cast<void>( telegraph.state( sound, sound_on_ ) );
+            } else if( to == volume.name() ) {
+                volume_ = received.telegram.as_number();
+                static_cast<void>( telegraph.state( volume, volume_ ) );
+            } else if( to == player.name() ) {
+                // A received text is its bytes, all of them.
+                const auto *text = reinterpret_cast<const char *>( received.data.data() );
+                name_.assign( text, received.data.size() );
+                static_cast<void>( telegraph.state( player, std::string_view( name_ ) ) );
+            } else if( to == level.name() ) {
+                level_ = received.telegram.as_integer();
+                if( level_ == 0 ) {
+                    static_cast<void>( telegraph.state( level_as_number, 9.5 ) ); // the wrong type
+                } else {
+                    static_cast<void>( telegraph.state( level, level_ ) );
+                }
             }
+            static_cast<void>( telegraph.state( ticks, ++received_ ) );
         }
 
         void background( Telegraph & /*telegraph*/ ) noexcept { ++counts_->saves; }
@@ -333,6 +416,10 @@ struct Prefs final
 
     private:
         Counts *counts_;
+        std::string name_ = "ann";
+        double volume_ = 5.0;
+        std::int64_t received_ = 0;
+        std::int64_t level_ = 3;
         bool sound_on_ = true;
 };
 
@@ -373,6 +460,7 @@ void squared_main( sq::App &app )
     CHECK( app.stage.add<About>() ); // again: the same screen
     CHECK( app.stage.add<Gauges>() );
     CHECK( app.stage.add<Ask>() );
+    CHECK( app.stage.add<Meter>() );
     CHECK( !app.stage.add<BadName>() );
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
@@ -454,7 +542,8 @@ struct Platform final
 sq::gui::Button *button_in( sq::gui::Widget &table, std::string_view text )
 {
     for( std::size_t i = 0; i < table.child_count(); ++i ) {
-        // In these screens the buttons are the widgets that take focus.
+        // In the screens searched so, the buttons are the widgets that take
+        // focus. Bound's slider and text field take it too: tap those by place.
         auto *widget = static_cast<sq::gui::Widget *>( table.child_at( i ) );
         if( !widget->focusable() ) {
             continue;
@@ -513,6 +602,21 @@ void tap_on( sq::App &app, const sq::gui::Actor &pressed )
     event.type = sq::app::Event::Type::PointerDown;
     app.handle_event( event );
     event.type = sq::app::Event::Type::PointerUp;
+    app.handle_event( event );
+}
+
+/// Press or release on `pressed`, at `across` (0 to 1) of its width, as a finger would.
+void touch( sq::App &app, const sq::gui::Actor &pressed, float across, sq::app::Event::Type type )
+{
+    float x = 0.0F;
+    float y = 0.0F;
+    stage_position( pressed, x, y );
+    x += pressed.width() * across;
+    y += pressed.height() * 0.5F;
+    sq::app::Event event;
+    event.x = x * static_cast<float>( pixel_width ) / logical_width;
+    event.y = y * static_cast<float>( pixel_height ) / logical_height;
+    event.type = type;
     app.handle_event( event );
 }
 
@@ -868,6 +972,148 @@ void panes()
     app.dispose();
 }
 
+[[nodiscard]] bool near( float a, float b )
+{
+    return std::abs( a - b ) < 0.05F;
+}
+
+void bound_values()
+{
+    start = Start::inline_model;
+    reports.clear();
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    CHECK( app.stage.push<Bound>() );
+    sq::gui::Widget &root = *app.stage.ui()->content();
+    auto &count = *static_cast<sq::gui::Label *>( root.child_at( 0 ) );
+    auto &box = *static_cast<sq::gui::CheckBox *>( root.child_at( 1 ) );
+    auto &slider = *static_cast<sq::gui::Slider *>( root.child_at( 2 ) );
+    auto &shown = *static_cast<sq::gui::Label *>( root.child_at( 3 ) );
+    auto &bar = *static_cast<sq::gui::ProgressBar *>( root.child_at( 4 ) );
+    auto &field = *static_cast<sq::gui::TextField *>( root.child_at( 5 ) );
+    auto &steps = *static_cast<sq::gui::Slider *>( root.child_at( 6 ) );
+    const sq::gui::Actor &meter_button = *root.child_at( 7 );
+    // Seven widgets, five addresses held in the cache (volume is shown three times).
+    CHECK( app.stage.bindings() == 7 );
+    CHECK( app.telegraph().cache_stats().bound == 5 );
+
+    // Until the model says, each shows its own; then what it says.
+    CHECK( count.text() == "no ticks yet" && shown.text() == "-" );
+    platform.frame( app );
+    CHECK( count.text() == "0" && box.checked() && near( slider.value(), 5.0F ) );
+    CHECK( shown.text() == "5.0" && near( bar.value(), 5.0F ) && field.text() == "ann" );
+
+    // A check box sends set; the model's answer shows, and is not sent back.
+    tap_on( app, box );
+    CHECK( !box.checked() );
+    platform.frame( app );
+    CHECK( app.telegraph().value( sound ) == false && !box.checked() && count.text() == "1" );
+    platform.frame( app );
+    CHECK( count.text() == "1" ); // nothing more was sent
+
+    // A slider held: one set a frame, the last; what the model says
+    // meanwhile waits until it is let go, and the other widgets show it.
+    touch( app, slider, 0.8F, sq::app::Event::Type::PointerDown );
+    touch( app, slider, 0.7F, sq::app::Event::Type::PointerMove );
+    touch( app, slider, 0.8F, sq::app::Event::Type::PointerMove );
+    CHECK( slider.dragging() && near( slider.value(), 8.0F ) );
+    platform.frame( app ); // sends set 8, once
+    CHECK( app.telegraph().set( volume, 2.0 ) == sq::messaging::SendResult::sent );
+    platform.frame( app );
+    CHECK( count.text() == "3" ); // the drag's one set, and the other
+    CHECK( shown.text() == "2.0" && near( bar.value(), 2.0F ) && near( slider.value(), 8.0F ) );
+    touch( app, slider, 0.8F, sq::app::Event::Type::PointerUp );
+    CHECK( !slider.dragging() );
+    platform.frame( app );
+    CHECK( near( slider.value(), 2.0F ) && count.text() == "3" );
+
+    // A text field sends when the edit is done; the model's value meanwhile
+    // waits until the field is left.
+    tap_on( app, field );
+    CHECK( field.focused() );
+    CHECK( field.text_input( "!" ) && field.text() == "ann!" );
+    platform.frame( app );
+    CHECK( app.telegraph().value( player ) == "ann" ); // not yet: no Done
+    CHECK( field.key_down( sq::app::Key::enter ) );
+    platform.frame( app );
+    CHECK( app.telegraph().value( player ) == "ann!" );
+    const sq::messaging::SendResult zed = app.telegraph().set( player, std::string_view( "zed" ) );
+    CHECK( zed == sq::messaging::SendResult::sent );
+    platform.frame( app );
+    CHECK( field.text() == "ann!" );
+    app.stage.ui()->clear_focus();
+    platform.frame( app );
+    CHECK( field.text() == "zed" && app.telegraph().value( player ) == "zed" );
+
+    // Left with changes, without Done: the edit is finished, and sent.
+    tap_on( app, field );
+    CHECK( field.text_input( "?" ) );
+    app.stage.ui()->clear_focus();
+    platform.frame( app );
+    CHECK( app.telegraph().value( player ) == "zed?" );
+
+    // A slider bound to an integer sends a whole number, the nearest.
+    CHECK( near( steps.value(), 3.0F ) );
+    touch( app, steps, 0.66F, sq::app::Event::Type::PointerDown );
+    touch( app, steps, 0.66F, sq::app::Event::Type::PointerUp );
+    platform.frame( app );
+    platform.frame( app );
+    const std::int64_t sent = app.telegraph().value( level ).value_or( 0 );
+    CHECK( sent > 3 && sent < 10 && near( steps.value(), static_cast<float>( sent ) ) );
+
+    // A value of another type than the one bound is not shown: the model's
+    // key and the layout disagree, and the widget keeps what it had.
+    const float before = steps.value();
+    CHECK( app.telegraph().set( level, std::int64_t{ 0 } ) == sq::messaging::SendResult::sent );
+    platform.frame( app );
+    CHECK( near( steps.value(), before ) );
+
+    // A frame with nothing new allocates nothing.
+    platform.frame( app );
+    for( int i = 0; i < 10; ++i ) {
+        sq::dev::frame_begin();
+        platform.frame( app );
+        CHECK( sq::dev::frame_end().count == 0 );
+    }
+
+    // A value shown again allocates nothing when it is no longer than the
+    // last: the widget's text is reused (and these are past the short-string
+    // size, which would allocate nothing anyway).
+    const std::string_view longer = "a name longer than sixteen";
+    const std::string_view again = "another name, as long!";
+    CHECK( app.telegraph().set( player, longer ) == sq::messaging::SendResult::sent );
+    platform.frame( app );
+    CHECK( field.text() == longer );
+    CHECK( app.telegraph().set( player, again ) == sq::messaging::SendResult::sent );
+    sq::dev::frame_begin();
+    platform.frame( app );
+    CHECK( sq::dev::frame_end().count == 0 && field.text() == again );
+
+    // A pane's bound widget shows the value at once; closing it unbinds it.
+    tap_on( app, meter_button );
+    CHECK( app.stage.bindings() == 8 );
+    auto *meter = button( app, "Shut" )->parent();
+    CHECK( static_cast<sq::gui::Label *>( meter->child_at( 0 ) )->text() == "2.0" );
+    tap( app, "Shut" );
+    CHECK( app.stage.bindings() == 7 && app.telegraph().cache_stats().bound == 5 );
+
+    // Leaving the screen unbinds them all.
+    CHECK( app.stage.back() );
+    CHECK( app.stage.bindings() == 0 && app.telegraph().cache_stats().bound == 0 );
+
+    // More than a window holds: the rest show their own text, and it is said.
+    CHECK( app.stage.push<Crowded>() );
+    CHECK( app.stage.bindings() == sq::Stage::max_bindings );
+    CHECK( reported( "crowded: more than 128 bound values" ) );
+    CHECK( app.stage.back() );
+    CHECK( app.stage.bindings() == 0 );
+
+    app.quit();
+    app.dispose();
+    CHECK( app.telegraph().cache_stats().bound == 0 );
+}
+
 void back_tap_at_the_root_leaves()
 {
     start = Start::no_model;
@@ -958,6 +1204,7 @@ int main()
     model_on_its_thread();
     cpp_screens();
     panes();
+    bound_values();
     back_tap_at_the_root_leaves();
     no_skin_draws_red();
     a_bad_layout_is_said();

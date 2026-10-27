@@ -29,9 +29,9 @@ TextField::TextField( std::string text )
     cursor_ = text_.size();
 }
 
-void TextField::set_text( std::string text )
+void TextField::set_text( std::string_view text )
 {
-    text_ = std::move( text );
+    text_.assign( text );
     cursor_ = text_.size();
     invalidate_layout();
 }
@@ -95,12 +95,29 @@ bool TextField::pointer_event( const PointerEvent &event )
     return contains( event.x, event.y );
 }
 
+void TextField::set_on_commit( CommitCallback callback, void *context ) noexcept
+{
+    commit_ = callback;
+    commit_context_ = context;
+}
+
+void TextField::commit()
+{
+    edited_ = false;
+    if( commit_ != nullptr ) {
+        commit_( commit_context_, *this );
+    }
+}
+
 bool TextField::key_down( app::Key key, app::KeyModifiers )
 {
     if( !enabled() ) {
         return false;
     }
     switch( key ) {
+        case app::Key::enter:
+            commit();
+            return true;
         case app::Key::left:
             cursor_ = previous_codepoint( text_, cursor_ );
             return true;
@@ -118,12 +135,14 @@ bool TextField::key_down( app::Key key, app::KeyModifiers )
                 const std::size_t previous = previous_codepoint( text_, cursor_ );
                 text_.erase( previous, cursor_ - previous );
                 cursor_ = previous;
+                edited_ = true;
             }
             invalidate_layout();
             return true;
         case app::Key::delete_key:
             if( cursor_ < text_.size() ) {
                 text_.erase( cursor_, next_codepoint( text_, cursor_ ) - cursor_ );
+                edited_ = true;
             }
             invalidate_layout();
             return true;
@@ -140,6 +159,7 @@ bool TextField::text_input( std::string_view text )
     composition_.clear();
     text_.insert( cursor_, text );
     cursor_ += text.size();
+    edited_ = true;
     invalidate_layout();
     return true;
 }
@@ -158,6 +178,9 @@ void TextField::focus_changed( bool focused )
     focused_ = focused;
     if( !focused ) {
         composition_.clear();
+        if( edited_ ) {
+            commit(); // left with changes: they are finished
+        }
     }
 }
 

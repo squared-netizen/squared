@@ -129,11 +129,21 @@
 
 **brief** Whether a layout can be built: its tree, text and numbers hold together, and every node takes what it is given. `instantiate` checks first, so a bad layout builds nothing.
 
+### edits_value
+
+*bool edits_value(NodeType type)*
+
+*Defined at [gui/layout.hpp:150](../../../../gui/layout.hpp#L150)*
+
+
+
+**brief** Whether a node of this type edits the value it shows: a check box, slider or text field. 
+
 ### holds_nodes
 
 *bool holds_nodes(NodeType type)*
 
-*Defined at [gui/layout.hpp:123](../../../../gui/layout.hpp#L123)*
+*Defined at [gui/layout.hpp:129](../../../../gui/layout.hpp#L129)*
 
 
 
@@ -203,7 +213,7 @@
 
 *std::size_t node_numbers(NodeType type)*
 
-*Defined at [gui/layout.hpp:144](../../../../gui/layout.hpp#L144)*
+*Defined at [gui/layout.hpp:179](../../../../gui/layout.hpp#L179)*
 
 
 
@@ -229,19 +239,19 @@
 
 *bool operator==(const LayoutCheck & , const LayoutCheck & )*
 
-*Defined at [gui/layout.hpp:287](../../../../gui/layout.hpp#L287)*
+*Defined at [gui/layout.hpp:324](../../../../gui/layout.hpp#L324)*
 
 ### operator==
 
 *bool operator==(const LayoutNode & , const LayoutNode & )*
 
-*Defined at [gui/layout.hpp:117](../../../../gui/layout.hpp#L117)*
+*Defined at [gui/layout.hpp:123](../../../../gui/layout.hpp#L123)*
 
 ### operator==
 
 *bool operator==(const PaneShape & , const PaneShape & )*
 
-*Defined at [gui/layout.hpp:71](../../../../gui/layout.hpp#L71)*
+*Defined at [gui/layout.hpp:72](../../../../gui/layout.hpp#L72)*
 
 ### pane_place_name
 
@@ -321,11 +331,21 @@
 
 **return** Drawable referencing the atlas region, or an empty pointer when the region is absent or cannot be converted.
 
+### shows_type
+
+*bool shows_type(NodeType type, messaging::ValueType value)*
+
+*Defined at [gui/layout.hpp:160](../../../../gui/layout.hpp#L160)*
+
+
+
+**brief** Whether a node of this type can show a value of this type: a label any but uids, a check box a bool, a text field text, a slider or progress bar a number or an integer.
+
 ### shows_value
 
 *bool shows_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:129](../../../../gui/layout.hpp#L129)*
+*Defined at [gui/layout.hpp:135](../../../../gui/layout.hpp#L135)*
 
 
 
@@ -412,7 +432,7 @@
 | pane |
 
 
-*Defined at [gui/layout.hpp:44](../../../../gui/layout.hpp#L44)*
+*Defined at [gui/layout.hpp:45](../../../../gui/layout.hpp#L45)*
 
 
 
@@ -438,7 +458,7 @@
 | unknown_drawable |
 
 
-*Defined at [gui/layout.hpp:247](../../../../gui/layout.hpp#L247)*
+*Defined at [gui/layout.hpp:282](../../../../gui/layout.hpp#L282)*
 
 
 
@@ -480,7 +500,7 @@
 | custom |
 
 
-*Defined at [gui/layout.hpp:19](../../../../gui/layout.hpp#L19)*
+*Defined at [gui/layout.hpp:20](../../../../gui/layout.hpp#L20)*
 
 
 
@@ -497,7 +517,7 @@
 | bottom |
 
 
-*Defined at [gui/layout.hpp:51](../../../../gui/layout.hpp#L51)*
+*Defined at [gui/layout.hpp:52](../../../../gui/layout.hpp#L52)*
 
 
 
@@ -548,7 +568,7 @@
 | invalid |
 
 
-*Defined at [gui/layout.hpp:213](../../../../gui/layout.hpp#L213)*
+*Defined at [gui/layout.hpp:248](../../../../gui/layout.hpp#L248)*
 
 
 

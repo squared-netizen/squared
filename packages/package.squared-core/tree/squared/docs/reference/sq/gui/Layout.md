@@ -1,6 +1,6 @@
 # class Layout
 
-*Defined at [gui/layout.hpp:165](../../../../gui/layout.hpp#L165)*
+*Defined at [gui/layout.hpp:200](../../../../gui/layout.hpp#L200)*
 
 
 
@@ -16,19 +16,19 @@
 
 *public void Layout()*
 
-*Defined at [gui/layout.hpp:170](../../../../gui/layout.hpp#L170)*
+*Defined at [gui/layout.hpp:205](../../../../gui/layout.hpp#L205)*
 
 ### Layout
 
 *public void Layout(std::string_view name, LayoutKind kind, std::span<const LayoutNode> nodes, std::string_view text, std::span<const float> numbers, PaneShape pane)*
 
-*Defined at [gui/layout.hpp:171](../../../../gui/layout.hpp#L171)*
+*Defined at [gui/layout.hpp:206](../../../../gui/layout.hpp#L206)*
 
 ### name
 
 *public std::string_view name()*
 
-*Defined at [gui/layout.hpp:183](../../../../gui/layout.hpp#L183)*
+*Defined at [gui/layout.hpp:218](../../../../gui/layout.hpp#L218)*
 
 
 
@@ -38,13 +38,13 @@
 
 *public LayoutKind kind()*
 
-*Defined at [gui/layout.hpp:184](../../../../gui/layout.hpp#L184)*
+*Defined at [gui/layout.hpp:219](../../../../gui/layout.hpp#L219)*
 
 ### pane
 
 *public PaneShape pane()*
 
-*Defined at [gui/layout.hpp:186](../../../../gui/layout.hpp#L186)*
+*Defined at [gui/layout.hpp:221](../../../../gui/layout.hpp#L221)*
 
 
 
@@ -54,19 +54,19 @@
 
 *public Nodes nodes()*
 
-*Defined at [gui/layout.hpp:187](../../../../gui/layout.hpp#L187)*
+*Defined at [gui/layout.hpp:222](../../../../gui/layout.hpp#L222)*
 
 ### numbers
 
 *public std::span<const float> numbers()*
 
-*Defined at [gui/layout.hpp:188](../../../../gui/layout.hpp#L188)*
+*Defined at [gui/layout.hpp:223](../../../../gui/layout.hpp#L223)*
 
 ### text
 
 *public std::string_view text()*
 
-*Defined at [gui/layout.hpp:191](../../../../gui/layout.hpp#L191)*
+*Defined at [gui/layout.hpp:226](../../../../gui/layout.hpp#L226)*
 
 
 
@@ -76,7 +76,7 @@
 
 *public std::string_view text(std::uint16_t offset)*
 
-*Defined at [gui/layout.hpp:194](../../../../gui/layout.hpp#L194)*
+*Defined at [gui/layout.hpp:229](../../../../gui/layout.hpp#L229)*
 
 
 

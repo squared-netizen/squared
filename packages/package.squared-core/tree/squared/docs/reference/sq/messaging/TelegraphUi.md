@@ -58,7 +58,7 @@
 
 *public SendResult view(const K & rows, RowSpan span)*
 
-*Defined at [messaging/telegraph.hpp:669](../../../../messaging/telegraph.hpp#L669)*
+*Defined at [messaging/telegraph.hpp:671](../../../../messaging/telegraph.hpp#L671)*
 
 
 
@@ -76,11 +76,11 @@
 
 *public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.hpp:686](../../../../messaging/telegraph.hpp#L686)*
+*Defined at [messaging/telegraph.hpp:688](../../../../messaging/telegraph.hpp#L688)*
 
 
 
-**brief** Take what the model sent: each `state` into the cache, each `event` to `handler.event(received)` if it has one. At most a ring's worth, so one frame never takes more. The telegrams taken.
+**brief** Take what the model sent: each `state` into the cache, then to `handler.state(received)` if it has one (what shows it is told it changed); each `event` to `handler.event(received)` if it has one. At most a ring's worth, so one frame never takes more. The telegrams taken.
 
 ### drain
 
@@ -244,7 +244,7 @@
 
 *public detail::value_of<K> value(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:401](../../../../messaging/telegraph.hpp#L401)*
+*Defined at [messaging/telegraph.hpp:403](../../../../messaging/telegraph.hpp#L403)*
 
 
 
@@ -254,7 +254,7 @@
 
 *public detail::value_of<K> value(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:410](../../../../messaging/telegraph.hpp#L410)*
+*Defined at [messaging/telegraph.hpp:412](../../../../messaging/telegraph.hpp#L412)*
 
 
 
@@ -264,7 +264,7 @@
 
 *public void register_names(const K &... keys)*
 
-*Defined at [messaging/telegraph.hpp:428](../../../../messaging/telegraph.hpp#L428)*
+*Defined at [messaging/telegraph.hpp:430](../../../../messaging/telegraph.hpp#L430)*
 
 
 

@@ -1,6 +1,6 @@
 # struct LayoutNode
 
-*Defined at [gui/layout.hpp:82](../../../../gui/layout.hpp#L82)*
+*Defined at [gui/layout.hpp:83](../../../../gui/layout.hpp#L83)*
 
 
 
@@ -49,6 +49,10 @@ public bool new_row
 public bool vertical
 
 public bool has_numbers
+
+public bool sends_set
+
+public ValueType value
 
 
 

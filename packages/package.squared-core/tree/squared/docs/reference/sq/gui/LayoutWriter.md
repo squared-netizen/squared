@@ -1,6 +1,6 @@
 # class LayoutWriter
 
-*Defined at [gui/layout_writer.hpp:255](../../../../gui/layout_writer.hpp#L255)*
+*Defined at [gui/layout_writer.hpp:261](../../../../gui/layout_writer.hpp#L261)*
 
 
 
@@ -22,37 +22,37 @@
 
 *public void LayoutWriter(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:260](../../../../gui/layout_writer.hpp#L260)*
+*Defined at [gui/layout_writer.hpp:266](../../../../gui/layout_writer.hpp#L266)*
 
 ### operator=
 
 *public LayoutWriter & operator=(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:261](../../../../gui/layout_writer.hpp#L261)*
+*Defined at [gui/layout_writer.hpp:267](../../../../gui/layout_writer.hpp#L267)*
 
 ### LayoutWriter
 
 *public void LayoutWriter(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:262](../../../../gui/layout_writer.hpp#L262)*
+*Defined at [gui/layout_writer.hpp:268](../../../../gui/layout_writer.hpp#L268)*
 
 ### operator=
 
 *public LayoutWriter & operator=(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:263](../../../../gui/layout_writer.hpp#L263)*
+*Defined at [gui/layout_writer.hpp:269](../../../../gui/layout_writer.hpp#L269)*
 
 ### ~LayoutWriter
 
 *public void ~LayoutWriter()*
 
-*Defined at [gui/layout_writer.hpp:264](../../../../gui/layout_writer.hpp#L264)*
+*Defined at [gui/layout_writer.hpp:270](../../../../gui/layout_writer.hpp#L270)*
 
 ### add
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:268](../../../../gui/layout_writer.hpp#L268)*
+*Defined at [gui/layout_writer.hpp:274](../../../../gui/layout_writer.hpp#L274)*
 
 
 
@@ -94,7 +94,7 @@
 
 *public void set_pane(PaneShape shape)*
 
-*Defined at [gui/layout_writer.hpp:280](../../../../gui/layout_writer.hpp#L280)*
+*Defined at [gui/layout_writer.hpp:286](../../../../gui/layout_writer.hpp#L286)*
 
 
 
@@ -104,7 +104,7 @@
 
 *public bool complete()*
 
-*Defined at [gui/layout_writer.hpp:286](../../../../gui/layout_writer.hpp#L286)*
+*Defined at [gui/layout_writer.hpp:292](../../../../gui/layout_writer.hpp#L292)*
 
 
 

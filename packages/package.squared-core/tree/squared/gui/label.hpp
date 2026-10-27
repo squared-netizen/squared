@@ -4,6 +4,7 @@
 #include <squared/gui/widget.hpp>
 
 #include <string>
+#include <string_view>
 
 namespace sq::gui
 {
@@ -22,10 +23,11 @@ class Label final : public Widget
         explicit Label( std::string text = {} );
 
         /**
-     * @brief Replace the label text.
+     * @brief Replace the label text, copied into the label's own: no
+     * allocation when it is no longer than a text the label held.
      * @param text New text content.
      */
-        void set_text( std::string text );
+        void set_text( std::string_view text );
 
         /**
      * @brief Read the current text.

@@ -57,6 +57,14 @@ struct Open
         if( !shows_value( node.type ) || !named || messaging::Name::of( name ) != node.bind ) {
             return { LayoutProblem::bad_bind, at };
         }
+        if( !shows_type( node.type, node.value ) ) {
+            return { LayoutProblem::bad_bind, at };
+        }
+    } else if( node.value != messaging::ValueType::none || node.sends_set ) {
+        return { LayoutProblem::bad_bind, at }; // a type, or a set, with nothing bound
+    }
+    if( node.sends_set && !edits_value( node.type ) ) {
+        return { LayoutProblem::bad_bind, at };
     }
     if( node.tap != 0 ) {
         const TapKind kind = read_tap( layout.text( node.tap ) ).kind;

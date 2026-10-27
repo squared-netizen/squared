@@ -16,9 +16,13 @@
 #include <squared/graphics/texture_atlas.hpp>
 #include <squared/graphics/texture_region.hpp>
 #include <squared/gui/batch_painter.hpp>
+#include <squared/gui/check_box.hpp>
 #include <squared/gui/instantiate.hpp>
+#include <squared/gui/label.hpp>
+#include <squared/gui/progress_bar.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
+#include <squared/gui/slider.hpp>
 #include <squared/gui/src/font_ptr.hpp>
 #include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/insets.hpp>
@@ -28,14 +32,19 @@
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
 #include <squared/gui/table.hpp>
+#include <squared/gui/text_field.hpp>
 #include <squared/gui/ui.hpp>
 #include <squared/gui/window.hpp>
+#include <squared/messaging/address.hpp>
 #include <squared/messaging/name.hpp>
+#include <squared/messaging/telegram.hpp>
 #include <squared/messaging/telegram_data.hpp>
+#include <squared/messaging/telegram_ring.hpp>
 #include <squared/messaging/telegram_text.hpp>
 #include <squared/stage/stage.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
@@ -94,6 +103,37 @@ constexpr graphics::Color slate{ .red = 0.25F, .green = 0.25F, .blue = 0.28F, .a
     return layout->name() < name;
 }
 
+/// `Binding::owner` for the screen: a pane's is its slot.
+constexpr std::uint8_t screen_owner = 0xFF;
+
+/// The telegram's text, for a label or a text field: text as it is (a view
+/// into `data`), any other value as the text form writes it (`42`, `2.0`,
+/// `(1.5 2)`), into `scratch`.
+[[nodiscard]] std::string_view text_of( const messaging::Telegram &telegram,
+                                        std::span<const std::byte> data,
+                                        std::span<char> scratch ) noexcept
+{
+    if( telegram.type() == messaging::ValueType::text ) {
+        const messaging::DataRef where = telegram.as_data();
+        if( where.offset > data.size() || where.length > data.size() - where.offset ) {
+            return {};
+        }
+        const auto *bytes = reinterpret_cast<const char *>( data.data() ) + where.offset;
+        return { bytes, where.length };
+    }
+    const std::size_t length = messaging::write_value( telegram, data, scratch );
+    return { scratch.data(), length };
+}
+
+/// A number to show on a slider or a progress bar: an integer or a double.
+[[nodiscard]] float number_of( const messaging::Telegram &telegram ) noexcept
+{
+    if( telegram.type() == messaging::ValueType::integer ) {
+        return static_cast<float>( telegram.as_integer() );
+    }
+    return static_cast<float>( telegram.as_number() );
+}
+
 /// A layout's name, for a line: "(unnamed)" for a C++ one without.
 [[nodiscard]] std::string_view name_of( const gui::Layout &layout ) noexcept
 {
@@ -126,6 +166,10 @@ struct Stage::Drawing final
                 std::array<float, scratch_numbers> numbers{};
                 gui::Layout written;
         } scratch;
+
+        /// The bound widgets of the screen and its panes. After the scratch,
+        /// so the window's size is the rest plus both.
+        std::array<Binding, max_bindings> bindings{};
 
     private:
         /// Load the skin from `files` into the widgets': false, with `why`, when it cannot be.
@@ -255,10 +299,12 @@ void Stage::attach( app::Runtime &runtime )
     // containers, whose sizes are the library's: libc++ (Android, Termux)
     // and libstdc++ (desktop Linux) differ. The scratch is the same in both.
     static_assert( sizeof( Drawing::Scratch ) == 17480 );
+    static_assert( sizeof( Binding ) == 32 );
+    constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32;
 #if defined( _LIBCPP_VERSION )
-    static_assert( sizeof( Drawing ) == 1648 + sizeof( Drawing::Scratch ) );
+    static_assert( sizeof( Drawing ) == 1648 + tables );
 #else
-    static_assert( sizeof( Drawing ) == 1832 + sizeof( Drawing::Scratch ) );
+    static_assert( sizeof( Drawing ) == 1832 + tables );
 #endif
     // The skin is compiled in: the app's own files are not read for it.
     files::FileSystem &skin = skin_files_ != nullptr ? *skin_files_ : default_skin_files();
@@ -277,7 +323,9 @@ void Stage::attach( app::Runtime &runtime )
 
 void Stage::detach() noexcept
 {
-    drawing_.reset(); // and the panes' windows with it
+    // The cache may let their values go; then the panes' windows go too.
+    unbind_all();
+    drawing_.reset();
     for( Pane &pane : panes_ ) {
         pane.window = nullptr;
     }
@@ -401,7 +449,18 @@ bool Stage::event( const app::Event &event )
 
 void Stage::update( std::chrono::nanoseconds delta ) noexcept
 {
-    static_cast<void>( telegraph_.drain() );
+    // Each state the model sent goes to the widgets that show it, as it comes.
+    struct Showing final
+    {
+            Stage *stage;
+            void state( const messaging::Received &received ) noexcept
+            {
+                stage->changed( received );
+            }
+    };
+    Showing showing{ this };
+    static_cast<void>( telegraph_.drain( showing ) );
+    send_edits();
     if( gui::Ui *widgets = ui() ) {
         widgets->update( std::chrono::duration<double>( delta ).count() );
     }
@@ -758,7 +817,9 @@ void Stage::show_top() noexcept
     }
     auto table = std::make_unique<gui::Table>();
     gui::Table &root = *table;
-    // The panes' windows go with the old content: they are built again below.
+    // The bound widgets go with the old content, and the panes' windows: the
+    // ones that stay are built again below.
+    unbind_all();
     static_cast<void>( widgets->set_content( std::move( table ) ) );
     for( Pane &pane : panes_ ) {
         pane.window = nullptr;
@@ -773,6 +834,7 @@ void Stage::show_top() noexcept
     const gui::Layout *layout = top();
     gui::LayoutHooks hooks;
     hooks.tapped = &Stage::tapped;
+    hooks.bound = &Stage::bound;
     hooks.custom = &Stage::made;
     hooks.context = this;
     const gui::LayoutCheck check = gui::instantiate( *layout, root, widgets->skin(), hooks );
@@ -891,6 +953,7 @@ void Stage::build_pane( Pane &pane ) noexcept
     window->set_modal( modal );
     gui::LayoutHooks hooks;
     hooks.tapped = &Stage::tapped_in_pane;
+    hooks.bound = &Stage::bound_in_pane;
     hooks.custom = &Stage::made_in_pane;
     hooks.context = &pane;
     gui::Table &table = window->content_table();
@@ -903,6 +966,7 @@ void Stage::build_pane( Pane &pane ) noexcept
 
 void Stage::close_pane( Pane &pane ) noexcept
 {
+    unbind_owner( static_cast<std::uint8_t>( &pane - panes_.data() ) );
     if( pane.window != nullptr ) {
         if( gui::Ui *widgets = ui() ) {
             widgets->close_window( *pane.window ); // frees its widgets
@@ -966,6 +1030,284 @@ void Stage::place_panes() noexcept
         }
         window.set_bounds( x, y, width, height );
         window.invalidate_layout();
+    }
+}
+
+// --- bound widgets ---------------------------------------------------------
+
+std::size_t Stage::bindings() const noexcept
+{
+    if( drawing_ == nullptr ) {
+        return 0;
+    }
+    std::size_t count = 0;
+    for( const Binding &binding : drawing_->bindings ) {
+        count += binding.widget != nullptr ? 1 : 0;
+    }
+    return count;
+}
+
+void Stage::bound( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                   gui::Widget &widget ) noexcept
+{
+    static_cast<Stage *>( context )->bind( screen_owner, layout, node, widget );
+}
+
+void Stage::bound_in_pane( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                           gui::Widget &widget ) noexcept
+{
+    Pane &pane = *static_cast<Pane *>( context );
+    const auto slot = static_cast<std::uint8_t>( &pane - pane.stage->panes_.data() );
+    pane.stage->bind( slot, layout, node, widget );
+}
+
+void Stage::bind( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
+                  gui::Widget &widget ) noexcept
+{
+    Binding *slot = nullptr;
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget == nullptr ) {
+            slot = &binding;
+            break;
+        }
+    }
+    if( slot == nullptr ) {
+        if( !bindings_full_ ) {
+            const std::string_view name = name_of( layout );
+            say( "stage: %.*s: more than %zu bound values; the rest show their own text",
+                 static_cast<int>( name.size() ), name.data(), max_bindings );
+            bindings_full_ = true;
+        }
+        return;
+    }
+    *slot = {};
+    slot->address = { node.bind, 0 };
+    slot->widget = &widget;
+    slot->type = node.type;
+    slot->value = node.value;
+    slot->owner = owner;
+    slot->sends_set = node.sends_set;
+    // Its value stays in the cache while it is shown.
+    static_cast<void>( telegraph_.bind( slot->address ) );
+    // The widgets' callbacks are std::function (the gui's, from before):
+    // two pointers fit in its own storage, so this allocates nothing.
+    const auto toggled = [this, &widget]( bool on ) { edited( widget, on ); };
+    const auto moved = [this, &widget]( float value ) { edited( widget, value ); };
+    if( node.sends_set ) {
+        switch( node.type ) {
+            case gui::NodeType::check_box:
+                static_cast<gui::CheckBox &>( widget ).set_on_change( toggled );
+                break;
+            case gui::NodeType::slider:
+                static_cast<gui::Slider &>( widget ).set_on_change( moved );
+                break;
+            case gui::NodeType::text_field:
+                static_cast<gui::TextField &>( widget ).set_on_commit( &Stage::committed, this );
+                break;
+            default:
+                break;
+        }
+    }
+    if( const std::optional<messaging::CachedValue> now = telegraph_.find( slot->address ) ) {
+        show( *slot, now->telegram, now->data );
+    }
+}
+
+void Stage::unbind_all() noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget != nullptr ) {
+            telegraph_.unbind( binding.address );
+            binding = {};
+        }
+    }
+    bindings_full_ = false;
+}
+
+void Stage::unbind_owner( std::uint8_t owner ) noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget != nullptr && binding.owner == owner ) {
+            telegraph_.unbind( binding.address );
+            binding = {};
+        }
+    }
+}
+
+bool Stage::held( const Binding &binding ) noexcept
+{
+    switch( binding.type ) {
+        case gui::NodeType::slider:
+            return static_cast<const gui::Slider *>( binding.widget )->dragging();
+        case gui::NodeType::text_field:
+            return static_cast<const gui::TextField *>( binding.widget )->focused();
+        default:
+            return false;
+    }
+}
+
+void Stage::show( Binding &binding, const messaging::Telegram &telegram,
+                  std::span<const std::byte> data ) noexcept
+{
+    if( telegram.type() != binding.value ) {
+        return; // not the type it was bound as: a model's key and names.json disagree
+    }
+    binding.stale = false;
+    // A value's text, when it is not text already: the longest, four floats.
+    std::array<char, 128> scratch{};
+    std::string_view text;
+    if( binding.type == gui::NodeType::label || binding.type == gui::NodeType::text_field ) {
+        text = text_of( telegram, data, scratch );
+    }
+    // The widgets tell of changes made here as of the user's: not sent back.
+    applying_ = true;
+    switch( binding.type ) {
+        case gui::NodeType::label:
+            static_cast<gui::Label *>( binding.widget )->set_text( text );
+            break;
+        case gui::NodeType::check_box:
+            static_cast<gui::CheckBox *>( binding.widget )->set_checked( telegram.as_boolean() );
+            break;
+        case gui::NodeType::slider:
+            static_cast<gui::Slider *>( binding.widget )->set_value( number_of( telegram ) );
+            break;
+        case gui::NodeType::progress_bar:
+            static_cast<gui::ProgressBar *>( binding.widget )->set_value( number_of( telegram ) );
+            break;
+        case gui::NodeType::text_field:
+            static_cast<gui::TextField *>( binding.widget )->set_text( text );
+            break;
+        default:
+            break;
+    }
+    applying_ = false;
+}
+
+void Stage::changed( const messaging::Received &received ) noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    // Shown from the cache, which has it now: its text is where its
+    // reference says, which a telegram straight from the ring's is not.
+    const messaging::Address address = received.telegram.address();
+    std::optional<messaging::CachedValue> now;
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget == nullptr || !( binding.address == address ) ) {
+            continue;
+        }
+        if( held( binding ) ) {
+            binding.stale = true; // the user has it: shown when they let go
+            continue;
+        }
+        if( !now ) {
+            now = telegraph_.find( address );
+        }
+        if( now ) {
+            show( binding, now->telegram, now->data );
+        }
+    }
+}
+
+Stage::Binding *Stage::binding_of( const gui::Widget &widget ) noexcept
+{
+    if( drawing_ == nullptr ) {
+        return nullptr;
+    }
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget == &widget ) {
+            return &binding;
+        }
+    }
+    return nullptr;
+}
+
+void Stage::edited( gui::Widget &widget, bool on ) noexcept
+{
+    Binding *binding = applying_ ? nullptr : binding_of( widget );
+    if( binding == nullptr || !binding->sends_set ) {
+        return;
+    }
+    set( messaging::Telegram::boolean( messaging::Verb::set, binding->address, on ), {} );
+}
+
+void Stage::edited( gui::Widget &widget, float value ) noexcept
+{
+    Binding *binding = applying_ ? nullptr : binding_of( widget );
+    if( binding == nullptr || !binding->sends_set ) {
+        return;
+    }
+    // A drag moves many times a frame: the frame sends the last.
+    binding->pending = value;
+    binding->sending = true;
+}
+
+void Stage::committed( void *context, gui::TextField &field ) noexcept
+{
+    static_cast<Stage *>( context )->edited( field );
+}
+
+void Stage::edited( gui::TextField &field ) noexcept
+{
+    Binding *binding = applying_ ? nullptr : binding_of( field );
+    if( binding == nullptr || !binding->sends_set ) {
+        return;
+    }
+    std::array<std::byte, 1024> storage{};
+    messaging::TelegramData data( storage );
+    const std::string &text = field.text();
+    const auto *bytes = reinterpret_cast<const std::byte *>( text.data() );
+    const std::optional<messaging::DataRef> where = data.append( { bytes, text.size() } );
+    if( !where ) {
+        say( "stage: an edit was not sent: more than %zu bytes of text", storage.size() );
+        return;
+    }
+    const messaging::ValueType type = messaging::ValueType::text;
+    set( messaging::Telegram::data( messaging::Verb::set, binding->address, type, *where ),
+         data.bytes() );
+}
+
+void Stage::send_edits() noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    for( Binding &binding : drawing_->bindings ) {
+        if( binding.widget == nullptr ) {
+            continue;
+        }
+        if( binding.sending ) {
+            binding.sending = false;
+            const messaging::Verb verb = messaging::Verb::set;
+            if( binding.value == messaging::ValueType::integer ) {
+                const auto whole = static_cast<std::int64_t>( std::lround( binding.pending ) );
+                set( messaging::Telegram::integer( verb, binding.address, whole ), {} );
+            } else {
+                const auto number = static_cast<double>( binding.pending );
+                set( messaging::Telegram::number( verb, binding.address, number ), {} );
+            }
+        }
+        // Let go: the model's latest value is shown.
+        if( binding.stale && !held( binding ) ) {
+            const std::optional<messaging::CachedValue> now = telegraph_.find( binding.address );
+            if( now ) {
+                show( binding, now->telegram, now->data );
+            }
+        }
+    }
+}
+
+void Stage::set( const messaging::Telegram &telegram, std::span<const std::byte> data ) noexcept
+{
+    const messaging::SendResult sent = telegraph_.send( telegram, data );
+    if( sent == messaging::SendResult::full || sent == messaging::SendResult::too_large ) {
+        say( "stage: an edit was not sent: the Telegraph had no room" );
     }
 }
 

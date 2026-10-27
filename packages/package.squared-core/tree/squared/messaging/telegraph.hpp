@@ -382,9 +382,11 @@ class TelegraphUi final
         SendResult send( const Telegram &telegram, std::span<const std::byte> data ) noexcept;
 
         /**
-         * @brief Take what the model sent: each `state` into the cache, each
-         * `event` to `handler.event(received)` if it has one. At most a
-         * ring's worth, so one frame never takes more. The telegrams taken.
+         * @brief Take what the model sent: each `state` into the cache, then
+         * to `handler.state(received)` if it has one (what shows it is told
+         * it changed); each `event` to `handler.event(received)` if it has
+         * one. At most a ring's worth, so one frame never takes more. The
+         * telegrams taken.
          */
         template<typename H>
         std::uint32_t drain( H &handler ) noexcept;
@@ -696,6 +698,9 @@ std::uint32_t TelegraphUi::drain( H &handler ) noexcept
         }
         if( received->telegram.verb() == Verb::state ) {
             take_state( *received );
+            if constexpr( requires { handler.state( *received ); } ) {
+                handler.state( *received );
+            }
         } else if constexpr( requires { handler.event( *received ); } ) {
             if( received->telegram.verb() == Verb::event ) {
                 handler.event( *received );

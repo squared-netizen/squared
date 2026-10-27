@@ -14,8 +14,8 @@ the rest.
 | `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
-Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, and 7.4's
-compiled-in skin. Binding a widget to a value comes in 7.5.
+Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, 7.4's
+compiled-in skin, and 7.5a's bound values. Bound lists come in 7.5b.
 
 ## The shortest call site
 
@@ -111,6 +111,7 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
 | `ui()` | the top screen's widgets, its panes' among them (`sq::gui::Ui`); nullptr while no skin is loaded |
+| `bindings()` | how many widgets are bound now (below) |
 | `failed()` | the skin did not load |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
@@ -207,6 +208,51 @@ is built when it opens and freed when it closes, so a pane opened again
 starts afresh: its values come from the model. A window made again (Android
 recreating the activity) builds the screen and its open panes again.
 
+## Bound values
+
+A node with a `bind` ([layouts.md](layouts.md#a-layout-file)) shows a value
+the model states, and a node that edits sends what the user does:
+
+```cpp
+// The model: a key that carries state and set.
+constexpr sq::messaging::Key<double, sq::messaging::state | sq::messaging::set> volume{
+    "settings.volume" };
+
+// The screen: a slider that sets it, and a label that shows it.
+root.add<sq::gui::Slider>().range( 0.0F, 10.0F ).bind( volume );
+root.add<sq::gui::Label>( "-" ).bind( volume );
+```
+
+In a layout file, `"bind": "settings.volume"`, with the address in
+`names.json`. Nothing else to write: the Stage keeps the value in the
+Telegraph's cache while it is shown, and shows each new one the frame it
+comes.
+
+| Node | Shows | Sends, when the key carries `set` |
+|---|---|---|
+| `label` | any value but a uid list, as the text form writes it (`2.0`, `ann`, `true`) | nothing |
+| `check_box` | a bool | `set` with the new state, at once |
+| `slider` | a number or an integer | `set`, once a frame while dragged: the last place; an integer key gets the nearest whole number |
+| `text_field` | text | `set` with the text, when the edit is finished: Done (Enter), or leaving the field after changing it |
+| `progress_bar` | a number or an integer | nothing |
+
+**Until the model says**, a widget shows what the layout gave it (a label its
+`text`). A pane opened later shows the latest value at once.
+
+**While the user holds it** (a slider being dragged, a text field with the
+focus), what the model says is not shown on it, so a finger is never fought;
+the other widgets bound to the same value show it, and the held one does when
+it is let go. What the model answers to a widget's own `set` is shown, and
+not sent back.
+
+**A value of another type** than the key's (the model's key and `names.json`
+disagree) is not shown; the build refuses the mismatches it can see (a
+`check_box` bound to a number, a `text_field` to a bool).
+
+Up to `max_bindings` (128) widgets are bound at once, a screen's and its
+panes'; past that the rest show their own text, and it is reported once.
+Leaving a screen, or closing a pane, unbinds its widgets.
+
 ## Custom nodes
 
 A layout's `"type": "custom"` node (`add_custom( "minimap" )` in C++) is made
@@ -276,6 +322,9 @@ Nothing stops the app; each failure is one line to the platform's report
 | `stage: tap close: this is a screen, not a pane` | a C++ screen's `close` tap |
 | `stage: push <layout>: the stack holds 16 screens` | `max_depth` |
 | `app: run: a model runs already; an app has one` | a second `run` |
+| `stage: <screen>: more than 128 bound values; the rest show their own text` | `max_bindings` |
+| `stage: an edit was not sent: the Telegraph had no room` | the ring was full when a widget sent `set` |
+| `stage: an edit was not sent: more than 1024 bytes of text` | a text field's text was too long to send |
 
 ## Memory
 
@@ -285,9 +334,9 @@ The App is made once, in static storage, not on the heap: the Telegraph line
 slots). The skin's files are 46 KB of read-only data in the program, mapped
 from its file, not the heap. A model's runner is one allocation, at `run`.
 Each window allocates the skin's textures and tables (reading them copies
-each file once, briefly) and one block of about 19 KB (on Android
-19,128 bytes: batch, camera, painter, widgets, and the 17 KB scratch C++
-screens and panes write into); each screen shown allocates its widgets, and
+each file once, briefly) and one block of about 23 KB (on Android
+23,224 bytes: batch, camera, painter, widgets, the 17 KB scratch C++
+screens and panes write into, and the 4 KB table of bound widgets); each screen shown allocates its widgets, and
 each pane opened its window (304 bytes) and widgets, freed when it closes. A
 C++ screen itself allocates nothing. **A frame allocates nothing.**
 

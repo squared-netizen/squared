@@ -2,6 +2,7 @@
 
 #include <squared/gui/src/alignment.hpp>
 #include <squared/messaging/name.hpp>
+#include <squared/messaging/src/value_type.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -113,6 +114,11 @@ struct LayoutNode final
         /// It has its own numbers: a slider's minimum, maximum and step, a
         /// progress bar's minimum and maximum. Without: 0, 1 and no step.
         bool has_numbers : 1 = false;
+        /// An edit sends `set` to `bind`: a check box, slider or text field
+        /// whose address carries `set`.
+        bool sends_set : 1 = false;
+        /// The type of the value `bind` shows (its key's, or names.json's); none without one.
+        messaging::ValueType value = messaging::ValueType::none;
 
         friend bool operator==( const LayoutNode &, const LayoutNode & ) noexcept = default;
 };
@@ -135,6 +141,35 @@ static_assert( sizeof( LayoutNode ) == 32, "LayoutNode: see docs/developer/layou
         case NodeType::slider:
         case NodeType::progress_bar:
             return true;
+        default:
+            return false;
+    }
+}
+
+/** @brief Whether a node of this type edits the value it shows: a check box, slider or text field. */
+[[nodiscard]] constexpr bool edits_value( NodeType type ) noexcept
+{
+    return type == NodeType::check_box || type == NodeType::slider || type == NodeType::text_field;
+}
+
+/**
+ * @brief Whether a node of this type can show a value of this type: a label
+ * any but uids, a check box a bool, a text field text, a slider or progress
+ * bar a number or an integer.
+ */
+[[nodiscard]] constexpr bool shows_type( NodeType type, messaging::ValueType value ) noexcept
+{
+    using messaging::ValueType;
+    switch( type ) {
+        case NodeType::label:
+            return value != ValueType::none && value != ValueType::uids;
+        case NodeType::check_box:
+            return value == ValueType::boolean;
+        case NodeType::text_field:
+            return value == ValueType::text;
+        case NodeType::slider:
+        case NodeType::progress_bar:
+            return value == ValueType::integer || value == ValueType::number;
         default:
             return false;
     }
@@ -260,7 +295,9 @@ enum class LayoutProblem : std::uint8_t {
     misplaced_row,
     /// A type that is not a `NodeType`.
     bad_type,
-    /// A bind on a node that shows no value, or a name its text does not hash to.
+    /// A bind on a node that shows no value, a name its text does not hash
+    /// to, a value type the node cannot show, or `sends_set` on a node that
+    /// does not edit what it is bound to.
     bad_bind,
     /// A tap on a node that is not a button, or a line `read_tap` refuses.
     bad_tap,

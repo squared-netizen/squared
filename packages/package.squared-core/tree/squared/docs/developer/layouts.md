@@ -28,8 +28,13 @@ dev-time reloading that must agree with the generator.
 | 2 &times; 6 | `text`, `tap`, `bind_text`, `style`, `inside`, `numbers` | offsets into the text and numbers, and the subtree's size |
 | 4 | `type`, `align_x`, `align_y`, `span` | one byte each |
 | 4 | `pad` | below 0: the cell's own |
-| 1 | seven one-bit flags | `grow_x`, `grow_y`, `fill_x`, `fill_y`, `new_row`, `vertical`, `has_numbers` |
-| 3 | padding | to the 8-byte alignment of `bind` |
+| 1 | eight one-bit flags | `grow_x`, `grow_y`, `fill_x`, `fill_y`, `new_row`, `vertical`, `has_numbers`, `sends_set` |
+| 1 | `value` | the bound value's `messaging::ValueType`; `none` without a bind |
+| 2 | padding | to the 8-byte alignment of `bind` |
+
+7.5a added both and the node is still 32 bytes: `sends_set` is the eighth
+bit of the flags' byte, and `value` (a one-byte enum, declared after the
+bitfields) takes one byte of what was padding.
 
 `static_assert`ed. A trivially copyable aggregate, so the build writes it
 with designated initializers into `.rodata`; defaulted `==` (the writer's test
@@ -66,7 +71,11 @@ as their end passes (and counts a scroll's direct children there), checks
 each node's tree bounds against its container's end, its text offsets
 against the pool, `new_row` only in tables, depth at most 16, then the node
 itself: a bind only on the five types that show a value (`shows_value`), with
-a name that hashes to the id; a tap only on a button, a line `read_tap`
+a name that hashes to the id and a `value` the node can show (`shows_type`:
+a label any but uids, a check box a bool, a text field text, a slider or a
+progress bar a number or an integer); no `value` and no `sends_set` without a
+bind; `sends_set` only on a node that edits (`edits_value`: a check box, a
+slider, a text field); a tap only on a button, a line `read_tap`
 accepts; numbers in range, minimum below maximum, a slider's step not
 negative (written `!( a < b )` so a NaN fails); a custom node's name.
 `instantiate` runs it first, so the builder can trust the tree: a bad layout
@@ -100,6 +109,11 @@ writes a 5-node layout 100 times under the frame-allocation counter).
   does when it copies text into its ring: `detail::pack` leaves it empty.
   `detail::pack` moved from `telegraph.hpp` to `messaging/src/pack.hpp` for
   this, so the writer need not include the whole Telegraph.
+- **`bind(key)`** records the key's value type and whether it carries
+  `set` (7.5a): `bind_name( name, text, K::type, settable )` refuses a type
+  the node cannot show (`shows_type`) and sets `sends_set` only when the
+  node edits. The check makes a refused shape impossible, so a layout is
+  bound the same way whichever avenue wrote it.
 - **The constraints** are named concepts in `gui::detail` (`shown_key`,
   `done_key`, `sent_value`): a bind takes a key that carries `state` and no
   uid; a tap a key that carries `do` (or `set`, with a value). Short named
@@ -171,7 +185,9 @@ at compile time a file needs at run time: adding a node by its `NodeType`
 both; it is not for apps (it is in `detail`, and its definition is in
 `layout_file.cpp`, so nothing else can call it). Each node's keys are
 checked against a per-type list (`takes_key`); a bind against the schema
-(present, carries `state`, no uid, a type the node can show: `shows`); a
+(present, carries `state`, no uid, a type the node can show: `shows_type`,
+the same function the check uses), and the entry's type and its `set` verb
+go to the node as the C++ avenue's key would give them; a
 tap by kind: a telegram is parsed with `messaging::read_telegram` into 4 KB
 on the stack and checked for address, verb, uid and value type, then stored
 as written; a navigation against the targets and the schema's `screens`.

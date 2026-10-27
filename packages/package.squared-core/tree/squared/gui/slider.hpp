@@ -110,6 +110,12 @@ class Slider final : public Widget
         bool key_down( app::Key, app::KeyModifiers = {} ) override;
 
         /**
+     * @brief Whether a pointer is dragging the knob.
+     * @return true from the press on the slider until its release or cancel.
+     */
+        [[nodiscard]] bool dragging() const noexcept { return drag_pointer_.has_value(); }
+
+        /**
      * @brief Track the focused state.
      * @note The parameter matches Widget::focus_changed: true when the widget
      * gained focus.

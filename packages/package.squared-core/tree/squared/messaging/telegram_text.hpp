@@ -40,6 +40,16 @@ namespace sq::messaging
                                           const NameTable &names, std::span<char> out ) noexcept;
 
 /**
+ * @brief Only the value of a telegram, as `write_telegram` writes it (`42`,
+ * `2.0`, `(1.5 2)`, `"fur coat"`): what a label bound to it shows, text
+ * aside, which it shows as it is.
+ * @return The length written; 0 when `out` is too small, the telegram has no
+ * value or is not valid, or its data is outside `data`.
+ */
+[[nodiscard]] std::size_t write_value( const Telegram &telegram, std::span<const std::byte> data,
+                                       std::span<char> out ) noexcept;
+
+/**
  * @brief A telegram from its line, with no table (names are hashed). Text and
  * uid lists go into `data`.
  *

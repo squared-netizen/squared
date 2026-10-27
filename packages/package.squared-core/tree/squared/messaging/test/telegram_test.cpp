@@ -207,6 +207,24 @@ int main()
         const auto read = read_telegram( line, back );
         assert( read && same( e.telegram, data, *read, back ) );
     }
+    // The value alone, as a label shows it: each exact line ends with it, before
+    // a correlation. A telegram with no value writes nothing.
+    for( const Exact &e : exact ) {
+        std::array<char, 512> value{};
+        const std::size_t length = write_value( e.telegram, data.bytes(), value );
+        std::string_view line = e.line;
+        line = line.substr( 0, line.find( " @" ) );
+        if( e.telegram.type() == ValueType::none ) {
+            assert( length == 0 );
+            continue;
+        }
+        assert( length > 0 && line.ends_with( std::string_view( value.data(), length ) ) );
+        assert( line[line.size() - length - 1] == ' ' );
+    }
+    {
+        std::array<char, 2> small{};
+        assert( write_value( exact[4].telegram, data.bytes(), small ) == 0 ); // (1.5 2): too long
+    }
     // An unregistered name is written as its id, and read back as the same telegram.
     {
         const Telegram unknown = Telegram::boolean( Verb::state, { "not.registered", 3 }, true );

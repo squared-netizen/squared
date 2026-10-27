@@ -31,9 +31,10 @@ struct FileWriting
             return out.add_to( into, type, text );
         }
 
-        static void bind( NodeWriter &node, messaging::Name name, std::string_view text ) noexcept
+        static void bind( NodeWriter &node, messaging::Name name, std::string_view text,
+                          messaging::ValueType value, bool settable ) noexcept
         {
-            static_cast<void>( node.bind_name( name, text ) );
+            static_cast<void>( node.bind_name( name, text, value, settable ) );
         }
 };
 
@@ -346,23 +347,6 @@ void read_screens( Reader &reader, const JsonValue &value, std::vector<std::stri
             return key == "name";
     }
     return false;
-}
-
-[[nodiscard]] bool shows( NodeType node, ValueType value ) noexcept
-{
-    switch( node ) {
-        case NodeType::label:
-            return value != ValueType::none && value != ValueType::uids;
-        case NodeType::check_box:
-            return value == ValueType::boolean;
-        case NodeType::text_field:
-            return value == ValueType::text;
-        case NodeType::slider:
-        case NodeType::progress_bar:
-            return value == ValueType::integer || value == ValueType::number;
-        default:
-            return false;
-    }
 }
 
 [[nodiscard]] std::optional<Alignment> alignment_named( const JsonValue &value ) noexcept
@@ -682,16 +666,18 @@ class LayoutReader final
             }
             if( entry->uid ) {
                 reader_.problem( path, *name + " takes a uid: only a list's row shows one "
-                                               "(lists come in 7.5)" );
+                                               "(lists come in 7.5b)" );
                 return;
             }
-            if( !shows( type, entry->type ) ) {
+            if( !shows_type( type, entry->type ) ) {
                 std::string what = "a " + std::string( node_type_name( type ) );
                 what += " cannot show " + std::string( type_words( entry->type ) );
                 reader_.problem( path, what + " (" + *name + ")" );
                 return;
             }
-            detail::FileWriting::bind( node, messaging::Name::of( *name ), *name );
+            const bool settable = entry->verbs.has( Verb::set );
+            const messaging::Name address = messaging::Name::of( *name );
+            detail::FileWriting::bind( node, address, *name, entry->type, settable );
         }
 
         void tap( const std::string &path, const JsonValue &value, NodeWriter &node )
@@ -752,7 +738,7 @@ class LayoutReader final
             }
             if( entry->uid || read->address().uid != 0 ) {
                 reader_.problem( path, name + " takes a uid: only a list's row sends one "
-                                              "(lists come in 7.5)" );
+                                              "(lists come in 7.5b)" );
                 return false;
             }
             if( read->type() != entry->type ) {

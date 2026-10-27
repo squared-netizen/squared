@@ -74,7 +74,7 @@ node. A nested `table` node has `rows` of its own; a `scroll` holds one node
 | `pad` | Space around it in its cell |
 | `align` | `"start"`, `"center"` or `"end"` across, or two of them: across, then down |
 | `span` | Columns the cell takes |
-| `bind` | An address from `names.json`: the node shows its `state`, and a node that edits sends `set` |
+| `bind` | An address from `names.json`: the node shows its `state`, and a node that edits (check box, slider, text field) sends `set` when the address carries it ([stage.md](stage.md#bound-values)) |
 | `tap` | A button's line: a telegram (`do file.open "a.txt"`) or a navigation (below) |
 | `style` | A style from the skin, in place of `default` |
 | `min`, `max`, `step` | A slider's range and step; a progress bar's range |
@@ -291,7 +291,7 @@ chain:
 | `style(name)` | A style from the skin |
 | `vertical()` | A separator that runs up and down |
 | `range(minimum, maximum)`, `step(step)` | A slider's or progress bar's numbers; `step` is a slider's |
-| `bind(key)` | Show the key's `state`. Only keys that carry `state` and take no uid compile |
+| `bind(key)` | Show the key's `state`, and send `set` from a node that edits when the key carries it. Only keys that carry `state` and take no uid compile; a value type the node cannot show is refused (a check box takes a bool, a text field text, a slider or progress bar a number or an integer, a label any but a uid list) |
 | `tap(line)` | A button's line, as a file writes it |
 | `tap(Navigate::push, "settings")` | A navigation: `push`, `replace`, `back`, `open`, `close`, `quit` |
 | `tap<About>(Navigate::push)` | A navigation to the C++ screen `About`, by its `name`, checked when it compiles ([stage.md](stage.md#c-screens)) |
@@ -306,7 +306,8 @@ node is not written. So write each container's contents before moving on.
 
 **What the writer refuses** (the call is ignored and `complete()` is false):
 a node added to one that is finished or holds nothing; a second node in a
-scroll; containers deeper than 16; a `bind` on a node that shows no value; a
+scroll; containers deeper than 16; a `bind` on a node that shows no value,
+or of a type it cannot show; a
 `tap` on anything but a button, or a line `read_tap` refuses; `range` or
 `step` on a node without numbers, or a range whose minimum is not below its
 maximum; `vertical` on anything but a separator; running out of storage.
@@ -357,7 +358,7 @@ first `problem` and its `node` index; `ok()` when there is none.
 | `scroll_holds_one` | A scroll with more than one node |
 | `misplaced_row` | A new row outside a table |
 | `bad_type` | Not a `NodeType` |
-| `bad_bind` | A bind on a node that shows no value, or a name its text does not hash to |
+| `bad_bind` | A bind on a node that shows no value, a name its text does not hash to, a value type the node cannot show, or a `set` on a node that edits nothing |
 | `bad_tap` | A tap on a node that is not a button, or not a tap's line |
 | `bad_numbers` | Numbers missing, on a node that takes none, or a minimum not below its maximum |
 | `no_custom_name` | A custom node without its type's name |

@@ -26,11 +26,11 @@ Inherits from Widget
 
 ### set_text
 
-*public void set_text(std::string text)*
+*public void set_text(std::string_view text)*
 
 
 
-**brief** Replace the field text and reset the cursor.
+**brief** Replace the field text and reset the cursor; copied into the field's own, with no allocation when it is no longer than a text it held.
 
 **text** New text content.
 
@@ -38,7 +38,7 @@ Inherits from Widget
 
 *public const std::string & text()*
 
-*Defined at [gui/text_field.hpp:41](../../../../gui/text_field.hpp#L41)*
+*Defined at [gui/text_field.hpp:42](../../../../gui/text_field.hpp#L42)*
 
 
 
@@ -50,13 +50,37 @@ Inherits from Widget
 
 *public std::size_t cursor()*
 
-*Defined at [gui/text_field.hpp:47](../../../../gui/text_field.hpp#L47)*
+*Defined at [gui/text_field.hpp:48](../../../../gui/text_field.hpp#L48)*
 
 
 
 **brief** Read the cursor position.
 
 **return** Byte offset into the UTF-8 text, or text length at the end.
+
+### focused
+
+*public bool focused()*
+
+*Defined at [gui/text_field.hpp:65](../../../../gui/text_field.hpp#L65)*
+
+
+
+**brief** Whether the field has focus: it is being edited.
+
+**return** true while focused.
+
+### set_on_commit
+
+*public void set_on_commit(CommitCallback callback, void * context)*
+
+
+
+**brief** What is told when an edit is finished: Enter (the keyboard's Done), or the field losing focus after its text changed.
+
+**callback** Called with `context` and this field; nullptr for none.
+
+**context** Passed back as it is.
 
 ### set_style
 
@@ -176,7 +200,7 @@ Inherits from Widget
 
 *public bool wants_text_input()*
 
-*Defined at [gui/text_field.hpp:126](../../../../gui/text_field.hpp#L126)*
+*Defined at [gui/text_field.hpp:144](../../../../gui/text_field.hpp#L144)*
 
 
 

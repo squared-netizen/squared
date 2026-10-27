@@ -136,6 +136,26 @@ bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
 | `TextField` | `squared/gui/text_field.hpp` | Single-line editable text input with cursor and composition support |
 | `Slider` | `squared/gui/slider.hpp` | Draggable one-axis value selector with an optional gradient fill |
 
+**When an edit is finished.** `TextField::set_on_commit( callback, context )`
+calls `callback( context, field )` on Enter (the keyboard's Done), and when
+the field loses the focus after its text changed; `field.text()` is the
+edit. A function pointer and a context, so it allocates nothing; nullptr
+for none. `focused()` says whether the field has the focus now.
+
+```cpp
+void named( void *context, sq::gui::TextField &field ) { /* field.text() */ }
+
+field.set_on_commit( &named, &player );
+```
+
+`Label::set_text` and `TextField::set_text` take a `std::string_view` and
+copy it into the widget's own text, which keeps its storage: setting a text
+no longer than one the widget held allocates nothing.
+
+`Slider::dragging()` is true while a pointer holds the knob: what the Stage
+uses to keep a model's value off a slider being moved
+([stage.md](stage.md#bound-values)).
+
 ## Overlays
 
 | Type | Header | Purpose |

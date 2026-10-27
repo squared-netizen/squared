@@ -21,9 +21,9 @@ Label::Label( std::string text )
     set_touchable( false );
 }
 
-void Label::set_text( std::string text )
+void Label::set_text( std::string_view text )
 {
-    text_ = std::move( text );
+    text_.assign( text );
     invalidate_layout();
 }
 
