@@ -31,7 +31,7 @@ is linked only when something refers to it.
 | the top screen's widgets | from shown to replaced | `instantiate`, on each navigation |
 | a pane's window and widgets | from opened to closed, or its screen left | `build_pane`, on each open |
 | what each screen and pane keeps (`Stage::Kept`) | inside the Stage, at its depth or in its pane slot | `keep_shown`, when it is left or loses its widgets |
-| `squared/screens` | the app's private files, from a background to the next start or a quit | `App::save_screens` |
+| the stack, for Android (`squared app 1`, then the Stage's lines) | Android's saved instance state, from its save to the activity it makes again | `App::save_state`, asked by the platform |
 | `squared/model.state` | the app's private files, from a save to the next | the model's thread (`detail::Saving`) |
 | the model's last save, read | from `run` to the model's `start` | `App::model_file` |
 
@@ -46,7 +46,15 @@ reference to the process's App. `create()` always calls `Stage::attach`
 (a new window: the skin is loaded again into new textures, the top screen is
 built again), and calls `squared_main` only when `started_` is false: the
 first window, or the first since a quit. `dispose()` without a quit only
-detaches the window's half; the model runs on.
+detaches the window's half; the model runs on. **A new launch with a run
+held** (7.8): a `create()` given no saved state while `started_` is set is a
+new launch in a live process (a swipe from the recent apps that left the
+process alive): `shut_down` first, as a quit does, then the first-start path.
+The model saved when the app left the screen, so its quit saves nothing
+more. This is why the App always gives Android at least its first line,
+`squared app 1`, even with `keep_screens( false )` or nothing to keep: an
+activity Android makes again (a configuration it does not handle, "Don't
+keep activities") is then told from a new launch.
 
 **What the activity handed over goes with it.** The text-input service and
 the report are the platform's, per activity (the template's `Platform`
@@ -381,9 +389,12 @@ new item's values (`keep_item`, one bind per value the row shows, from the
 row's nodes: `max_row_values`, 8) before it lets the old one's go, so an item
 that only moved rows is never let go. `kept` holds the item per row asked
 for, at the row modulo its size (no two rows of one window share a place).
-The window is sized when the list first has a height: at most half the
+The window is sized when the list is built (`size_lists`, after the
+screen's or pane's widgets are made, 7.8: until then the first frame with a
+height made it, the 340 bytes hello's Console showed): at most half the
 cache over the lists shown, divided by one plus the row's values, clamped to
-`TELEGRAPH_LIST_VIEW`; if that is fewer rows than the screen, it is said.
+`TELEGRAPH_LIST_VIEW`; if that is fewer rows than the screen shows, it is
+said once.
 `drop_list` lets all of it go (leaving a screen, closing a pane, `detach`).
 
 **The reset** (a protocol addition, 7.5b): a new widget sends `do
@@ -456,24 +467,29 @@ one screen), and replaces the stack only when every line read: else it says
 the line and why, and `squared_main`'s stack stays. Then `show_top` builds
 the top and the panes, and puts back what they keep.
 
-**The App's part.** At the first start, `find_saves` makes the app's
-private directory `squared/` (`FileSystem::local( ... ).make_directories()`)
-and keeps the platform's paths of `squared/screens` and
-`squared/model.state` (`FileSystem::resolve_platform_path`, new, 7.6). They
-are written and read through a `files::PosixFileSystem` with no roots, made
-on the stack each time, with `FileType::Absolute`: the activity's file
+**The App's part.** The stack goes to Android, not to a file (7.8; 7.6 and
+7.7 wrote `squared/screens`, which `find_saves` now removes once at start).
+`save_state` writes `squared app 1` and, unless `keep_screens( false )`, the
+Stage's lines after it, into the platform's buffer; nothing during a quit, so
+a quit's next launch is fresh. `restore_screens`, after `squared_main`, takes
+the bytes `set_saved_state` gave: none is a new launch; a first line that is
+not the App's is said and passed over; the rest goes to `Stage::restore`.
+Android shows a kept stack only once by itself: it keeps the state of the
+activity it brings back, and that activity gives it the stack again at its
+own save. At the first start, `find_saves` makes the app's private directory
+`squared/` (`FileSystem::local( ... ).make_directories()`) and keeps the
+platform's path of `squared/model.state` (`FileSystem::resolve_platform_path`,
+7.6), written and read through a `files::PosixFileSystem` with no roots,
+made on the stack each time, with `FileType::Absolute`: the activity's file
 system dies with the activity, and the model's thread writes after it may
-have gone. Private storage is POSIX on both targets (Android's Local is
-`internalDataPath`), so this crosses no porting line. `restore_screens`,
-after `squared_main`, reads the file, removes it (shown once: a stack that
-crashes is not shown again at every start), and gives it to the Stage
-unless `keep_screens( false )`. `background()` gives an inline model its
-turn at once (it saves before the app stops; a threaded model wakes for
-it), then `save_screens`: none, or removed, when `keep_screens` is off or a
-quit is asked for (the template's quit runs `background` before
-`dispose`); else written with `FileSystem::write_atomically` (`<path>.new`,
-`fsync`, `rename`, the directory `fsync`ed; files' page). `shut_down` (a
-quit) removes it too, for a quit with no background.
+have gone. `background()` gives an inline model its turn at once (it saves
+before the app stops; a threaded model wakes for it).
+
+**Back at the root (7.8)** sets `to_background_` in the App (the back key,
+which no widget and no pane took) or `background_` in the Stage (a `back`
+tap that found nothing to go back to); `take_background_request` takes
+either, once. Only `quit()`, a `quit` tap or the platform's `QuitRequested`
+quit.
 
 **The model's save: `detail::Saving<M>`**, a decorator the App runs instead
 of `M` when `M` has `save( sq::Save & )` (`SavingModel`); any other model
@@ -624,11 +640,12 @@ drawable missing) is reported and shown.
 Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
 `std::array` for the stack, the queue, the registries, the pane slots, the scratch, the bound values and the lists; `std::string` and `std::vector`
 while a skin loads (once per window, in `attach`); a `std::vector` of the
-items kept per list (sized once, when the list first has a height, 4 bytes
+items kept per list (sized once, when the list is built, 4 bytes
 a row asked for); `gui::FontPtr`
-(`std::shared_ptr`), gui's own type; two `std::string`s in the App, the
-platform's paths of what it keeps (once, at start; a fixed array would hold
-256 bytes resident each, the strings about 50 on the heap); the
+(`std::shared_ptr`), gui's own type; one `std::string` in the App, the
+platform's path of the model's save (once, at start; a fixed array would
+hold 256 bytes resident, the string about 50 on the heap); a `std::span`
+of what Android kept, during `create()` only; the
 `std::vector<std::byte>` of the model's last save, from `run` to the
 model's `start`; `std::atomic<bool>` for a failed save, written on the
 model's thread, read on the UI thread; `std::to_chars` and `std::from_chars`
@@ -645,8 +662,8 @@ libraries, so binding allocates nothing for them. See
 | What | Where | When | Size |
 |---|---|---|---|
 | `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 4,224 (the Stage is 4,056, 2,960 of it what screens and panes keep) |
-| the two paths | heap | first start | the platform's path of `squared/screens` and `squared/model.state` |
-| the saved stack | stack, then the file | each background | 8 KB on the stack; the file is a line a screen (tens of bytes) |
+| the path | heap | first start | the platform's path of `squared/model.state` |
+| the saved stack | the platform's stack, then Android's | each save instance state | 8 KB on the glue thread's stack; a `malloc` copy of what was written (a line a screen, tens of bytes) that the glue hands Android |
 | a model's save | the model thread's stack, then the file | each background, after `background` | 8 KB (`Save::capacity`) |
 | the model's last save | heap | `run`, freed at the model's `start` | the file's size |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
@@ -681,9 +698,19 @@ written with `LayoutWriter`; it defines `layouts::all()` as sqgen would:
 - **Lifecycle:** background, foreground and low memory reach the model.
 - **A recreated activity:** the model runs on, `squared_main` does not run
   again, the stack comes back with new widgets.
-- **Quitting:** back at the root leaves; the model saves and stops; the next
-  start runs `squared_main` with a Telegraph holding nothing; a `quit` tap;
-  a `back` tap at the root.
+- **Back at the root** sends the app to the background (7.8): not a quit,
+  taken once; the back key and a `back` tap at the root alike.
+- **Quitting:** `quit()`; Android is given nothing; the model saves and
+  stops; the next start runs `squared_main` with a Telegraph holding
+  nothing; a `quit` tap.
+- **A swipe starts fresh (7.8):** an activity given nothing, the process
+  alive: `squared_main` again and a new model, at the first screen, the old
+  one stopped with nothing more to save; an activity given what the App
+  gave Android keeps the run, and so does the first line alone
+  (`keep_screens( false )`).
+- **Frames after a build allocate nothing (7.8):** a list of 1,000 shown,
+  30 frames under the counter (its buffer sized when built; the painter's
+  text layout made with room for 64 glyphs).
 - **A model on its own thread:** a tap's telegram is answered across
   threads; the quit joins it after it saves (and ThreadSanitizer is clean).
 - **No skin** (an empty file system, through the probe): reported,
@@ -754,22 +781,24 @@ edit over 128 bytes keeps 127 (a two-byte character across the cut); a lost
 context and an activity made again keep the scroll and the edit, a pane's
 edit too; a list's place comes back, and a screen pushed after a back starts
 at 0; `describe`'s lines; low memory frees the tables' working sizes, which
-come back with the next layout, and reaches the model. The stack written in
-the background, line for line (a screen's scroll and edit, a list's offset,
-two panes, one with an edit); the model's save in its file (a uid key, text
-quoted), at once for an inline model; a new process (a new App in the same
-storage) shows the stack again, panes and edits, the file then gone; the
+come back with the next layout, and reaches the model. The stack given to
+Android, line for line after `squared app 1` (a screen's scroll and edit, a
+list's offset, two panes, one with an edit); 7.7's `squared/screens` left
+in the private files removed at start and not shown; the model's save in
+its file (a uid key, text quoted), at once for an inline model; a new
+process (a new App in the same storage) given those bytes shows the stack
+again, panes and edits; the
 list scrolls to its place once the count comes; the model has its values
 back before `start`, its text included, and a `state` line or a line that
 is not one in the file is passed over; a save the model cannot write
-(a directory in the way) is said when the app comes back; a quit forgets
-the screens (in the background, and in `dispose` without one), the model's
-file stays; a saved stack naming a screen there is not, another form, a
-pane first, a screen where a pane was, five scrolls, odd hex, more on the
-line, a pane before a screen, a negative scroll: each said, the stack
-`squared_main`'s; `keep_screens( false )`: a file there is not shown, and
-nothing written; a layout not in `layouts::all()` on the stack: nothing
-kept, and said. Quit, then a new activity: the old keyboard is never called
+(a directory in the way) is said when the app comes back; a quit gives
+Android nothing, the model's file stays; kept bytes naming a screen there
+is not, another form, a pane first, a screen where a pane was, five
+scrolls, odd hex, more on the line, a pane before a screen, a negative
+scroll, a first line not the App's: each said, the stack `squared_main`'s;
+`keep_screens( false )`: kept bytes are not shown, and Android is given the
+first line alone; a layout not in `layouts::all()` on the stack: the first
+line alone, and said. Quit, then a new activity: the old keyboard is never called
 (the phone's crash, pkg57). A state-only key cannot be saved
 (`static_assert`).
 

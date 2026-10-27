@@ -9,9 +9,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace sq::files
@@ -90,19 +93,20 @@ template<typename S, typename... Args>
  * activity Android recreates reattaches to the same App and the model keeps
  * running. It calls `squared_main` once, when the first window is there and
  * the skin is loaded; the app pushes its first screen there and starts its
- * model with `run`. Quitting (`quit()`, a `quit` tap, back at the root)
- * stops the model, after it saves, and empties the stack: the next launch in
- * the same process starts afresh.
+ * model with `run`. Quitting (`quit()`, a `quit` tap) stops the model, after
+ * it saves, and empties the stack: the next launch in the same process starts
+ * afresh. Back at the root screen sends the app to the background instead.
  *
  * It is the platform's `sq::app::Application`: an app does not call those
  * methods, the platform does.
  *
- * What it keeps (7.6), in the app's private files, `squared/`: the screens,
- * written when the app goes to the background and shown again at the next
- * start (once: a quit forgets them, and so does showing them), unless
- * `stage.keep_screens( false )`; and a model's own save (`sq::Save`), written
- * on the model's thread after each `background` and given back to it before
- * its next `start`.
+ * What it keeps: the screens, in what Android keeps for the activity (its
+ * saved instance state, 7.8), shown again only when Android brings the app
+ * back after ending its process; a swipe from the recent apps or a quit
+ * starts it fresh. And a model's own save (`sq::Save`), in the app's private
+ * files (`squared/model.state`), written on the model's thread after each
+ * `background` and given back to it before its next `start`, whatever ended
+ * the last run.
  */
 class App final : public app::Application
 {
@@ -176,33 +180,37 @@ class App final : public app::Application
         void surface_created( graphics::Context &graphics ) override;
         void dispose() override;
         [[nodiscard]] bool quit_requested() const noexcept override;
+        void set_saved_state( std::span<const std::byte> saved ) noexcept override;
+        [[nodiscard]] std::size_t save_state( std::span<std::byte> out ) noexcept override;
+        [[nodiscard]] bool take_background_request() noexcept override;
+        [[nodiscard]] bool hides_bars() const noexcept override { return stage.hides_bars(); }
 
     private:
         void shut_down() noexcept;
         void find_saves( files::FileSystem &files );
         [[nodiscard]] detail::ModelFile model_file();
-        void restore_screens();
-        void save_screens();
-        void forget_screens() noexcept;
+        void restore_screens( std::string_view saved );
 
         detail::HeldModel model_;
         app::Report report_{};
         time::TimePoint left_at_{};
-        /// Where the screens and the model's save are kept: the platform's
-        /// paths, found when the process first starts; empty: not kept.
-        std::string screens_path_;
+        /// What the platform kept for the activity being made: until create() returns.
+        std::span<const std::byte> saved_{};
+        /// Where the model's save is kept: the platform's path, found when
+        /// the process first starts; empty: not kept.
         std::string model_path_;
         /// The model's thread could not write its save: said when the app comes back.
         std::atomic<bool> save_failed_{ false };
         bool started_ = false;
         bool quit_ = false;
         bool visible_ = true;
+        bool to_background_ = false;
 };
 
 // The Telegraph line (88,000 bytes at the default knobs, which size it), then
 // the Stage (4,056 bytes, 2,960 of them what screens and panes keep), the
-// model's runner, the two paths, and the App's own few bytes, rounded to the
-// line's 64. libc++'s strings are 8 bytes smaller than libstdc++'s.
+// model's runner, the path, the saved state's view, and the App's own few
+// bytes, rounded to the line's 64.
 static_assert( sizeof( App ) <= sizeof( messaging::TelegraphLine ) + 4224 );
 
 } // namespace sq

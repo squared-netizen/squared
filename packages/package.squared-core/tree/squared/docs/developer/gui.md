@@ -277,6 +277,15 @@ was all 8 to 10 allocations per frame the demo made (Sprint 3, task 3.0). Cost:
 glyph of the longest text). The base `Painter::measure_text()` still uses a
 local layout; it has no state of its own, and `BatchPainter` overrides it.
 
+**Made with room for 64 glyphs on 4 lines** (7.8; `k_reserved_glyphs`,
+`k_reserved_lines`, through `GlyphLayout::reserve` in the constructor): 3,744
+bytes, taken when the window's `Drawing` is made, not in a frame. Found on
+the phone (pkg58's run, site 2): a bound value that grew as it came (a row's
+"number 10" after "number 9") grew the layout to 9 glyphs, 504 bytes, in a
+frame. Priority 1 traded both ways: a few KB taken up front, known before
+the first frame (§4: sized at init), against an allocation in a frame. A text
+longer than 64 glyphs still grows it once.
+
 ### Clipping
 
 `push_clip`/`pop_clip` map onto `SpriteBatch::set_clip`, which takes a scissor

@@ -77,7 +77,9 @@ if (!layout.set_text(font, score_text)) {
 ```
 
 `clear()` empties the layout and keeps that storage. Assign
-`sq::graphics::GlyphLayout{}` to give it back. A failed `set_text()` leaves the
+`sq::graphics::GlyphLayout{}` to give it back. `reserve( glyphs, lines )`
+makes the room up front, where allocating is expected (at load, not in a
+frame), so a text that fits lays out with no allocation. A failed `set_text()` leaves the
 previous layout as it was.
 
 ### Errors

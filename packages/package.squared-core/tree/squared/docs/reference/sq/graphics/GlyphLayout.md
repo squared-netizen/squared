@@ -1,6 +1,6 @@
 # class GlyphLayout
 
-*Defined at [graphics/glyph_layout.hpp:18](../../../../graphics/glyph_layout.hpp#L18)*
+*Defined at [graphics/glyph_layout.hpp:19](../../../../graphics/glyph_layout.hpp#L19)*
 
 
 
@@ -36,35 +36,43 @@
 
 **brief** Empty the layout, keeping its storage; assign GlyphLayout{} to release it. 
 
+### reserve
+
+*public void reserve(std::size_t glyphs, std::size_t lines)*
+
+
+
+**brief** Make room for `glyphs` glyphs and `lines` lines now, so a text that fits lays out with no allocation: for a layout kept to be reused, made where allocating is expected.
+
 ### width
 
 *public float width()*
 
-*Defined at [graphics/glyph_layout.hpp:39](../../../../graphics/glyph_layout.hpp#L39)*
+*Defined at [graphics/glyph_layout.hpp:47](../../../../graphics/glyph_layout.hpp#L47)*
 
 ### height
 
 *public float height()*
 
-*Defined at [graphics/glyph_layout.hpp:40](../../../../graphics/glyph_layout.hpp#L40)*
+*Defined at [graphics/glyph_layout.hpp:48](../../../../graphics/glyph_layout.hpp#L48)*
 
 ### line_height
 
 *public float line_height()*
 
-*Defined at [graphics/glyph_layout.hpp:41](../../../../graphics/glyph_layout.hpp#L41)*
+*Defined at [graphics/glyph_layout.hpp:49](../../../../graphics/glyph_layout.hpp#L49)*
 
 ### glyphs
 
 *public std::span<const GlyphPlacement> glyphs()*
 
-*Defined at [graphics/glyph_layout.hpp:42](../../../../graphics/glyph_layout.hpp#L42)*
+*Defined at [graphics/glyph_layout.hpp:50](../../../../graphics/glyph_layout.hpp#L50)*
 
 ### lines
 
 *public std::span<const GlyphLine> lines()*
 
-*Defined at [graphics/glyph_layout.hpp:43](../../../../graphics/glyph_layout.hpp#L43)*
+*Defined at [graphics/glyph_layout.hpp:51](../../../../graphics/glyph_layout.hpp#L51)*
 
 
 

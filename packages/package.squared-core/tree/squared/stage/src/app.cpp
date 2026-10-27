@@ -10,6 +10,7 @@
 #include <squared/stage/app.hpp>
 #include <squared/time/now.hpp>
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -28,8 +29,13 @@ namespace
 
 /// The App's own directory in the app's private files, and what it keeps there.
 constexpr std::string_view save_directory = "squared";
-constexpr std::string_view screens_file = "squared/screens";
 constexpr std::string_view model_file_name = "squared/model.state";
+/// Where 7.6 and 7.7 kept the screens; removed at start, if one is left.
+constexpr std::string_view old_screens_file = "squared/screens";
+
+/// The first line of what the App gives the platform to keep: there even
+/// with no screens to keep, so a kept activity is told from a new launch.
+constexpr std::string_view state_header = "squared app 1\n";
 
 /// The platform's paths, written and read with no roots: the activity's file
 /// system may be gone (a save from the model's thread, after it).
@@ -64,26 +70,55 @@ void App::set_report( app::Report report ) noexcept
 
 bool App::create( app::Runtime &runtime )
 {
+    const std::span<const std::byte> saved = saved_;
+    saved_ = {};
+    // A run held, and a new launch (Android kept nothing for this activity:
+    // a swipe from the recent apps, with the process left alive): it starts
+    // fresh, as after a quit. The model saved when the app left the screen.
+    if( started_ && saved.empty() ) {
+        shut_down();
+    }
     stage.attach( runtime );
     if( !started_ ) {
         // The first window of the process, or the first since a quit.
         started_ = true;
         quit_ = false;
         visible_ = true;
+        to_background_ = false;
         find_saves( runtime.files );
         squared_main( *this );
         // Every C++ screen names.json lists should be added by now.
         stage.check_screens();
-        restore_screens();
+        const std::string_view text( reinterpret_cast<const char *>( saved.data() ), saved.size() );
+        restore_screens( text );
     }
     // A skin that will not load is not a reason to refuse to start: the
     // Stage draws dark red and has said why.
     return true;
 }
 
+void App::set_saved_state( std::span<const std::byte> saved ) noexcept
+{
+    saved_ = saved;
+}
+
+std::size_t App::save_state( std::span<std::byte> out ) noexcept
+{
+    if( quit_requested() || out.size() < state_header.size() ) {
+        return 0; // a quit starts the next launch fresh
+    }
+    auto *text = reinterpret_cast<char *>( out.data() );
+    std::copy( state_header.begin(), state_header.end(), text );
+    std::size_t length = state_header.size();
+    if( stage.keeps_screens() ) {
+        // Nothing to show again, or the Stage said why not: the header alone.
+        length += stage.save( { text + length, out.size() - length } );
+    }
+    return length;
+}
+
 void App::find_saves( files::FileSystem &files )
 {
-    screens_path_.clear();
     model_path_.clear();
     if( const files::FileError error = files.local( save_directory ).make_directories() ) {
         // No private files at all (a host test) is not worth a line; a failure is.
@@ -92,8 +127,8 @@ void App::find_saves( files::FileSystem &files )
         }
         return;
     }
-    screens_path_ = files.resolve_platform_path( files::FileType::Local, screens_file );
     model_path_ = files.resolve_platform_path( files::FileType::Local, model_file_name );
+    static_cast<void>( files.remove( files::FileType::Local, old_screens_file ) );
 }
 
 detail::ModelFile App::model_file()
@@ -113,54 +148,20 @@ detail::ModelFile App::model_file()
     return file;
 }
 
-void App::restore_screens()
+void App::restore_screens( std::string_view saved )
 {
-    if( screens_path_.empty() ) {
+    if( saved.empty() ) {
+        return; // a new launch
+    }
+    if( !saved.starts_with( state_header ) ) {
+        report_( "app: what Android kept is not this app's: the screens start fresh" );
         return;
     }
-    files::PosixFileSystem files = paths_only();
-    const files::FileReadResult read = files.read( files::FileType::Absolute, screens_path_ );
-    if( !read ) {
-        return; // none: a first start, or the last run ended with a quit
-    }
-    // Shown once: a stack that cannot be built does not come back at every start.
-    forget_screens();
-    if( !stage.keeps_screens() ) {
+    const std::string_view screens = saved.substr( state_header.size() );
+    if( screens.empty() || !stage.keeps_screens() ) {
         return;
     }
-    const std::string_view text( reinterpret_cast<const char *>( read.bytes.data() ),
-                                 read.bytes.size() );
-    static_cast<void>( stage.restore( text ) );
-}
-
-void App::save_screens()
-{
-    if( screens_path_.empty() ) {
-        return;
-    }
-    if( !stage.keeps_screens() || quit_requested() ) {
-        forget_screens();
-        return;
-    }
-    std::array<char, Stage::saved_bytes> text{};
-    const std::size_t length = stage.save( text );
-    if( length == 0 ) {
-        forget_screens(); // nothing to show again, or the Stage said why not
-        return;
-    }
-    const auto *bytes = reinterpret_cast<const std::byte *>( text.data() );
-    const files::FileError error = paths_only().write_atomically(
-        files::FileType::Absolute, screens_path_, std::span<const std::byte>( bytes, length ) );
-    if( error ) {
-        report_( "app: the screens were not saved: " + error.message );
-    }
-}
-
-void App::forget_screens() noexcept
-{
-    if( !screens_path_.empty() ) {
-        static_cast<void>( paths_only().remove( files::FileType::Absolute, screens_path_ ) );
-    }
+    static_cast<void>( stage.restore( screens ) );
 }
 
 void App::handle_event( const app::Event &event )
@@ -169,8 +170,11 @@ void App::handle_event( const app::Event &event )
     if( stage.event( event ) ) {
         return;
     }
-    // Nothing wanted it: back at the root, or the platform asking, leaves.
-    if( event.type == Type::BackRequested || event.type == Type::QuitRequested ) {
+    // Nothing wanted it. Back at the root sends the app to the background,
+    // as Home does (7.8: it quit); the platform asking to quit quits.
+    if( event.type == Type::BackRequested ) {
+        to_background_ = true;
+    } else if( event.type == Type::QuitRequested ) {
         quit_ = true;
     }
 }
@@ -215,7 +219,6 @@ void App::background()
     if( model_ != nullptr ) {
         static_cast<void>( model_->turn() );
     }
-    save_screens();
 }
 
 void App::low_memory()
@@ -261,6 +264,12 @@ bool App::quit_requested() const noexcept
     return quit_ || stage.leave_requested();
 }
 
+bool App::take_background_request() noexcept
+{
+    const bool asked = stage.take_background_request(); // a `back` tap at the root
+    return std::exchange( to_background_, false ) || asked;
+}
+
 void App::shut_down() noexcept
 {
     model_.reset();
@@ -270,10 +279,9 @@ void App::shut_down() noexcept
     std::destroy_at( &line_ );
     std::construct_at( &line_ );
     stage.clear();
-    // A quit forgets where the user was: the next start begins at the start.
-    forget_screens();
     started_ = false;
     quit_ = false;
+    to_background_ = false;
 }
 
 } // namespace sq

@@ -16,6 +16,7 @@
 #include <memory>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace sq::app
 {
@@ -296,13 +297,23 @@ class Stage final
         [[nodiscard]] bool failed() const noexcept { return failed_; }
 
         /**
-         * @brief Whether the stack is kept when the app goes to the
-         * background, to be shown again, panes, scrolls and an unfinished
-         * edit with it, at the next start after Android ended the process:
-         * on, unless an app says otherwise in `squared_main`. A quit forgets it.
+         * @brief Whether the stack is kept for Android, to be shown again,
+         * panes, scrolls and an unfinished edit with it, when Android brings
+         * the app back after ending its process: on, unless an app says
+         * otherwise in `squared_main`. A swipe from the recent apps or a quit
+         * starts the app fresh either way.
          */
         void keep_screens( bool keep ) noexcept { keep_screens_ = keep; }
         [[nodiscard]] bool keeps_screens() const noexcept { return keep_screens_; }
+
+        /**
+         * @brief Whether the system bars (status and navigation) are hidden:
+         * on by default. A swipe from the edge shows them for a moment. A tool
+         * that wants them, such as an editor, turns this off; it takes effect
+         * at the next frame.
+         */
+        void hide_bars( bool hide ) noexcept { hide_bars_ = hide; }
+        [[nodiscard]] bool hides_bars() const noexcept { return hide_bars_; }
 
         /**
          * @brief The stack, a line a screen from the root, then the panes over
@@ -431,6 +442,10 @@ class Stage final
         void set_report( app::Report report ) noexcept { report_ = report; }
         void set_text_input_service( app::TextInputService *service ) noexcept;
         [[nodiscard]] bool leave_requested() const noexcept { return leave_; }
+        [[nodiscard]] bool take_background_request() noexcept
+        {
+            return std::exchange( background_, false );
+        }
         void check_screens() noexcept;
         void low_memory() noexcept;
         [[nodiscard]] std::size_t save( std::span<char> out ) noexcept;
@@ -509,6 +524,7 @@ class Stage final
         void show_row( ListBinding &shown, std::size_t slot ) noexcept;
         void keep_item( ListBinding &shown, std::uint32_t uid, bool keep ) noexcept;
         void list_state( const messaging::Received &received ) noexcept;
+        void size_lists() noexcept;
         void ask_views() noexcept;
         void ask_view( ListBinding &shown ) noexcept;
 
@@ -554,7 +570,9 @@ class Stage final
         bool failed_ = false;
         bool broken_ = false;
         bool leave_ = false;
+        bool background_ = false;
         bool keep_screens_ = true;
+        bool hide_bars_ = true;
         /// The size or the safe area changed: laid out once, at the next event or frame.
         bool layout_due_ = false;
 };

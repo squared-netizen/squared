@@ -57,7 +57,9 @@ the model. Called again only after a quit, when the app starts afresh.
 One for the whole process. The platform makes it the first time and keeps
 it: when Android destroys the activity and makes another in the same process,
 the new one reattaches to the same App, the model keeps running, and the
-screens come back as they were.
+screens come back as they were. A new launch in that process (the app was
+swiped away from the recent apps, and Android kept nothing for it) starts
+fresh instead, as after a quit.
 
 | Member | Does |
 |---|---|
@@ -80,10 +82,12 @@ The App calls them through the Telegraph:
 | short of memory | `low_memory( telegraph )` |
 | a quit | `background`, if it was not already, then it is destroyed on its thread |
 
-**Quitting** comes from `app.quit()`, a `quit` tap, or back at the first
-screen (by the back button or a `back` tap). The model saves and stops, and
-the stack is emptied; the next launch, even in the same process, runs
-`squared_main` again with a new Telegraph, holding nothing of the last run.
+**Quitting** comes from `app.quit()` or a `quit` tap. The model saves and
+stops, and the stack is emptied; the next launch, even in the same process,
+runs `squared_main` again with a new Telegraph, holding nothing of the last
+run. **Back at the first screen** (by the back button or a `back` tap) does
+not quit: it sends the app to the background, as Home does (until 7.8 it
+quit).
 
 The rest of `App` (`create`, `handle_event`, `render`, ...) is the
 platform's `sq::app::Application` ([app.md](app.md)): the platform calls it,
@@ -118,7 +122,8 @@ edit not finished ([What is kept](#what-is-kept)).
 | `bindings()` | how many widgets are bound now (below) |
 | `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
-| `keep_screens( false )` | in `squared_main`: the stack is not kept for the next start ([What is kept](#what-is-kept)); `keeps_screens()` says which |
+| `keep_screens( false )` | in `squared_main`: the stack is not given to Android to keep ([What is kept](#what-is-kept)); `keeps_screens()` says which |
+| `hide_bars( false )` | show the status and navigation bars, which are hidden by default ([The window](#the-window)); from the next frame. `hides_bars()` says which |
 | `describe( report )` | the stack, a line a screen from the root, then the panes, with what each keeps: the Console's `screens` |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
@@ -333,15 +338,20 @@ count again (the rows reach it). An edit put back is the user's still: it
 is sent on Done, or on leaving the field, and what the model says meanwhile
 waits, as for a field with the focus.
 
-**The stack outlives the process.** When the app goes to the background
-the App writes the stack, the panes over the top, and what each keeps, to
-`squared/screens` in the app's private files (whole or not at all: written
-beside it, flushed, renamed). At the next start, after `squared_main`, the
-stack is shown again as it was, and the file is forgotten: shown once. A
-quit forgets it, so a quit's next start begins at `squared_main`'s screen.
-Each screen is found again by its name, so every screen on the stack must be
-a layout file or an added C++ screen; one that is not (a layout pushed that
-`layouts::all()` does not list) keeps nothing, and it is reported.
+**The stack outlives the process, when Android brings the app back.** When
+Android asks what to keep with the activity (its saved instance state), the
+App gives it the stack, the panes over the top, and what each keeps: a few
+hundred bytes, held by Android, not in the app's files. Android hands them
+back only when it ended the process itself (for memory, or the freezer) and
+the user returns to the app; then, after `squared_main`, the stack is shown
+again as it was. A swipe from the recent apps, a quit, a force stop or a
+reboot gives nothing back: the app starts fresh at `squared_main`'s screen
+(decided 2026-10-27). A swipe that leaves the process alive starts fresh as
+well: the App stops the model, which saved when the app left the screen,
+and runs `squared_main` again. Each screen is found again by its name, so
+every screen on the stack must be a layout file or an added C++ screen; one
+that is not (a layout pushed that `layouts::all()` does not list) keeps
+nothing, and it is reported.
 
 ```cpp
 void squared_main( sq::App &app )
@@ -351,9 +361,9 @@ void squared_main( sq::App &app )
 }
 ```
 
-> Android ends a process in the background for its memory, and also when
-> the app is swiped away from the recent apps. Both are kept: only a quit
-> forgets.
+> Until 7.8 the stack was a file, `squared/screens`, and a swipe from the
+> recent apps kept it too. The App removes a file left from then at its
+> first start.
 
 **A model keeps its own values** with a `save`: called after each
 `background` (a quit's too), on the model's thread, it writes the values to
@@ -441,6 +451,13 @@ comes later.
 size and its new safe area wait for the next frame (or the next touch, so a
 finger lands where the widgets are), and are laid out together. A list
 taller than it was builds a row's widgets for each row it now shows.
+
+**The system bars are hidden** (immersive), on Android: the whole screen is
+the app's, and a swipe from an edge shows the bars for a moment. A tool that
+wants them (an editor, where the keyboard and the bars should move the
+layout) says `app.stage.hide_bars( false )`, in `squared_main` or later; it
+takes effect at the next frame. The safe area is what still covers the
+window: a camera cut-out, the keyboard, the bars while shown.
 
 **Short of memory**, Android's `onLowMemory`: screens beneath the top hold
 no widgets already; the Stage frees the working sizes every table's layout

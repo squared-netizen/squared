@@ -1,12 +1,18 @@
 # class Application
 
-*Defined at [app/application.hpp:27](../../../../app/application.hpp#L27)*
+*Defined at [app/application.hpp:29](../../../../app/application.hpp#L29)*
 
 
 
 **brief** Developer-owned application behind a platform-neutral lifecycle.
 
  The generated SDL adapter owns process and platform setup. Developer code implements this interface and uses Squared framework services for ordinary application behavior.
+
+
+
+## Members
+
+public static const std::size_t saved_state_bytes
 
 
 
@@ -42,13 +48,13 @@
 
 *public void ~Application()*
 
-*Defined at [app/application.hpp:30](../../../../app/application.hpp#L30)*
+*Defined at [app/application.hpp:32](../../../../app/application.hpp#L32)*
 
 ### set_text_input_service
 
 *public void set_text_input_service(TextInputService * )*
 
-*Defined at [app/application.hpp:33](../../../../app/application.hpp#L33)*
+*Defined at [app/application.hpp:35](../../../../app/application.hpp#L35)*
 
  Supply the portable application-to-platform text-input service. 
 
@@ -56,7 +62,7 @@
 
 *public void set_report(Report report)*
 
-*Defined at [app/application.hpp:39](../../../../app/application.hpp#L39)*
+*Defined at [app/application.hpp:41](../../../../app/application.hpp#L41)*
 
 
 
@@ -66,7 +72,7 @@
 
 *public void pause()*
 
-*Defined at [app/application.hpp:74](../../../../app/application.hpp#L74)*
+*Defined at [app/application.hpp:76](../../../../app/application.hpp#L76)*
 
 
 
@@ -96,7 +102,7 @@
 
 *public void resume()*
 
-*Defined at [app/application.hpp:77](../../../../app/application.hpp#L77)*
+*Defined at [app/application.hpp:79](../../../../app/application.hpp#L79)*
 
 
 
@@ -106,7 +112,7 @@
 
 *public void foreground()*
 
-*Defined at [app/application.hpp:83](../../../../app/application.hpp#L83)*
+*Defined at [app/application.hpp:85](../../../../app/application.hpp#L85)*
 
 
 
@@ -116,7 +122,7 @@
 
 *public void background()*
 
-*Defined at [app/application.hpp:89](../../../../app/application.hpp#L89)*
+*Defined at [app/application.hpp:91](../../../../app/application.hpp#L91)*
 
 
 
@@ -130,11 +136,51 @@
 
 **brief** Release logical and framework resources before destruction. 
 
+### set_saved_state
+
+*public void set_saved_state(std::span<const std::byte> saved)*
+
+*Defined at [app/application.hpp:104](../../../../app/application.hpp#L104)*
+
+
+
+**brief** What the platform kept for this activity, given before each create(): on Android, its saved instance state. Android keeps it only when it ended the process itself (memory, the freezer) or made the activity again; a swipe from the recent apps, a finish, a force stop or a reboot leaves it empty: a new launch. Valid until create() returns.
+
+### save_state
+
+*public std::size_t save_state(std::span<std::byte> out)*
+
+*Defined at [app/application.hpp:113](../../../../app/application.hpp#L113)*
+
+
+
+**brief** Write what should come back with the activity into `out` (Android's save instance state); the bytes written, 0 for nothing.
+
+### take_background_request
+
+*public bool take_background_request()*
+
+*Defined at [app/application.hpp:124](../../../../app/application.hpp#L124)*
+
+
+
+**brief** Whether the application asked to go to the background (back at its root screen): true once for each time it asked. The platform then moves its task back, as Home does.
+
+### hides_bars
+
+*public bool hides_bars()*
+
+*Defined at [app/application.hpp:127](../../../../app/application.hpp#L127)*
+
+
+
+**brief** Whether the system bars should be hidden (immersive): read on each frame. 
+
 ### low_memory
 
 *public void low_memory()*
 
-*Defined at [app/application.hpp:92](../../../../app/application.hpp#L92)*
+*Defined at [app/application.hpp:130](../../../../app/application.hpp#L130)*
 
 
 
@@ -154,7 +200,7 @@
 
 *public void resize(int , int )*
 
-*Defined at [app/application.hpp:95](../../../../app/application.hpp#L95)*
+*Defined at [app/application.hpp:133](../../../../app/application.hpp#L133)*
 
 
 
@@ -164,7 +210,7 @@
 
 *public void safe_area_changed(const SafeArea & area)*
 
-*Defined at [app/application.hpp:107](../../../../app/application.hpp#L107)*
+*Defined at [app/application.hpp:145](../../../../app/application.hpp#L145)*
 
 
 
@@ -180,7 +226,7 @@
 
 *public void surface_created(graphics::Context & )*
 
-*Defined at [app/application.hpp:110](../../../../app/application.hpp#L110)*
+*Defined at [app/application.hpp:148](../../../../app/application.hpp#L148)*
 
 
 
@@ -190,7 +236,7 @@
 
 *public void surface_destroyed()*
 
-*Defined at [app/application.hpp:117](../../../../app/application.hpp#L117)*
+*Defined at [app/application.hpp:155](../../../../app/application.hpp#L155)*
 
 
 

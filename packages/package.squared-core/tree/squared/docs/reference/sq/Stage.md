@@ -1,6 +1,6 @@
 # class Stage
 
-*Defined at [stage/stage.hpp:136](../../../stage/stage.hpp#L136)*
+*Defined at [stage/stage.hpp:137](../../../stage/stage.hpp#L137)*
 
 
 
@@ -46,7 +46,7 @@ public static const std::size_t scratch_numbers
 
 *public void Stage(const Stage & )*
 
-*Defined at [stage/stage.hpp:176](../../../stage/stage.hpp#L176)*
+*Defined at [stage/stage.hpp:177](../../../stage/stage.hpp#L177)*
 
 ### Stage
 
@@ -56,13 +56,13 @@ public static const std::size_t scratch_numbers
 
 *public void Stage(Stage && )*
 
-*Defined at [stage/stage.hpp:178](../../../stage/stage.hpp#L178)*
+*Defined at [stage/stage.hpp:179](../../../stage/stage.hpp#L179)*
 
 ### add
 
 *public bool add()*
 
-*Defined at [stage/stage.hpp:241](../../../stage/stage.hpp#L241)*
+*Defined at [stage/stage.hpp:242](../../../stage/stage.hpp#L242)*
 
 
 
@@ -132,19 +132,19 @@ public static const std::size_t scratch_numbers
 
 *public Stage & operator=(const Stage & )*
 
-*Defined at [stage/stage.hpp:177](../../../stage/stage.hpp#L177)*
+*Defined at [stage/stage.hpp:178](../../../stage/stage.hpp#L178)*
 
 ### operator=
 
 *public Stage & operator=(Stage && )*
 
-*Defined at [stage/stage.hpp:179](../../../stage/stage.hpp#L179)*
+*Defined at [stage/stage.hpp:180](../../../stage/stage.hpp#L180)*
 
 ### push
 
 *public bool push()*
 
-*Defined at [stage/stage.hpp:198](../../../stage/stage.hpp#L198)*
+*Defined at [stage/stage.hpp:199](../../../stage/stage.hpp#L199)*
 
 
 
@@ -154,7 +154,7 @@ public static const std::size_t scratch_numbers
 
 *public void replace()*
 
-*Defined at [stage/stage.hpp:205](../../../stage/stage.hpp#L205)*
+*Defined at [stage/stage.hpp:206](../../../stage/stage.hpp#L206)*
 
 
 
@@ -164,7 +164,7 @@ public static const std::size_t scratch_numbers
 
 *public bool open()*
 
-*Defined at [stage/stage.hpp:227](../../../stage/stage.hpp#L227)*
+*Defined at [stage/stage.hpp:228](../../../stage/stage.hpp#L228)*
 
 
 
@@ -238,7 +238,7 @@ public static const std::size_t scratch_numbers
 
 *public bool showing()*
 
-*Defined at [stage/stage.hpp:275](../../../stage/stage.hpp#L275)*
+*Defined at [stage/stage.hpp:276](../../../stage/stage.hpp#L276)*
 
 
 
@@ -248,7 +248,7 @@ public static const std::size_t scratch_numbers
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/stage.hpp:287](../../../stage/stage.hpp#L287)*
+*Defined at [stage/stage.hpp:288](../../../stage/stage.hpp#L288)*
 
 
 
@@ -258,7 +258,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:296](../../../stage/stage.hpp#L296)*
+*Defined at [stage/stage.hpp:297](../../../stage/stage.hpp#L297)*
 
 
 
@@ -268,17 +268,33 @@ public static const std::size_t scratch_numbers
 
 *public void keep_screens(bool keep)*
 
-*Defined at [stage/stage.hpp:304](../../../stage/stage.hpp#L304)*
+*Defined at [stage/stage.hpp:306](../../../stage/stage.hpp#L306)*
 
 
 
-**brief** Whether the stack is kept when the app goes to the background, to be shown again, panes, scrolls and an unfinished edit with it, at the next start after Android ended the process: on, unless an app says otherwise in `squared_main`. A quit forgets it.
+**brief** Whether the stack is kept for Android, to be shown again, panes, scrolls and an unfinished edit with it, when Android brings the app back after ending its process: on, unless an app says otherwise in `squared_main`. A swipe from the recent apps or a quit starts the app fresh either way.
 
 ### keeps_screens
 
 *public bool keeps_screens()*
 
-*Defined at [stage/stage.hpp:305](../../../stage/stage.hpp#L305)*
+*Defined at [stage/stage.hpp:307](../../../stage/stage.hpp#L307)*
+
+### hide_bars
+
+*public void hide_bars(bool hide)*
+
+*Defined at [stage/stage.hpp:315](../../../stage/stage.hpp#L315)*
+
+
+
+**brief** Whether the system bars (status and navigation) are hidden: on by default. A swipe from the edge shows them for a moment. A tool that wants them, such as an editor, turns this off; it takes effect at the next frame.
+
+### hides_bars
+
+*public bool hides_bars()*
+
+*Defined at [stage/stage.hpp:316](../../../stage/stage.hpp#L316)*
 
 
 

@@ -390,6 +390,10 @@ region rather than a copy that would go stale.
 2. **Write.** Clear and fill in place. Within the reserved capacity nothing
    allocates or throws, so a call that reaches this pass completes.
 
+`reserve( glyphs, lines )` (7.8) reserves both vectors ahead, for a layout
+kept to be reused: `BatchPainter` makes its scratch layout with room for 64
+glyphs (gui's page).
+
 That keeps the documented guarantee (a failed call leaves the previous layout
 unchanged) without the old way of providing it: building a complete second
 layout and moving it over the first. That cost two allocations per call,

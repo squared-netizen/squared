@@ -705,10 +705,12 @@ struct Platform final
         sq::assets::AssetManager cache;
         sq::app::Runtime runtime;
 
-        /// What the template does when a window comes: create, the surface, the size.
-        void open( sq::App &app )
+        /// What the template does when a window comes: what Android kept
+        /// for the activity (nothing: a new launch), create, the surface, the size.
+        void open( sq::App &app, std::span<const std::byte> saved = {} )
         {
             app.set_report( { .write = collect, .context = nullptr } );
+            app.set_saved_state( saved );
             CHECK( app.create( runtime ) );
             app.surface_created( graphics );
             app.resize( pixel_width, pixel_height );
@@ -720,6 +722,27 @@ struct Platform final
             app.render( graphics );
         }
 };
+
+/// What Android keeps for the activity, as its save instance state asks the App.
+std::vector<std::byte> kept_for_android( sq::App &app )
+{
+    std::vector<std::byte> out( sq::App::saved_state_bytes );
+    out.resize( app.save_state( out ) );
+    return out;
+}
+
+/// `text` as bytes Android kept.
+std::vector<std::byte> bytes_of( std::string_view text )
+{
+    const auto *first = reinterpret_cast<const std::byte *>( text.data() );
+    return { first, first + text.size() };
+}
+
+/// Bytes Android kept, as text.
+std::string text_of( std::span<const std::byte> bytes )
+{
+    return { reinterpret_cast<const char *>( bytes.data() ), bytes.size() };
+}
 
 /// The button in `table` that says `text`; nullptr when there is none.
 sq::gui::Button *button_in( sq::gui::Widget &table, std::string_view text )
@@ -842,6 +865,12 @@ void starts_and_navigates()
     CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
     CHECK( widgets_of( app )->content()->child_count() == 8 );
 
+    // The system bars are hidden unless the app says otherwise (7.8).
+    CHECK( app.hides_bars() );
+    app.stage.hide_bars( false );
+    CHECK( !app.hides_bars() && !app.stage.hides_bars() );
+    app.stage.hide_bars( true );
+
     // The model's first state arrives, and a tap's telegram reaches it.
     platform.frame( app );
     CHECK( app.telegraph().value( sound ) == true );
@@ -898,20 +927,31 @@ void starts_and_navigates()
 
     // An activity made again (no quit): the model runs on, squared_main
     // does not run again, and the stack comes back with new widgets.
+    // Android keeps what the App gives it for the new one.
     app.stage.push( settings.layout );
+    const std::vector<std::byte> android = kept_for_android( app );
     app.dispose();
     CHECK( app.running() );
     CHECK( widgets_of( app ) == nullptr );
     Platform again( assets_directory() );
-    again.open( app );
+    again.open( app, android );
     CHECK( mains == 1 && counts.made == 1 );
     CHECK( app.stage.depth() == 2 && app.stage.top() == &settings.layout );
     CHECK( button( app, "Back" ) != nullptr );
     tap( app, "Back" );
 
-    // Back at the root leaves; the model saves and stops.
+    // Back at the root sends the app to the background, as Home does: it
+    // does not quit (it did until 7.8). Asked once, taken once.
+    CHECK( !app.take_background_request() );
     press_back( app );
+    CHECK( !app.quit_requested() && app.stage.depth() == 1 );
+    CHECK( app.take_background_request() && !app.take_background_request() );
+
+    // A quit: the model saves and stops, and Android is given nothing to keep.
+    app.quit();
     CHECK( app.quit_requested() );
+    std::array<std::byte, 64> none{};
+    CHECK( app.save_state( none ) == 0 );
     const int saves = counts.saves;
     app.dispose();
     CHECK( !app.running() );
@@ -1019,7 +1059,8 @@ void cpp_screens()
     app.stage.replace<About>();
     CHECK( app.stage.depth() == 1 && app.stage.showing<About>() );
     tap( app, "Back" );
-    CHECK( app.quit_requested() );
+    CHECK( !app.quit_requested() && app.take_background_request() );
+    app.quit();
     app.dispose();
 
     // After the quit, squared_main adds them again; nothing is said twice.
@@ -1143,10 +1184,11 @@ void panes()
     }
 
     // An activity made again: the screen and its panes come back, built anew.
+    const std::vector<std::byte> android = kept_for_android( app );
     app.dispose();
     CHECK( widgets_of( app ) == nullptr && app.stage.panes() == 4 );
     Platform again( assets_directory() );
-    again.open( app );
+    again.open( app, android );
     CHECK( app.stage.panes() == 4 && widgets_of( app )->pane_count() == 4 );
     CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
 
@@ -1157,7 +1199,8 @@ void panes()
     CHECK( app.stage.panes() == 0 && widgets_of( app )->pane_count() == 0 );
     CHECK( !app.quit_requested() );
     press_back( app );
-    CHECK( app.quit_requested() );
+    CHECK( !app.quit_requested() && app.take_background_request() );
+    app.quit();
     app.dispose();
 }
 
@@ -1710,9 +1753,10 @@ void kept_beneath_the_top()
     auto *draft = pane_field( app, 0 );
     tap_on( app, *draft );
     CHECK( draft->text_input( "pane" ) );
+    const std::vector<std::byte> android = kept_for_android( app );
     app.dispose();
     Platform again( assets_directory() );
-    again.open( app );
+    again.open( app, android );
     root = widgets_of( app )->content();
     CHECK( sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->scroll_y() == 120.0F );
     CHECK( sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) )->edited() );
@@ -1769,12 +1813,15 @@ void kept_after_the_process()
     start = Start::inline_model;
     reports.clear();
     const std::string local = private_files( "keep" );
-    const std::string screens = local + "/squared/screens";
+    const std::string screens = local + "/squared/screens"; // 7.6's; no longer written
     const std::string model = local + "/squared/model.state";
+    std::filesystem::create_directories( local + "/squared" );
+    write_file( screens, "squared screens 1\nscreen notes 0 - -\n" ); // left by 7.7
     Platform platform( assets_directory(), local );
     sq::App &app = the_app;
     platform.open( app );
     CHECK( std::filesystem::is_directory( local + "/squared" ) );
+    CHECK( !std::filesystem::exists( screens ) && app.stage.depth() == 1 ); // removed, not shown
     platform.frame( app );
     tap( app, "Quiet" ); // the model's sound off
     const sq::messaging::SendResult zed = app.telegraph().set( player, std::string_view( "zed" ) );
@@ -1802,13 +1849,15 @@ void kept_after_the_process()
     CHECK( pane_field( app, 1 )->text_input( "\xC3\xA9" ) );
     platform.frame( app );
 
-    // To the background: the stack is written, whole; the model saves.
+    // To the background: the model saves; Android is given the stack, whole.
     const int saved = counts.saved;
     app.background();
     CHECK( counts.saved == saved + 1 ); // on this thread: at once
-    const std::string written = read_file( screens );
+    const std::vector<std::byte> android = kept_for_android( app );
+    const std::string written = text_of( android );
     const long offset = std::lround( list->scroll_y() );
-    const std::string expected = "squared screens 1\n"
+    const std::string expected = "squared app 1\n"
+                                 "squared screens 1\n"
                                  "screen landing 0 - -\n"
                                  "screen notes 1 300 1 x68692022796f7522\n"
                                  "screen shelf 1 " +
@@ -1818,7 +1867,7 @@ void kept_after_the_process()
                                  "pane draft 0 0 xc3a9\n";
     std::printf( "%s", written.c_str() );
     CHECK( written == expected );
-    CHECK( !std::filesystem::exists( screens + ".new" ) );
+    CHECK( !std::filesystem::exists( screens ) );
     const std::string kept = read_file( model );
     CHECK( kept.find( "set settings.sound false\n" ) != std::string::npos );
     CHECK( kept.find( "set player.name \"zed\"\n" ) != std::string::npos );
@@ -1834,11 +1883,10 @@ void kept_after_the_process()
     reports.clear();
     const int made = counts.made;
     Platform after( assets_directory(), local );
-    after.open( app );
+    after.open( app, android );
     CHECK( counts.made == made + 1 );
     CHECK( app.stage.depth() == 3 && app.stage.top_name() == "shelf" );
     CHECK( app.stage.panes() == 2 && app.stage.pane_name() == "draft" );
-    CHECK( !std::filesystem::exists( screens ) ); // shown once
     auto *draft = pane_field( app, 1 );
     CHECK( draft->text() == "\xC3\xA9" && draft->edited() );
     tap( app, "Drop" );
@@ -1867,55 +1915,51 @@ void kept_after_the_process()
     CHECK( reported( "the model's save could not be written" ) );
     std::filesystem::remove( model );
 
-    // A quit forgets the screens, in the background and when it ends; the
+    // A quit: Android is given nothing, so the next launch is fresh; the
     // model's save stays.
-    press_back( app );
-    app.background();
-    CHECK( std::filesystem::exists( screens ) && std::filesystem::exists( model ) );
-    app.foreground();
-    press_back( app );
-    CHECK( app.quit_requested() );
-    app.background();
-    CHECK( !std::filesystem::exists( screens ) );
-    write_file( screens, "squared screens 1\nscreen landing 0 - -\n" );
+    app.quit();
+    CHECK( kept_for_android( app ).empty() );
     app.dispose();
-    CHECK( !std::filesystem::exists( screens ) && std::filesystem::exists( model ) );
+    CHECK( std::filesystem::exists( model ) );
 
-    // A saved stack that cannot be shown is said, and forgotten; the stack
-    // is squared_main's.
-    write_file( screens, "squared screens 1\nscreen landing 0 - -\nscreen nowhere 0 - -\n" );
+    // What Android kept that cannot be shown is said; the stack is squared_main's.
     reports.clear();
     Platform bad( assets_directory(), local );
-    bad.open( app );
+    bad.open( app, bytes_of( "squared app 1\nsquared screens 1\nscreen landing 0 - -\n"
+                             "screen nowhere 0 - -\n" ) );
     CHECK( reported( "the screens kept were not shown again: line 3: no layout or added screen" ) );
-    CHECK( app.stage.depth() == 1 && !std::filesystem::exists( screens ) );
-    const auto refused = [&app, &screens, &local]( std::string_view wrong ) {
+    CHECK( app.stage.depth() == 1 );
+    const auto refused = [&app, &local]( std::string_view wrong, std::string_view said ) {
         new_process();
-        write_file( screens, wrong );
         reports.clear();
         Platform again( assets_directory(), local );
-        again.open( app );
-        CHECK( reported( "the screens kept were not shown again" ) && app.stage.depth() == 1 );
+        again.open( app, bytes_of( wrong ) );
+        CHECK( reported( said ) && app.stage.depth() == 1 );
     };
-    refused( "squared screens 2\nscreen landing 0 - -\n" );
-    refused( "squared screens 1\npane side 0 - -\n" );
-    refused( "squared screens 1\nscreen side 0 - -\n" );
-    refused( "squared screens 1\nscreen notes 5 1 2 3 4 5 - -\n" );
-    refused( "squared screens 1\nscreen notes 0 1 xa\n" );
-    refused( "squared screens 1\nscreen notes 0 - - more\n" );
-    refused( "squared screens 1\nscreen landing 0 - -\npane side 0 - -\nscreen notes 0 - -\n" );
-    refused( "squared screens 1\nscreen notes 1 -5 - -\n" );
+    constexpr std::string_view not_shown = "the screens kept were not shown again";
+    refused( "squared app 1\nsquared screens 2\nscreen landing 0 - -\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\npane side 0 - -\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen side 0 - -\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen notes 5 1 2 3 4 5 - -\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen notes 0 1 xa\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen notes 0 - - more\n", not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen landing 0 - -\npane side 0 - -\n"
+             "screen notes 0 - -\n",
+             not_shown );
+    refused( "squared app 1\nsquared screens 1\nscreen notes 1 -5 - -\n", not_shown );
+    refused( "squared screens 1\nscreen landing 0 - -\n", "what Android kept is not this app's" );
 
-    // An app that keeps none: nothing written, and a file there is not shown.
+    // An app that keeps none: what Android kept is not shown, and it is given
+    // the first line alone (which still tells a kept activity from a new launch).
     keep_screens = false;
     new_process();
-    write_file( screens, "squared screens 1\nscreen landing 0 - -\nscreen notes 0 - -\n" );
     Platform off( assets_directory(), local );
-    off.open( app );
-    CHECK( app.stage.depth() == 1 && !std::filesystem::exists( screens ) );
+    off.open( app, bytes_of( "squared app 1\nsquared screens 1\nscreen landing 0 - -\n"
+                             "screen notes 0 - -\n" ) );
+    CHECK( app.stage.depth() == 1 );
     CHECK( app.stage.push<Notes>() );
     app.background();
-    CHECK( !std::filesystem::exists( screens ) );
+    CHECK( text_of( kept_for_android( app ) ) == "squared app 1\n" );
     keep_screens = true;
 
     // A screen pushed by its layout alone, not found by its name: nothing kept.
@@ -1928,8 +1972,8 @@ void kept_after_the_process()
     CHECK( app.stage.push( loose.layout ) );
     reports.clear();
     app.background();
+    CHECK( text_of( kept_for_android( app ) ) == "squared app 1\n" );
     CHECK( reported( "the screens are not kept: loose is not found by its name" ) );
-    CHECK( !std::filesystem::exists( screens ) );
     app.quit();
     app.dispose();
     std::filesystem::remove_all( local );
@@ -1984,7 +2028,7 @@ void a_new_activity_forgets_the_old_one()
     app.dispose();
 }
 
-void back_tap_at_the_root_leaves()
+void back_tap_at_the_root_goes_to_the_background()
 {
     start = Start::no_model;
     Platform platform( assets_directory() );
@@ -1994,9 +2038,104 @@ void back_tap_at_the_root_leaves()
     CHECK( app.stage.depth() == 1 && app.stage.top() == &settings.layout );
     tap( app, "Back" );
     CHECK( app.stage.depth() == 1 );
+    CHECK( !app.quit_requested() && app.take_background_request() );
+    CHECK( !app.take_background_request() );
+    app.quit();
     CHECK( app.quit_requested() );
     app.dispose();
     CHECK( !app.quit_requested() && app.stage.depth() == 0 );
+}
+
+/// Swiped away in the recent apps while the process lives on: the next
+/// activity comes with nothing Android kept, a new launch, and starts fresh,
+/// as after a quit. One Android made again keeps the run.
+void a_swipe_starts_fresh()
+{
+    start = Start::inline_model;
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    const int mains_before = mains;
+    const int made = counts.made;
+    platform.frame( app );
+    CHECK( app.stage.push( settings.layout ) );
+    const int saves = counts.saves;
+    app.background(); // the model saves as the app leaves the screen
+    CHECK( counts.saves == saves + 1 );
+    const std::vector<std::byte> kept = kept_for_android( app );
+    CHECK( text_of( kept ).starts_with( "squared app 1\nsquared screens 1\nscreen landing" ) );
+    app.dispose(); // not a quit: the activity goes, the process and the model stay
+    CHECK( app.running() );
+
+    // A new launch: nothing kept. squared_main again, a new model, the first screen.
+    Platform again( assets_directory() );
+    again.open( app );
+    CHECK( mains == mains_before + 1 && counts.made == made + 1 );
+    CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
+    CHECK( counts.saves == saves + 1 ); // the old model stopped with nothing more to save
+
+    // An activity Android made again: the same run, the same stack.
+    CHECK( app.stage.push( settings.layout ) );
+    const std::vector<std::byte> again_kept = kept_for_android( app );
+    app.dispose();
+    Platform third( assets_directory() );
+    third.open( app, again_kept );
+    CHECK( mains == mains_before + 1 && counts.made == made + 1 );
+    CHECK( app.stage.depth() == 2 );
+
+    // With no screens kept, the first line alone still keeps the run.
+    app.stage.keep_screens( false );
+    const std::vector<std::byte> header = kept_for_android( app );
+    CHECK( text_of( header ) == "squared app 1\n" );
+    app.dispose();
+    Platform fourth( assets_directory() );
+    fourth.open( app, header );
+    CHECK( counts.made == made + 1 && app.stage.depth() == 2 );
+    app.stage.keep_screens( true );
+    app.quit();
+    app.dispose();
+}
+
+/// Showing a list, and values that grow as they come, allocate when a
+/// screen is built, never in a frame (7.8: hello's two sites, pkg58's run).
+void frames_after_a_build_allocate_nothing()
+{
+    start = Start::inline_model;
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    const auto frames = [&]( int count ) {
+        for( int i = 0; i < count; ++i ) {
+            sq::dev::frame_begin();
+            platform.frame( app );
+            const sq::dev::FrameAllocations made = sq::dev::frame_end();
+            CHECK( made.count == 0 );
+        }
+    };
+    // A list in a pane, then on a screen: sized when built, not in a frame.
+    CHECK( app.stage.open<ShelfPane>() );
+    frames( 30 );
+    sq::gui::Actor *in_pane = window( app, 0 ).content_table().child_at( 0 );
+    sq::gui::List &pane_list = *sq::gui::actor_cast<sq::gui::List>( in_pane );
+    const std::size_t first = pane_list.slot_showing( 0 ); // its row is the label itself
+    CHECK( first < pane_list.rows_built() );
+    const sq::gui::Actor *cell = pane_list.table( first ).child_at( 0 );
+    const auto *title = static_cast<const sq::gui::Label *>( cell );
+    CHECK( title != nullptr && title->text() == "book 1" );
+    CHECK( app.stage.close() );
+    CHECK( app.stage.push<Shelf>() ); // a list of 1,000 books
+    frames( 30 );
+    // A value that comes longer than any text this window has laid out (14
+    // characters, within a string's own room): the painter has room for it.
+    CHECK( app.stage.back() );
+    CHECK( app.stage.push<Bound>() );
+    frames( 3 );
+    const std::string_view longer = "abcdefghijklmn";
+    CHECK( app.telegraph().set( player, longer ) == sq::messaging::SendResult::sent );
+    frames( 5 );
+    CHECK( app.telegraph().value( player ) == longer );
+    app.quit();
+    app.dispose();
 }
 
 void no_skin_draws_red()
@@ -2015,7 +2154,8 @@ void no_skin_draws_red()
     CHECK( app.stage.depth() == 1 ); // the stack is kept: a window with the skin builds it
     platform.frame( app );
     press_back( app );
-    CHECK( app.quit_requested() );
+    CHECK( !app.quit_requested() );
+    app.quit();
     app.dispose();
     sq::detail::StageProbe::read_skin_from( app.stage, nullptr );
 }
@@ -2080,7 +2220,9 @@ int main()
     kept_beneath_the_top();
     kept_after_the_process();
     a_new_activity_forgets_the_old_one();
-    back_tap_at_the_root_leaves();
+    back_tap_at_the_root_goes_to_the_background();
+    a_swipe_starts_fresh();
+    frames_after_a_build_allocate_nothing();
     no_skin_draws_red();
     a_bad_layout_is_said();
     std::printf( "stage_test: ok (%zu lines reported)\n", reports.size() );

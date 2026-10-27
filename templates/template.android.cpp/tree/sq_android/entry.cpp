@@ -16,8 +16,14 @@
 //   * runs your app through sq::App, which lives as long as the process: an
 //     activity Android makes again reattaches to it, and your model runs on
 //   * translates NativeActivity lifecycle and input into sq::app::Event
-//   * measures the system bars and camera cut-out and tells the application
-//     (sq::app::SafeArea), because Android draws the app edge to edge
+//   * hides the system bars (immersive) unless the application says not to,
+//     on Android's UI thread, which this file reaches without Java (below)
+//   * measures what covers the window - a camera cut-out, the keyboard, the
+//     bars when shown - and tells the application (sq::app::SafeArea), on
+//     events only: a new window, a rotation, the bars hidden, the keyboard
+//   * hands Android the application's screens to keep with the activity (its
+//     saved instance state), and gives them back when Android brings it back
+//   * sends the app to the background when it asks (back at its root screen)
 //   * measures frame time and drives update() separately from render()
 //   * shows the soft keyboard for a text field and turns key presses into
 //     typed text (android_text.cpp: the Java side, through JNI)
@@ -54,11 +60,15 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <span>
 #include <string_view>
 
 // Development builds only (`make DEV_LOG=1`): every log line below is also sent
@@ -261,6 +271,20 @@ jint call_int(JNIEnv* env, jobject target, const char* name, jint fallback) {
         return fallback;
     }
     return result;
+}
+
+/// Call a void method that takes one int. False on any failure.
+bool call_void_int(JNIEnv* env, jobject target, const char* name, jint value) {
+    if (target == nullptr) return false;
+    jclass type = env->GetObjectClass(target);
+    jmethodID method = type != nullptr ? env->GetMethodID(type, name, "(I)V") : nullptr;
+    if (method != nullptr) env->CallVoidMethod(target, method, value);
+    if (type != nullptr) env->DeleteLocalRef(type);
+    if (env->ExceptionCheck() != JNI_FALSE) {
+        env->ExceptionClear();
+        return false;
+    }
+    return method != nullptr;
 }
 
 #ifdef SQUARED_CONSOLE
@@ -474,6 +498,131 @@ sq::files::AndroidStorageRoots storage_roots(const android_app* native) {
                              ? activity->externalDataPath : ""};
 }
 
+// ---------------------------------------------------------------------------
+// The UI thread: Android's main thread. A window's views belong to it, so the
+// calls that hide the system bars must run there, while everything else in
+// this file runs on the glue's thread. The manifest names squared_on_create
+// (android.app.func_name) as the activity's entry: it runs on the UI thread,
+// adds a pipe to that thread's looper, then starts the glue as its own entry
+// would have. The glue's thread writes a byte into the pipe, a job; the UI
+// thread runs it. No Java: a few JNI calls, on the thread they belong to.
+// After the start, nothing is allocated: a job is one byte in a pipe.
+// ---------------------------------------------------------------------------
+
+enum class UiJob : std::uint8_t {
+    hide_bars = 1,
+    show_bars = 2,
+    to_back = 3,
+};
+
+/// One activity's way to its UI thread.
+struct UiThread {
+    std::atomic<ANativeActivity*> activity{nullptr};
+    int read_fd{-1};
+    int write_fd{-1};
+};
+
+/// Two: Android may make the next activity before the last one is destroyed.
+std::array<UiThread, 2> ui_threads;
+
+/// The glue's onDestroy, which squared_on_destroy calls first.
+void (*glue_on_destroy)(ANativeActivity*) = nullptr;
+
+/// The flags that hid the bars before API 30 (View.SYSTEM_UI_FLAG_*): hide
+/// both, lay out as if they were hidden, and let a swipe show them a moment.
+constexpr jint kLayoutStable = 0x100, kLayoutHideNavigation = 0x200, kLayoutFullscreen = 0x400;
+constexpr jint kHideNavigation = 0x2, kFullscreen = 0x4, kImmersiveSticky = 0x1000;
+constexpr jint kImmersiveFlags = kLayoutStable | kLayoutHideNavigation | kLayoutFullscreen |
+                                 kHideNavigation | kFullscreen | kImmersiveSticky;
+/// WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE (API 30).
+constexpr jint kTransientBarsBySwipe = 2;
+constexpr int kInsetsControllerApi = 30;
+constexpr int kImmersiveApi = 19;
+
+/// Hide or show the status and navigation bars. UI thread only.
+void set_bars(JNIEnv* env, jobject activity, int api_level, bool hide) {
+    jobject window = call_object(env, activity, "getWindow", "()Landroid/view/Window;");
+    if (window == nullptr) return;
+    if (api_level >= kInsetsControllerApi) {
+        jobject controller = call_object(env, window, "getInsetsController",
+                                         "()Landroid/view/WindowInsetsController;");
+        jclass types = env->FindClass("android/view/WindowInsets$Type");
+        jmethodID bars = types != nullptr ? env->GetStaticMethodID(types, "systemBars", "()I")
+                                          : nullptr;
+        const jint which = bars != nullptr ? env->CallStaticIntMethod(types, bars) : 0;
+        if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+        if (controller != nullptr && which != 0) {
+            call_void_int(env, controller, "setSystemBarsBehavior", kTransientBarsBySwipe);
+            call_void_int(env, controller, hide ? "hide" : "show", which);
+        }
+        if (types != nullptr) env->DeleteLocalRef(types);
+        if (controller != nullptr) env->DeleteLocalRef(controller);
+    } else if (api_level >= kImmersiveApi) {
+        jobject decor = call_object(env, window, "getDecorView", "()Landroid/view/View;");
+        call_void_int(env, decor, "setSystemUiVisibility", hide ? kImmersiveFlags : 0);
+        if (decor != nullptr) env->DeleteLocalRef(decor);
+    }
+    env->DeleteLocalRef(window);
+}
+
+/// Activity.moveTaskToBack(true): to the background, as Home does. Any thread.
+void move_task_to_back(JNIEnv* env, jobject activity) {
+    if (env == nullptr || activity == nullptr) return;
+    jclass type = env->GetObjectClass(activity);
+    jmethodID move = type != nullptr ? env->GetMethodID(type, "moveTaskToBack", "(Z)Z") : nullptr;
+    if (move != nullptr) static_cast<void>(env->CallBooleanMethod(activity, move, JNI_TRUE));
+    if (type != nullptr) env->DeleteLocalRef(type);
+    if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+}
+
+/// The looper's callback, on the UI thread: run each job waiting in the pipe.
+int on_ui_jobs(int fd, int events, void* data) {
+    auto& thread = *static_cast<UiThread*>(data);
+    ANativeActivity* activity = thread.activity.load(std::memory_order_acquire);
+    std::array<UiJob, 8> jobs{};
+    ssize_t got = 0;
+    while ((got = read(fd, jobs.data(), sizeof(jobs))) > 0) {
+        for (ssize_t i = 0; i < got && activity != nullptr; ++i) {
+            switch (jobs[static_cast<std::size_t>(i)]) {
+                case UiJob::hide_bars:
+                case UiJob::show_bars:
+                    set_bars(activity->env, activity->clazz, activity->sdkVersion,
+                             jobs[static_cast<std::size_t>(i)] == UiJob::hide_bars);
+                    break;
+                case UiJob::to_back:
+                    move_task_to_back(activity->env, activity->clazz);
+                    break;
+            }
+        }
+    }
+    return (events & (ALOOPER_EVENT_HANGUP | ALOOPER_EVENT_ERROR)) != 0 ? 0 : 1;
+}
+
+/// Hand `job` to `activity`'s UI thread. False when it has none (the manifest
+/// does not name squared_on_create), or the pipe is full.
+bool post_ui_job(const ANativeActivity* activity, UiJob job) {
+    for (UiThread& thread : ui_threads) {
+        if (thread.activity.load(std::memory_order_acquire) == activity && thread.write_fd >= 0) {
+            return write(thread.write_fd, &job, 1) == 1;
+        }
+    }
+    return false;
+}
+
+/// After the glue's own: its thread has ended, so nothing writes any more.
+void squared_on_destroy(ANativeActivity* activity) {
+    if (glue_on_destroy != nullptr) glue_on_destroy(activity);
+    for (UiThread& thread : ui_threads) {
+        if (thread.activity.load(std::memory_order_acquire) != activity) continue;
+        ALooper_removeFd(ALooper_forThread(), thread.read_fd);
+        close(thread.read_fd);
+        close(thread.write_fd);
+        thread.read_fd = -1;
+        thread.write_fd = -1;
+        thread.activity.store(nullptr, std::memory_order_release);
+    }
+}
+
 /// The App: one for the whole process, made the first time it is asked for.
 ///
 /// Not a member of Platform, which lives as long as one activity. Android can
@@ -507,7 +656,15 @@ struct Platform {
         , runtime{graphics, files, assets}
         , vm(native->activity->vm)
         , activity(native->activity->clazz)
+        , native_activity(native->activity)
         , api_level(native->config != nullptr ? AConfiguration_getSdkVersion(native->config) : 0) {
+        // What Android kept for this activity. The glue frees it at the first
+        // resume, before there is a window to start the App in: taken now,
+        // and freed once the App has read it.
+        saved_state.reset(native->savedState);
+        saved_state_size = native->savedState != nullptr ? native->savedStateSize : 0;
+        native->savedState = nullptr;
+        native->savedStateSize = 0;
         if (!text.create(jni(), native->activity)) {
             SQ_LOGW("text: the keyboard, key characters or the clipboard is not reachable");
         }
@@ -1124,6 +1281,22 @@ struct Platform {
     /// outlive the platform object.
     JavaVM* vm;
     jobject activity;
+    /// The activity, for its UI thread (post_ui_job).
+    const ANativeActivity* native_activity;
+
+    /// What Android kept for this activity (malloc'd by the glue): until the
+    /// App's first create().
+    struct Free {
+        void operator()(void* bytes) const noexcept { std::free(bytes); }
+    };
+    std::unique_ptr<void, Free> saved_state;
+    std::size_t saved_state_size{0};
+
+    /// The bars as last asked of the UI thread; asked again on each focus.
+    bool bars_hidden{false};
+    bool bars_asked{false};
+    /// The keyboard was up at the last frame: measured while it is.
+    bool keyboard_up{false};
 
     /// The device's API level, read once from the configuration NativeActivity
     /// already holds. What the device lacks is decided from this, by comparing
@@ -1166,7 +1339,13 @@ struct Platform {
     /// logged, if its create() failed.
     bool start_app() {
         app.set_report({.write = report_line, .context = this});
-        if (!app.create(runtime)) {
+        // Once: an `app start` later in this activity is a new launch.
+        app.set_saved_state({static_cast<const std::byte*>(saved_state.get()), saved_state_size});
+        const bool made = app.create(runtime);
+        app.set_saved_state({});
+        saved_state.reset();
+        saved_state_size = 0;
+        if (!made) {
             SQ_LOGW("app: create() failed");
             return false;
         }
@@ -1203,9 +1382,11 @@ struct Platform {
     /// Measure the bars and tell the application if they changed.
     ///
     /// The numbers are not available at the first frame - the window has not
-    /// been laid out yet - and change on rotation, so this runs after a size
-    /// change and then about twice a second. An unchanged answer costs the
-    /// JNI calls and nothing else.
+    /// been laid out yet - and change on rotation, when the bars are hidden or
+    /// shown, and with the keyboard, so this runs on the frames after each of
+    /// those (fast_measure_frames) and, while the keyboard is up, every 30
+    /// frames (the user can close it without telling us). Never otherwise.
+    /// An unchanged answer costs the JNI calls and nothing else.
     void sync_safe_area() {
         frames_since_measure = 0;
         const sq::app::SafeArea measured = api_level >= kInsetsApi
@@ -1323,6 +1504,44 @@ struct Platform {
     }
 #endif
 
+    /// Hide or show the system bars as the application wants: asked of the UI
+    /// thread when that changes, and again after each focus (a dialog or the
+    /// keyboard may have brought them back). Then measured for a while: the
+    /// bars slide.
+    void sync_bars() {
+        if (!created) return;
+        const bool hide = app.hides_bars();
+        if (bars_asked && hide == bars_hidden) return;
+        bars_asked = true;
+        bars_hidden = hide;
+        if (post_ui_job(native_activity, hide ? UiJob::hide_bars : UiJob::show_bars)) {
+            fast_measure_frames = std::max(fast_measure_frames, 24);
+        }
+    }
+
+    /// The application asked to go to the background (back at its root):
+    /// the task moves back, as Home does. Through the UI thread; from here
+    /// when there is none (the manifest without squared_on_create).
+    void to_background() {
+        if (!post_ui_job(native_activity, UiJob::to_back)) move_task_to_back(jni(), activity);
+    }
+
+    /// Android asks what to keep with the activity: the App's bytes, copied
+    /// with malloc into the glue's savedState, which hands them to Android
+    /// and frees them. 8 KB on this thread's stack, for the asking.
+    void save_state(android_app* native) {
+        if (!created) return;
+        std::array<std::byte, sq::app::Application::saved_state_bytes> out{};
+        const std::size_t length = app.save_state(out);
+        if (length == 0) return;
+        void* copy = std::malloc(length);
+        if (copy == nullptr) return;
+        std::memcpy(copy, out.data(), length);
+        native->savedState = copy;
+        native->savedStateSize = length;
+        SQ_LOGI("saved state: %zu bytes, for Android to keep with the activity", length);
+    }
+
     /// Name the GL driver once, after the first context is current: what a
     /// report from a device needs, and three calls.
     ///
@@ -1372,11 +1591,21 @@ struct Platform {
         if (delta > maximum_delta) delta = maximum_delta;
 
         sync_size(false);
+        sync_bars();
+        // The keyboard shown or hidden: it slides, so measure for a while.
+        bool keyboard = text_input.active();
+#ifdef SQUARED_CONSOLE
+        keyboard = keyboard || (console_focused && console.shown());
+#endif
+        if (keyboard != keyboard_up) {
+            keyboard_up = keyboard;
+            fast_measure_frames = std::max(fast_measure_frames, 24);
+        }
         constexpr int measure_interval_frames = 30;
         if (fast_measure_frames > 0) {
             --fast_measure_frames;
             sync_safe_area();
-        } else if (++frames_since_measure >= measure_interval_frames) {
+        } else if (keyboard_up && ++frames_since_measure >= measure_interval_frames) {
             sync_safe_area();
         }
 #ifdef SQUARED_DEV_LOG
@@ -1458,6 +1687,7 @@ void on_command(android_app* app, int32_t command) {
 
         case APP_CMD_GAINED_FOCUS: {
             platform.has_focus = true;
+            platform.bars_asked = false;  // asked again at the next frame
             if (platform.created) platform.app.resume();
             // The clock stopped meaning anything while backgrounded.
             platform.last_frame = Clock::now();
@@ -1477,9 +1707,9 @@ void on_command(android_app* app, int32_t command) {
         }
 
         case APP_CMD_SAVE_STATE:
-            // Nothing to persist yet. When you add state, allocate it with
-            // malloc into app->savedState and set app->savedStateSize; the
-            // glue frees it for you.
+            // What comes back if Android ends the process and brings the app
+            // back; nothing does after a swipe from the recent apps or a quit.
+            platform.save_state(app);
             break;
 
         case APP_CMD_DESTROY:
@@ -1664,6 +1894,12 @@ void android_main(android_app* app) {
     char process[128];
     process_name(process, sizeof(process));
     SQ_LOGI("device: API %d, process %s", platform->api_level, process);
+    if (platform->saved_state_size != 0) {
+        SQ_LOGI("saved state: %zu bytes: Android brings the activity back",
+                platform->saved_state_size);
+    } else {
+        SQ_LOGI("saved state: none: a new launch");
+    }
     app->onAppCmd = on_command;
     app->onInputEvent = on_input;
 
@@ -1695,6 +1931,10 @@ void android_main(android_app* app) {
             SQ_LOGI("finishing");
             platform->finishing = true;
             ANativeActivity_finish(app->activity);
+        }
+        if (!platform->finishing && platform->created && platform->app.take_background_request()) {
+            SQ_LOGI("to the background");
+            platform->to_background();
         }
 
         // Block only when there is nothing to draw. With a live surface we
@@ -1742,4 +1982,32 @@ void android_main(android_app* app) {
         // done, and its last frame should be the one it chose.
         if (!platform->finishing) platform->frame();
     }
+}
+
+/// The activity's entry, named in the manifest (android.app.func_name), on
+/// Android's UI thread: the way to that thread for the glue's (UiThread,
+/// above), then the glue's own entry, which starts android_main.
+extern "C" JNIEXPORT void squared_on_create(ANativeActivity* activity, void* saved_state,
+                                            size_t saved_state_size) {
+    for (UiThread& thread : ui_threads) {
+        if (thread.activity.load(std::memory_order_acquire) != nullptr) continue;
+        std::array<int, 2> fds{};
+        ALooper* looper = ALooper_forThread();
+        if (looper == nullptr || pipe2(fds.data(), O_NONBLOCK | O_CLOEXEC) != 0) break;
+        thread.read_fd = fds[0];
+        thread.write_fd = fds[1];
+        if (ALooper_addFd(looper, thread.read_fd, ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT,
+                          on_ui_jobs, &thread) != 1) {
+            close(fds[0]);
+            close(fds[1]);
+            thread.read_fd = -1;
+            thread.write_fd = -1;
+            break;
+        }
+        thread.activity.store(activity, std::memory_order_release);
+        break;
+    }
+    ANativeActivity_onCreate(activity, saved_state, saved_state_size);
+    glue_on_destroy = activity->callbacks->onDestroy;
+    activity->callbacks->onDestroy = squared_on_destroy;
 }

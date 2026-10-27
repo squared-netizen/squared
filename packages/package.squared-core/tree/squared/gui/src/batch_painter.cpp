@@ -51,7 +51,9 @@ BatchPainter::BatchPainter( graphics::SpriteBatch &batch,
                             const FontResource *default_font ) noexcept
     : batch_( &batch )
     , default_font_( default_font )
-{}
+{
+    text_layout_.reserve( k_reserved_glyphs, k_reserved_lines );
+}
 
 BatchPainter::~BatchPainter() = default;
 

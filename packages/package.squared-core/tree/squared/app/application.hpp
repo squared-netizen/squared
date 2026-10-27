@@ -8,6 +8,8 @@
 #include <squared/app/src/text_input_service.hpp>
 
 #include <chrono>
+#include <cstddef>
+#include <span>
 
 namespace sq::graphics
 {
@@ -87,6 +89,42 @@ class Application
          * never come back, so this is where state is made safe.
          */
         virtual void background() {}
+
+        /** @brief The most `save_state` may write: what the platform keeps for it. */
+        static constexpr std::size_t saved_state_bytes = 8192;
+
+        /**
+         * @brief What the platform kept for this activity, given before each
+         * create(): on Android, its saved instance state. Android keeps it only
+         * when it ended the process itself (memory, the freezer) or made the
+         * activity again; a swipe from the recent apps, a finish, a force stop
+         * or a reboot leaves it empty: a new launch. Valid until create()
+         * returns.
+         */
+        virtual void set_saved_state( std::span<const std::byte> saved ) noexcept
+        {
+            static_cast<void>( saved );
+        }
+
+        /**
+         * @brief Write what should come back with the activity into `out`
+         * (Android's save instance state); the bytes written, 0 for nothing.
+         */
+        [[nodiscard]] virtual std::size_t save_state( std::span<std::byte> out ) noexcept
+        {
+            static_cast<void>( out );
+            return 0;
+        }
+
+        /**
+         * @brief Whether the application asked to go to the background (back
+         * at its root screen): true once for each time it asked. The platform
+         * then moves its task back, as Home does.
+         */
+        [[nodiscard]] virtual bool take_background_request() noexcept { return false; }
+
+        /** @brief Whether the system bars should be hidden (immersive): read on each frame. */
+        [[nodiscard]] virtual bool hides_bars() const noexcept { return false; }
 
         /** @brief The system is short of memory: drop what can be made again. */
         virtual void low_memory() {}

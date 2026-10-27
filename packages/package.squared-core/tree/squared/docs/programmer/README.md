@@ -19,7 +19,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles; files compiled into the program (`EmbeddedFileSystem`, `tools/embed_files.sh`)
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
-- [gui](gui.md) &mdash; the libGDX-flavoured widget set, skinning and the Ui host, on the Actor/Group/Stage scene graph and its input routing
+- [gui](gui.md) &mdash; the libGDX-flavoured widget set and skinning, on the Actor/Group/Widget tree and its input routing (the host is internal since 7.7)
   - [layouts](layouts.md) &mdash; screens and panes as data: the node table, writing one from C++, layout files, `names.json`, the `sqgen` build step, taps, and building widgets from it
 - [stage](stage.md) &mdash; the App and the Stage: `squared_main`, the model at the Telegraph's far end, the stack of screens, C++ screens and custom nodes, panes, taps, the window, and what is reported
 - [messaging](messaging.md) &mdash; the Telegraph: names, addresses, keys, the 32-byte telegram and its text form, the rings, the cache, lists, both ends, and the model's thread

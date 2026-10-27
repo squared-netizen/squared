@@ -119,6 +119,11 @@ class BatchPainter final : public Painter
      */
         static constexpr std::size_t k_maximum_clip_depth = 16;
 
+        /// Room the scratch layout is made with: a text of up to this many
+        /// glyphs, on up to this many lines, lays out with no allocation.
+        static constexpr std::size_t k_reserved_glyphs = 64;
+        static constexpr std::size_t k_reserved_lines = 4;
+
         void apply_current_clip() noexcept;
 
         /// The single texel a solid fill is stretched from. See fill_rectangle.
@@ -131,7 +136,9 @@ class BatchPainter final : public Painter
      *
      * Kept between calls so that laying text out reuses its storage: it grows
      * to the longest text drawn and then stops allocating, where a layout
-     * made per call allocated twice for every label, every frame.
+     * made per call allocated twice for every label, every frame. Made with
+     * room for k_reserved_glyphs, so a value that grows as it comes (a
+     * counter's 9 to 10, a row's "number 10") grows nothing in a frame.
      */
         graphics::GlyphLayout text_layout_;
         const graphics::TextureRegion *fill_{ nullptr };

@@ -6,7 +6,7 @@ seeded) — the generator wrote it once and will not overwrite it.
 This is the expert escape hatch. You should not normally need it.
 
 ```text
-AndroidManifest.xml    package id, activity, launcher entry
+AndroidManifest.xml    package id, activity, launcher entry, the entry function
 entry.cpp              native_app_glue loop → your App
 android_text.hpp/.cpp  the keyboard, what a key types, the clipboard (JNI)
 res/values/            label and icon colour
@@ -34,12 +34,42 @@ first context is current. Both reach logcat (`make logcat`, through adb), which 
 how a device without Termux is read. Each such check costs a comparison,
 cheaper than reading a cached answer from storage, so nothing is cached.
 
-**The safe area** (the bars, the camera cut-out, the keyboard) is measured
-from the window's insets from API 23. Below that, those methods do not
-exist, and the window's visible frame (`getWindowVisibleDisplayFrame`, API 1)
-answers instead: some older devices lay the window out under translucent
-bars, and the Android 5.1 tablet does (found 2026-10-19: its clock and
-battery drew over the Console's `[x]`).
+**The UI thread.** Everything here runs on the glue's thread, but a window's
+views belong to Android's main thread, so hiding the bars must happen there.
+The manifest names `squared_on_create` as the activity's entry
+(`android.app.func_name`): it runs on the main thread, adds a pipe to that
+thread's looper, then starts the glue as its own entry would. The glue's
+thread writes one byte, a job, into the pipe (`hide bars`, `show bars`, `to
+the background`) and the main thread runs it: a few JNI calls on the thread
+they belong to, no Java. Without the manifest line the glue starts alone:
+the bars stay up, and the rest works.
+
+**The system bars are hidden** (immersive) unless your app says
+`app.stage.hide_bars( false )`: through `WindowInsetsController` from API 30,
+the system UI flags from 19. A swipe from the edge shows them for a moment.
+They are asked for again after each focus (a dialog may bring them back).
+
+**Back at your root screen** sends the app to the background
+(`moveTaskToBack`), as Home does; only a quit (`quit`, `app.quit()`) ends it.
+
+**What Android keeps.** When Android asks (its save instance state), the App
+hands it the screen stack, a few hundred bytes; the log says `saved state: N
+bytes, for Android to keep with the activity`. At the next start the log
+says what came back: `saved state: N bytes: Android brings the activity
+back` when Android ended the process itself (memory, the freezer), and the
+App shows the screens again; `saved state: none: a new launch` after a swipe
+from the recent apps, a quit, a force stop or a reboot, and the App starts
+fresh. Your model's own save (`save()`) comes back either way.
+
+**The safe area** (the camera cut-out, the keyboard, the bars when shown) is
+measured from the window's insets from API 23. Below that, those methods do
+not exist, and the window's visible frame (`getWindowVisibleDisplayFrame`,
+API 1) answers instead: some older devices lay the window out under
+translucent bars, and the Android 5.1 tablet does (found 2026-10-19: its
+clock and battery drew over the Console's `[x]`). It is measured on events,
+never on a timer: for a few frames after a new window, a rotation, the bars
+hidden or shown, and the keyboard shown or hidden, and every 30 frames while
+the keyboard is up (it can be closed without a word to the app).
 
 **Typing.** NativeActivity gives native code key codes, never characters.
 `android_text.cpp` turns a key press into the character it types through
@@ -82,7 +112,7 @@ files/crash-previous.txt` (saved in `build/pulled/`), `pull apk`, and `push
 shows the app's own system log (a library that failed to load, a Java
 exception) and `libs` what it loaded, no adb needed. `screens` lists your
 App's screens and panes and what each keeps (scrolls, an unfinished edit),
-as the background writes them; `screens low-memory` sends Android's
+as Android would be given them; `screens low-memory` sends Android's
 low-memory event through it. `dump` runs groups of
 commands, one a frame: `dump sys` (every system command, `gl` and `display`
 among them), `dump memory`, `dump crash` (the last crash report, the last

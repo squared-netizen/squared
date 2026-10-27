@@ -51,6 +51,39 @@ and low-memory commands, which the glue already delivers: three virtual calls
 with empty defaults, so an `Application` written before them (the demo's)
 compiles and behaves as it did. They are events: nothing polls.
 
+## What Android keeps, back to the background, the bars (7.8)
+
+Four more defaulted virtuals, so the demo's `Application` compiles as it
+did:
+
+- `set_saved_state( std::span<const std::byte> )`, before each `create()`:
+  Android's saved instance state for the activity, empty for a new launch.
+  A view, valid until `create()` returns: the platform owns the bytes (the
+  template takes the glue's `savedState` at `android_main`'s start, because
+  the glue frees it at the first resume, before there is a window, and
+  frees it after the first `create()`).
+- `save_state( std::span<std::byte> )`, on `APP_CMD_SAVE_STATE`: at most
+  `saved_state_bytes` (8,192), written into the platform's buffer (on the
+  glue thread's stack), which copies what was written with `malloc` into
+  the glue's `savedState`; the glue hands it to Android and frees it.
+- `take_background_request()`, each loop turn: a one-shot flag. A flag
+  read by the platform rather than a call into it: the App holds no
+  platform pointer, and the platform already reads `quit_requested()` the
+  same way.
+- `hides_bars()`, each frame: a `bool` read and compared with the last
+  answer; a change, or a focus gained, is the only time the platform
+  acts. A bool per frame over an event because the answer is the Stage's
+  (`hide_bars`), set by app code at any time, and the comparison is cheaper
+  than a notification path.
+
+Why Android's saved state and not a file (the user's pick, 2026-10-27,
+"Saved state"): Android keeps it exactly when the app should come back
+where it was (it ended the process itself) and drops it exactly when it
+should not (a swipe from the recent apps, a finish, a force stop, a
+reboot). A file cannot tell those apart without `getHistoricalProcessExitReasons`
+(API 30, so not the tablet). Priority 1 as well: no file, no `fsync`, the
+bytes held by Android's process, not this one.
+
 ## Memory
 
 `Event` carries a `std::string text` member for `TextInput` and `TextEditing`
@@ -108,15 +141,44 @@ targets, and they avoid a second code path keyed on the SDK level. Every step
 tolerates failure and falls back to zero, so a release where a call is
 missing behaves as before.
 
-The query runs after a drawable-size change and then about every 30th frame.
-Polling is deliberate: the insets are not available when the first window
-arrives and `APP_CMD_CONTENT_RECT_CHANGED` does not reliably report an
-edge-to-edge window, so waiting for a notification can miss the only change
-there is. Cost per query: about ten JNI calls, no allocation on the native side
+The query runs on events only (7.8, the user's pick "Measure on events"):
+for 12 frames after a drawable-size change or a new window, for 24 after the
+bars are hidden or shown and after the keyboard is shown or hidden (they
+slide), and every 30th frame while the keyboard is up, because the user can
+close it with the back gesture and the app hears nothing. With the keyboard
+down and the bars hidden it never runs. Until 7.8 it ran every 30th frame
+always: 64 JNI calls, 12 of them into Java, twice a second at 60 Hz. The
+bounded runs are deliberate: the insets are not available when the first
+window arrives and `APP_CMD_CONTENT_RECT_CHANGED` does not reliably report
+an edge-to-edge window, so the answer is asked for until it settles. Cost per query: about ten JNI calls, no allocation on the native side
 (every local reference is deleted), and the thread is attached to the VM once
 and detached at shutdown. The call is made from the native thread rather than
 the UI thread; these are plain getters on state the framework already
 published, which is how other native frameworks read them.
+
+**The UI thread (7.8).** Hiding the bars touches the window's views, which
+belong to Android's main thread, while the glue runs everything else on its
+own. The manifest names `squared_on_create` (`android.app.func_name`, read by
+NativeActivity) as the entry: on the main thread it makes a pipe
+(`pipe2`, non-blocking, close-on-exec), adds its read end to that thread's
+`ALooper` with a callback, records it against the activity (two slots: the
+next activity can be made before the last is destroyed), calls the glue's
+`ANativeActivity_onCreate`, and wraps the glue's `onDestroy` so the pipe is
+closed after the glue's thread has ended. The glue's thread posts one-byte
+jobs (`hide_bars`, `show_bars`, `to_back`); the callback runs them with the
+activity's own `JNIEnv`. A pattern: a command queue over a pipe, the
+looper's own wake-up, chosen over a Java shim (no Java, decided 2026-10-15)
+and over calling from the glue's thread (Android may refuse a view call from
+another thread). Cost: two file descriptors and 48 bytes of slots per
+process, one `write` per job. Without the manifest line the glue starts as
+before: the bars stay, and `to_back` is called from the glue's thread
+(`moveTaskToBack` is a binder call, safe from any thread).
+
+The bars: `WindowInsetsController.hide( WindowInsets.Type.systemBars() )`
+with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` from API 30;
+`View.setSystemUiVisibility( IMMERSIVE_STICKY | FULLSCREEN | HIDE_NAVIGATION
+| the three LAYOUT flags )` from 19 to 29. Asked again after each focus (a
+dialog or the keyboard can bring them back on the older releases).
 
 Known limitation: the JNI code lives in the seeded `sq_android/entry.cpp`, so
 each generated project carries a copy. When the `app` module gets a compiled

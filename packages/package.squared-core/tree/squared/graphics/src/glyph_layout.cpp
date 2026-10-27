@@ -197,6 +197,12 @@ BitmapFontError GlyphLayout::set_text( const BitmapFont &font, std::string_view 
     }
 }
 
+void GlyphLayout::reserve( std::size_t glyphs, std::size_t lines )
+{
+    glyphs_.reserve( glyphs );
+    lines_.reserve( lines );
+}
+
 void GlyphLayout::clear() noexcept
 {
     // Keeps the storage, so the next set_text() of no longer text does not

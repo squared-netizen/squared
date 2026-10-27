@@ -208,7 +208,8 @@ struct Keeping final
                    ( static_cast<unsigned char>( text[length] ) & 0xC0U ) == 0x80U ) {
                 --length;
             }
-            std::copy_n( text.data(), length, kept.text.data() );
+            const char *from = text.data(); // not text.data() in the call: length is cut
+            std::copy_n( from, length, kept.text.data() );
             kept.text_length = static_cast<std::uint8_t>( length );
             kept.field = static_cast<std::uint8_t>( at );
         }
@@ -311,8 +312,9 @@ class LineWriter final
                                                  std::int64_t highest ) noexcept
 {
     std::int64_t value = 0;
-    const char *end = word.data() + word.size();
-    const std::from_chars_result read = std::from_chars( word.data(), end, value );
+    const char *begin = word.data();
+    const char *end = begin + word.size();
+    const std::from_chars_result read = std::from_chars( begin, end, value );
     if( word.empty() || read.ec != std::errc{} || read.ptr != end || value < lowest ||
         value > highest ) {
         return std::nullopt;
@@ -360,6 +362,8 @@ struct Stage::ListBinding final
         /// The reset, or the last view, found the Telegraph full: again next frame.
         bool reset_unsent = false;
         bool view_unsent = false;
+        /// Said once that the cache keeps fewer rows than the list shows.
+        bool told_short = false;
 };
 
 /// What a window has. Made whole or not at all: the members are made in
@@ -565,6 +569,7 @@ void Stage::clear() noexcept
     pending_count_ = 0;
     broken_ = false;
     leave_ = false;
+    background_ = false;
     screens_.fill( {} );
     kept_.fill( {} );
     drop_panes();
@@ -1097,6 +1102,7 @@ void Stage::show_top() noexcept
             }
         }
     }
+    size_lists();
     lay_out();
     // A screen that comes back is where it was: laid out first, so a scroll
     // pane knows how far it scrolls; then again, for what moved.
@@ -1476,6 +1482,7 @@ void Stage::open_pane( Shown shown ) noexcept
         pane.order = ++pane_count_;
         pane.kept = {};
         build_pane( pane );
+        size_lists();
         lay_out();
         return;
     }
@@ -2180,6 +2187,30 @@ void Stage::list_state( const messaging::Received &received ) noexcept
     }
 }
 
+void Stage::size_lists() noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    // When a screen or pane is built, not in a frame: each new list's rows
+    // and their items' values in at most half the cache, shared by the lists
+    // shown. Its buffer is its one allocation, made here (7.8: a frame made
+    // it, once the list had a height).
+    const std::size_t shown_lists = lists();
+    for( ListBinding &shown : drawing_->lists ) {
+        if( shown.list == nullptr || !shown.kept.empty() ) {
+            continue;
+        }
+        const std::size_t per_row = 1 + shown.value_count;
+        const std::size_t room = messaging::telegraph_size::cache / 2 / shown_lists;
+        const std::size_t view = messaging::telegraph_size::list_view;
+        const std::size_t most = std::clamp<std::size_t>( room / per_row, 1, view );
+        shown.window = messaging::ListWindow( static_cast<std::uint32_t>( most ) );
+        shown.window.set_count( shown.list->count() );
+        shown.kept.assign( most, 0 );
+    }
+}
+
 void Stage::ask_views() noexcept
 {
     if( drawing_ == nullptr ) {
@@ -2206,19 +2237,13 @@ void Stage::ask_view( ListBinding &shown ) noexcept
         return; // not laid out yet
     }
     if( shown.kept.empty() ) {
-        // Sized once it has a height: its rows and their items' values in at
-        // most half the cache, shared by the lists shown.
-        const std::size_t per_row = 1 + shown.value_count;
-        const std::size_t room = messaging::telegraph_size::cache / 2 / lists();
-        const std::size_t view = messaging::telegraph_size::list_view;
-        const std::size_t most = std::clamp<std::size_t>( room / per_row, 1, view );
-        if( most < screen ) {
-            say( "stage: a list shows %u rows; the cache keeps %zu of them: raise TELEGRAPH_CACHE",
-                 static_cast<unsigned>( screen ), most );
-        }
-        shown.window = messaging::ListWindow( static_cast<std::uint32_t>( most ) );
-        shown.window.set_count( list.count() );
-        shown.kept.assign( most, 0 );
+        return; // sized when it was built: size_lists()
+    }
+    const std::size_t most = shown.kept.size();
+    if( most < screen && !shown.told_short ) {
+        shown.told_short = true;
+        say( "stage: a list shows %u rows; the cache keeps %zu of them: raise TELEGRAPH_CACHE",
+             static_cast<unsigned>( screen ), most );
     }
     const std::optional<messaging::RowSpan> span = shown.window.visible( list.first_row(), screen );
     if( !span && !shown.view_unsent ) {
@@ -2362,9 +2387,9 @@ void Stage::tap( std::string_view line ) noexcept
             return;
         }
         case gui::TapKind::back:
-            // At the root, what the back button does there: leave.
+            // At the root, what the back button does there: to the background.
             if( !back() ) {
-                leave_ = true;
+                background_ = true;
             }
             return;
         case gui::TapKind::quit:

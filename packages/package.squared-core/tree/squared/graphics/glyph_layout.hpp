@@ -5,6 +5,7 @@
 #include <squared/graphics/src/glyph_line.hpp>
 #include <squared/graphics/src/glyph_placement.hpp>
 
+#include <cstddef>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -36,6 +37,13 @@ class GlyphLayout final
 
         /** @brief Empty the layout, keeping its storage; assign GlyphLayout{} to release it. */
         void clear() noexcept;
+
+        /**
+         * @brief Make room for `glyphs` glyphs and `lines` lines now, so a
+         * text that fits lays out with no allocation: for a layout kept to be
+         * reused, made where allocating is expected.
+         */
+        void reserve( std::size_t glyphs, std::size_t lines );
         [[nodiscard]] float width() const noexcept { return width_; }
         [[nodiscard]] float height() const noexcept { return height_; }
         [[nodiscard]] float line_height() const noexcept { return line_height_; }

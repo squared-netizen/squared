@@ -47,6 +47,13 @@
                  SQ_PROJECT name the build produces. -->
             <meta-data android:name="android.app.lib_name" android:value="{{project_name}}" />
 
+            <!-- Which function in it starts the activity: squared_on_create
+                 (sq_android/entry.cpp), on Android's UI thread, which gives
+                 the native thread a way to that thread (hiding the system
+                 bars needs it) and then starts the glue. Without this line
+                 the glue starts alone: the bars stay, and the rest works. -->
+            <meta-data android:name="android.app.func_name" android:value="squared_on_create" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

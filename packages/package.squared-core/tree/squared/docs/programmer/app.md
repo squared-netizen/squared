@@ -79,7 +79,8 @@ private:
 `create`, `handle_event`, `update`, `render`, `dispose` and `quit_requested`
 are required. `pause`, `resume`, `resize`, `surface_created`,
 `surface_destroyed`, `set_text_input_service`, `set_report`, `foreground`,
-`background` and `low_memory` have empty defaults, so a desktop-only
+`background`, `low_memory`, `set_saved_state`, `save_state`,
+`take_background_request` and `hides_bars` have empty defaults, so a desktop-only
 application can ignore them &mdash; but on Android `surface_destroyed` and
 `surface_created` are where GPU resources are invalidated and restored, and
 ignoring them is a bug that only shows on device.
@@ -90,6 +91,10 @@ ignoring them is a bug that only shows on device.
 | `foreground()` | the app is visible again (Android's start); not before the first `create()` |
 | `background()` | the app is no longer visible (Android's stop): it may never come back, so state is made safe here |
 | `low_memory()` | the system is short of memory |
+| `set_saved_state(bytes)` | before each `create()`: what Android kept for the activity (its saved instance state), valid until `create()` returns. Empty for a new launch: after a swipe from the recent apps, a finish, a force stop or a reboot; Android keeps it only when it ended the process itself or made the activity again |
+| `save_state(out)` | Android asks what to keep with the activity: write at most `Application::saved_state_bytes` (8 KB) into `out`, and return how many; 0 for nothing |
+| `take_background_request()` | each loop turn: true, once, when the application asked to go to the background (`sq::App`: back at its root screen); the platform moves its task back, as Home does |
+| `hides_bars()` | each frame: whether the status and navigation bars should be hidden (immersive); the platform hides or shows them when the answer changes, and again after each focus |
 
 ## Feeding the GUI
 
@@ -118,7 +123,9 @@ void MyGame::safe_area_changed(const sq::app::SafeArea& area)
 
 `safe_area_changed()` is optional (the default ignores it) and is called after
 `create()` once the bars are known, then whenever they change &mdash; rotation,
-or a hidden navigation bar. The first call can come a fraction of a second
+the bars hidden or shown (they are hidden by default: `hides_bars()`), the
+keyboard. On Android it is measured on those events only, never on a timer
+(since 7.8; it was twice a second). The first call can come a fraction of a second
 after the first frame, because Android has not laid the window out before
 then. A platform with nothing covering the window never calls it.
 
