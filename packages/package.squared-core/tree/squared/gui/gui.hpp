@@ -20,6 +20,7 @@
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
 #include <squared/gui/linear_layout.hpp>
+#include <squared/gui/list.hpp>
 #include <squared/gui/margin_container.hpp>
 #include <squared/gui/panel.hpp>
 #include <squared/gui/progress_bar.hpp>

@@ -375,6 +375,19 @@ class TelegraphUi final
         SendResult view( const K &rows, RowSpan span ) noexcept;
 
         /**
+         * @brief The same, for a list known by its name and its dotted
+         * text (a layout's list node: `rows`, `layout.text( bind_text )`).
+         */
+        SendResult view( Name rows, std::string_view text, RowSpan span ) noexcept;
+
+        /**
+         * @brief `do <list>.view (1 0)`: a new list widget, which knows
+         * nothing. The model forgets what it sent, so the next `view` is
+         * answered in full, and sends the count.
+         */
+        SendResult reset_view( Name rows, std::string_view text ) noexcept;
+
+        /**
          * @brief Send a telegram as it is, read from its text (a replay): its
          * text or uid list is in `data`, as `read_telegram` left it. Meant
          * for `set` and `do`; nothing checks its type against a key.

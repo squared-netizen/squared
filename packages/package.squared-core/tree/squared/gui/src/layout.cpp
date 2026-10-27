@@ -48,9 +48,37 @@ struct Open
     return {};
 }
 
-[[nodiscard]] LayoutCheck check_node( const Layout &layout, const LayoutNode &node,
+/// A list node: the list it shows, by a name its text hashes to, as an
+/// integer (a row's uid); nothing else a value node has.
+[[nodiscard]] LayoutCheck check_list( const Layout &layout, const LayoutNode &node,
                                       std::uint16_t at ) noexcept
 {
+    const std::string_view name = layout.text( node.bind_text );
+    const bool named = node.bind.id != 0 && messaging::valid_name( name );
+    if( !named || messaging::Name::of( name ) != node.bind ) {
+        return { LayoutProblem::bad_list, at };
+    }
+    const bool plain = !node.sends_set && !node.row_uid && node.tap == 0 && !node.has_numbers;
+    if( node.value != messaging::ValueType::integer || !plain ) {
+        return { LayoutProblem::bad_list, at };
+    }
+    return {};
+}
+
+[[nodiscard]] LayoutCheck check_node( const Layout &layout, const LayoutNode &node,
+                                      std::uint16_t at, bool in_list ) noexcept
+{
+    if( node.type == NodeType::list ) {
+        return check_list( layout, node, at );
+    }
+    if( node.row_uid ) {
+        // The row's uid goes to a bind, or to a button's telegram.
+        const TapKind kind = read_tap( layout.text( node.tap ) ).kind;
+        const bool sends = node.type == NodeType::button && kind == TapKind::telegram;
+        if( !in_list || !( sends || node.bind.id != 0 ) ) {
+            return { LayoutProblem::bad_list, at };
+        }
+    }
     if( node.bind.id != 0 || node.bind_text != 0 ) {
         const std::string_view name = layout.text( node.bind_text );
         const bool named = node.bind.id != 0 && messaging::valid_name( name );
@@ -110,6 +138,8 @@ std::string_view node_type_name( NodeType type ) noexcept
             return "scroll";
         case NodeType::stack:
             return "stack";
+        case NodeType::list:
+            return "list";
         case NodeType::custom:
             return "custom";
     }
@@ -219,15 +249,27 @@ LayoutCheck check( const Layout &layout ) noexcept
 
     std::array<Open, layout_depth> open{};
     std::size_t depth = 0;
-    // Close every container that ends at `at`: a scroll holds one node at most.
+    // Close every container that ends at `at`: a scroll holds one node at
+    // most, and a list its row. Empty, either shows nothing.
     const auto close_until = [&open, &depth]( std::size_t at ) -> LayoutCheck {
         while( depth > 0 && open[depth - 1].end <= at ) {
             const Open &closing = open[--depth];
             if( closing.type == NodeType::scroll && closing.children > 1 ) {
                 return { LayoutProblem::scroll_holds_one, closing.node };
             }
+            if( closing.type == NodeType::list && closing.children > 1 ) {
+                return { LayoutProblem::bad_list, closing.node };
+            }
         }
         return {};
+    };
+    const auto in_list = [&open, &depth]() noexcept {
+        for( std::size_t level = 0; level < depth; ++level ) {
+            if( open[level].type == NodeType::list ) {
+                return true;
+            }
+        }
+        return false;
     };
 
     for( std::size_t i = 0; i < nodes.size(); ++i ) {
@@ -255,6 +297,10 @@ LayoutCheck check( const Layout &layout ) noexcept
         if( node.new_row && !in_table ) {
             return { LayoutProblem::misplaced_row, at };
         }
+        const bool row = in_list();
+        if( node.type == NodeType::list && row ) {
+            return { LayoutProblem::bad_list, at }; // a list in a row: one level for now
+        }
         if( holds_nodes( node.type ) ) {
             if( depth == open.size() ) {
                 return { LayoutProblem::too_deep, at };
@@ -263,7 +309,7 @@ LayoutCheck check( const Layout &layout ) noexcept
         } else if( node.inside != 0 ) {
             return { LayoutProblem::not_a_container, at };
         }
-        if( const LayoutCheck found = check_node( layout, node, at ); !found.ok() ) {
+        if( const LayoutCheck found = check_node( layout, node, at, row ); !found.ok() ) {
             return found;
         }
     }
@@ -282,9 +328,12 @@ std::string_view problem_text( LayoutProblem problem ) noexcept
         case LayoutProblem::too_deep:
             return "containers nested more than 16 deep";
         case LayoutProblem::not_a_container:
-            return "nodes inside one that is not a table, scroll or stack";
+            return "nodes inside one that is not a table, scroll, stack or list";
         case LayoutProblem::scroll_holds_one:
             return "a scroll holds more than one node";
+        case LayoutProblem::bad_list:
+            return "a list without one row or the list it shows, a list in a row, or a row's uid "
+                   "outside a row";
         case LayoutProblem::misplaced_row:
             return "a new row outside a table";
         case LayoutProblem::bad_type:

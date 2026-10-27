@@ -8,6 +8,7 @@
 namespace sq::gui
 {
 
+class List;
 class Skin;
 class Table;
 class Widget;
@@ -34,6 +35,20 @@ struct LayoutHooks final
         std::unique_ptr<Widget> ( *custom )( void *context, std::string_view name ) = nullptr;
 
         void *context = nullptr;
+
+        /**
+         * @brief A button in a list's row was tapped, and its telegram's
+         * address takes the row's uid (`do item.use`): its line, without the
+         * uid. nullptr: `tapped` hears it, without one.
+         */
+        void ( *tapped_row )( void *context, std::string_view line ) noexcept = nullptr;
+
+        /**
+         * @brief A list was built. Its rows are built later, as it lays out,
+         * with the hooks it is given now (`List::set_row_hooks`), or these.
+         */
+        void ( *listed )( void *context, const Layout &layout, const LayoutNode &node,
+                          List &list ) noexcept = nullptr;
 };
 
 /**

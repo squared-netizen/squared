@@ -19,6 +19,7 @@
 #include <squared/gui/check_box.hpp>
 #include <squared/gui/instantiate.hpp>
 #include <squared/gui/label.hpp>
+#include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
@@ -36,6 +37,7 @@
 #include <squared/gui/ui.hpp>
 #include <squared/gui/window.hpp>
 #include <squared/messaging/address.hpp>
+#include <squared/messaging/list_window.hpp>
 #include <squared/messaging/name.hpp>
 #include <squared/messaging/telegram.hpp>
 #include <squared/messaging/telegram_data.hpp>
@@ -46,7 +48,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -125,6 +129,12 @@ constexpr std::uint8_t screen_owner = 0xFF;
     return { scratch.data(), length };
 }
 
+/// A count or a uid from an integer: 0 to `UINT32_MAX`.
+[[nodiscard]] std::uint32_t rows_of( std::int64_t value ) noexcept
+{
+    return static_cast<std::uint32_t>( std::clamp<std::int64_t>( value, 0, UINT32_MAX ) );
+}
+
 /// A number to show on a slider or a progress bar: an integer or a double.
 [[nodiscard]] float number_of( const messaging::Telegram &telegram ) noexcept
 {
@@ -141,6 +151,32 @@ constexpr std::uint8_t screen_owner = 0xFF;
 }
 
 } // namespace
+
+/// A list shown, bound to a model's list: the widget, the list's names, and
+/// what of it the cache keeps. The rows asked for (`asked`, the screen and a
+/// screen each side) and their items' values stay in the cache, since the
+/// model sends an item's values once, when it comes into the view.
+struct Stage::ListBinding final
+{
+        Stage *stage = nullptr;
+        gui::List *list = nullptr;
+        messaging::Name rows{};
+        messaging::Name count{};
+        /// Which rows to ask for; sized when the list first has a height.
+        messaging::ListWindow window{ 1 };
+        /// The rows last asked for, kept in the cache.
+        messaging::RowSpan asked{};
+        /// The item kept for each row asked for, at the row modulo its size; 0: none yet.
+        std::vector<std::uint32_t> kept;
+        /// What a row shows of its item: `item.name`, `item.count`, ...
+        std::array<messaging::Name, max_row_values> values{};
+        std::uint8_t value_count = 0;
+        /// The screen (`screen_owner`) or a pane's slot.
+        std::uint8_t owner = 0;
+        /// The reset, or the last view, found the Telegraph full: again next frame.
+        bool reset_unsent = false;
+        bool view_unsent = false;
+};
 
 /// What a window has. Made whole or not at all: the members are made in
 /// order, the skin loaded into the widgets' own before the painter, which
@@ -167,9 +203,10 @@ struct Stage::Drawing final
                 gui::Layout written;
         } scratch;
 
-        /// The bound widgets of the screen and its panes. After the scratch,
-        /// so the window's size is the rest plus both.
+        /// The bound widgets of the screen and its panes, and their lists.
+        /// After the scratch, so the window's size is the rest plus these.
         std::array<Binding, max_bindings> bindings{};
+        std::array<ListBinding, max_lists> lists{};
 
     private:
         /// Load the skin from `files` into the widgets': false, with `why`, when it cannot be.
@@ -300,7 +337,9 @@ void Stage::attach( app::Runtime &runtime )
     // and libstdc++ (desktop Linux) differ. The scratch is the same in both.
     static_assert( sizeof( Drawing::Scratch ) == 17480 );
     static_assert( sizeof( Binding ) == 32 );
-    constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32;
+    static_assert( sizeof( ListBinding ) == 160 );
+    static_assert( max_lists <= 4, "Binding::list is two bits" );
+    constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32 + max_lists * 160;
 #if defined( _LIBCPP_VERSION )
     static_assert( sizeof( Drawing ) == 1648 + tables );
 #else
@@ -460,6 +499,7 @@ void Stage::update( std::chrono::nanoseconds delta ) noexcept
     };
     Showing showing{ this };
     static_cast<void>( telegraph_.drain( showing ) );
+    ask_views();
     send_edits();
     if( gui::Ui *widgets = ui() ) {
         widgets->update( std::chrono::duration<double>( delta ).count() );
@@ -473,6 +513,9 @@ void Stage::render( graphics::Context &graphics ) noexcept
         return;
     }
     graphics.clear( slate );
+    // What changed since the last frame is laid out again: a bound label's
+    // new text, a list scrolled. Nothing, when nothing did.
+    drawing_->ui.layout( drawing_->painter );
     if( !drawing_->batch.begin( drawing_->camera ) ) {
         return;
     }
@@ -836,6 +879,7 @@ void Stage::show_top() noexcept
     hooks.tapped = &Stage::tapped;
     hooks.bound = &Stage::bound;
     hooks.custom = &Stage::made;
+    hooks.listed = &Stage::listed;
     hooks.context = this;
     const gui::LayoutCheck check = gui::instantiate( *layout, root, widgets->skin(), hooks );
     broken_ = !built( *layout, check );
@@ -955,6 +999,7 @@ void Stage::build_pane( Pane &pane ) noexcept
     hooks.tapped = &Stage::tapped_in_pane;
     hooks.bound = &Stage::bound_in_pane;
     hooks.custom = &Stage::made_in_pane;
+    hooks.listed = &Stage::listed_in_pane;
     hooks.context = &pane;
     gui::Table &table = window->content_table();
     const gui::LayoutCheck check = gui::instantiate( *layout, table, widgets->skin(), hooks );
@@ -1050,7 +1095,8 @@ std::size_t Stage::bindings() const noexcept
 void Stage::bound( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
                    gui::Widget &widget ) noexcept
 {
-    static_cast<Stage *>( context )->bind( screen_owner, layout, node, widget );
+    auto &stage = *static_cast<Stage *>( context );
+    static_cast<void>( stage.bind( screen_owner, layout, node, widget, { node.bind, 0 } ) );
 }
 
 void Stage::bound_in_pane( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
@@ -1058,11 +1104,34 @@ void Stage::bound_in_pane( void *context, const gui::Layout &layout, const gui::
 {
     Pane &pane = *static_cast<Pane *>( context );
     const auto slot = static_cast<std::uint8_t>( &pane - pane.stage->panes_.data() );
-    pane.stage->bind( slot, layout, node, widget );
+    static_cast<void>( pane.stage->bind( slot, layout, node, widget, { node.bind, 0 } ) );
 }
 
-void Stage::bind( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
-                  gui::Widget &widget ) noexcept
+void Stage::bound_in_row( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                          gui::Widget &widget ) noexcept
+{
+    ListBinding &shown = list_of_row( context );
+    Stage &stage = *shown.stage;
+    const std::size_t slot = shown.list->slot_of( *static_cast<gui::Table *>( context ) );
+    // A value of the row's item, at its uid (0 until the row has one), or one of its own.
+    std::uint32_t uid = 0;
+    if( node.row_uid && slot < shown.list->rows_built() ) {
+        uid = stage.uid_at( shown, shown.list->row_at( slot ) );
+    }
+    const messaging::Address address{ node.bind, uid };
+    const auto owner = static_cast<std::uint8_t>( slot );
+    Binding *bound = stage.bind( owner, layout, node, widget, address );
+    if( bound != nullptr ) {
+        bound->in_row = true;
+        bound->row_uid = node.row_uid;
+        const auto list = static_cast<unsigned>( &shown - stage.drawing_->lists.data() );
+        bound->list = static_cast<std::uint8_t>( list & 3U ); // max_lists: two bits
+    }
+}
+
+Stage::Binding *Stage::bind( std::uint8_t owner, const gui::Layout &layout,
+                             const gui::LayoutNode &node, gui::Widget &widget,
+                             messaging::Address address ) noexcept
 {
     Binding *slot = nullptr;
     for( Binding &binding : drawing_->bindings ) {
@@ -1078,17 +1147,17 @@ void Stage::bind( std::uint8_t owner, const gui::Layout &layout, const gui::Layo
                  static_cast<int>( name.size() ), name.data(), max_bindings );
             bindings_full_ = true;
         }
-        return;
+        return nullptr;
     }
     *slot = {};
-    slot->address = { node.bind, 0 };
+    slot->address = address;
     slot->widget = &widget;
     slot->type = node.type;
     slot->value = node.value;
     slot->owner = owner;
     slot->sends_set = node.sends_set;
-    // Its value stays in the cache while it is shown.
-    static_cast<void>( telegraph_.bind( slot->address ) );
+    // A row's item's value with no item yet (uid 0) is not an address.
+    const bool addressed = !node.row_uid || address.uid != 0;
     // The widgets' callbacks are std::function (the gui's, from before):
     // two pointers fit in its own storage, so this allocates nothing.
     const auto toggled = [this, &widget]( bool on ) { edited( widget, on ); };
@@ -1108,9 +1177,23 @@ void Stage::bind( std::uint8_t owner, const gui::Layout &layout, const gui::Layo
                 break;
         }
     }
+    if( !addressed ) {
+        return slot;
+    }
+    // Its value stays in the cache while it is shown.
+    static_cast<void>( telegraph_.bind( slot->address ) );
     if( const std::optional<messaging::CachedValue> now = telegraph_.find( slot->address ) ) {
         show( *slot, now->telegram, now->data );
     }
+    return slot;
+}
+
+void Stage::unbind( Binding &binding ) noexcept
+{
+    if( !binding.row_uid || binding.address.uid != 0 ) {
+        telegraph_.unbind( binding.address );
+    }
+    binding = {};
 }
 
 void Stage::unbind_all() noexcept
@@ -1120,11 +1203,11 @@ void Stage::unbind_all() noexcept
     }
     for( Binding &binding : drawing_->bindings ) {
         if( binding.widget != nullptr ) {
-            telegraph_.unbind( binding.address );
-            binding = {};
+            unbind( binding );
         }
     }
     bindings_full_ = false;
+    drop_lists( screen_owner, true );
 }
 
 void Stage::unbind_owner( std::uint8_t owner ) noexcept
@@ -1133,11 +1216,19 @@ void Stage::unbind_owner( std::uint8_t owner ) noexcept
         return;
     }
     for( Binding &binding : drawing_->bindings ) {
-        if( binding.widget != nullptr && binding.owner == owner ) {
-            telegraph_.unbind( binding.address );
-            binding = {};
+        if( binding.widget == nullptr ) {
+            continue;
+        }
+        // A row's binding belongs to its list's owner.
+        bool owned = binding.owner == owner;
+        if( binding.in_row ) {
+            owned = drawing_->lists[binding.list].owner == owner;
+        }
+        if( owned ) {
+            unbind( binding );
         }
     }
+    drop_lists( owner, false );
 }
 
 bool Stage::held( const Binding &binding ) noexcept
@@ -1189,11 +1280,40 @@ void Stage::show( Binding &binding, const messaging::Telegram &telegram,
     applying_ = false;
 }
 
+void Stage::blank( Binding &binding ) noexcept
+{
+    // A row whose item has not come: nothing, until it does.
+    applying_ = true;
+    constexpr float lowest = std::numeric_limits<float>::lowest(); // the widget's minimum
+    switch( binding.type ) {
+        case gui::NodeType::label:
+            static_cast<gui::Label *>( binding.widget )->set_text( {} );
+            break;
+        case gui::NodeType::check_box:
+            static_cast<gui::CheckBox *>( binding.widget )->set_checked( false );
+            break;
+        case gui::NodeType::slider:
+            static_cast<gui::Slider *>( binding.widget )->set_value( lowest );
+            break;
+        case gui::NodeType::progress_bar:
+            static_cast<gui::ProgressBar *>( binding.widget )->set_value( lowest );
+            break;
+        case gui::NodeType::text_field:
+            static_cast<gui::TextField *>( binding.widget )->set_text( {} );
+            break;
+        default:
+            break;
+    }
+    applying_ = false;
+}
+
 void Stage::changed( const messaging::Received &received ) noexcept
 {
     if( drawing_ == nullptr ) {
         return;
     }
+    // A list's count, or a row's item: the list and the cache follow.
+    list_state( received );
     // Shown from the cache, which has it now: its text is where its
     // reference says, which a telegram straight from the ring's is not.
     const messaging::Address address = received.telegram.address();
@@ -1222,7 +1342,9 @@ Stage::Binding *Stage::binding_of( const gui::Widget &widget ) noexcept
     }
     for( Binding &binding : drawing_->bindings ) {
         if( binding.widget == &widget ) {
-            return &binding;
+            // A row's widget whose row has no item yet has nowhere to send.
+            const bool addressed = !binding.row_uid || binding.address.uid != 0;
+            return addressed ? &binding : nullptr;
         }
     }
     return nullptr;
@@ -1303,6 +1425,319 @@ void Stage::send_edits() noexcept
     }
 }
 
+// --- lists -----------------------------------------------------------------
+
+std::size_t Stage::lists() const noexcept
+{
+    if( drawing_ == nullptr ) {
+        return 0;
+    }
+    std::size_t count = 0;
+    for( const ListBinding &shown : drawing_->lists ) {
+        count += shown.list != nullptr ? 1 : 0;
+    }
+    return count;
+}
+
+void Stage::listed( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                    gui::List &list ) noexcept
+{
+    static_cast<Stage *>( context )->add_list( screen_owner, layout, node, list );
+}
+
+void Stage::listed_in_pane( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                            gui::List &list ) noexcept
+{
+    Pane &pane = *static_cast<Pane *>( context );
+    const auto slot = static_cast<std::uint8_t>( &pane - pane.stage->panes_.data() );
+    pane.stage->add_list( slot, layout, node, list );
+}
+
+Stage::ListBinding &Stage::list_of_row( void *context ) noexcept
+{
+    // A row's hooks have its table as their context; its list, the binding.
+    const auto &row = *static_cast<const gui::Table *>( context );
+    const auto *list = gui::actor_cast<gui::List>( row.parent() );
+    return *static_cast<ListBinding *>( list->owner() );
+}
+
+void Stage::add_list( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
+                      gui::List &list ) noexcept
+{
+    const std::string_view name = name_of( layout );
+    const std::string_view rows = layout.text( node.bind_text );
+    ListBinding *free = nullptr;
+    for( ListBinding &shown : drawing_->lists ) {
+        if( shown.list != nullptr && shown.rows == node.bind ) {
+            // The model keeps one view of a list: one widget shows it.
+            say( "stage: %.*s: %.*s is shown already; this one stays empty",
+                 static_cast<int>( name.size() ), name.data(), static_cast<int>( rows.size() ),
+                 rows.data() );
+            list.set_row_hooks( {}, nullptr );
+            return;
+        }
+        if( shown.list == nullptr && free == nullptr ) {
+            free = &shown;
+        }
+    }
+    if( free == nullptr ) {
+        say( "stage: %.*s: more than %zu lists; the rest stay empty",
+             static_cast<int>( name.size() ), name.data(), max_lists );
+        list.set_row_hooks( {}, nullptr );
+        return;
+    }
+    ListBinding &shown = *free;
+    shown = ListBinding{};
+    shown.stage = this;
+    shown.list = &list;
+    shown.rows = node.bind;
+    shown.count = messaging::Name::from_id( messaging::name_hash( ".count", node.bind.id ) );
+    shown.owner = owner;
+    // The values a row shows of its item: kept in the cache for every row asked for.
+    const gui::Layout row = list.row();
+    for( const gui::LayoutNode &inside : row.nodes() ) {
+        if( !inside.row_uid || inside.bind.id == 0 ) {
+            continue;
+        }
+        const auto end = shown.values.begin() + shown.value_count;
+        if( std::find( shown.values.begin(), end, inside.bind ) != end ) {
+            continue;
+        }
+        if( shown.value_count == max_row_values ) {
+            say( "stage: %.*s: a row of %.*s shows more than %zu of its item's values",
+                 static_cast<int>( name.size() ), name.data(), static_cast<int>( rows.size() ),
+                 rows.data(), max_row_values );
+            break;
+        }
+        shown.values[shown.value_count++] = inside.bind;
+    }
+    gui::LayoutHooks hooks;
+    hooks.tapped = &Stage::tapped_in_row;
+    hooks.tapped_row = &Stage::tapped_row_uid;
+    hooks.bound = &Stage::bound_in_row;
+    hooks.custom = &Stage::made_in_row;
+    list.set_row_hooks( hooks, &shown );
+    list.set_on_row( &Stage::row_shown, &shown );
+    // Its count stays in the cache while it is shown.
+    static_cast<void>( telegraph_.bind( { shown.count, 0 } ) );
+    const std::optional<messaging::CachedValue> count = telegraph_.find( { shown.count, 0 } );
+    if( count ) {
+        const std::uint32_t rows_now = rows_of( count->telegram.as_integer() );
+        list.set_count( rows_now );
+        shown.window.set_count( rows_now );
+    }
+    // A new widget knows nothing: the model sends all of it again, from the count.
+    const messaging::SendResult reset = telegraph_.reset_view( shown.rows, rows );
+    shown.reset_unsent = reset != messaging::SendResult::sent;
+}
+
+void Stage::drop_list( ListBinding &shown ) noexcept
+{
+    telegraph_.unbind( { shown.count, 0 } );
+    for( std::uint32_t i = 0; i < shown.asked.rows; ++i ) {
+        const std::uint32_t row = shown.asked.first + i;
+        telegraph_.unbind( { shown.rows, row } );
+        const std::uint32_t kept = shown.kept[row % shown.kept.size()];
+        if( kept != 0 ) {
+            keep_item( shown, kept, false );
+        }
+    }
+    shown = ListBinding{};
+}
+
+void Stage::drop_lists( std::uint8_t owner, bool every ) noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    for( ListBinding &shown : drawing_->lists ) {
+        if( shown.list != nullptr && ( every || shown.owner == owner ) ) {
+            drop_list( shown );
+        }
+    }
+}
+
+std::uint32_t Stage::uid_at( const ListBinding &shown, std::uint32_t index ) const noexcept
+{
+    if( index == gui::List::no_row ) {
+        return 0;
+    }
+    const std::optional<messaging::CachedValue> row = telegraph_.find( { shown.rows, index } );
+    if( !row || row->telegram.type() != messaging::ValueType::integer ) {
+        return 0;
+    }
+    const std::int64_t uid = row->telegram.as_integer();
+    return uid > 0 && uid <= UINT32_MAX ? static_cast<std::uint32_t>( uid ) : 0;
+}
+
+void Stage::keep_item( ListBinding &shown, std::uint32_t uid, bool keep ) noexcept
+{
+    for( std::size_t i = 0; i < shown.value_count; ++i ) {
+        const messaging::Address value{ shown.values[i], uid };
+        if( keep ) {
+            static_cast<void>( telegraph_.bind( value ) );
+        } else {
+            telegraph_.unbind( value );
+        }
+    }
+}
+
+void Stage::row_shown( void *context, gui::List & /*list*/, std::size_t slot,
+                       std::uint32_t /*index*/ ) noexcept
+{
+    ListBinding &shown = *static_cast<ListBinding *>( context );
+    shown.stage->show_row( shown, slot );
+}
+
+void Stage::show_row( ListBinding &shown, std::size_t slot ) noexcept
+{
+    const auto list = static_cast<std::uint8_t>( &shown - drawing_->lists.data() );
+    const std::uint32_t uid = uid_at( shown, shown.list->row_at( slot ) );
+    for( Binding &binding : drawing_->bindings ) {
+        const bool here = binding.widget != nullptr && binding.in_row && binding.list == list;
+        if( !here || binding.owner != slot || !binding.row_uid ) {
+            continue;
+        }
+        if( binding.address.uid == uid && uid != 0 ) {
+            continue;
+        }
+        // Another item: its values, from the cache, or nothing until they come.
+        if( binding.address.uid != 0 ) {
+            telegraph_.unbind( binding.address );
+        }
+        binding.address.uid = uid;
+        binding.stale = false;
+        std::optional<messaging::CachedValue> now;
+        if( uid != 0 ) {
+            static_cast<void>( telegraph_.bind( binding.address ) );
+            now = telegraph_.find( binding.address );
+        }
+        if( now ) {
+            show( binding, now->telegram, now->data );
+        } else {
+            blank( binding );
+        }
+    }
+}
+
+void Stage::list_state( const messaging::Received &received ) noexcept
+{
+    const messaging::Address address = received.telegram.address();
+    const bool integer = received.telegram.type() == messaging::ValueType::integer;
+    for( ListBinding &shown : drawing_->lists ) {
+        if( shown.list == nullptr || !integer ) {
+            continue;
+        }
+        const std::int64_t value = received.telegram.as_integer();
+        if( address.name == shown.count && address.uid == 0 ) {
+            const std::uint32_t count = rows_of( value );
+            shown.list->set_count( count );
+            shown.window.set_count( count );
+            return;
+        }
+        if( address.name != shown.rows ) {
+            continue;
+        }
+        // Row `address.uid` shows the item `value`: the cache keeps its values
+        // while the row is asked for, the new before the old let go.
+        const std::uint32_t row = address.uid;
+        const std::uint32_t uid = rows_of( value );
+        const bool asked = row >= shown.asked.first && row - shown.asked.first < shown.asked.rows;
+        if( asked && !shown.kept.empty() ) {
+            std::uint32_t &kept = shown.kept[row % shown.kept.size()];
+            if( kept != uid ) {
+                keep_item( shown, uid, true );
+                if( kept != 0 ) {
+                    keep_item( shown, kept, false );
+                }
+                kept = uid;
+            }
+        }
+        const std::size_t slot = shown.list->slot_showing( row );
+        if( slot < shown.list->rows_built() ) {
+            show_row( shown, slot );
+        }
+        return;
+    }
+}
+
+void Stage::ask_views() noexcept
+{
+    if( drawing_ == nullptr ) {
+        return;
+    }
+    for( ListBinding &shown : drawing_->lists ) {
+        if( shown.list != nullptr ) {
+            ask_view( shown );
+        }
+    }
+}
+
+void Stage::ask_view( ListBinding &shown ) noexcept
+{
+    const std::string_view rows_text{};
+    if( shown.reset_unsent ) {
+        const messaging::SendResult sent = telegraph_.reset_view( shown.rows, rows_text );
+        shown.reset_unsent = sent != messaging::SendResult::sent;
+        return;
+    }
+    const gui::List &list = *shown.list;
+    const std::uint32_t screen = list.rows_on_screen();
+    if( screen == 0 ) {
+        return; // not laid out yet
+    }
+    if( shown.kept.empty() ) {
+        // Sized once it has a height: its rows and their items' values in at
+        // most half the cache, shared by the lists shown.
+        const std::size_t per_row = 1 + shown.value_count;
+        const std::size_t room = messaging::telegraph_size::cache / 2 / lists();
+        const std::size_t view = messaging::telegraph_size::list_view;
+        const std::size_t most = std::clamp<std::size_t>( room / per_row, 1, view );
+        if( most < screen ) {
+            say( "stage: a list shows %u rows; the cache keeps %zu of them: raise TELEGRAPH_CACHE",
+                 static_cast<unsigned>( screen ), most );
+        }
+        shown.window = messaging::ListWindow( static_cast<std::uint32_t>( most ) );
+        shown.window.set_count( list.count() );
+        shown.kept.assign( most, 0 );
+    }
+    const std::optional<messaging::RowSpan> span = shown.window.visible( list.first_row(), screen );
+    if( !span && !shown.view_unsent ) {
+        return;
+    }
+    const messaging::RowSpan want = span ? *span : shown.window.window();
+    const auto inside = []( messaging::RowSpan rows, std::uint32_t row ) noexcept {
+        return row >= rows.first && row - rows.first < rows.rows;
+    };
+    // The rows no longer asked for let go, and their items' values.
+    for( std::uint32_t i = 0; i < shown.asked.rows; ++i ) {
+        const std::uint32_t row = shown.asked.first + i;
+        if( inside( want, row ) ) {
+            continue;
+        }
+        telegraph_.unbind( { shown.rows, row } );
+        std::uint32_t &kept = shown.kept[row % shown.kept.size()];
+        if( kept != 0 ) {
+            keep_item( shown, kept, false );
+            kept = 0;
+        }
+    }
+    // The new ones kept, so their answers have room when they come.
+    for( std::uint32_t i = 0; i < want.rows; ++i ) {
+        const std::uint32_t row = want.first + i;
+        if( !inside( shown.asked, row ) ) {
+            static_cast<void>( telegraph_.bind( { shown.rows, row } ) );
+        }
+    }
+    shown.asked = want;
+    if( want.rows == 0 ) {
+        shown.view_unsent = false;
+        return;
+    }
+    const messaging::SendResult sent = telegraph_.view( shown.rows, rows_text, want );
+    shown.view_unsent = sent != messaging::SendResult::sent;
+}
+
 void Stage::set( const messaging::Telegram &telegram, std::span<const std::byte> data ) noexcept
 {
     const messaging::SendResult sent = telegraph_.send( telegram, data );
@@ -1334,6 +1769,40 @@ void Stage::tapped_in_pane( void *context, std::string_view line ) noexcept
 std::unique_ptr<gui::Widget> Stage::made_in_pane( void *context, std::string_view name )
 {
     return made( static_cast<Pane *>( context )->stage, name );
+}
+
+void Stage::tapped_in_row( void *context, std::string_view line ) noexcept
+{
+    // A row's own tap, as its list's screen or pane takes it.
+    const ListBinding &shown = list_of_row( context );
+    Stage &stage = *shown.stage;
+    if( shown.owner == screen_owner ) {
+        tapped( &stage, line );
+    } else {
+        tapped_in_pane( &stage.panes_[shown.owner], line );
+    }
+}
+
+void Stage::tapped_row_uid( void *context, std::string_view line ) noexcept
+{
+    const ListBinding &shown = list_of_row( context );
+    Stage &stage = *shown.stage;
+    const std::size_t slot = shown.list->slot_of( *static_cast<const gui::Table *>( context ) );
+    std::uint32_t uid = 0;
+    if( slot < shown.list->rows_built() ) {
+        uid = stage.uid_at( shown, shown.list->row_at( slot ) );
+    }
+    if( uid == 0 ) {
+        stage.say( "stage: tap %.*s: its row's item has not come yet; not sent",
+                   static_cast<int>( line.size() ), line.data() );
+        return;
+    }
+    stage.send( line, uid );
+}
+
+std::unique_ptr<gui::Widget> Stage::made_in_row( void *context, std::string_view name )
+{
+    return made( list_of_row( context ).stage, name );
 }
 
 std::unique_ptr<gui::Widget> Stage::made( void *context, std::string_view name )
@@ -1405,7 +1874,7 @@ void Stage::tap( std::string_view line ) noexcept
     }
 }
 
-void Stage::send( std::string_view line ) noexcept
+void Stage::send( std::string_view line, std::uint32_t uid ) noexcept
 {
     std::array<std::byte, 1024> storage{};
     messaging::TelegramData data( storage );
@@ -1414,7 +1883,9 @@ void Stage::send( std::string_view line ) noexcept
         say( "stage: tap %.*s: not a telegram", static_cast<int>( line.size() ), line.data() );
         return;
     }
-    const messaging::SendResult sent = telegraph_.send( *read, data.bytes() );
+    // In a list's row, to the row's item.
+    const messaging::Telegram telegram = uid != 0 ? read->with_uid( uid ) : *read;
+    const messaging::SendResult sent = telegraph_.send( telegram, data.bytes() );
     if( sent == messaging::SendResult::full || sent == messaging::SendResult::too_large ) {
         say( "stage: tap %.*s: the Telegraph had no room; not sent",
              static_cast<int>( line.size() ), line.data() );

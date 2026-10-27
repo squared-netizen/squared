@@ -392,7 +392,17 @@ void lists()
     t.changed( names::inventory, inv.order[110] );
     t.changed( names::inventory, inv.order[900] );
     CHECK( ui.drain() == 1 );
-    std::puts( "lists: declared, asked by the widget, answered by the list, a sort and one item" );
+
+    // A new widget, by the list's name: a reset brings the count; the view
+    // after it is answered in full, though the model had sent those rows.
+    CHECK( ui.reset_view( names::inventory.name(), "inventory" ) == SendResult::sent );
+    CHECK( t.deliver( bare ) == 1 );
+    CHECK( ui.drain() == 1 && ui.find( count )->telegram.as_integer() == 1000 );
+    CHECK( ui.view( names::inventory.name(), {}, *ask ) == SendResult::sent );
+    CHECK( t.deliver( bare ) == 1 );
+    CHECK( ui.drain() == 2 * std::size_t{ ask->rows } ); // each row, and its item
+    std::puts( "lists: declared, asked by the widget, answered by the list, a sort and one item; "
+               "a reset" );
 }
 
 // ---- lifecycle ---------------------------------------------------------------------------------------

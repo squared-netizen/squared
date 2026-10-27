@@ -50,6 +50,9 @@ class Telegram final
         /** @brief The same telegram, answering or awaiting `correlation`. */
         [[nodiscard]] Telegram with_correlation( std::uint16_t correlation ) const noexcept;
 
+        /** @brief The same telegram, to `uid` of its address: a list row's item. */
+        [[nodiscard]] Telegram with_uid( std::uint32_t uid ) const noexcept;
+
         [[nodiscard]] Verb verb() const noexcept;
         [[nodiscard]] ValueType type() const noexcept;
         [[nodiscard]] Address address() const noexcept { return { name_, uid_ }; }

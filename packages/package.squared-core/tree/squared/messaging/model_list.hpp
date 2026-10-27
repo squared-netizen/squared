@@ -110,7 +110,9 @@ class ModelList final
         /**
          * @brief The widget shows rows `first` to `last`, inclusive, margin
          * included (`do inventory.view 20 52`). Clamped to the count and to
-         * the window's size.
+         * the window's size. `last` before `first` is a reset, from a new
+         * widget that knows nothing: what was sent is forgotten, so the next
+         * view sends all of it, and the count is sent.
          */
         void view( std::uint32_t first, std::uint32_t last, const ListOutput &out ) noexcept;
 

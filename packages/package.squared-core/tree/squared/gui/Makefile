@@ -28,6 +28,7 @@ SOURCES := src/actor.cpp \
     src/layout_file.cpp \
     src/layout_writer.cpp \
     src/linear_layout.cpp \
+    src/list.cpp \
     src/margin_container.cpp \
     src/nine_patch_drawable.cpp \
     src/painter.cpp \

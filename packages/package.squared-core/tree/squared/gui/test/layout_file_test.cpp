@@ -28,9 +28,11 @@
 
 using namespace sq::gui;
 namespace data = sq::data;
+using sq::messaging::do_;
 using sq::messaging::Key;
 using sq::messaging::set;
 using sq::messaging::state;
+using sq::messaging::with_uid;
 
 namespace
 {
@@ -54,6 +56,9 @@ constexpr std::string_view names_json = R"({
     "game.start":      {                   "verbs": ["do"] },
     "player.pos":      { "type": "vec2",   "verbs": ["state"] },
     "item.name":       { "type": "text",   "verbs": ["state"], "uid": true },
+    "item.count":      { "type": "int",    "verbs": ["state", "set"], "uid": true },
+    "item.use":        {                   "verbs": ["do"], "uid": true },
+    "other.name":      { "type": "text",   "verbs": ["state"], "uid": true },
     "inventory":       { "list": "item" }
   },
   "screens": ["workspace"]
@@ -241,7 +246,7 @@ void cases()
 void names_read()
 {
     const NameSchema schema = schema_of_test();
-    CHECK( schema.names.size() == 10 ); // the list is two: its rows and its count
+    CHECK( schema.names.size() == 13 ); // the list is two: its rows and its count
     for( std::size_t i = 1; i < schema.names.size(); ++i ) {
         CHECK( schema.names[i - 1].name < schema.names[i].name );
     }
@@ -299,6 +304,43 @@ void a_file_gives_the_writers_table()
     }
 }
 
+/// A list, from a file and from C++: the same table.
+void a_list_file_gives_the_writers_table()
+{
+    static constexpr Key<std::int64_t, state, with_uid> inventory{ "inventory" };
+    static constexpr Key<std::string_view, state, with_uid> name{ "item.name" };
+    static constexpr Key<std::int64_t, state | set, with_uid> count{ "item.count" };
+    static constexpr Key<void, do_, with_uid> use{ "item.use" };
+    constexpr std::string_view json = R"({ "rows": [
+      [ { "type": "list", "bind": "inventory", "grow": true, "row": { "type": "table", "rows": [
+          [ { "type": "label", "bind": "item.name", "grow_x": true },
+            { "type": "slider", "max": 9, "bind": "item.count" },
+            { "type": "button", "text": "Use", "tap": "do item.use" } ] ] } } ],
+      [ { "type": "button", "text": "Back", "tap": "back" } ]
+    ] })";
+    Scratch from_file;
+    CHECK( layout_problems( json, from_file ).empty() );
+
+    Scratch from_cpp;
+    LayoutWriter root( from_cpp.nodes, from_cpp.text, from_cpp.numbers, "t" );
+    NodeWriter list = root.add_list( inventory ).grow();
+    NodeWriter row = list.add<Table>();
+    row.add<Label>().grow_x().bind( name );
+    row.add<Slider>().range( 0.0F, 9.0F ).bind( count );
+    row.add<Button>( "Use" ).tap( use );
+    root.row();
+    root.add<Button>( "Back" ).tap( Navigate::back );
+    CHECK( root.complete() );
+
+    const Layout cpp = root.layout();
+    CHECK( cpp.nodes().size() == 6 && cpp.nodes()[3].sends_set && cpp.nodes()[4].row_uid );
+    for( std::size_t i = 0; i < cpp.nodes().size(); ++i ) {
+        CHECK( from_file.nodes[i] == cpp.nodes()[i] );
+    }
+    const std::string_view file_text( from_file.text.data(), cpp.text().size() );
+    CHECK( file_text == cpp.text() );
+}
+
 } // namespace
 
 int main()
@@ -306,6 +348,7 @@ int main()
     names_read();
     cases();
     a_file_gives_the_writers_table();
+    a_list_file_gives_the_writers_table();
     std::printf( "layout_file_test: ok\n" );
     return 0;
 }

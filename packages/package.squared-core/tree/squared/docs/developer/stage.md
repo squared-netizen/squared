@@ -8,8 +8,8 @@ decision record: the refactor plan's 7.1 to 7.5 ("yes to all",
 (`sq::Stage`), `src/app.cpp`, `src/stage.cpp`, and `src/catalog.cpp` with
 `src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
-C++ screens, 7.3's panes, 7.4's compiled-in skin and 7.5a's bound values
-folded in.
+C++ screens, 7.3's panes, 7.4's compiled-in skin and 7.5's bound values and
+lists folded in.
 
 Depends on app (headers), gui, graphics, assets (the `Runtime`'s), files,
 messaging, time, data (through gui's skin loader) and math. Nothing depends
@@ -307,13 +307,84 @@ the widget held (tested past the short-string size). 7.5a changed both
 widgets' `set_text` from a `std::string` by value, which made every caller
 build a string first.
 
+**Laid out each frame, when something changed** (7.5b; a 7.5a bug the list
+found): `render` calls `Ui::layout` before it paints, which validates only
+what was invalidated. Before, layout ran only on a navigation, a resize or a
+pane, so a bound label's longer text kept its first width (clipped) until
+then. A frame where nothing changed lays out nothing. That made a `Table`'s
+layout a per-frame path, which allocated six `std::vector`s each time; it
+now borrows kept ones (gui's developer page).
+
+## Bound lists (7.5b)
+
+Decided 2026-10-26 ("yes to all"): the row is a node of the layout (not the
+spec's C++ row builder), uids in rows, one height, the rows on screen and one
+more reused, the asked-for window kept in the cache, drag to scroll, one
+level.
+
+**Built.** gui's `instantiate` makes a `gui::List`, which copies its row (the
+row's nodes, and the layout's words and numbers, so a C++ screen's scratch
+may be written over), and calls the new `listed` hook. The Stage's `listed`
+(`listed_in_pane` for a pane) takes one of 4 `ListBinding` slots
+(`Drawing::lists`), gives the list its row hooks (`tapped_in_row`,
+`tapped_row_uid`, `bound_in_row`, `made_in_row`, with the row's table as
+context and the binding as the list's `owner()`), tells it to call
+`row_shown`, binds the count in the cache, reads it if cached, and sends a
+reset (`TelegraphUi::reset_view`). A second widget of a list already shown,
+or a fifth list, gets empty hooks and stays empty, reported: the model keeps
+one view of a list (`ModelList`), so two widgets would fight over it.
+
+**Rows.** The list builds row tables as it lays out; each bound node in a row
+is a `Binding` with `in_row`, `list` (2 bits) and `owner` = the row table's
+slot, and `row_uid` when its address takes the row's uid; the uid is 0 (not
+an address: not bound in the cache, nothing sent) until the row has an item.
+`row_shown`, and a row's state as it arrives, call `show_row`: the uid of the
+row's item from the cache (`{rows, row}`), and each of the row's bindings
+moved to it (the old address unbound, the new bound, shown from the cache or
+blanked). A binding's widget never changes, so edits, held widgets and stale
+values work as for any binding, at the item's address. A row's tap whose
+telegram takes the row's uid comes to `tapped_row_uid` (gui calls `tapped_row`
+for nodes with `row_uid`), which sends it with `Telegram::with_uid`; its
+other taps go where the screen's or pane's would.
+
+**What the cache keeps.** The model sends a row's item when the row comes
+into its view, and an item's values once, when it comes in; so the UI must
+keep them while they are in the view it asked for, or a scroll back would
+find them evicted and nothing would come again. Each frame, `ask_views`
+gives each list's `messaging::ListWindow` the rows on screen; when it asks,
+the rows no longer asked for are unbound with their items' values, the new
+ones are bound (so their answers have room), and the `view` is sent (again
+next frame if the ring was full). A row's state for a row asked for keeps the
+new item's values (`keep_item`, one bind per value the row shows, from the
+row's nodes: `max_row_values`, 8) before it lets the old one's go, so an item
+that only moved rows is never let go. `kept` holds the item per row asked
+for, at the row modulo its size (no two rows of one window share a place).
+The window is sized when the list first has a height: at most half the
+cache over the lists shown, divided by one plus the row's values, clamped to
+`TELEGRAPH_LIST_VIEW`; if that is fewer rows than the screen, it is said.
+`drop_list` lets all of it go (leaving a screen, closing a pane, `detach`).
+
+**The reset** (a protocol addition, 7.5b): a new widget sends `do
+<list>.view (1 0)`, last before first, which `ModelList::view` takes as
+"forget what you sent" (its window emptied) and answers with the count. Without
+it, a list shown again would get nothing for the rows the model still
+thought it had sent, though the cache may long have let them go; and a count
+let go would leave the list empty for good.
+
+**gui's `List`** is in gui's developer page: row `r` is in table `r` modulo
+the tables, so a row keeps its table while it stays on screen; a drag is
+watched in the capture phase, so a finger on a row's button scrolls once it
+moves `drag_slop`, and the button gets a cancel.
+
 ## `Stage::Drawing`
 
-23,224 bytes under libc++ (Android, Termux) and 23,408 under libstdc++:
+23,864 bytes under libc++ (Android, Termux) and 24,048 under libstdc++:
 1,648 and 1,832 for the window's own pieces (`static_assert`ed for each: the
 `Ui` holds standard containers, whose sizes are the library's), the
-17,480-byte scratch and the 4,096-byte table of bound values, last, so they
-add exactly. One allocation per
+17,480-byte scratch, the 4,096-byte table of bound values and the 4 list
+slots (160 bytes each: the list, its names, its `ListWindow`, the rows
+asked for, the kept items' vector, the 8 value names), last, so they add
+exactly. One allocation per
 window: the atlas, the font, the sprite batch, the `Ui`, a `loaded` flag, the
 camera, the painter and the scratch, **in that order**, so the constructor can load in its member
 initializers: `loaded( load( files, why ) )` loads the atlas, the font and the
@@ -390,15 +461,19 @@ drawable missing) is reported and shown.
   shape is read at compile time from optional constants.
 - **Object pool (fixed slots)**: the 4 pane slots, whose addresses are the
   panes' hook contexts; free is `order == 0`. The 128 bound-value slots;
-  free is no widget.
+  free is no widget. The 4 list slots; free is no list.
+- **Flyweight**: a list's rows share one copy of the row's nodes, built once
+  for each table on screen; the tables are reused as it scrolls.
 - **Observer (low frequency)**: the drain's `state` hook tells the Stage a
   value changed, through a compile-time handler, not a list of callbacks.
 
 ## Standard library
 
 Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
-`std::array` for the stack, the queue, the registries, the pane slots, the scratch and the bound values; `std::string` and `std::vector`
-while a skin loads (once per window, in `attach`); `gui::FontPtr`
+`std::array` for the stack, the queue, the registries, the pane slots, the scratch, the bound values and the lists; `std::string` and `std::vector`
+while a skin loads (once per window, in `attach`); a `std::vector` of the
+items kept per list (sized once, when the list first has a height, 4 bytes
+a row asked for); `gui::FontPtr`
 (`std::shared_ptr`), gui's own type. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
 hooks, the report and the text field's commit (function pointers). The
@@ -414,7 +489,8 @@ libraries, so binding allocates nothing for them. See
 | `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,112) |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
-| `Stage::Drawing` | heap | each window | 23,224 (libc++; 23,408 libstdc++), the scratch's 17,480 and the bound values' 4,096 included, plus the skin's textures and tables |
+| `Stage::Drawing` | heap | each window | 23,864 (libc++; 24,048 libstdc++), the scratch's 17,480, the bound values' 4,096 and the lists' 640 included, plus the skin's textures and tables |
+| a list shown | heap | each list built | its `gui::List` (384 with libstdc++), a copy of its row's nodes (32 bytes each), the layout's words and numbers; its row tables and their widgets, for the rows on screen and one more, as it is first laid out; 4 bytes a row it asks for, once |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
 | a pane | heap | each open | a `gui::Window` (304) and its widgets; freed when it closes |
@@ -474,6 +550,22 @@ said; four at most; no allocation in frames with four open; a window made
 again builds the four again; back closes them one by one, then leaves. Two
 panes opened from inside an event (a custom widget's) wait, and `panes()`
 counts them while they do.
+
+**Bound lists (7.5b):** a C++ screen of 1,000 books (a title, a count, a
+check box and a tap a row): built as laid out, the rows on screen and one
+more, blank until the model says; the count from the cache; the reset, the
+view and the rows shown; a row's tap with a small move goes to its book, a
+row's check box sets its book's value; scrolled to row 500: blank before
+the answer, a tap then not sent and said, then the right books in the same
+tables; a full cache (600 values from the model) lets go of the rest and
+keeps the rows asked for; a row keeps its table while on screen; the cache
+keeps no more than half of itself for it; a drag on a row's button scrolls
+exactly as far, releases the button and taps nothing; a drag on a title
+scrolls once; a sort shows the books now there; 40 frames scrolling to new
+rows allocate nothing; a second widget of the list stays empty and is
+said; leaving lets all of it go (the cache's bound count as before); after
+a flood, the list shown again gets all of it again; cut to three: the
+count, the scroll back, the rows past it empty.
 
 **Bound values (7.5a):** seven widgets on five addresses (one shown
 three times): each shows its own text until the model's first states, then
@@ -536,6 +628,25 @@ file never setting or dropping the type; sqgen dropping `sends_set` or the
 value. Five were missed at first (the type, an integer slider, leaving with
 an edit, typing, a set with nothing bound); the tests above were added for
 them.
+
+Planted bugs for 7.5b, 42 (`plant77.py`), 41 caught: in the list, rows moved
+to other tables every scroll, rows past the count shown, no slop, a drag
+keeping the button pressed, the list's own drags seen twice, moves after a
+drag not stopped, a scroll not kept inside, a layout not keeping it, rows
+not told, a table short, the row's context not its table, a count that lays
+out nothing; in the Stage, no reset, items not kept, rows leaving kept, the
+count kept after, rows not rebound, a row's state not shown, a row's tap
+without its uid, two widgets of one list, no blank, nothing laid out per
+frame, the count ignored, new rows not kept; in gui, a borrowed `Lines`
+never returned, `listed` not called, the list node bound as a value, row taps
+to `tapped`, the check allowing a uid anywhere, two rows, nested lists or a
+list of text, the writer taking a row anywhere, a list in a row or dropping
+`row_uid`; in layout files, any uid in a row, a list of anything; sqgen
+dropping `row_uid`; in messaging, the reset keeping what was sent or sending
+no count, and the UI's reset sent as a view. Eight got through at first; the
+tests above were added for seven. The one left: the window's cap at half
+the cache made four times larger, which the test's list (a 20-row screen, a
+row of three values: 240 entries in a window of three screens) never reaches.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

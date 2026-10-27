@@ -369,6 +369,15 @@ hot path"): the four suggestions below.
   asks every half screen (1,000 rows at a row a frame: about 62 asks), a
   fling every frame. Holds no rows: they are in the latest-value cache, the
   window says which to keep bound. 24 bytes.
+- **The reset (7.5b):** a `view` whose last row is before its first (`(1 0)`,
+  `TelegraphUi::reset_view`) empties the window, so the next view is
+  answered in full, and sends the count. A new list widget sends it first:
+  the UI's cache may have let go of rows the model thought it had sent, and
+  of the count, which the model sends only when it changes. One telegram a
+  list shown, and no change to any answer the tests count. `view( Name,
+  text, span )` is the same `view` by name, for the Stage, which has a
+  layout's names, not keys; the text (when given) goes to the dev tools'
+  table.
 - **What 6.6 adds:** encoding `view` as a telegram (two ints: the value type
   is the Telegraph's to choose), dispatch to the right `ModelList` by name,
   the cache's bindings following `window()`, and the knobs.

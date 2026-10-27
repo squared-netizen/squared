@@ -141,8 +141,10 @@ NodeWriter LayoutWriter::add_to( std::uint16_t parent, NodeType type,
         }
         depth_ = static_cast<std::uint16_t>( at );
         Open &entry = open_[at - 1];
-        if( nodes_[parent].type == NodeType::scroll && entry.children != 0 ) {
-            refuse(); // a scroll holds one node
+        const NodeType holder = nodes_[parent].type;
+        const bool one = holder == NodeType::scroll || holder == NodeType::list;
+        if( one && entry.children != 0 ) {
+            refuse(); // a scroll holds one node, a list its row
             return unwritten;
         }
         children = &entry.children;
@@ -151,6 +153,14 @@ NodeWriter LayoutWriter::add_to( std::uint16_t parent, NodeType type,
     if( count_ == nodes_.size() || ( holds_nodes( type ) && depth_ == open_.size() ) ) {
         refuse();
         return unwritten;
+    }
+    if( type == NodeType::list ) {
+        for( std::size_t at = 0; at < depth_; ++at ) {
+            if( nodes_[open_[at].node].type == NodeType::list ) {
+                refuse(); // a list in a row: one level for now
+                return unwritten;
+            }
+        }
     }
     LayoutNode node{};
     node.type = type;
@@ -181,6 +191,33 @@ LayoutNode *NodeWriter::node() noexcept
 bool NodeWriter::written() const noexcept
 {
     return index_ != none;
+}
+
+bool NodeWriter::in_row() const noexcept
+{
+    if( index_ == none ) {
+        return false;
+    }
+    // A list before it whose nodes reach it.
+    for( std::size_t at = 0; at < index_; ++at ) {
+        const LayoutNode &before = writer_->nodes_[at];
+        if( before.type == NodeType::list && index_ <= at + before.inside ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+NodeWriter NodeWriter::list_of( std::uint16_t parent, messaging::Name rows,
+                                std::string_view text ) noexcept
+{
+    NodeWriter list = writer_->add_to( parent, NodeType::list, {} );
+    if( LayoutNode *n = list.node() ) {
+        n->bind_text = writer_->put_text( text );
+        n->bind = n->bind_text != 0 ? rows : messaging::Name{};
+        n->value = messaging::ValueType::integer;
+    }
+    return list;
 }
 
 NodeWriter NodeWriter::add_custom( std::string_view name ) noexcept
@@ -342,7 +379,8 @@ NodeWriter &NodeWriter::step( float step ) noexcept
 }
 
 NodeWriter &NodeWriter::bind_name( messaging::Name name, std::string_view text,
-                                   messaging::ValueType value, bool settable ) noexcept
+                                   messaging::ValueType value, bool settable,
+                                   bool row_uid ) noexcept
 {
     LayoutNode *n = node();
     if( n == nullptr ) {
@@ -350,6 +388,10 @@ NodeWriter &NodeWriter::bind_name( messaging::Name name, std::string_view text,
     }
     if( !shows_value( n->type ) || !shows_type( n->type, value ) ) {
         writer_->refuse();
+        return *this;
+    }
+    if( row_uid && !in_row() ) {
+        writer_->refuse(); // a uid comes from a list's row
         return *this;
     }
     n->bind_text = writer_->put_text( text );
@@ -360,6 +402,7 @@ NodeWriter &NodeWriter::bind_name( messaging::Name name, std::string_view text,
     n->bind = name;
     n->value = value;
     n->sends_set = settable && edits_value( n->type );
+    n->row_uid = row_uid;
     return *this;
 }
 
@@ -397,9 +440,13 @@ NodeWriter &NodeWriter::tap( Navigate how, std::string_view target ) noexcept
 }
 
 NodeWriter &NodeWriter::tap_telegram( const messaging::Telegram &telegram,
-                                      std::span<const std::byte> data,
-                                      std::string_view name ) noexcept
+                                      std::span<const std::byte> data, std::string_view name,
+                                      bool row_uid ) noexcept
 {
+    if( row_uid && !in_row() ) {
+        writer_->refuse(); // a uid comes from a list's row
+        return *this;
+    }
     // The telegram's own text form, from the one writer: a name table of
     // one, so the line names the key rather than its hash.
     std::array<std::byte, 16 + 256> storage{};
@@ -419,7 +466,11 @@ NodeWriter &NodeWriter::tap_telegram( const messaging::Telegram &telegram,
         writer_->refuse();
         return *this;
     }
-    return tap( std::string_view( line.data(), size ) );
+    static_cast<void>( tap( std::string_view( line.data(), size ) ) );
+    if( LayoutNode *n = node(); n != nullptr && n->tap != 0 ) {
+        n->row_uid = row_uid;
+    }
+    return *this;
 }
 
 } // namespace sq::gui

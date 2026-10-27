@@ -38,7 +38,7 @@
 
 
 
-**brief** The widget shows rows `first` to `last`, inclusive, margin included (`do inventory.view 20 52`). Clamped to the count and to the window's size.
+**brief** The widget shows rows `first` to `last`, inclusive, margin included (`do inventory.view 20 52`). Clamped to the count and to the window's size. `last` before `first` is a reset, from a new widget that knows nothing: what was sent is forgotten, so the next view sends all of it, and the count is sent.
 
 ### changed
 
@@ -60,19 +60,19 @@
 
 *public Name name()*
 
-*Defined at [messaging/model_list.hpp:123](../../../../messaging/model_list.hpp#L123)*
+*Defined at [messaging/model_list.hpp:125](../../../../messaging/model_list.hpp#L125)*
 
 ### count
 
 *public std::uint32_t count()*
 
-*Defined at [messaging/model_list.hpp:124](../../../../messaging/model_list.hpp#L124)*
+*Defined at [messaging/model_list.hpp:126](../../../../messaging/model_list.hpp#L126)*
 
 ### first
 
 *public std::uint32_t first()*
 
-*Defined at [messaging/model_list.hpp:126](../../../../messaging/model_list.hpp#L126)*
+*Defined at [messaging/model_list.hpp:128](../../../../messaging/model_list.hpp#L128)*
 
 
 
@@ -82,7 +82,7 @@
 
 *public std::uint32_t rows()*
 
-*Defined at [messaging/model_list.hpp:127](../../../../messaging/model_list.hpp#L127)*
+*Defined at [messaging/model_list.hpp:129](../../../../messaging/model_list.hpp#L129)*
 
 
 

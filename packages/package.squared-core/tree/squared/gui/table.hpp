@@ -70,7 +70,7 @@ class Table final : public Widget
 
     private:
         struct GridMetrics;
-        [[nodiscard]] GridMetrics measure( Painter &, const Skin *, bool minimum ) const;
+        void measure( Painter &, const Skin *, bool minimum, GridMetrics &out ) const;
         float padding_{ -1.0F };
         float spacing_{ -1.0F };
         std::size_t current_row_{ 0 };

@@ -398,6 +398,9 @@ constexpr std::string_view keywords[] = {
         const std::string value( value_type_name( node.value ) );
         fields.push_back( ".value = sq::messaging::ValueType::" + value );
     }
+    if( node.row_uid ) {
+        fields.push_back( ".row_uid = true" ); // declared after value
+    }
     std::string out = "{ ";
     for( std::size_t i = 0; i < fields.size(); ++i ) {
         if( i != 0 ) {

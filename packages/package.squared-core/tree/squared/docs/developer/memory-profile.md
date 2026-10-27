@@ -40,6 +40,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::Table` | 240 | 8 |
 | `gui::LinearLayout` | 176 | 8 |
 | `gui::ScrollPane` | 168 | 8 |
+| `gui::List` | 384 | 8 |
 | `gui::Window` | 304 | 8 |
 | `gui::Dialog` | 360 | 8 |
 | `gui::Ui` | 1048 | 8 |
@@ -137,11 +138,14 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
 | `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (89,216 bytes at the default knobs, `static_assert`ed against the line) ([stage.md](stage.md#memory-profile)) | none |
 | `App::run` | once, at the model's start: its runner, the model inside | global `new`, one `unique_ptr` |
-| `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (23,224 bytes with libc++, 23,408 with libstdc++; the C++ screens' 17,480-byte scratch and the 4,096-byte table of 128 bound values among them); while it loads, each skin file copied once out of the compiled-in bytes (46 KB in all, freed when loaded) | global `new` |
+| `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (23,864 bytes with libc++, 24,048 with libstdc++; the C++ screens' 17,480-byte scratch, the 4,096-byte table of 128 bound values and 4 list slots of 160 among them); while it loads, each skin file copied once out of the compiled-in bytes (46 KB in all, freed when loaded) | global `new` |
 | the default skin (`stage/src/default_skin.cpp`) | never: 46,305 bytes of read-only data in the program, mapped from its file ([stage.md](stage.md#the-default-skin-74)) | none |
 | `EmbeddedFileSystem::read`, `list` | a copy of the file's bytes; the names listed | global `new`, the result's vector and strings |
 | `Stage::open` | each pane opened: its `gui::Window` (304 bytes) through `Ui::show_window`, and its widgets through `instantiate`; freed when it closes or its screen is left | global `new` |
 | `gui::instantiate` | a layout built (a screen pushed, a pane opened): each widget, its words, each tap's line | global `new`; `LayoutWriter` and `check` allocate nothing ([layouts.md](layouts.md)) |
+| `gui::List` | when made: a copy of its row (nodes, the layout's words and numbers); as it is first laid out, or made taller: a row table and its widgets for each row on screen and one more; never as it scrolls | global `new` |
+| `Table::measure`, `layout` | the first layout at each depth of nesting, and one with more rows or columns than before at that depth; after that, never | global `new`, a kept `Lines` per depth ([gui.md](gui.md#a-tables-layout-allocates-nothing-75b)) |
+| the Stage's lists | each list shown: 4 bytes a row it asks for, once it has a height | global `new`, one `std::vector` |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
 | `std::function` assignment | per callback with captures past SBO | global `new` |
 | `std::string` assignment | per name past SSO (15 bytes) | global `new` |

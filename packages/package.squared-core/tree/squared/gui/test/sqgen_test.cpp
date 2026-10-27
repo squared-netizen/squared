@@ -121,6 +121,8 @@ void settings_is_the_writers_table()
     NodeWriter discard = root.add<Button>( "Discard" );
     discard.align( Alignment::end, Alignment::start ).tap( Navigate::open, "discard" );
     root.add<Button>( "Back" ).tap( Navigate::back );
+    root.row();
+    root.add_list( names::inventory ).grow().add<Label>().bind( names::item_name );
     CHECK( root.complete() );
 
     const Layout written = root.layout();
@@ -139,7 +141,8 @@ void settings_is_the_writers_table()
     Table built;
     const LayoutCheck short_of{ LayoutProblem::unknown_drawable, 11 };
     CHECK( instantiate( compiled, built, Skin() ) == short_of );
-    CHECK( built.child_count() == 8 );
+    CHECK( built.child_count() == 9 );
+    CHECK( compiled.nodes()[15].type == NodeType::list && compiled.nodes()[16].row_uid );
 }
 
 /// Run sqgen with `arguments`; its exit status, and what it printed.

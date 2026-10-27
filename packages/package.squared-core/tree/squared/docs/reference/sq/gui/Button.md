@@ -180,16 +180,6 @@ Inherits from Widget
 
  Base invokes the click callback. Subclasses override to toggle state.
 
-### selected
-
-*protected bool selected()*
-
-
-
-**brief** Report the selected state used for styling.
-
-**return** true when the button is rendered as selected.
-
 ### text
 
 *public const std::string & text()*
@@ -204,13 +194,13 @@ Inherits from Widget
 
 ### pressed
 
-*protected bool pressed()*
+*public bool pressed()*
 
-*Defined at [gui/button.hpp:146](../../../../gui/button.hpp#L146)*
+*Defined at [gui/button.hpp:133](../../../../gui/button.hpp#L133)*
 
 
 
-**brief** Read the pressed state.
+**brief** Read the pressed state: public, so a container that takes the pointer from it (a List scrolling) can be seen to have let it go.
 
 **return** true while the pointer presses the button.
 
@@ -218,7 +208,7 @@ Inherits from Widget
 
 *protected bool hovered()*
 
-*Defined at [gui/button.hpp:152](../../../../gui/button.hpp#L152)*
+*Defined at [gui/button.hpp:153](../../../../gui/button.hpp#L153)*
 
 
 
@@ -230,13 +220,23 @@ Inherits from Widget
 
 *protected bool focused()*
 
-*Defined at [gui/button.hpp:158](../../../../gui/button.hpp#L158)*
+*Defined at [gui/button.hpp:159](../../../../gui/button.hpp#L159)*
 
 
 
 **brief** Read the focused state.
 
 **return** true while the button owns keyboard focus.
+
+### selected
+
+*protected bool selected()*
+
+
+
+**brief** Report the selected state used for styling.
+
+**return** true when the button is rendered as selected.
 
 
 

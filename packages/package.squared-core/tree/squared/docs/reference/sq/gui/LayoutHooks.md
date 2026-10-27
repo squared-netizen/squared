@@ -1,6 +1,6 @@
 # struct LayoutHooks
 
-*Defined at [gui/instantiate.hpp:20](../../../../gui/instantiate.hpp#L20)*
+*Defined at [gui/instantiate.hpp:21](../../../../gui/instantiate.hpp#L21)*
 
 
 
@@ -17,6 +17,10 @@ public void (*)(void *, const Layout &, const LayoutNode &, Widget &) noexcept b
 public std::unique_ptr<Widget> (*)(void *, std::string_view) custom
 
 public void * context
+
+public void (*)(void *, std::string_view) noexcept tapped_row
+
+public void (*)(void *, const Layout &, const LayoutNode &, List &) noexcept listed
 
 
 

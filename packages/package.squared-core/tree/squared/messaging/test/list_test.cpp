@@ -159,6 +159,15 @@ void model_list()
     list.view( 0, 29, out );
     CHECK( wire.sent.empty() );
 
+    // A reset (last before first), from a new widget: the count, and what
+    // was sent forgotten, so the same view again is sent in full.
+    list.view( 1, 0, out );
+    CHECK( wire.counts == 1 && wire.sent.size() == 1 && list.rows() == 0 );
+    wire.clear();
+    list.view( 0, 29, out );
+    CHECK( wire.rows == 30 && wire.published == 30 );
+    wire.clear();
+
     // Scrolled ten rows: only rows 30 to 39, and their items.
     list.view( 10, 39, out );
     CHECK( wire.rows == 10 && wire.published == 10 );

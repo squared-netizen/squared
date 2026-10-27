@@ -119,6 +119,13 @@ Telegram Telegram::with_correlation( std::uint16_t correlation ) const noexcept
     return copy;
 }
 
+Telegram Telegram::with_uid( std::uint32_t uid ) const noexcept
+{
+    Telegram copy = *this;
+    copy.uid_ = uid;
+    return copy;
+}
+
 Verb Telegram::verb() const noexcept
 {
     return static_cast<Verb>( kind_ & ( ( 1U << verb_bits ) - 1 ) );

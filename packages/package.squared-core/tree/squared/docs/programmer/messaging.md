@@ -171,7 +171,8 @@ const Telegram open  = Telegram::data( Verb::do_, { "file.open" }, ValueType::te
 
 Read it with `verb()`, `type()`, `address()`, `correlation()`, and
 `as_boolean()`, `as_integer()`, `as_number()`, `as_floats()`, `as_data()` for
-its type. `valid()` says whether 32 bytes that came from elsewhere
+its type. `with_correlation(c)` and `with_uid(uid)` make the same telegram
+answering `c`, or to another uid of its address (a list row's item). `valid()` says whether 32 bytes that came from elsewhere
 (`TelegramBytes::from`) are a telegram; the factories only make valid ones,
 with every byte a value does not use zero, so equal telegrams are equal byte
 for byte.
@@ -397,6 +398,7 @@ model.
 | `register_names(keys...)` | add these keys' names too: the ones only the model sends. Nothing without a table |
 | `set_tap(tap, context)` | `tap(context, direction, telegram, data)` for every telegram the UI sends (`to_model`) and drains (`to_ui`), on the UI thread; its text or uid list in `data`, from 0. nullptr, the default: none |
 | `send(telegram, data)` | a telegram read from text, sent as it is (a replay): no key checks it |
+| `view(rows, text, span)`, `reset_view(rows, text)` | a list's `view` and its reset, by the list's name and dotted text (what a layout's list node has; the Stage's): `text` names it in the dev tools' table, and may be empty |
 
 The Stage sleeps like this, when nothing is animating:
 
@@ -504,6 +506,7 @@ those rows and their items' fields, nothing else. For a list named
 |---|---|
 | `state inventory.count 300` | how many rows |
 | `do inventory.view 20 52` | the widget shows rows 20 to 52, a screen above and below included |
+| `do inventory.view 1 0` | a new widget, which knows nothing (last before first): the model forgets what it sent and sends the count, so the next view is answered in full |
 | `state inventory[20] 17` | row 20 is the item with uid 17 (row 0 is written `inventory`) |
 | `state item[17].name "fur coat"` | that item's fields, by its uid |
 
@@ -537,7 +540,7 @@ the widget's. The Telegraph and the list widget use them; an app does not.
 | `list_source<Out>(source)` | a `ListSource`: the three members as plain functions |
 | `ModelList(name, source, window, scratch)` | the model's end: `window` holds the uids sent for the rows in view (4 bytes a row, `TELEGRAPH_LIST_VIEW`); `scratch` as large, shared by every list on the thread |
 | `start(out)` | sends the count |
-| `view(first, last, out)` | answers a `view`: the rows whose item is not the one sent, the fields of items new to it; cut to the count and the window's size |
+| `view(first, last, out)` | answers a `view`: the rows whose item is not the one sent, the fields of items new to it; cut to the count and the window's size. `last` before `first`: a reset, answered with the count |
 | `changed(out)` | the count if it changed, then the view read again |
 | `changed(uid, out)` | the item's fields again, if it is on screen |
 | `ListWindow(most_rows)` | the widget's end |

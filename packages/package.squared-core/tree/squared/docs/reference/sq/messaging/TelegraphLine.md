@@ -1,6 +1,6 @@
 # class TelegraphLine
 
-*Defined at [messaging/telegraph.hpp:525](../../../../messaging/telegraph.hpp#L525)*
+*Defined at [messaging/telegraph.hpp:538](../../../../messaging/telegraph.hpp#L538)*
 
 
 
@@ -18,43 +18,43 @@
 
 *public void TelegraphLine(const TelegraphLine & )*
 
-*Defined at [messaging/telegraph.hpp:529](../../../../messaging/telegraph.hpp#L529)*
+*Defined at [messaging/telegraph.hpp:542](../../../../messaging/telegraph.hpp#L542)*
 
 ### operator=
 
 *public TelegraphLine & operator=(const TelegraphLine & )*
 
-*Defined at [messaging/telegraph.hpp:530](../../../../messaging/telegraph.hpp#L530)*
+*Defined at [messaging/telegraph.hpp:543](../../../../messaging/telegraph.hpp#L543)*
 
 ### TelegraphLine
 
 *public void TelegraphLine(TelegraphLine && )*
 
-*Defined at [messaging/telegraph.hpp:531](../../../../messaging/telegraph.hpp#L531)*
+*Defined at [messaging/telegraph.hpp:544](../../../../messaging/telegraph.hpp#L544)*
 
 ### operator=
 
 *public TelegraphLine & operator=(TelegraphLine && )*
 
-*Defined at [messaging/telegraph.hpp:532](../../../../messaging/telegraph.hpp#L532)*
+*Defined at [messaging/telegraph.hpp:545](../../../../messaging/telegraph.hpp#L545)*
 
 ### ~TelegraphLine
 
 *public void ~TelegraphLine()*
 
-*Defined at [messaging/telegraph.hpp:533](../../../../messaging/telegraph.hpp#L533)*
+*Defined at [messaging/telegraph.hpp:546](../../../../messaging/telegraph.hpp#L546)*
 
 ### model
 
 *public Telegraph & model()*
 
-*Defined at [messaging/telegraph.hpp:535](../../../../messaging/telegraph.hpp#L535)*
+*Defined at [messaging/telegraph.hpp:548](../../../../messaging/telegraph.hpp#L548)*
 
 ### ui
 
 *public TelegraphUi & ui()*
 
-*Defined at [messaging/telegraph.hpp:536](../../../../messaging/telegraph.hpp#L536)*
+*Defined at [messaging/telegraph.hpp:549](../../../../messaging/telegraph.hpp#L549)*
 
 
 

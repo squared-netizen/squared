@@ -8,7 +8,8 @@
 #
 # The layouts are read against the names.json in the test (counter.ticks,
 # settings.sound, settings.volume, settings.name, file.open, game.start,
-# player.pos, item.name, the list inventory; the screen workspace) and the
+# player.pos, the uid addresses item.name, item.count, item.use and
+# other.name, the list inventory of item; the screen workspace) and the
 # layouts landing and settings (screens) and discard (a pane).
 
 # names.json
@@ -83,6 +84,16 @@ node	{ "type": "table", "rows": [ [ { "type": "label" } ], [ { "type": "label", 
 node	{ "type": "scroll", "node": { "type": "label", "text": 1 } }	t.json: rows[0][0].node.text: words, in a string
 node	{ "type": "stack", "nodes": [ { "type": "label" }, { "type": "box" } ] }	t.json: rows[0][0].nodes[1].type: not a type ...
 node	{ "type": "stack", "nodes": {} }	t.json: rows[0][0].nodes: a list of nodes
+node	{ "type": "button", "tap": "do item.use" }	t.json: rows[0][0].tap: item.use takes a uid: only a list's row sends one
+node	{ "type": "list", "row": { "type": "label" } }	t.json: rows[0][0]: a list shows a model's list: "bind": "inventory"
+node	{ "type": "list", "bind": "nothing", "row": { "type": "label" } }	t.json: rows[0][0].bind: nothing is not in names.json
+node	{ "type": "list", "bind": "item.name", "row": { "type": "label" } }	t.json: rows[0][0].bind: item.name is not a list ({ "list": ... })
+node	{ "type": "list", "bind": "inventory" }	t.json: rows[0][0]: a list's row: "row": { "type": ... }, one node
+node	{ "type": "list", "bind": "inventory", "text": "x", "row": { "type": "label" } }	t.json: rows[0][0].text: not a key of a list
+node	{ "type": "list", "bind": "inventory", "row": { "type": "label", "bind": "other.name" } }	t.json: rows[0][0].row.bind: in inventory's row, an address taking a uid is item.<field>, not other.name
+node	{ "type": "list", "bind": "inventory", "row": { "type": "button", "tap": "do item[3].use" } }	t.json: rows[0][0].row.tap: item.use: the row gives the uid; write the address without [...]
+node	{ "type": "list", "bind": "inventory", "row": { "type": "list", "bind": "inventory", "row": { "type": "label" } } }	t.json: rows[0][0].row: a list in a list's row: one level of list for now
+node	{ "type": "list", "bind": "inventory", "row": { "type": "check_box", "bind": "item.count" } }	t.json: rows[0][0].row.bind: a check_box cannot show an int (item.count)
 
 # Accepted
 layout	{ "rows": [] }	ok
@@ -93,3 +104,4 @@ layout	{ "kind": "pane", "rows": [ [ { "type": "button", "tap": "close" }, { "ty
 layout	{ "rows": [ [ { "type": "scroll" }, { "type": "stack" }, { "type": "table" } ] ] }	ok
 node	{ "type": "label", "align": ["end", "start"], "grow": true, "pad": 0, "span": 3, "style": "big" }	ok
 node	{ "type": "slider", "min": -1, "max": 1.5, "step": 0.25, "bind": "settings.volume" }	ok
+node	{ "type": "list", "bind": "inventory", "grow": true, "row": { "type": "table", "rows": [ [ { "type": "label", "bind": "item.name" }, { "type": "slider", "bind": "item.count" }, { "type": "button", "tap": "do item.use" }, { "type": "button", "tap": "push landing" }, { "type": "label", "bind": "settings.name" } ] ] } }	ok

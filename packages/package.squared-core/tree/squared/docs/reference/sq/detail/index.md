@@ -14,7 +14,7 @@
 
 *gui::PaneShape shape_of()*
 
-*Defined at [stage/stage.hpp:97](../../../../stage/stage.hpp#L97)*
+*Defined at [stage/stage.hpp:99](../../../../stage/stage.hpp#L99)*
 
 
 

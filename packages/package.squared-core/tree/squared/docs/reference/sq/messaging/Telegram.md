@@ -18,7 +18,7 @@
 
 *public Address address()*
 
-*Defined at [messaging/telegram.hpp:55](../../../../messaging/telegram.hpp#L55)*
+*Defined at [messaging/telegram.hpp:58](../../../../messaging/telegram.hpp#L58)*
 
 ### empty
 
@@ -36,7 +36,7 @@
 
 *public std::uint16_t correlation()*
 
-*Defined at [messaging/telegram.hpp:56](../../../../messaging/telegram.hpp#L56)*
+*Defined at [messaging/telegram.hpp:59](../../../../messaging/telegram.hpp#L59)*
 
 ### integer
 
@@ -73,6 +73,14 @@
 
 
 **brief** The same telegram, answering or awaiting `correlation`. 
+
+### with_uid
+
+*public Telegram with_uid(std::uint32_t uid)*
+
+
+
+**brief** The same telegram, to `uid` of its address: a list row's item. 
 
 ### verb
 

@@ -158,7 +158,7 @@
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.hpp:606](../../../../messaging/telegraph.hpp#L606)*
+*Defined at [messaging/telegraph.hpp:619](../../../../messaging/telegraph.hpp#L619)*
 
 
 
@@ -170,7 +170,7 @@
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.hpp:614](../../../../messaging/telegraph.hpp#L614)*
+*Defined at [messaging/telegraph.hpp:627](../../../../messaging/telegraph.hpp#L627)*
 
 
 

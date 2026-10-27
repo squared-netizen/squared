@@ -62,7 +62,9 @@ the `add` lines.
 
 A screen or pane is a table: `rows`, each an array of cells, each cell one
 node. A nested `table` node has `rows` of its own; a `scroll` holds one node
-(`"node": {...}`) and a `stack` a list of them (`"nodes": [...]`).
+(`"node": {...}`), a `stack` a list of them (`"nodes": [...]`), and a `list`
+its row (`"row": {...}`, built once for each row on screen:
+[stage.md](stage.md#bound-lists)).
 
 | Key | Means |
 |---|---|
@@ -74,7 +76,7 @@ node. A nested `table` node has `rows` of its own; a `scroll` holds one node
 | `pad` | Space around it in its cell |
 | `align` | `"start"`, `"center"` or `"end"` across, or two of them: across, then down |
 | `span` | Columns the cell takes |
-| `bind` | An address from `names.json`: the node shows its `state`, and a node that edits (check box, slider, text field) sends `set` when the address carries it ([stage.md](stage.md#bound-values)) |
+| `bind` | An address from `names.json`: the node shows its `state`, and a node that edits (check box, slider, text field) sends `set` when the address carries it ([stage.md](stage.md#bound-values)). On a `list`, the list it shows. In a list's row, an address that takes a uid (`item.name`) is the row's item's |
 | `tap` | A button's line: a telegram (`do file.open "a.txt"`) or a navigation (below) |
 | `style` | A style from the skin, in place of `default` |
 | `min`, `max`, `step` | A slider's range and step; a progress bar's range |
@@ -115,6 +117,7 @@ name in the build is its file's: `settings.json` is the layout `settings`
 | `table` | `Table` | `rows` |
 | `scroll` | `ScrollPane` | one node |
 | `stack` | `Stack` | nodes |
+| `list` | `List` | `bind` (a list from `names.json`), `row` |
 | `custom` | your type | `name`: the name you register it by |
 
 ## Taps
@@ -141,7 +144,10 @@ In a file, a tap is also checked against the app: a telegram's address must
 be in `names.json`, carry that verb, and take that type of value (a `number`
 is written with a point, `11.0`; `11` is an `int`). A `push` or `replace`
 must name a screen, an `open` a pane: another layout file, or a C++ screen
-listed in `names.json`'s `screens`. `close` belongs in a pane.
+listed in `names.json`'s `screens`. `close` belongs in a pane. In a list's
+row, a telegram whose address takes a uid is written without one (`do
+item.use`): the row gives it its item's, and only its element's addresses
+(`item.*` in a list of `item`) take one there.
 
 ## `names.json`
 
@@ -168,7 +174,7 @@ Every address the app's model and screens use, in one file,
 | `verbs` | Which of `state`, `event`, `set`, `do` it carries; at least one. `state` and `set` need a `type` |
 | `uid` | `true`: it is one of many, told apart by a uid (a row of a list) |
 | `note` | Words for people; becomes the key's comment |
-| `list` | Instead of the above: a list whose rows are `<list>.*` addresses. It declares `<name>` (the rows: an `int` `state` with a uid) and `<name>.count` |
+| `list` | Instead of the above: a list whose rows are `<list>.*` addresses. It declares `<name>` (the rows: an `int` `state` with a uid) and `<name>.count`, which a `list` node shows |
 
 `screens` lists the screens and panes written in C++, so a layout may
 navigate to them. A name is lowercase words, digits and `_` between dots.
@@ -275,6 +281,7 @@ allocates nothing. Words are copied into the text storage, so a temporary
 | `LayoutWriter(nodes, text, numbers, name = {}, kind = screen)` | A writer over your storage |
 | `add<W>(text)` | Add a widget to the layout's own table: `Label`, `Button`, `CheckBox`, `TextField`, `Slider`, `ProgressBar`, `Image`, `Separator`, `Table`, `ScrollPane`, `Stack`. Another type does not compile |
 | `add_custom(name)` | Add a custom node |
+| `add_list(rows)` | Add a list showing `rows`, a list's key (`names::inventory`); add its row to the `NodeWriter` it returns |
 | `row()` | The next node added to the layout's own table starts a new row |
 | `set_pane(shape)` | How it shows as a pane: `{ PanePlace::bottom, true }`, a file's `place` and `modal` |
 | `layout()` | What was written, as a `Layout` pointing into your storage |
@@ -291,12 +298,12 @@ chain:
 | `style(name)` | A style from the skin |
 | `vertical()` | A separator that runs up and down |
 | `range(minimum, maximum)`, `step(step)` | A slider's or progress bar's numbers; `step` is a slider's |
-| `bind(key)` | Show the key's `state`, and send `set` from a node that edits when the key carries it. Only keys that carry `state` and take no uid compile; a value type the node cannot show is refused (a check box takes a bool, a text field text, a slider or progress bar a number or an integer, a label any but a uid list) |
+| `bind(key)` | Show the key's `state`, and send `set` from a node that edits when the key carries it. Only keys that carry `state` compile; a value type the node cannot show is refused (a check box takes a bool, a text field text, a slider or progress bar a number or an integer, a label any but a uid list), and so is a key that takes a uid outside a list's row |
 | `tap(line)` | A button's line, as a file writes it |
 | `tap(Navigate::push, "settings")` | A navigation: `push`, `replace`, `back`, `open`, `close`, `quit` |
 | `tap<About>(Navigate::push)` | A navigation to the C++ screen `About`, by its `name`, checked when it compiles ([stage.md](stage.md#c-screens)) |
-| `tap(key)`, `tap(key, value)` | A telegram: `do <key>`, or `do`/`set <key> <value>`; the type is checked when it compiles |
-| `add<W>(text)`, `add_custom(name)` | A node inside this table, scroll (one only) or stack |
+| `tap(key)`, `tap(key, value)` | A telegram: `do <key>`, or `do`/`set <key> <value>`; the type is checked when it compiles. A key that takes a uid is sent to the row's item, in a list's row; elsewhere it is refused |
+| `add<W>(text)`, `add_custom(name)`, `add_list(rows)` | A node inside this table, scroll (one only), stack, or list (one: its row) |
 | `row()` | In this table, the next node starts a new row |
 | `written()` | Whether this node was written |
 
@@ -306,8 +313,9 @@ node is not written. So write each container's contents before moving on.
 
 **What the writer refuses** (the call is ignored and `complete()` is false):
 a node added to one that is finished or holds nothing; a second node in a
-scroll; containers deeper than 16; a `bind` on a node that shows no value,
-or of a type it cannot show; a
+scroll or a list; a list in a list's row; containers deeper than 16; a
+`bind` on a node that shows no value, or of a type it cannot show; a key
+that takes a uid outside a list's row; a
 `tap` on anything but a button, or a line `read_tap` refuses; `range` or
 `step` on a node without numbers, or a range whose minimum is not below its
 maximum; `vertical` on anything but a separator; running out of storage.
@@ -356,6 +364,7 @@ first `problem` and its `node` index; `ok()` when there is none.
 | `too_deep` | Containers nested deeper than 16 |
 | `not_a_container` | Nodes inside one that is not a table, scroll or stack |
 | `scroll_holds_one` | A scroll with more than one node |
+| `bad_list` | A list with more than one row, without the list it shows, or in another list's row; or a row's uid on a node outside a row, or on one with no bind or telegram |
 | `misplaced_row` | A new row outside a table |
 | `bad_type` | Not a `NodeType` |
 | `bad_bind` | A bind on a node that shows no value, a name its text does not hash to, a value type the node cannot show, or a `set` on a node that edits nothing |

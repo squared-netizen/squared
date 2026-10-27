@@ -18,11 +18,43 @@
 
 *Defined at [messaging/telegraph.hpp:316](../../../../messaging/telegraph.hpp#L316)*
 
+### operator=
+
+*public TelegraphUi & operator=(const TelegraphUi & )*
+
+*Defined at [messaging/telegraph.hpp:317](../../../../messaging/telegraph.hpp#L317)*
+
 ### TelegraphUi
 
 *public void TelegraphUi(TelegraphUi && )*
 
 *Defined at [messaging/telegraph.hpp:318](../../../../messaging/telegraph.hpp#L318)*
+
+### operator=
+
+*public TelegraphUi & operator=(TelegraphUi && )*
+
+*Defined at [messaging/telegraph.hpp:319](../../../../messaging/telegraph.hpp#L319)*
+
+### set
+
+*public SendResult set(const K & key, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
+
+
+
+**brief** `set <key> <value>`: the user changed a value. 
+
+### set
+
+*public SendResult set(const K & key, std::uint32_t uid, const V & value)*
+
+*Defined at [messaging/telegraph.hpp:336](../../../../messaging/telegraph.hpp#L336)*
+
+
+
+**brief** `set <key>[uid] <value>`. 
 
 ### do_
 
@@ -54,15 +86,41 @@
 
 **brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
 
+### register_names
+
+*public void register_names(const K &... keys)*
+
+*Defined at [messaging/telegraph.hpp:443](../../../../messaging/telegraph.hpp#L443)*
+
+
+
+**brief** Add each key's name, for names only the model sends. Nothing without a table. 
+
 ### view
 
 *public SendResult view(const K & rows, RowSpan span)*
 
-*Defined at [messaging/telegraph.hpp:671](../../../../messaging/telegraph.hpp#L671)*
+*Defined at [messaging/telegraph.hpp:684](../../../../messaging/telegraph.hpp#L684)*
 
 
 
 **brief** `do <list>.view (first last)`: the rows a list widget shows (`ListWindow`). 
+
+### view
+
+*public SendResult view(Name rows, std::string_view text, RowSpan span)*
+
+
+
+**brief** The same, for a list known by its name and its dotted text (a layout's list node: `rows`, `layout.text( bind_text )`).
+
+### reset_view
+
+*public SendResult reset_view(Name rows, std::string_view text)*
+
+
+
+**brief** `do <list>.view (1 0)`: a new list widget, which knows nothing. The model forgets what it sent, so the next `view` is answered in full, and sends the count.
 
 ### send
 
@@ -76,7 +134,7 @@
 
 *public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.hpp:688](../../../../messaging/telegraph.hpp#L688)*
+*Defined at [messaging/telegraph.hpp:701](../../../../messaging/telegraph.hpp#L701)*
 
 
 
@@ -150,6 +208,32 @@
 
 *public void quit()*
 
+### ~TelegraphUi
+
+*public void ~TelegraphUi()*
+
+*Defined at [messaging/telegraph.hpp:320](../../../../messaging/telegraph.hpp#L320)*
+
+### value
+
+*public detail::value_of<K> value(const K & key)*
+
+*Defined at [messaging/telegraph.hpp:416](../../../../messaging/telegraph.hpp#L416)*
+
+
+
+**brief** The latest value of `key`, as its type (text: valid until the next `drain`). 
+
+### value
+
+*public detail::value_of<K> value(const K & key, std::uint32_t uid)*
+
+*Defined at [messaging/telegraph.hpp:425](../../../../messaging/telegraph.hpp#L425)*
+
+
+
+**brief** The latest value of `key` at `uid`, as its type. 
+
 ### wake_fd
 
 *public int wake_fd()*
@@ -201,74 +285,6 @@
 
 
 **brief** A walk over every value the cache holds, as `ValueCache::entry_from`: from 0, then from the last found plus 1. A value's text is valid until the next `drain`.
-
-### operator=
-
-*public TelegraphUi & operator=(const TelegraphUi & )*
-
-*Defined at [messaging/telegraph.hpp:317](../../../../messaging/telegraph.hpp#L317)*
-
-### operator=
-
-*public TelegraphUi & operator=(TelegraphUi && )*
-
-*Defined at [messaging/telegraph.hpp:319](../../../../messaging/telegraph.hpp#L319)*
-
-### ~TelegraphUi
-
-*public void ~TelegraphUi()*
-
-*Defined at [messaging/telegraph.hpp:320](../../../../messaging/telegraph.hpp#L320)*
-
-### set
-
-*public SendResult set(const K & key, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
-
-
-
-**brief** `set <key> <value>`: the user changed a value. 
-
-### set
-
-*public SendResult set(const K & key, std::uint32_t uid, const V & value)*
-
-*Defined at [messaging/telegraph.hpp:336](../../../../messaging/telegraph.hpp#L336)*
-
-
-
-**brief** `set <key>[uid] <value>`. 
-
-### value
-
-*public detail::value_of<K> value(const K & key)*
-
-*Defined at [messaging/telegraph.hpp:403](../../../../messaging/telegraph.hpp#L403)*
-
-
-
-**brief** The latest value of `key`, as its type (text: valid until the next `drain`). 
-
-### value
-
-*public detail::value_of<K> value(const K & key, std::uint32_t uid)*
-
-*Defined at [messaging/telegraph.hpp:412](../../../../messaging/telegraph.hpp#L412)*
-
-
-
-**brief** The latest value of `key` at `uid`, as its type. 
-
-### register_names
-
-*public void register_names(const K &... keys)*
-
-*Defined at [messaging/telegraph.hpp:430](../../../../messaging/telegraph.hpp#L430)*
-
-
-
-**brief** Add each key's name, for names only the model sends. Nothing without a table. 
 
 
 

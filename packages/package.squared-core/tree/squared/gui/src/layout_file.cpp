@@ -32,9 +32,31 @@ struct FileWriting
         }
 
         static void bind( NodeWriter &node, messaging::Name name, std::string_view text,
-                          messaging::ValueType value, bool settable ) noexcept
+                          messaging::ValueType value, bool settable, bool row_uid ) noexcept
         {
-            static_cast<void>( node.bind_name( name, text, value, settable ) );
+            static_cast<void>( node.bind_name( name, text, value, settable, row_uid ) );
+        }
+
+        static NodeWriter list( LayoutWriter &out, NodeWriter *parent, messaging::Name rows,
+                                std::string_view text ) noexcept
+        {
+            const std::uint16_t into = parent == nullptr ? LayoutWriter::root : parent->index_;
+            return NodeWriter( &out, NodeWriter::none ).list_of( into, rows, text );
+        }
+
+        /// A tap's telegram whose address takes the row's uid.
+        static void tap_in_row( NodeWriter &node, std::string_view line ) noexcept
+        {
+            node.tap( line );
+            LayoutNode *n = node.node();
+            if( n == nullptr || n->tap == 0 ) {
+                return;
+            }
+            if( node.in_row() ) {
+                n->row_uid = true;
+            } else {
+                node.writer_->refuse();
+            }
         }
 };
 
@@ -343,6 +365,8 @@ void read_screens( Reader &reader, const JsonValue &value, std::vector<std::stri
             return key == "node";
         case NodeType::stack:
             return key == "nodes";
+        case NodeType::list:
+            return key == "bind" || key == "row";
         case NodeType::custom:
             return key == "name";
     }
@@ -457,6 +481,10 @@ class LayoutReader final
                     reader_.problem( field( path, key ),
                                      "not a key of a " + std::string( *type_word ) );
                 }
+            }
+            if( *type == NodeType::list ) {
+                list( path, value, parent );
+                return;
             }
             const std::string text = words( path, value, *type );
             NodeWriter written = detail::FileWriting::add( out_, parent, *type, text );
@@ -647,6 +675,67 @@ class LayoutReader final
             return number;
         }
 
+        /// A list: the model's list it shows (`bind`), and its row, one node.
+        void list( const std::string &path, const JsonValue &value, NodeWriter *parent )
+        {
+            if( list_ != nullptr ) {
+                reader_.problem( path, "a list in a list's row: one level of list for now" );
+                return;
+            }
+            const JsonValue *bind = value.find( "bind" );
+            const std::string *name = bind != nullptr ? bind->string_if() : nullptr;
+            const NameEntry *entry = name != nullptr ? schema_.find( *name ) : nullptr;
+            if( name == nullptr ) {
+                reader_.problem( path, "a list shows a model's list: \"bind\": \"inventory\"" );
+                return;
+            }
+            if( entry == nullptr ) {
+                reader_.problem( field( path, "bind" ), *name + " is not in names.json" );
+                return;
+            }
+            if( entry->list.empty() ) {
+                reader_.problem( field( path, "bind" ),
+                                 *name + " is not a list ({ \"list\": ... })" );
+                return;
+            }
+            const messaging::Name rows = entry_name( *entry );
+            NodeWriter written = detail::FileWriting::list( out_, parent, rows, *name );
+            cell( path, value, written );
+            const JsonValue *row = value.find( "row" );
+            if( row == nullptr ) {
+                reader_.problem( path, "a list's row: \"row\": { \"type\": ... }, one node" );
+                return;
+            }
+            list_ = entry;
+            this->node( field( path, "row" ), *row, &written );
+            list_ = nullptr;
+        }
+
+        [[nodiscard]] static messaging::Name entry_name( const NameEntry &entry ) noexcept
+        {
+            return messaging::Name::of( entry.name );
+        }
+
+        /// Whether `name`, an address taking a uid, can take the row's: inside
+        /// a list's row, and one of its element's (`item.name` in a list of
+        /// `item`). Said when not.
+        [[nodiscard]] bool takes_row_uid( const std::string &path, const std::string &name,
+                                          std::string_view what )
+        {
+            if( list_ == nullptr ) {
+                const std::string row = " takes a uid: only a list's row " + std::string( what );
+                reader_.problem( path, name + row + " one" );
+                return false;
+            }
+            const std::string element = list_->list + ".";
+            if( name.compare( 0, element.size(), element ) != 0 ) {
+                reader_.problem( path, "in " + list_->name + "'s row, an address taking a uid is " +
+                                           element + "<field>, not " + name );
+                return false;
+            }
+            return true;
+        }
+
         void bind( const std::string &path, const JsonValue &value, NodeType type,
                    NodeWriter &node )
         {
@@ -664,9 +753,7 @@ class LayoutReader final
                 reader_.problem( path, *name + " carries no state to show" );
                 return;
             }
-            if( entry->uid ) {
-                reader_.problem( path, *name + " takes a uid: only a list's row shows one "
-                                               "(lists come in 7.5b)" );
+            if( entry->uid && !takes_row_uid( path, *name, "shows" ) ) {
                 return;
             }
             if( !shows_type( type, entry->type ) ) {
@@ -677,16 +764,17 @@ class LayoutReader final
             }
             const bool settable = entry->verbs.has( Verb::set );
             const messaging::Name address = messaging::Name::of( *name );
-            detail::FileWriting::bind( node, address, *name, entry->type, settable );
+            detail::FileWriting::bind( node, address, *name, entry->type, settable, entry->uid );
         }
 
         void tap( const std::string &path, const JsonValue &value, NodeWriter &node )
         {
             const std::string *line = value.string_if();
             const Tap read = line != nullptr ? read_tap( *line ) : Tap{ TapKind::invalid, {} };
+            bool row_uid = false;
             switch( read.kind ) {
                 case TapKind::telegram:
-                    if( !telegram( path, *line ) ) {
+                    if( !telegram( path, *line, row_uid ) ) {
                         return;
                     }
                     break;
@@ -713,10 +801,17 @@ class LayoutReader final
                                            "close, quit" );
                     return;
             }
-            node.tap( *line );
+            if( row_uid ) {
+                detail::FileWriting::tap_in_row( node, *line );
+            } else {
+                node.tap( *line );
+            }
         }
 
-        [[nodiscard]] bool telegram( const std::string &path, const std::string &line )
+        /// Whether a tap's telegram is one names.json allows; `row_uid` set
+        /// when its address takes the row's uid.
+        [[nodiscard]] bool telegram( const std::string &path, const std::string &line,
+                                     bool &row_uid )
         {
             std::array<std::byte, 4096> storage{};
             messaging::TelegramData data( storage );
@@ -736,11 +831,15 @@ class LayoutReader final
                 reader_.problem( path, name + " does not carry " + verb );
                 return false;
             }
-            if( entry->uid || read->address().uid != 0 ) {
-                reader_.problem( path, name + " takes a uid: only a list's row sends one "
-                                              "(lists come in 7.5b)" );
+            if( read->address().uid != 0 ) {
+                reader_.problem( path, entry->name + ": the row gives the uid; write the "
+                                                     "address without [...]" );
                 return false;
             }
+            if( entry->uid && !takes_row_uid( path, name, "sends" ) ) {
+                return false;
+            }
+            row_uid = entry->uid;
             if( read->type() != entry->type ) {
                 const std::string wanted( type_words( entry->type ) );
                 std::string what = name + " takes " + wanted;
@@ -814,6 +913,8 @@ class LayoutReader final
         std::span<const LayoutTarget> targets_;
         LayoutKind kind_;
         LayoutWriter &out_;
+        /// The list whose row is being read; nullptr outside one.
+        const NameEntry *list_ = nullptr;
 };
 
 } // namespace

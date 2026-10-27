@@ -125,6 +125,13 @@ class Button : public Widget
      */
         [[nodiscard]] bool focusable() const noexcept override;
 
+        /**
+     * @brief Read the pressed state: public, so a container that takes the
+     * pointer from it (a List scrolling) can be seen to have let it go.
+     * @return true while the pointer presses the button.
+     */
+        [[nodiscard]] bool pressed() const noexcept { return pressed_; }
+
     protected:
         /**
      * @brief Perform the button's activation action.
@@ -138,12 +145,6 @@ class Button : public Widget
      * @return true when the button is rendered as selected.
      */
         [[nodiscard]] virtual bool selected() const noexcept;
-
-        /**
-     * @brief Read the pressed state.
-     * @return true while the pointer presses the button.
-     */
-        [[nodiscard]] bool pressed() const noexcept { return pressed_; }
 
         /**
      * @brief Read the hovered state.

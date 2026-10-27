@@ -4,11 +4,13 @@
 #include <squared/gui/image.hpp>
 #include <squared/gui/instantiate.hpp>
 #include <squared/gui/label.hpp>
+#include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
 #include <squared/gui/scroll_pane.hpp>
 #include <squared/gui/separator.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/slider.hpp>
+#include <squared/gui/src/detail/build_row.hpp>
 #include <squared/gui/src/direction.hpp>
 #include <squared/gui/stack.hpp>
 #include <squared/gui/table.hpp>
@@ -115,7 +117,8 @@ class Builder final
         {
             const LayoutNode &node = nodes_[at];
             std::unique_ptr<Widget> made = make_widget( node, at );
-            if( node.bind.id != 0 && hooks_.bound != nullptr ) {
+            // A list's bind is the list it shows: the list is `listed` instead.
+            if( node.bind.id != 0 && node.type != NodeType::list && hooks_.bound != nullptr ) {
                 hooks_.bound( hooks_.context, layout_, node, *made );
             }
             return made;
@@ -140,7 +143,7 @@ class Builder final
                         button->set_style( style );
                     }
                     if( node.tap != 0 ) {
-                        button->set_on_click( tap_of( layout_.text( node.tap ) ) );
+                        button->set_on_click( tap_of( layout_.text( node.tap ), node.row_uid ) );
                     }
                     return button;
                 }
@@ -212,6 +215,14 @@ class Builder final
                     }
                     return stack;
                 }
+                case NodeType::list: {
+                    // Its row is built later, once for each row on screen.
+                    auto list = std::make_unique<List>( layout_, at + 1, hooks_ );
+                    if( hooks_.listed != nullptr ) {
+                        hooks_.listed( hooks_.context, layout_, node, *list );
+                    }
+                    return list;
+                }
                 case NodeType::custom:
                     break;
             }
@@ -226,13 +237,18 @@ class Builder final
             return custom;
         }
 
-        /// What a button does when tapped: its line, kept in the button.
-        [[nodiscard]] Button::Callback tap_of( std::string_view line ) const
+        /// What a button does when tapped: its line, kept in the button. A
+        /// telegram taking a row's uid goes to `tapped_row` when there is one.
+        [[nodiscard]] Button::Callback tap_of( std::string_view line, bool row_uid ) const
         {
-            if( hooks_.tapped == nullptr ) {
+            auto *tapped = hooks_.tapped;
+            if( row_uid && hooks_.tapped_row != nullptr ) {
+                tapped = hooks_.tapped_row;
+            }
+            if( tapped == nullptr ) {
                 return {};
             }
-            return TapCall{ hooks_.tapped, hooks_.context, std::string( line ) };
+            return TapCall{ tapped, hooks_.context, std::string( line ) };
         }
 
         const Layout &layout_;
@@ -254,5 +270,17 @@ LayoutCheck instantiate( const Layout &layout, Table &root, const Skin &skin,
     builder.fill_table( root, 0, layout.nodes().size() );
     return builder.result();
 }
+
+namespace detail
+{
+
+LayoutCheck build_row( const Layout &row, Table &into, const Skin &skin, const LayoutHooks &hooks )
+{
+    Builder builder( row, skin, hooks );
+    builder.fill_table( into, 0, row.nodes().size() );
+    return builder.result();
+}
+
+} // namespace detail
 
 } // namespace sq::gui

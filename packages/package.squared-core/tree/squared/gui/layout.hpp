@@ -29,11 +29,12 @@ enum class NodeType : std::uint8_t {
     table,
     scroll,
     stack,
+    list,
     custom,
 };
 
 /** @brief How many node types there are. */
-inline constexpr std::size_t node_type_count = 12;
+inline constexpr std::size_t node_type_count = 13;
 
 /** @brief A type's name in a layout file: `check_box`. */
 [[nodiscard]] std::string_view node_type_name( NodeType type ) noexcept;
@@ -76,13 +77,13 @@ struct PaneShape final
  * @brief One node of a layout: the widget it builds, where that sits in its
  * cell, what it shows and what a tap sends. 32 bytes, read-only once made.
  *
- * Nodes are in document order: a table's, scroll's or stack's nodes follow
- * it, and `inside` counts them, theirs included. Words are offsets into the
+ * Nodes are in document order: a table's, scroll's, stack's or list's nodes
+ * follow it, and `inside` counts them, theirs included. Words are offsets into the
  * layout's text (`Layout::text`), 0 for none.
  */
 struct LayoutNode final
 {
-        /// The address the node shows (and sets); none: 0.
+        /// The address the node shows (and sets); a list's rows; none: 0.
         messaging::Name bind{};
         /// Its words; an image's drawable; a custom node's type.
         std::uint16_t text = 0;
@@ -119,16 +120,31 @@ struct LayoutNode final
         bool sends_set : 1 = false;
         /// The type of the value `bind` shows (its key's, or names.json's); none without one.
         messaging::ValueType value = messaging::ValueType::none;
+        /// In a list's row: the address `bind` shows, or the telegram a
+        /// button's tap sends, takes the row's uid (`item.name` of the item
+        /// the row shows).
+        bool row_uid : 1 = false;
 
         friend bool operator==( const LayoutNode &, const LayoutNode & ) noexcept = default;
 };
 
 static_assert( sizeof( LayoutNode ) == 32, "LayoutNode: see docs/developer/layouts.md" );
 
-/** @brief Whether nodes go inside a node of this type: a table, a scroll (one) or a stack. */
+/**
+ * @brief Whether nodes go inside a node of this type: a table, a scroll (one),
+ * a stack, or a list (one: its row).
+ */
 [[nodiscard]] constexpr bool holds_nodes( NodeType type ) noexcept
 {
-    return type == NodeType::table || type == NodeType::scroll || type == NodeType::stack;
+    switch( type ) {
+        case NodeType::table:
+        case NodeType::scroll:
+        case NodeType::stack:
+        case NodeType::list:
+            return true;
+        default:
+            return false;
+    }
 }
 
 /** @brief Whether a node of this type shows a value an address gives it (`bind`). */
@@ -287,10 +303,14 @@ enum class LayoutProblem : std::uint8_t {
     bad_tree,
     /// Containers nested deeper than `layout_depth`.
     too_deep,
-    /// Nodes inside one that is not a table, scroll or stack.
+    /// Nodes inside one that is not a table, scroll, stack or list.
     not_a_container,
     /// A scroll with more than one node directly inside it.
     scroll_holds_one,
+    /// A list with more than one node inside it (its row), without the list
+    /// it shows (an integer address), or inside another list's row; or
+    /// `row_uid` on a node outside a row, or with no bind or telegram.
+    bad_list,
     /// `new_row` on a node that is not in a table.
     misplaced_row,
     /// A type that is not a `NodeType`.

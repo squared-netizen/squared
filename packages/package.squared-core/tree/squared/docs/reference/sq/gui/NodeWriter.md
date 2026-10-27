@@ -1,6 +1,6 @@
 # class NodeWriter
 
-*Defined at [gui/layout_writer.hpp:144](../../../../gui/layout_writer.hpp#L144)*
+*Defined at [gui/layout_writer.hpp:154](../../../../gui/layout_writer.hpp#L154)*
 
 
 
@@ -9,6 +9,16 @@
 
 
 ## Functions
+
+### add_list
+
+*public NodeWriter add_list(const K & rows)*
+
+*Defined at [gui/layout_writer.hpp:238](../../../../gui/layout_writer.hpp#L238)*
+
+
+
+**brief** Add a list inside this one, showing `rows`; as `LayoutWriter::add_list`. 
 
 ### grow
 
@@ -58,11 +68,11 @@
 
 *public NodeWriter & bind(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:175](../../../../gui/layout_writer.hpp#L175)*
+*Defined at [gui/layout_writer.hpp:187](../../../../gui/layout_writer.hpp#L187)*
 
 
 
-**brief** Show `key`'s `state` (a label, check box, text field, slider or progress bar); a node that edits sends `set` when the key carries it. A value type the node cannot show is refused.
+**brief** Show `key`'s `state` (a label, check box, text field, slider or progress bar); a node that edits sends `set` when the key carries it. A value type the node cannot show is refused. A key that takes a uid is shown in a list's row, at the row's uid; outside a row it is refused.
 
 ### span
 
@@ -106,14 +116,6 @@
 
 ### tap
 
-*public NodeWriter & tap(std::string_view line)*
-
-
-
-**brief** A button's tap: a line as a layout file writes it (`do file.open "a.txt"`, `push settings`). 
-
-### tap
-
 *public NodeWriter & tap(Navigate how, std::string_view target)*
 
 
@@ -124,7 +126,7 @@
 
 *public NodeWriter & tap(Navigate how)*
 
-*Defined at [gui/layout_writer.hpp:189](../../../../gui/layout_writer.hpp#L189)*
+*Defined at [gui/layout_writer.hpp:201](../../../../gui/layout_writer.hpp#L201)*
 
 
 
@@ -134,31 +136,39 @@
 
 *public NodeWriter & tap(const K & key)*
 
-*Defined at [gui/layout_writer.hpp:196](../../../../gui/layout_writer.hpp#L196)*
+*Defined at [gui/layout_writer.hpp:211](../../../../gui/layout_writer.hpp#L211)*
 
 
 
-**brief** A button's tap that sends `do <key>`. 
+**brief** A button's tap that sends `do <key>`. A key that takes a uid is sent from a list's row, with the row's; outside a row it is refused.
 
 ### tap
 
 *public NodeWriter & tap(const K & key, const V & value)*
 
-*Defined at [gui/layout_writer.hpp:206](../../../../gui/layout_writer.hpp#L206)*
+*Defined at [gui/layout_writer.hpp:224](../../../../gui/layout_writer.hpp#L224)*
 
 
 
-**brief** A button's tap that sends `do <key> <value>`, or `set` for a key without `do`. 
+**brief** A button's tap that sends `do <key> <value>`, or `set` for a key without `do`; a key that takes a uid, as `tap( key )`.
+
+### tap
+
+*public NodeWriter & tap(std::string_view line)*
+
+
+
+**brief** A button's tap: a line as a layout file writes it (`do file.open "a.txt"`, `push settings`). 
 
 ### add
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:334](../../../../gui/layout_writer.hpp#L334)*
+*Defined at [gui/layout_writer.hpp:383](../../../../gui/layout_writer.hpp#L383)*
 
 
 
-**brief** Add a node inside this table, scroll (one only) or stack. 
+**brief** Add a node inside this table, scroll (one only), stack, or list (one: its row). 
 
 ### add_custom
 

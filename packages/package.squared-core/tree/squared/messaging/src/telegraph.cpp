@@ -412,6 +412,24 @@ DoResult TelegraphUi::request( const Telegram &telegram, std::span<const std::by
     return { result, next };
 }
 
+SendResult TelegraphUi::view( Name rows, std::string_view text, RowSpan span ) noexcept
+{
+    if( line_.names_ != nullptr && !text.empty() ) {
+        note_list( rows, text );
+    }
+    return send_view( rows, span );
+}
+
+SendResult TelegraphUi::reset_view( Name rows, std::string_view text ) noexcept
+{
+    if( line_.names_ != nullptr && !text.empty() ) {
+        note_list( rows, text );
+    }
+    const Name view = Name::from_id( name_hash( ".view", rows.id ) );
+    const std::array<float, 2> nothing{ 1.0F, 0.0F }; // last before first
+    return push( Telegram::floats( Verb::do_, { view, 0 }, nothing ), {} );
+}
+
 SendResult TelegraphUi::send_view( Name rows, RowSpan span ) noexcept
 {
     assert( span.rows != 0 && span.last() < exact_rows && "rows travel as floats" );

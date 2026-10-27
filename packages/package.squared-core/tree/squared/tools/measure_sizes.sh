@@ -50,7 +50,7 @@ int main() {
   P(gui::Actor) P(gui::Group) P(gui::Widget) P(gui::Label)
   P(gui::Button) P(gui::ToggleButton) P(gui::CheckBox) P(gui::TextField)
   P(gui::Slider) P(gui::ProgressBar) P(gui::Panel) P(gui::Cell)
-  P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::Window)
+  P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::List) P(gui::Window)
   P(gui::Dialog) P(gui::Ui) P(gui::ButtonGroup)
   P(gui::InputEvent) P(gui::SkinLoadIssue)
   P(graphics::TextureRegion) P(graphics::BitmapGlyph)

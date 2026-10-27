@@ -34,6 +34,8 @@ class Context;
 
 namespace sq::gui
 {
+class List;
+class Table;
 class TextField;
 class Ui;
 class Widget;
@@ -145,6 +147,12 @@ class Stage final
 
         /** @brief How many bound widgets the screen and its panes have at most, together. */
         static constexpr std::size_t max_bindings = 128;
+
+        /** @brief How many lists the screen and its panes show at once, together. */
+        static constexpr std::size_t max_lists = 4;
+
+        /** @brief How many of its item's values a list's row shows at most. */
+        static constexpr std::size_t max_row_values = 8;
 
         /** @brief The scratch a C++ screen writes into: nodes, bytes of text, numbers. */
         static constexpr std::size_t scratch_nodes = 256;
@@ -269,6 +277,9 @@ class Stage final
         /** @brief How many widgets on the screen and its panes show a value of the model's. */
         [[nodiscard]] std::size_t bindings() const noexcept;
 
+        /** @brief How many lists the screen and its panes show. */
+        [[nodiscard]] std::size_t lists() const noexcept;
+
         /**
          * @brief The top screen's widgets, its panes' among them; nullptr
          * while the skin is not loaded (no window yet, or it failed).
@@ -341,14 +352,23 @@ class Stage final
                 float pending = 0.0F;
                 gui::NodeType type = gui::NodeType::label;
                 messaging::ValueType value = messaging::ValueType::none;
-                /// The screen (`screen_owner`) or a pane's slot.
+                /// The screen (`screen_owner`) or a pane's slot; in a list's
+                /// row, the row's table (`gui::List::table`): the list says whose.
                 std::uint8_t owner = 0;
                 bool sends_set : 1 = false;
                 /// `pending` is to be sent.
                 bool sending : 1 = false;
                 /// A value came while the widget was held: shown on release.
                 bool stale : 1 = false;
+                /// In a list's row: `list` is which, `owner` the row's table.
+                bool in_row : 1 = false;
+                /// Its address's uid is the item's the row shows; 0 while none.
+                bool row_uid : 1 = false;
+                std::uint8_t list : 2 = 0;
         };
+
+        /** @brief A list shown, bound to a model's list: what of it the cache keeps. */
+        struct ListBinding;
 
         /** @brief What the window has: the skin's pieces, the batch, the camera, the widgets. */
         struct Drawing;
@@ -397,14 +417,19 @@ class Stage final
                            gui::Widget &widget ) noexcept;
         static void bound_in_pane( void *context, const gui::Layout &layout,
                                    const gui::LayoutNode &node, gui::Widget &widget ) noexcept;
+        static void bound_in_row( void *context, const gui::Layout &layout,
+                                  const gui::LayoutNode &node, gui::Widget &widget ) noexcept;
         static void committed( void *context, gui::TextField &field ) noexcept;
-        void bind( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
-                   gui::Widget &widget ) noexcept;
+        [[nodiscard]] Binding *bind( std::uint8_t owner, const gui::Layout &layout,
+                                     const gui::LayoutNode &node, gui::Widget &widget,
+                                     messaging::Address address ) noexcept;
+        void unbind( Binding &binding ) noexcept;
         void unbind_all() noexcept;
         void unbind_owner( std::uint8_t owner ) noexcept;
         void changed( const messaging::Received &received ) noexcept;
         void show( Binding &binding, const messaging::Telegram &telegram,
                    std::span<const std::byte> data ) noexcept;
+        void blank( Binding &binding ) noexcept;
         [[nodiscard]] static bool held( const Binding &binding ) noexcept;
         [[nodiscard]] Binding *binding_of( const gui::Widget &widget ) noexcept;
         void set( const messaging::Telegram &telegram, std::span<const std::byte> data ) noexcept;
@@ -413,13 +438,36 @@ class Stage final
         void edited( gui::TextField &field ) noexcept;
         void send_edits() noexcept;
 
+        // Lists.
+        static void listed( void *context, const gui::Layout &layout, const gui::LayoutNode &node,
+                            gui::List &list ) noexcept;
+        static void listed_in_pane( void *context, const gui::Layout &layout,
+                                    const gui::LayoutNode &node, gui::List &list ) noexcept;
+        static void row_shown( void *context, gui::List &list, std::size_t slot,
+                               std::uint32_t index ) noexcept;
+        [[nodiscard]] static ListBinding &list_of_row( void *context ) noexcept;
+        void add_list( std::uint8_t owner, const gui::Layout &layout, const gui::LayoutNode &node,
+                       gui::List &list ) noexcept;
+        void drop_list( ListBinding &shown ) noexcept;
+        void drop_lists( std::uint8_t owner, bool every ) noexcept;
+        [[nodiscard]] std::uint32_t uid_at( const ListBinding &shown,
+                                            std::uint32_t index ) const noexcept;
+        void show_row( ListBinding &shown, std::size_t slot ) noexcept;
+        void keep_item( ListBinding &shown, std::uint32_t uid, bool keep ) noexcept;
+        void list_state( const messaging::Received &received ) noexcept;
+        void ask_views() noexcept;
+        void ask_view( ListBinding &shown ) noexcept;
+
         // Taps and custom nodes.
         static void tapped( void *context, std::string_view line ) noexcept;
         static void tapped_in_pane( void *context, std::string_view line ) noexcept;
+        static void tapped_in_row( void *context, std::string_view line ) noexcept;
+        static void tapped_row_uid( void *context, std::string_view line ) noexcept;
         static std::unique_ptr<gui::Widget> made( void *context, std::string_view name );
         static std::unique_ptr<gui::Widget> made_in_pane( void *context, std::string_view name );
+        static std::unique_ptr<gui::Widget> made_in_row( void *context, std::string_view name );
         void tap( std::string_view line ) noexcept;
-        void send( std::string_view line ) noexcept;
+        void send( std::string_view line, std::uint32_t uid = 0 ) noexcept;
 
         void say( const char *format, ... ) noexcept __attribute__( ( format( printf, 2, 3 ) ) );
 

@@ -123,6 +123,24 @@ bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
 | `Stack` | `squared/gui/stack.hpp` | Container overlaying children into the same box, later on top |
 | `MarginContainer` | `squared/gui/margin_container.hpp` | Container adding fixed insets around one child |
 | `ScrollPane` | `squared/gui/scroll_pane.hpp` | Container clipping and vertically scrolling a larger child |
+| `List` | `squared/gui/list.hpp` | A list of any length holding widgets only for the rows it shows, reused as it scrolls |
+
+**`List`** is what a layout's `list` node builds; the Stage binds it to a
+model's list ([stage.md](stage.md#bound-lists)), and an app rarely touches
+it. Its rows are one node of a layout, copied, and built as a `Table` for
+each row on screen and one more; all are one height, the first row's.
+`set_count(n)` says how many rows there are; `set_on_row(shown, context)`
+is told each time a row's table starts showing another row
+(`row_at(slot)`, `slot_showing(row)`); `set_scroll_y(offset)` scrolls it,
+and a drag does, anywhere in it: once a finger has moved `drag_slop` (8
+units) on a row's button, the button lets go and the list scrolls.
+`first_row()` and `rows_on_screen()` say what shows. At most
+`max_rows_built` (64) row tables; a list that would need more leaves the
+rest empty (`short_of_rows()`). `Button::pressed()` is public now, so a
+button a list took the finger from can be seen to have let go.
+
+**A `Table` lays out without allocating**, once each depth of tables has
+been laid out at its largest: its working sizes are kept between layouts.
 
 ## Controls
 

@@ -22,6 +22,7 @@ class Button;
 class CheckBox;
 class Image;
 class Label;
+class List;
 class ProgressBar;
 class ScrollPane;
 class Separator;
@@ -95,13 +96,22 @@ namespace detail
 
 using messaging::Verb;
 
-/// A key a node can show: it carries `state`, and takes no uid.
+/// A key a node can show: it carries `state`. One that takes a uid is shown
+/// in a list's row, with the row's.
 template<typename K>
-concept shown_key = messaging::is_key<K> && K::verbs.has( Verb::state ) && !K::takes_uid;
+concept shown_key = messaging::is_key<K> && K::verbs.has( Verb::state );
+
+/// A list's rows: an integer `state` taking a uid (the row), as names.json's
+/// `"inventory": { "list": "item" }` declares `inventory`.
+template<typename K>
+concept integer_key = std::is_same_v<typename K::value_type, std::int64_t>;
+
+template<typename K>
+concept rows_key = shown_key<K> && K::takes_uid && integer_key<K>;
 
 /// A key a tap sends with no value: `do <key>`.
 template<typename K>
-concept done_key = messaging::sendable<K, Verb::do_, void> && !K::takes_uid;
+concept done_key = messaging::sendable<K, Verb::do_, void>;
 
 template<typename K, typename V>
 concept does = messaging::sendable<K, Verb::do_, V>;
@@ -111,7 +121,7 @@ concept sets = messaging::sendable<K, Verb::set, V>;
 
 /// A key and a value a tap sends: `do`, or `set` for a key without `do`.
 template<typename K, typename V>
-concept sent_value = ( does<K, V> || sets<K, V> ) && !K::takes_uid;
+concept sent_value = does<K, V> || sets<K, V>;
 
 /// Something with a name a navigation can name: a C++ screen (`S::name`).
 template<typename S>
@@ -169,13 +179,15 @@ class NodeWriter final
         /**
          * @brief Show `key`'s `state` (a label, check box, text field, slider
          * or progress bar); a node that edits sends `set` when the key carries
-         * it. A value type the node cannot show is refused.
+         * it. A value type the node cannot show is refused. A key that takes
+         * a uid is shown in a list's row, at the row's uid; outside a row it
+         * is refused.
          */
         template<detail::shown_key K>
         NodeWriter &bind( const K &key ) noexcept
         {
             constexpr bool settable = K::verbs.has( messaging::Verb::set );
-            return bind_name( key.name(), key.text(), K::type, settable );
+            return bind_name( key.name(), key.text(), K::type, settable, K::takes_uid );
         }
 
         /** @brief A button's tap: a line as a layout file writes it (`do file.open "a.txt"`, `push settings`). */
@@ -191,16 +203,22 @@ class NodeWriter final
             return tap( how, std::string_view( S::name ) );
         }
 
-        /** @brief A button's tap that sends `do <key>`. */
+        /**
+         * @brief A button's tap that sends `do <key>`. A key that takes a uid
+         * is sent from a list's row, with the row's; outside a row it is refused.
+         */
         template<detail::done_key K>
         NodeWriter &tap( const K &key ) noexcept
         {
             const messaging::Address to{ key.name(), 0 };
             const auto telegram = messaging::Telegram::empty( messaging::Verb::do_, to );
-            return tap_telegram( telegram, {}, key.text() );
+            return tap_telegram( telegram, {}, key.text(), K::takes_uid );
         }
 
-        /** @brief A button's tap that sends `do <key> <value>`, or `set` for a key without `do`. */
+        /**
+         * @brief A button's tap that sends `do <key> <value>`, or `set` for a
+         * key without `do`; a key that takes a uid, as `tap( key )`.
+         */
         template<typename K, typename V>
             requires detail::sent_value<K, V>
         NodeWriter &tap( const K &key, const V &value ) noexcept
@@ -208,12 +226,19 @@ class NodeWriter final
             using T = typename K::value_type;
             const messaging::Address to{ key.name(), 0 };
             const auto packed = messaging::detail::pack<T>( detail::tap_verb<K>(), to, value );
-            return tap_telegram( packed.telegram, packed.data, key.text() );
+            return tap_telegram( packed.telegram, packed.data, key.text(), K::takes_uid );
         }
 
-        /** @brief Add a node inside this table, scroll (one only) or stack. */
+        /** @brief Add a node inside this table, scroll (one only), stack, or list (one: its row). */
         template<typename W>
         NodeWriter add( std::string_view text = {} ) noexcept;
+
+        /** @brief Add a list inside this one, showing `rows`; as `LayoutWriter::add_list`. */
+        template<detail::rows_key K>
+        NodeWriter add_list( const K &rows ) noexcept
+        {
+            return list_of( index_, rows.name(), rows.text() );
+        }
 
         /** @brief Add a custom node inside this one: a type the app registers by `name`. */
         NodeWriter add_custom( std::string_view name ) noexcept;
@@ -233,10 +258,15 @@ class NodeWriter final
             , index_( index )
         {}
         [[nodiscard]] LayoutNode *node() noexcept;
+        /// Whether this node is in a list's row.
+        [[nodiscard]] bool in_row() const noexcept;
         NodeWriter &bind_name( messaging::Name name, std::string_view text,
-                               messaging::ValueType value, bool settable ) noexcept;
+                               messaging::ValueType value, bool settable, bool row_uid ) noexcept;
         NodeWriter &tap_telegram( const messaging::Telegram &telegram,
-                                  std::span<const std::byte> data, std::string_view name ) noexcept;
+                                  std::span<const std::byte> data, std::string_view name,
+                                  bool row_uid ) noexcept;
+        NodeWriter list_of( std::uint16_t parent, messaging::Name rows,
+                            std::string_view text ) noexcept;
         [[nodiscard]] float *numbers() noexcept;
 
         LayoutWriter *writer_;
@@ -278,6 +308,25 @@ class LayoutWriter final
 
         /** @brief Add a custom node: a type the app registers by `name`. */
         NodeWriter add_custom( std::string_view name ) noexcept;
+
+        /**
+         * @brief Add a list showing `rows`, a model's list (names.json's
+         * `"inventory": { "list": "item" }`): then add its row to it, one
+         * node, built once for each row on screen.
+         *
+         * ```cpp
+         * auto row = root.add_list( names::inventory ).grow().add<sq::gui::Table>();
+         * row.add<sq::gui::Label>().bind( names::item_name );   // the row's item's name
+         * row.add<sq::gui::Button>( "Use" ).tap( names::item_use );
+         * ```
+         *
+         * In a row, keys that take a uid get the row's. A list in a row is refused.
+         */
+        template<detail::rows_key K>
+        NodeWriter add_list( const K &rows ) noexcept
+        {
+            return NodeWriter( this, NodeWriter::none ).list_of( root, rows.name(), rows.text() );
+        }
 
         /** @brief The next node added to the layout's own table starts a new row. */
         LayoutWriter &row() noexcept;

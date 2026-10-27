@@ -33,7 +33,13 @@ void ModelList::start( const ListOutput &out ) noexcept
 
 void ModelList::view( std::uint32_t first, std::uint32_t last, const ListOutput &out ) noexcept
 {
-    if( count_ == 0 || first >= count_ || last < first ) {
+    if( last < first ) {
+        // A reset: a new widget knows nothing. Forget what was sent; the count.
+        show( first, 0, out );
+        send_count( out );
+        return;
+    }
+    if( count_ == 0 || first >= count_ ) {
         show( first, 0, out );
         return;
     }

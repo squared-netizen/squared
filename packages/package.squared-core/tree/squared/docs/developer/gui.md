@@ -72,6 +72,57 @@ The check box and the slider keep their `std::function` change callbacks
 (debt from before); the Stage's lambdas capture two pointers, which both
 libraries store in place, so binding allocates nothing for them.
 
+## `List` (7.5b)
+
+`list.hpp`, `src/list.cpp`; built by `instantiate` for a `list` node, bound by
+the Stage. 384 bytes (libstdc++): the row's copy (a vector of nodes, the
+layout's words and numbers), the hooks, the row tables and the row each
+shows (two vectors), and a few floats.
+
+- **One height.** The first row table is built when the list is first
+  measured, and its preferred height is every row's. Measuring builds it, in
+  `preferred_size`, which is `const`: a `const_cast`, since a `List` is never
+  made `const` (one widget tree, owned by the Ui). Chosen over measuring in
+  `layout`: by then the parent has laid it out at a size it did not know.
+- **Tables reused.** `layout` builds tables up to the height's rows plus one
+  (however it is scrolled, no more rows show at once), at most
+  `max_rows_built` (64). Row `r` is in table `r` modulo the tables: scrolling
+  one row moves one row to another table, the one that left the screen;
+  the others are not touched, so their bindings stay. `place` tells the
+  owner (`set_on_row`) when a table's row changes, positions it at
+  `r * height - scroll`, and hides the tables past the count or the foot.
+  Variable heights were not taken: they need every row measured, or a
+  guess the scroll corrects, for a case no app has yet.
+- **Drag to scroll.** Its own `pointer_event` scrolls when no row's widget
+  took the finger (a label, a row's padding). A finger on a row's button is
+  the button's (Ui captures the pointer for it); the list watches with a
+  capture-phase listener (one `std::function` holding `this`, made once),
+  and once the finger has moved `drag_slop` (8 units) it turns that move
+  into a cancel (the button lets go: no tap), scrolls, and stops the moves
+  and the release after it. Events for the list itself are left to
+  `pointer_event`, so nothing scrolls twice.
+- **Copying the row**, not pointing at it: a C++ screen's layout lives in the
+  Stage's scratch, which a C++ pane writes over, and rows are built later
+  (a rotation adds tables). The words and numbers are copied whole (offsets
+  stay valid); a screen's are a few hundred bytes.
+- **Built without the check** (`detail::build_row`): the row's uids need the
+  list around them, which the copy does not have, and the layout it came
+  from passed `check` already.
+
+## A `Table`'s layout allocates nothing (7.5b)
+
+`measure` and `layout` worked in six `std::vector<float>`s made each time;
+once the Stage lays out every frame that something changed (a bound value,
+a list scrolled), that was an allocation a frame. They now borrow `Lines`
+(columns and rows) from a pool kept in `table.cpp`: a table measured inside
+its parent's measure or layout borrows the next one, so each depth of
+nesting has its own, and they keep their capacity. Once each depth has been
+laid out at its largest, a layout allocates nothing. The pool is a
+`std::vector<std::unique_ptr<Lines>>` (pointers, so growing it never moves a
+`Lines` in use), grown to the deepest nesting seen, and is the UI thread's
+alone, as the widgets are. Chosen over vectors in each `Table`: 6 &times; 24
+bytes in every table, a list's rows included (priority 1).
+
 ## Downcasting without RTTI
 
 `Actor::actor_interface(ActorInterfaceId)` is the framework's replacement for

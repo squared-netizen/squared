@@ -23,6 +23,7 @@
 #include <squared/gui/label.hpp>
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
+#include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
 #include <squared/gui/slider.hpp>
 #include <squared/gui/src/pointer_action.hpp>
@@ -38,10 +39,12 @@
 #include <squared/messaging/telegraph.hpp>
 #include <squared/stage/app.hpp>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -85,6 +88,21 @@ constexpr Key<std::int64_t, sq::messaging::state> ticks{ "counter.ticks" };
 constexpr Key<std::int64_t, sq::messaging::state | sq::messaging::set> level{ "settings.level" };
 // The same address as a double: a model whose key and the layout disagree.
 constexpr Key<double, sq::messaging::state> level_as_number{ "settings.level" };
+
+// A list of books: its rows, and each book's values by its uid.
+using sq::messaging::with_uid;
+constexpr Key<std::int64_t, sq::messaging::state, with_uid> books{ "books" };
+constexpr Key<std::int64_t, sq::messaging::state> books_count{ "books.count" };
+constexpr Key<std::string_view, sq::messaging::state, with_uid> book_title{ "book.title" };
+constexpr Key<std::int64_t, sq::messaging::state, with_uid> book_taps{ "book.taps" };
+constexpr Key<bool, sq::messaging::state | sq::messaging::set, with_uid> book_kept{ "book.kept" };
+constexpr Key<void, sq::messaging::do_, with_uid> book_tap{ "book.tap" };
+constexpr Key<void, sq::messaging::do_> books_reverse{ "books.reverse" };
+constexpr Key<void, sq::messaging::do_> books_cut{ "books.cut" };
+// What fills the cache, so what it does not keep goes.
+constexpr Key<void, sq::messaging::do_> flood{ "test.flood" };
+constexpr Key<std::int64_t, sq::messaging::state, with_uid> junk{ "test.junk" };
+constexpr std::uint32_t book_count = 1000;
 
 // --- the layouts, written in C++ as a screen's build() will --------------
 
@@ -197,6 +215,36 @@ struct Bound final
             root.add<sq::gui::Slider>().range( 0.0F, 10.0F ).fill_x().bind( level );
             root.row();
             root.add<sq::gui::Button>( "Meter" ).tap<Meter>( sq::gui::Navigate::open );
+        }
+};
+
+/// A list of 1,000 books: each row its title, its taps, whether it is kept,
+/// and a tap. Nothing else on it is bound, so nothing but the list itself
+/// lays it out again when its count comes.
+struct Shelf final
+{
+        static constexpr std::string_view name = "shelf";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            sq::gui::NodeWriter row = root.add_list( books ).grow().add<sq::gui::Table>();
+            row.add<sq::gui::Label>( "?" ).bind( book_title ).grow_x();
+            row.add<sq::gui::Label>( "0" ).bind( book_taps );
+            row.add<sq::gui::CheckBox>( "kept" ).bind( book_kept );
+            row.add<sq::gui::Button>( "Tap" ).tap( book_tap );
+            root.row();
+            root.add<sq::gui::Button>( "Back" ).tap( sq::gui::Navigate::back );
+        }
+};
+
+/// The same list again, in a pane: the model keeps one view of a list.
+struct ShelfPane final
+{
+        static constexpr std::string_view name = "shelf_pane";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add_list( books ).add<sq::gui::Label>().bind( book_title );
+            root.row();
+            root.add<sq::gui::Button>( "Shut" ).tap( sq::gui::Navigate::close );
         }
 };
 
@@ -361,6 +409,44 @@ struct Counts final
 
 Counts counts;
 
+/// The model's books: the uid at each row, and each book's values by uid (1 to 1,000).
+struct Books final
+{
+        std::vector<std::uint32_t> order;
+        std::vector<std::int64_t> taps;
+        std::vector<std::uint8_t> kept;
+
+        Books()
+            : order( book_count )
+            , taps( book_count + 1 )
+            , kept( book_count + 1 )
+        {
+            for( std::uint32_t row = 0; row < book_count; ++row ) {
+                order[row] = row + 1;
+            }
+        }
+
+        [[nodiscard]] std::uint32_t count() const noexcept
+        {
+            return static_cast<std::uint32_t>( order.size() );
+        }
+        [[nodiscard]] std::uint32_t uid_at( std::uint32_t row ) const noexcept
+        {
+            return order[row];
+        }
+
+        void publish( Telegraph &telegraph, std::uint32_t uid ) noexcept
+        {
+            // Its title, "book 17", made with no allocation.
+            std::array<char, 16> title{};
+            const int written = std::snprintf( title.data(), title.size(), "book %u", uid );
+            const std::string_view text( title.data(), static_cast<std::size_t>( written ) );
+            static_cast<void>( telegraph.state( book_title, uid, text ) );
+            static_cast<void>( telegraph.state( book_taps, uid, taps[uid] ) );
+            static_cast<void>( telegraph.state( book_kept, uid, kept[uid] != 0 ) );
+        }
+};
+
 struct Prefs final
 {
         explicit Prefs( Counts *counted ) noexcept
@@ -371,6 +457,7 @@ struct Prefs final
 
         void start( Telegraph &telegraph ) noexcept
         {
+            CHECK( telegraph.list( books, books_ ) );
             static_cast<void>( telegraph.state( sound, sound_on_ ) );
             static_cast<void>( telegraph.state( volume, volume_ ) );
             static_cast<void>( telegraph.state( player, std::string_view( name_ ) ) );
@@ -394,6 +481,23 @@ struct Prefs final
                 const auto *text = reinterpret_cast<const char *>( received.data.data() );
                 name_.assign( text, received.data.size() );
                 static_cast<void>( telegraph.state( player, std::string_view( name_ ) ) );
+            } else if( to == book_tap.name() ) {
+                const std::uint32_t uid = received.telegram.address().uid;
+                static_cast<void>( telegraph.state( book_taps, uid, ++books_.taps[uid] ) );
+            } else if( to == book_kept.name() ) {
+                const std::uint32_t uid = received.telegram.address().uid;
+                books_.kept[uid] = received.telegram.as_boolean() ? 1 : 0;
+                static_cast<void>( telegraph.state( book_kept, uid, books_.kept[uid] != 0 ) );
+            } else if( to == books_reverse.name() ) {
+                std::reverse( books_.order.begin(), books_.order.end() );
+                telegraph.changed( books );
+            } else if( to == books_cut.name() ) {
+                books_.order.resize( 3 );
+                telegraph.changed( books );
+            } else if( to == flood.name() ) {
+                for( std::uint32_t uid = 1; uid <= 600; ++uid ) {
+                    static_cast<void>( telegraph.state( junk, uid, std::int64_t{ uid } ) );
+                }
             } else if( to == level.name() ) {
                 level_ = received.telegram.as_integer();
                 if( level_ == 0 ) {
@@ -416,6 +520,7 @@ struct Prefs final
 
     private:
         Counts *counts_;
+        Books books_;
         std::string name_ = "ann";
         double volume_ = 5.0;
         std::int64_t received_ = 0;
@@ -461,6 +566,7 @@ void squared_main( sq::App &app )
     CHECK( app.stage.add<Gauges>() );
     CHECK( app.stage.add<Ask>() );
     CHECK( app.stage.add<Meter>() );
+    CHECK( app.stage.add<ShelfPane>() );
     CHECK( !app.stage.add<BadName>() );
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
@@ -1114,6 +1220,227 @@ void bound_values()
     CHECK( app.telegraph().cache_stats().bound == 0 );
 }
 
+/// The widget `which` of the row showing book row `row`: nullptr when no row table shows it.
+sq::gui::Widget *in_row( sq::gui::List &list, std::uint32_t row, std::size_t which )
+{
+    const std::size_t slot = list.slot_showing( row );
+    if( slot >= list.rows_built() ) {
+        return nullptr;
+    }
+    auto &cells = *static_cast<sq::gui::Widget *>( list.table( slot ).child_at( 0 ) );
+    return static_cast<sq::gui::Widget *>( cells.child_at( which ) );
+}
+
+[[nodiscard]] std::string title_at( sq::gui::List &list, std::uint32_t row )
+{
+    const sq::gui::Widget *title = in_row( list, row, 0 );
+    return title != nullptr ? static_cast<const sq::gui::Label *>( title )->text() : "(none)";
+}
+
+/// Every row on screen shows the book the model has there: `book <uid>`.
+[[nodiscard]] bool rows_shown( sq::gui::List &list, bool reversed )
+{
+    const std::uint32_t first = list.first_row();
+    const std::uint32_t last = std::min( first + list.rows_on_screen(), list.count() );
+    for( std::uint32_t row = first; row < last; ++row ) {
+        const std::uint32_t uid = reversed ? book_count - row : row + 1;
+        if( title_at( list, row ) != "book " + std::to_string( uid ) ) {
+            std::fprintf( stderr, "row %u shows %s\n", row, title_at( list, row ).c_str() );
+            return false;
+        }
+    }
+    return true;
+}
+
+void bound_lists()
+{
+    start = Start::inline_model;
+    reports.clear();
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    platform.frame( app );
+    const std::size_t bound_before = app.telegraph().cache_stats().bound;
+    CHECK( app.stage.push<Shelf>() );
+    sq::gui::Widget &root = *app.stage.ui()->content();
+    sq::gui::List &list = *sq::gui::actor_cast<sq::gui::List>( root.child_at( 0 ) );
+    CHECK( app.stage.lists() == 1 );
+    // Each row table's three values are bound; the list itself is not a value.
+    CHECK( app.stage.bindings() == list.rows_built() * 3 );
+    // Built as it was laid out: the rows on screen and one more, empty until
+    // the model says. The count was in the cache already: the model's start.
+    CHECK( list.rows_built() == list.rows_on_screen() + 1 && list.rows_built() > 10 );
+    CHECK( list.row_height() > 0.0F && list.count() == book_count );
+    CHECK( title_at( list, 0 ).empty() );
+
+    // The reset brings the count; the view, the rows and their books.
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( list.count() == book_count && app.telegraph().value( books_count ) == 1000 );
+    CHECK( rows_shown( list, false ) );
+    CHECK( static_cast<sq::gui::Label *>( in_row( list, 0, 1 ) )->text() == "0" );
+
+    // A row's tap goes to its book, though the finger moved a little; a
+    // row's check box sets its book's value.
+    sq::gui::Widget &tapped = *in_row( list, 2, 3 );
+    touch( app, tapped, 0.5F, sq::app::Event::Type::PointerDown );
+    touch( app, tapped, 0.55F, sq::app::Event::Type::PointerMove );
+    touch( app, tapped, 0.55F, sq::app::Event::Type::PointerUp );
+    platform.frame( app );
+    platform.frame( app );
+    CHECK( static_cast<sq::gui::Label *>( in_row( list, 2, 1 ) )->text() == "1" );
+    CHECK( app.telegraph().value( book_taps, 3 ) == 1 );
+    CHECK( app.telegraph().value( book_taps, 1 ) == 0 );
+    tap_on( app, *in_row( list, 4, 2 ) );
+    platform.frame( app );
+    platform.frame( app );
+    CHECK( static_cast<sq::gui::CheckBox *>( in_row( list, 4, 2 ) )->checked() );
+    CHECK( app.telegraph().value( book_kept, 5 ) == true );
+
+    // Kept inside its rows: past the last is the last.
+    list.set_scroll_y( 1.0e9F );
+    const float last = static_cast<float>( book_count ) * list.row_height() - list.height();
+    CHECK( list.scroll_y() == last );
+
+    // Scrolled far: rows asked for as they come; the same tables, other books.
+    const std::size_t built = list.rows_built();
+    list.set_scroll_y( list.row_height() * 500.0F );
+    platform.frame( app );
+    // Before the model answers, a row shows nothing, and its tap has no book to go to.
+    CHECK( title_at( list, 500 ).empty() );
+    tap_on( app, *in_row( list, 500, 3 ) );
+    CHECK( reported( "stage: tap do book.tap: its row's item has not come yet; not sent" ) );
+    platform.frame( app );
+    platform.frame( app );
+    CHECK( list.first_row() == 500 && rows_shown( list, false ) && list.rows_built() == built );
+
+    // A full cache lets go of what it does not keep, and keeps the rows
+    // asked for: scrolled inside them, nothing is asked, and all shows.
+    CHECK( app.telegraph().do_( flood ).result == sq::messaging::SendResult::sent );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    // A row stays in its table while it is on screen: one row moves a row.
+    const std::size_t table_of_515 = list.slot_showing( 515 );
+    list.set_scroll_y( list.row_height() * 510.0F );
+    platform.frame( app );
+    CHECK( rows_shown( list, false ) && list.slot_showing( 515 ) == table_of_515 );
+
+    // The cache keeps the rows asked for and their books, and no more.
+    const std::size_t kept = app.telegraph().cache_stats().bound;
+    const std::size_t half = sq::messaging::telegraph_size::cache / 2;
+    CHECK( kept > bound_before && kept - bound_before <= half + 64 );
+
+    // A drag on a row's button scrolls the list, and taps nothing.
+    const float before = list.scroll_y();
+    const std::uint32_t dragged = list.first_row() + 5;
+    sq::gui::Widget &button = *in_row( list, dragged, 3 );
+    touch( app, button, 0.5F, sq::app::Event::Type::PointerDown );
+    float x = 0.0F;
+    float y = 0.0F;
+    stage_position( button, x, y );
+    sq::app::Event drag;
+    drag.type = sq::app::Event::Type::PointerMove;
+    drag.x = ( x + button.width() * 0.5F ) * static_cast<float>( pixel_width ) / logical_width;
+    for( int step = 1; step <= 5; ++step ) {
+        const float up = y + button.height() * 0.5F - static_cast<float>( step ) * 20.0F;
+        drag.y = up * static_cast<float>( pixel_height ) / logical_height;
+        app.handle_event( drag );
+    }
+    drag.type = sq::app::Event::Type::PointerUp;
+    app.handle_event( drag );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    // As far as the finger went, once; the button let go, and was not tapped.
+    CHECK( std::abs( list.scroll_y() - before - 100.0F ) < 1.0F );
+    CHECK( !static_cast<sq::gui::Button &>( button ).pressed() );
+    CHECK( app.telegraph().value( book_taps, dragged + 1 ) == 0 && rows_shown( list, false ) );
+
+    // A drag where no widget takes the finger (a title) scrolls it as far.
+    const float from = list.scroll_y();
+    sq::gui::Widget &title = *in_row( list, list.first_row() + 3, 0 );
+    touch( app, title, 0.5F, sq::app::Event::Type::PointerDown );
+    x = 0.0F;
+    y = 0.0F;
+    stage_position( title, x, y );
+    drag.type = sq::app::Event::Type::PointerMove;
+    drag.x = ( x + title.width() * 0.5F ) * static_cast<float>( pixel_width ) / logical_width;
+    const float raised = y + title.height() * 0.5F - 60.0F;
+    drag.y = raised * static_cast<float>( pixel_height ) / logical_height;
+    app.handle_event( drag );
+    drag.type = sq::app::Event::Type::PointerUp;
+    app.handle_event( drag );
+    platform.frame( app );
+    CHECK( std::abs( list.scroll_y() - from - 60.0F ) < 1.0F );
+
+    // A sort: the rows on screen show the books now there.
+    CHECK( app.telegraph().do_( books_reverse ).result == sq::messaging::SendResult::sent );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( rows_shown( list, true ) );
+
+    // Scrolling, once warm, allocates nothing: the rows, their texts, the asks.
+    list.set_scroll_y( 0.0F );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    for( int step = 0; step < 40; ++step ) {
+        sq::dev::frame_begin();
+        list.set_scroll_y( list.row_height() * static_cast<float>( step * 7 ) );
+        platform.frame( app );
+        CHECK( sq::dev::frame_end().count == 0 );
+    }
+    platform.frame( app );
+    CHECK( rows_shown( list, true ) );
+
+    // The model keeps one view of a list: a second widget of it stays empty.
+    CHECK( app.stage.open<ShelfPane>() );
+    CHECK( reported( "stage: shelf_pane: books is shown already; this one stays empty" ) );
+    CHECK( app.stage.lists() == 1 );
+    tap( app, "Shut" );
+
+    // Leaving the screen lets the list go, and all the cache kept for it.
+    CHECK( app.stage.back() );
+    CHECK( app.stage.lists() == 0 && app.stage.bindings() == 0 );
+    CHECK( app.telegraph().cache_stats().bound == bound_before );
+
+    // Again, once the cache has let it all go: a new widget, which asks for
+    // all of it, from its count; the model sends it again.
+    CHECK( app.telegraph().do_( flood ).result == sq::messaging::SendResult::sent );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( !app.telegraph().value( books_count ).has_value() ); // its count too
+    CHECK( app.stage.push<Shelf>() );
+    for( int i = 0; i < 4; ++i ) {
+        platform.frame( app );
+    }
+    sq::gui::Actor *second = app.stage.ui()->content()->child_at( 0 );
+    sq::gui::List &again = *sq::gui::actor_cast<sq::gui::List>( second );
+    CHECK( again.count() == book_count && rows_shown( again, true ) );
+    again.set_scroll_y( again.row_height() * static_cast<float>( book_count - 10 ) );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( rows_shown( again, true ) ); // book 5, kept, is on row 995 now
+    CHECK( static_cast<sq::gui::CheckBox *>( in_row( again, book_count - 5, 2 ) )->checked() );
+
+    // Cut to three: the count, the scroll back inside it, the rows past it empty.
+    CHECK( app.telegraph().do_( books_cut ).result == sq::messaging::SendResult::sent );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( again.count() == 3 && again.scroll_y() == 0.0F && rows_shown( again, true ) );
+    CHECK( in_row( again, 3, 0 ) == nullptr && title_at( again, 2 ) == "book 998" );
+
+    app.quit();
+    app.dispose();
+    CHECK( app.telegraph().cache_stats().bound == 0 );
+}
+
 void back_tap_at_the_root_leaves()
 {
     start = Start::no_model;
@@ -1205,6 +1532,7 @@ int main()
     cpp_screens();
     panes();
     bound_values();
+    bound_lists();
     back_tap_at_the_root_leaves();
     no_skin_draws_red();
     a_bad_layout_is_said();

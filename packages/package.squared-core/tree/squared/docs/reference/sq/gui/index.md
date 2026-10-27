@@ -33,6 +33,7 @@
 * [LayoutWriter](LayoutWriter.md)
 * [Layout](Layout.md)
 * [LinearLayout](LinearLayout.md)
+* [List](List.md)
 * [MarginContainer](MarginContainer.md)
 * [NameEntry](NameEntry.md)
 * [NameSchema](NameSchema.md)
@@ -133,7 +134,7 @@
 
 *bool edits_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:150](../../../../gui/layout.hpp#L150)*
+*Defined at [gui/layout.hpp:166](../../../../gui/layout.hpp#L166)*
 
 
 
@@ -143,11 +144,11 @@
 
 *bool holds_nodes(NodeType type)*
 
-*Defined at [gui/layout.hpp:129](../../../../gui/layout.hpp#L129)*
+*Defined at [gui/layout.hpp:137](../../../../gui/layout.hpp#L137)*
 
 
 
-**brief** Whether nodes go inside a node of this type: a table, a scroll (one) or a stack. 
+**brief** Whether nodes go inside a node of this type: a table, a scroll (one), a stack, or a list (one: its row).
 
 ### instantiate
 
@@ -213,7 +214,7 @@
 
 *std::size_t node_numbers(NodeType type)*
 
-*Defined at [gui/layout.hpp:179](../../../../gui/layout.hpp#L179)*
+*Defined at [gui/layout.hpp:195](../../../../gui/layout.hpp#L195)*
 
 
 
@@ -239,19 +240,19 @@
 
 *bool operator==(const LayoutCheck & , const LayoutCheck & )*
 
-*Defined at [gui/layout.hpp:324](../../../../gui/layout.hpp#L324)*
+*Defined at [gui/layout.hpp:344](../../../../gui/layout.hpp#L344)*
 
 ### operator==
 
 *bool operator==(const LayoutNode & , const LayoutNode & )*
 
-*Defined at [gui/layout.hpp:123](../../../../gui/layout.hpp#L123)*
+*Defined at [gui/layout.hpp:128](../../../../gui/layout.hpp#L128)*
 
 ### operator==
 
 *bool operator==(const PaneShape & , const PaneShape & )*
 
-*Defined at [gui/layout.hpp:72](../../../../gui/layout.hpp#L72)*
+*Defined at [gui/layout.hpp:73](../../../../gui/layout.hpp#L73)*
 
 ### pane_place_name
 
@@ -335,7 +336,7 @@
 
 *bool shows_type(NodeType type, messaging::ValueType value)*
 
-*Defined at [gui/layout.hpp:160](../../../../gui/layout.hpp#L160)*
+*Defined at [gui/layout.hpp:176](../../../../gui/layout.hpp#L176)*
 
 
 
@@ -345,7 +346,7 @@
 
 *bool shows_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:135](../../../../gui/layout.hpp#L135)*
+*Defined at [gui/layout.hpp:151](../../../../gui/layout.hpp#L151)*
 
 
 
@@ -432,7 +433,7 @@
 | pane |
 
 
-*Defined at [gui/layout.hpp:45](../../../../gui/layout.hpp#L45)*
+*Defined at [gui/layout.hpp:46](../../../../gui/layout.hpp#L46)*
 
 
 
@@ -448,6 +449,7 @@
 | too_deep |
 | not_a_container |
 | scroll_holds_one |
+| bad_list |
 | misplaced_row |
 | bad_type |
 | bad_bind |
@@ -458,7 +460,7 @@
 | unknown_drawable |
 
 
-*Defined at [gui/layout.hpp:282](../../../../gui/layout.hpp#L282)*
+*Defined at [gui/layout.hpp:298](../../../../gui/layout.hpp#L298)*
 
 
 
@@ -476,7 +478,7 @@
 | quit |
 
 
-*Defined at [gui/layout_writer.hpp:134](../../../../gui/layout_writer.hpp#L134)*
+*Defined at [gui/layout_writer.hpp:144](../../../../gui/layout_writer.hpp#L144)*
 
 
 
@@ -497,6 +499,7 @@
 | table |
 | scroll |
 | stack |
+| list |
 | custom |
 
 
@@ -517,7 +520,7 @@
 | bottom |
 
 
-*Defined at [gui/layout.hpp:52](../../../../gui/layout.hpp#L52)*
+*Defined at [gui/layout.hpp:53](../../../../gui/layout.hpp#L53)*
 
 
 
@@ -568,7 +571,7 @@
 | invalid |
 
 
-*Defined at [gui/layout.hpp:248](../../../../gui/layout.hpp#L248)*
+*Defined at [gui/layout.hpp:264](../../../../gui/layout.hpp#L264)*
 
 
 

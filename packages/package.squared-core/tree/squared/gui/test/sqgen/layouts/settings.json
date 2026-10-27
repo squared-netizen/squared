@@ -11,6 +11,8 @@
     [ { "type": "scroll", "node": { "type": "label", "text": "long" } },
       { "type": "stack", "nodes": [ { "type": "image", "text": "white" }, { "type": "custom", "name": "minimap" } ] } ],
     [ { "type": "button", "text": "Discard", "tap": "open discard", "align": ["end", "start"] },
-      { "type": "button", "text": "Back", "tap": "back" } ]
+      { "type": "button", "text": "Back", "tap": "back" } ],
+    [ { "type": "list", "bind": "inventory", "grow": true,
+        "row": { "type": "label", "bind": "item.name" } } ]
   ]
 }

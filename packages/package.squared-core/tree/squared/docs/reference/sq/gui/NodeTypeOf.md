@@ -1,6 +1,6 @@
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:57](../../../../gui/layout_writer.hpp#L57)*
+*Defined at [gui/layout_writer.hpp:58](../../../../gui/layout_writer.hpp#L58)*
 
 ## Members
 
@@ -10,7 +10,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:47](../../../../gui/layout_writer.hpp#L47)*
+*Defined at [gui/layout_writer.hpp:48](../../../../gui/layout_writer.hpp#L48)*
 
 ## Members
 
@@ -20,7 +20,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:37](../../../../gui/layout_writer.hpp#L37)*
+*Defined at [gui/layout_writer.hpp:38](../../../../gui/layout_writer.hpp#L38)*
 
 ## Members
 
@@ -30,7 +30,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:67](../../../../gui/layout_writer.hpp#L67)*
+*Defined at [gui/layout_writer.hpp:68](../../../../gui/layout_writer.hpp#L68)*
 
 ## Members
 
@@ -40,7 +40,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:77](../../../../gui/layout_writer.hpp#L77)*
+*Defined at [gui/layout_writer.hpp:78](../../../../gui/layout_writer.hpp#L78)*
 
 ## Members
 
@@ -50,7 +50,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:62](../../../../gui/layout_writer.hpp#L62)*
+*Defined at [gui/layout_writer.hpp:63](../../../../gui/layout_writer.hpp#L63)*
 
 ## Members
 
@@ -60,7 +60,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:82](../../../../gui/layout_writer.hpp#L82)*
+*Defined at [gui/layout_writer.hpp:83](../../../../gui/layout_writer.hpp#L83)*
 
 ## Members
 
@@ -70,7 +70,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:52](../../../../gui/layout_writer.hpp#L52)*
+*Defined at [gui/layout_writer.hpp:53](../../../../gui/layout_writer.hpp#L53)*
 
 ## Members
 
@@ -80,7 +80,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:72](../../../../gui/layout_writer.hpp#L72)*
+*Defined at [gui/layout_writer.hpp:73](../../../../gui/layout_writer.hpp#L73)*
 
 ## Members
 
@@ -90,7 +90,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:87](../../../../gui/layout_writer.hpp#L87)*
+*Defined at [gui/layout_writer.hpp:88](../../../../gui/layout_writer.hpp#L88)*
 
 ## Members
 
@@ -108,7 +108,7 @@ public static NodeType type
 
 # struct NodeTypeOf
 
-*Defined at [gui/layout_writer.hpp:42](../../../../gui/layout_writer.hpp#L42)*
+*Defined at [gui/layout_writer.hpp:43](../../../../gui/layout_writer.hpp#L43)*
 
 ## Members
 

@@ -1,6 +1,6 @@
 # struct TelegramBytes
 
-*Defined at [messaging/telegram.hpp:96](../../../../messaging/telegram.hpp#L96)*
+*Defined at [messaging/telegram.hpp:99](../../../../messaging/telegram.hpp#L99)*
 
 
 

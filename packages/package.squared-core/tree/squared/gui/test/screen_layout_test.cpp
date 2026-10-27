@@ -11,6 +11,7 @@
 #include <squared/gui/label.hpp>
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
+#include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
 #include <squared/gui/scroll_pane.hpp>
 #include <squared/gui/separator.hpp>
@@ -60,14 +61,23 @@ inline constexpr Key<std::string_view, do_> file_open{ "file.open" };
 inline constexpr Key<std::string_view, state> player_name{ "player.name" };
 inline constexpr Key<void, do_> game_start{ "game.start" };
 inline constexpr Key<std::string_view, state, with_uid> item_name{ "item.name" };
+inline constexpr Key<void, do_, with_uid> item_use{ "item.use" };
+inline constexpr Key<std::int64_t, state, with_uid> inventory{ "inventory" };
 
 template<typename K>
 concept bindable = requires( NodeWriter writer, const K &key ) { writer.bind( key ); };
 
-// Binding takes a key the node can show: one that carries `state`, without a uid.
+template<typename K>
+concept listable = requires( LayoutWriter &writer, const K &key ) { writer.add_list( key ); };
+
+// Binding takes a key the node can show: one that carries `state`. One with
+// a uid compiles, and is refused outside a list's row (writes_lists).
 static_assert( bindable<decltype( settings_sound )> );
 static_assert( !bindable<decltype( file_open )> );
-static_assert( !bindable<decltype( item_name )> );
+static_assert( bindable<decltype( item_name )> );
+// A list takes a list's rows: an integer state with a uid.
+static_assert( listable<decltype( inventory )> );
+static_assert( !listable<decltype( item_name )> && !listable<decltype( settings_volume )> );
 
 // What sqgen writes for settings.json: a check box bound to settings.sound,
 // then, on a new row, a button whose tap is `back`.
@@ -138,7 +148,7 @@ void taps_read()
         const auto type = static_cast<NodeType>( i );
         CHECK( node_type_named( node_type_name( type ) ) == type );
     }
-    CHECK( !node_type_named( "list" ) && !node_type_named( "" ) );
+    CHECK( !node_type_named( "lists" ) && !node_type_named( "" ) );
     CHECK( node_type_name( static_cast<NodeType>( 99 ) ).empty() );
 }
 
@@ -206,6 +216,67 @@ void check_trees()
 
     const std::array<LayoutNode, 1> odd = { node( static_cast<NodeType>( 99 ) ) };
     CHECK( check_of( odd ).problem == P::bad_type );
+}
+
+/// A list node showing `inventory`, with `inside` nodes in it.
+LayoutNode list_node( std::uint16_t inside )
+{
+    LayoutNode made = node( NodeType::list, inside );
+    made.bind = inventory.name();
+    made.bind_text = 1;
+    made.value = sq::messaging::ValueType::integer;
+    return made;
+}
+
+void check_lists()
+{
+    using P = LayoutProblem;
+    using sq::messaging::ValueType;
+    const std::string_view words( "\0inventory\0item.name\0do item.use\0push x\0", 40 );
+    std::array<LayoutNode, 2> one = { list_node( 1 ), node() };
+    CHECK( check_of( one, words ).ok() );
+    const std::array<LayoutNode, 1> empty = { list_node( 0 ) };
+    CHECK( check_of( empty, words ).ok() ); // shows nothing, as an empty scroll
+    const std::array<LayoutNode, 3> two = { list_node( 2 ), node(), node() };
+    CHECK( check_of( two, words ) == LayoutCheck{ P::bad_list, 0 } );
+
+    // What it shows: a list, by a name its text hashes to, as an integer.
+    one[0].bind = {};
+    CHECK( check_of( one, words ).problem == P::bad_list );
+    one[0] = list_node( 1 );
+    one[0].value = ValueType::text;
+    CHECK( check_of( one, words ).problem == P::bad_list );
+    one[0] = list_node( 1 );
+    one[0].bind_text = 11; // item.name
+    CHECK( check_of( one, words ).problem == P::bad_list );
+    one[0] = list_node( 1 );
+    one[0].sends_set = true;
+    CHECK( check_of( one, words ).problem == P::bad_list );
+
+    // A list in a row: one level for now.
+    const std::array<LayoutNode, 3> nested = { list_node( 2 ), list_node( 1 ), node() };
+    CHECK( check_of( nested, words ) == LayoutCheck{ P::bad_list, 1 } );
+
+    // The row's uid: in a row, on a bind or a telegram's tap.
+    LayoutNode name = node();
+    name.bind = item_name.name();
+    name.bind_text = 11;
+    name.value = ValueType::text;
+    name.row_uid = true;
+    std::array<LayoutNode, 2> row = { list_node( 1 ), name };
+    CHECK( check_of( row, words ).ok() );
+    const std::array<LayoutNode, 1> outside = { name };
+    CHECK( check_of( outside, words ) == LayoutCheck{ P::bad_list, 0 } );
+    LayoutNode use = node( NodeType::button );
+    use.tap = 21;
+    use.row_uid = true;
+    row[1] = use;
+    CHECK( check_of( row, words ).ok() );
+    row[1].tap = 33; // push x: no telegram to give a uid to
+    CHECK( check_of( row, words ) == LayoutCheck{ P::bad_list, 1 } );
+    row[1] = node( NodeType::separator );
+    row[1].row_uid = true;
+    CHECK( check_of( row, words ) == LayoutCheck{ P::bad_list, 1 } );
 }
 
 void check_words()
@@ -391,6 +462,46 @@ bool refused( LayoutWriter &root, Write write )
     return was;
 }
 
+void writes_lists()
+{
+    Scratch scratch;
+    LayoutWriter root( scratch.nodes, scratch.text, scratch.numbers );
+    root.add<Label>( "Items" );
+    root.row();
+    NodeWriter list = root.add_list( inventory ).grow();
+    NodeWriter row = list.add<Table>();
+    row.add<Label>().bind( item_name ).grow_x();
+    row.add<Button>( "Use" ).tap( item_use );
+    row.add<Button>( "Top" ).tap( Navigate::push, "top" );
+    root.row();
+    root.add<Button>( "Back" ).tap( Navigate::back );
+    CHECK( root.complete() );
+    const Layout layout = root.layout();
+    CHECK( check( layout ).ok() );
+    const Layout::Nodes nodes = layout.nodes();
+    CHECK( nodes.size() == 7 && nodes[1].type == NodeType::list && nodes[1].inside == 4 );
+    CHECK( nodes[1].bind == inventory.name() && layout.text( nodes[1].bind_text ) == "inventory" );
+    CHECK( nodes[1].value == sq::messaging::ValueType::integer && nodes[1].grow_x );
+    CHECK( nodes[3].row_uid && nodes[3].bind == item_name.name() );
+    CHECK( nodes[4].row_uid && layout.text( nodes[4].tap ) == "do item.use" );
+    CHECK( !nodes[5].row_uid && !nodes[6].row_uid );
+
+    // A uid outside a row; a list in a row; a list's second row.
+    CHECK( refused( root, [&root] { root.add<Label>().bind( item_name ); } ) );
+    CHECK( refused( root, [&root] { root.add<Button>( "x" ).tap( item_use ); } ) );
+    CHECK( refused( root, [&root] { root.add_list( inventory ).add_list( inventory ); } ) );
+    CHECK( refused( root, [&root] {
+        NodeWriter rows = root.add_list( inventory );
+        rows.add<Label>( "one" );
+        rows.add<Label>( "two" );
+    } ) );
+    // After the list, a uid is refused again.
+    CHECK( refused( root, [&root] {
+        root.add_list( inventory ).add<Label>().bind( item_name );
+        root.add<Label>().bind( item_name );
+    } ) );
+}
+
 void writer_refuses()
 {
     Scratch scratch;
@@ -511,6 +622,51 @@ void instantiates_a_compiled_layout()
     CHECK( untouched.child_count() == 0 );
 }
 
+/// What `listed` saw.
+struct Listed
+{
+        int lists = 0;
+        List *list = nullptr;
+};
+
+void seen_list( void *context, const Layout & /*layout*/, const LayoutNode &node,
+                List &list ) noexcept
+{
+    auto &seen = *static_cast<Listed *>( context );
+    ++seen.lists;
+    seen.list = &list;
+    CHECK( node.type == NodeType::list && node.bind == inventory.name() );
+}
+
+void instantiates_a_list()
+{
+    const Skin skin;
+    Listed seen;
+    LayoutHooks hooks;
+    hooks.listed = seen_list;
+    hooks.context = &seen;
+    Table root;
+    {
+        Scratch scratch;
+        LayoutWriter writer( scratch.nodes, scratch.text, scratch.numbers );
+        NodeWriter row = writer.add_list( inventory ).grow().add<Table>();
+        row.add<Label>( "-" ).bind( item_name );
+        row.add<Button>( "Use" ).tap( item_use );
+        CHECK( instantiate( writer.layout(), root, skin, hooks ).ok() );
+        scratch = {}; // the list copied its row
+    }
+    CHECK( seen.lists == 1 && root.child_count() == 1 );
+    List &list = *seen.list;
+    CHECK( root.child_at( 0 ) == &list && actor_cast<List>( root.child_at( 0 ) ) == &list );
+    // Rows are built as it lays out, not before.
+    CHECK( list.rows_built() == 0 && list.count() == 0 && list.rows_on_screen() == 0 );
+    const Layout row = list.row();
+    CHECK( check( row ).problem == LayoutProblem::bad_list ); // its uids need the list
+    CHECK( row.nodes().size() == 3 && row.nodes()[0].type == NodeType::table );
+    CHECK( row.text( row.nodes()[1].bind_text ) == "item.name" && row.nodes()[1].row_uid );
+    CHECK( row.text( row.nodes()[2].tap ) == "do item.use" && row.nodes()[2].row_uid );
+}
+
 void instantiates_every_kind()
 {
     const Skin skin;
@@ -591,7 +747,7 @@ void write_one( std::mt19937 &random, LayoutWriter &root, std::vector<NodeWriter
         const int index = pick( random, static_cast<int>( written.size() ) );
         at = &written[static_cast<std::size_t>( index )];
     }
-    switch( pick( random, 14 ) ) {
+    switch( pick( random, 17 ) ) {
         case 0:
             add<Label>( root, at, written ).bind( settings_volume );
             break;
@@ -635,6 +791,20 @@ void write_one( std::mt19937 &random, LayoutWriter &root, std::vector<NodeWriter
         case 12:
             add<TextField>( root, at, written ).bind( player_name ).pad( 2.0F );
             break;
+        case 13:
+            // In a row it is written; anywhere else refused, as a list in a row is.
+            if( at == nullptr ) {
+                written.push_back( root.add_list( inventory ) );
+            } else {
+                written.push_back( at->add_list( inventory ) );
+            }
+            break;
+        case 14:
+            add<Label>( root, at, written ).bind( item_name );
+            break;
+        case 15:
+            add<Button>( root, at, written ).tap( item_use );
+            break;
         default:
             add<Label>( root, at, written ).tap( "back" ); // refused: a label
             break;
@@ -673,12 +843,15 @@ int main()
     pane_shapes();
     binds_carry_type_and_set();
     check_trees();
+    check_lists();
     check_words();
     check_numbers();
     writer_writes_the_same_table();
     typed_taps();
+    writes_lists();
     writer_refuses();
     instantiates_a_compiled_layout();
+    instantiates_a_list();
     instantiates_every_kind();
     fuzz();
     std::printf( "screen_layout_test: ok (LayoutNode %zu, Layout %zu, LayoutWriter %zu bytes)\n",

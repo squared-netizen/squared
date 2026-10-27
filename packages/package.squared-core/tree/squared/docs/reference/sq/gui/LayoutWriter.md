@@ -1,6 +1,6 @@
 # class LayoutWriter
 
-*Defined at [gui/layout_writer.hpp:261](../../../../gui/layout_writer.hpp#L261)*
+*Defined at [gui/layout_writer.hpp:291](../../../../gui/layout_writer.hpp#L291)*
 
 
 
@@ -22,37 +22,37 @@
 
 *public void LayoutWriter(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:266](../../../../gui/layout_writer.hpp#L266)*
+*Defined at [gui/layout_writer.hpp:296](../../../../gui/layout_writer.hpp#L296)*
 
 ### operator=
 
 *public LayoutWriter & operator=(const LayoutWriter & )*
 
-*Defined at [gui/layout_writer.hpp:267](../../../../gui/layout_writer.hpp#L267)*
+*Defined at [gui/layout_writer.hpp:297](../../../../gui/layout_writer.hpp#L297)*
 
 ### LayoutWriter
 
 *public void LayoutWriter(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:268](../../../../gui/layout_writer.hpp#L268)*
+*Defined at [gui/layout_writer.hpp:298](../../../../gui/layout_writer.hpp#L298)*
 
 ### operator=
 
 *public LayoutWriter & operator=(LayoutWriter && )*
 
-*Defined at [gui/layout_writer.hpp:269](../../../../gui/layout_writer.hpp#L269)*
+*Defined at [gui/layout_writer.hpp:299](../../../../gui/layout_writer.hpp#L299)*
 
 ### ~LayoutWriter
 
 *public void ~LayoutWriter()*
 
-*Defined at [gui/layout_writer.hpp:270](../../../../gui/layout_writer.hpp#L270)*
+*Defined at [gui/layout_writer.hpp:300](../../../../gui/layout_writer.hpp#L300)*
 
 ### add
 
 *public NodeWriter add(std::string_view text)*
 
-*Defined at [gui/layout_writer.hpp:274](../../../../gui/layout_writer.hpp#L274)*
+*Defined at [gui/layout_writer.hpp:304](../../../../gui/layout_writer.hpp#L304)*
 
 
 
@@ -65,6 +65,20 @@
 
 
 **brief** Add a custom node: a type the app registers by `name`. 
+
+### add_list
+
+*public NodeWriter add_list(const K & rows)*
+
+*Defined at [gui/layout_writer.hpp:326](../../../../gui/layout_writer.hpp#L326)*
+
+
+
+**brief** Add a list showing `rows`, a model's list (names.json's `"inventory": { "list": "item" }`): then add its row to it, one node, built once for each row on screen.
+
+ ```cpp auto row = root.add_list( names::inventory ).grow().add<sq::gui::Table>(); row.add<sq::gui::Label>().bind( names::item_name );   // the row's item's name row.add<sq::gui::Button>( "Use" ).tap( names::item_use ); ```
+
+ In a row, keys that take a uid get the row's. A list in a row is refused.
 
 ### row
 
@@ -94,7 +108,7 @@
 
 *public void set_pane(PaneShape shape)*
 
-*Defined at [gui/layout_writer.hpp:286](../../../../gui/layout_writer.hpp#L286)*
+*Defined at [gui/layout_writer.hpp:335](../../../../gui/layout_writer.hpp#L335)*
 
 
 
@@ -104,7 +118,7 @@
 
 *public bool complete()*
 
-*Defined at [gui/layout_writer.hpp:292](../../../../gui/layout_writer.hpp#L292)*
+*Defined at [gui/layout_writer.hpp:341](../../../../gui/layout_writer.hpp#L341)*
 
 
 

@@ -15,7 +15,7 @@ the rest.
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
 Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, 7.4's
-compiled-in skin, and 7.5a's bound values. Bound lists come in 7.5b.
+compiled-in skin, and 7.5's bound values and lists.
 
 ## The shortest call site
 
@@ -112,6 +112,7 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 | `telegraph()` | the UI end of the Telegraph |
 | `ui()` | the top screen's widgets, its panes' among them (`sq::gui::Ui`); nullptr while no skin is loaded |
 | `bindings()` | how many widgets are bound now (below) |
+| `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
@@ -250,8 +251,63 @@ disagree) is not shown; the build refuses the mismatches it can see (a
 `check_box` bound to a number, a `text_field` to a bool).
 
 Up to `max_bindings` (128) widgets are bound at once, a screen's and its
-panes'; past that the rest show their own text, and it is reported once.
-Leaving a screen, or closing a pane, unbinds its widgets.
+panes', a list's rows' among them; past that the rest show their own text,
+and it is reported once. Leaving a screen, or closing a pane, unbinds its
+widgets.
+
+A widget whose value changed is laid out again before the frame is drawn:
+a longer text takes its room. A frame where nothing changed lays out
+nothing.
+
+## Bound lists
+
+A `list` node shows one of the model's lists (names.json's
+`"inventory": { "list": "item" }`), however long: widgets are made only for
+the rows on screen, and reused as it scrolls. Its row is one node, built
+once for each row on screen; in it, an address that takes a uid gets the
+uid of the row's item:
+
+```cpp
+// The model: the list, and an item's values by its uid.
+t.list( names::inventory, inventory );        // count(), uid_at( row ), publish( t, uid )
+t.state( names::item_name, 17, "fur coat" );
+
+// The screen: each row the item's name, and a button that sends `do item.use` to it.
+auto row = root.add_list( names::inventory ).grow().add<sq::gui::Table>();
+row.add<sq::gui::Label>().bind( names::item_name );
+row.add<sq::gui::Button>( "Use" ).tap( names::item_use );
+```
+
+In a layout file:
+
+```json
+{ "type": "list", "bind": "inventory", "grow": true, "row":
+  { "type": "table", "rows": [ [
+    { "type": "label", "bind": "item.name" },
+    { "type": "button", "text": "Use", "tap": "do item.use" } ] ] } }
+```
+
+The model gets `do item.use` with the row's item as its uid
+(`received.telegram.address().uid`), and a check box, slider or text field in
+a row sends `set` to its item the same way. The row's own addresses
+(`settings.sound`) and navigation taps work as anywhere.
+
+| What | How |
+|---|---|
+| Rows | all one height, the row's; a list asks for up to 8 rows' room, so give it `grow` to fill the screen |
+| Scrolling | drag, anywhere in it: a finger that moves more than a few units on a row's button scrolls instead of tapping. Flings come with Sprint 8's gestures |
+| What it asks for | the rows on screen and a screen above and below (`do inventory.view`), as it scrolls; the model sends each row's item, and each item's values once, as it comes into view |
+| What it keeps | those rows and their items' values stay in the Telegraph's cache, up to half of it (shared by the lists shown); a row past that shows nothing, and it is reported: raise `TELEGRAPH_CACHE` |
+| Before the model says | a row shows nothing; a tap in it is not sent, and is reported |
+| A sort, an insert, a removal | the model's `t.changed( names::inventory )`: the rows on screen show what is there now |
+| Shown again | a new list starts from nothing: the model sends it all again, from its count |
+
+Up to `max_lists` (4) lists are shown at once, a screen's and its panes';
+past that the rest stay empty, and it is reported. The model keeps one view
+of a list, so one widget shows it: a second (in a pane over the screen
+showing it) stays empty, and it is reported. A row shows up to
+`max_row_values` (8) of its item's values; one list in a row is refused (one
+level, for now).
 
 ## Custom nodes
 
@@ -323,6 +379,11 @@ Nothing stops the app; each failure is one line to the platform's report
 | `stage: push <layout>: the stack holds 16 screens` | `max_depth` |
 | `app: run: a model runs already; an app has one` | a second `run` |
 | `stage: <screen>: more than 128 bound values; the rest show their own text` | `max_bindings` |
+| `stage: <screen>: <list> is shown already; this one stays empty` | a second widget of one list |
+| `stage: <screen>: more than 4 lists; the rest stay empty` | `max_lists` |
+| `stage: <screen>: a row of <list> shows more than 8 of its item's values` | `max_row_values`: the rest show while on screen, but may be empty when scrolled back to |
+| `stage: a list shows N rows; the cache keeps M of them: raise TELEGRAPH_CACHE` | the rows on screen do not fit half the cache |
+| `stage: tap <line>: its row's item has not come yet; not sent` | a row's tap before the model said what the row shows |
 | `stage: an edit was not sent: the Telegraph had no room` | the ring was full when a widget sent `set` |
 | `stage: an edit was not sent: more than 1024 bytes of text` | a text field's text was too long to send |
 
@@ -334,11 +395,15 @@ The App is made once, in static storage, not on the heap: the Telegraph line
 slots). The skin's files are 46 KB of read-only data in the program, mapped
 from its file, not the heap. A model's runner is one allocation, at `run`.
 Each window allocates the skin's textures and tables (reading them copies
-each file once, briefly) and one block of about 23 KB (on Android
-23,224 bytes: batch, camera, painter, widgets, the 17 KB scratch C++
-screens and panes write into, and the 4 KB table of bound widgets); each screen shown allocates its widgets, and
+each file once, briefly) and one block of about 24 KB (on Android
+23,864 bytes: batch, camera, painter, widgets, the 17 KB scratch C++
+screens and panes write into, the 4 KB table of bound widgets and 640 bytes
+for the lists); each screen shown allocates its widgets, and
 each pane opened its window (304 bytes) and widgets, freed when it closes. A
-C++ screen itself allocates nothing. **A frame allocates nothing.**
+list shown allocates its row's copy and, as it is first laid out, a row's
+widgets for each row on screen and one more, and 4 bytes a row it asks for.
+A C++ screen itself allocates nothing. **A frame allocates nothing**, a
+list scrolling included, once each part of the screen has been laid out once.
 
 ## Lua
 

@@ -30,11 +30,18 @@ dev-time reloading that must agree with the generator.
 | 4 | `pad` | below 0: the cell's own |
 | 1 | eight one-bit flags | `grow_x`, `grow_y`, `fill_x`, `fill_y`, `new_row`, `vertical`, `has_numbers`, `sends_set` |
 | 1 | `value` | the bound value's `messaging::ValueType`; `none` without a bind |
-| 2 | padding | to the 8-byte alignment of `bind` |
+| 1 | `row_uid` | one bit (7.5b): in a list's row, `bind`'s address or a button's telegram takes the row's uid |
+| 1 | padding | to the 8-byte alignment of `bind` |
 
 7.5a added both and the node is still 32 bytes: `sends_set` is the eighth
 bit of the flags' byte, and `value` (a one-byte enum, declared after the
-bitfields) takes one byte of what was padding.
+bitfields) takes one byte of what was padding. 7.5b's `row_uid` opens a
+second byte of flags, after `value`; one byte of padding is left.
+
+**A list node** (7.5b) is a container of one node, its row: `bind` is the
+model's list (its rows' name, `inventory`), `value` is `integer` (a row's
+uid), and nothing else a value node has. `holds_nodes` counts it; sqgen
+writes it as any node.
 
 `static_assert`ed. A trivially copyable aggregate, so the build writes it
 with designated initializers into `.rodata`; defaulted `==` (the writer's test
@@ -70,7 +77,10 @@ entries of 16 bytes, on the stack) for O(depth) space. It closes containers
 as their end passes (and counts a scroll's direct children there), checks
 each node's tree bounds against its container's end, its text offsets
 against the pool, `new_row` only in tables, depth at most 16, then the node
-itself: a bind only on the five types that show a value (`shows_value`), with
+itself: a list's bind (its list, by a name its text hashes to, an integer,
+nothing more: `check_list`); at most one node in a list, and no list inside
+a list's row (`bad_list`); `row_uid` only inside a row, on a bind or a
+button whose tap is a telegram; a bind only on the five types that show a value (`shows_value`), with
 a name that hashes to the id and a `value` the node can show (`shows_type`:
 a label any but uids, a check box a bool, a text field text, a slider or a
 progress bar a number or an integer); no `value` and no `sends_set` without a
@@ -109,6 +119,13 @@ writes a 5-node layout 100 times under the frame-allocation counter).
   does when it copies text into its ring: `detail::pack` leaves it empty.
   `detail::pack` moved from `telegraph.hpp` to `messaging/src/pack.hpp` for
   this, so the writer need not include the whole Telegraph.
+- **Lists** (7.5b): `add_list( rows )` (on the writer or a node) takes a
+  list's key (`rows_key`: an integer `state` with a uid) and writes a list
+  node; its row is the next node added to it. A key that takes a uid
+  compiles in `bind` and `tap` now; the writer refuses it outside a row
+  (`in_row`: a list before the node whose nodes reach it, a scan of the
+  nodes before it) and sets `row_uid` inside one. A list in a row is refused
+  as it is added, a second row as it is added to a list.
 - **`bind(key)`** records the key's value type and whether it carries
   `set` (7.5a): `bind_name( name, text, K::type, settable )` refuses a type
   the node cannot show (`shows_type`) and sets `sends_set` only when the
@@ -185,9 +202,12 @@ at compile time a file needs at run time: adding a node by its `NodeType`
 both; it is not for apps (it is in `detail`, and its definition is in
 `layout_file.cpp`, so nothing else can call it). Each node's keys are
 checked against a per-type list (`takes_key`); a bind against the schema
-(present, carries `state`, no uid, a type the node can show: `shows_type`,
-the same function the check uses), and the entry's type and its `set` verb
-go to the node as the C++ avenue's key would give them; a
+(present, carries `state`, a type the node can show: `shows_type`, the same
+function the check uses; one that takes a uid only in a list's row, and
+then only its element's, `item.*` in a list of `item`), and the entry's type,
+its `set` verb and its uid go to the node as the C++ avenue's key would give
+them; a list node's `bind` names a list (an entry made by `{ "list": ... }`)
+and its `row` is read with that list as the row's; a
 tap by kind: a telegram is parsed with `messaging::read_telegram` into 4 KB
 on the stack and checked for address, verb, uid and value type, then stored
 as written; a navigation against the targets and the schema's `screens`.
@@ -316,6 +336,19 @@ print exactly their `expected.txt` and write nothing; a missing file or
 directory, and bad arguments.
 
 Planted bugs for 7.0b, 29, each fail a test (`plant71.py`).
+
+**Lists (7.5b):** the checker's list cases (a row, none, two; a list's
+bind: none, text, a field's name, a set; a list in a row; a row's uid in a
+row, outside one, on a navigation, on a separator), the writer's list and
+its refusals (a uid outside a row, before or after the list; a list in a
+row; a second row), `instantiate` making a `List` that copied its row and
+calling `listed`, the fuzz writing lists and uid keys (most refused, every
+layout still checking); ten new file cases (a list without its bind or
+row, a bind that is no list, a key a list does not take, a uid of another
+element, a uid written in the line, a list in a row, a type the row's node
+cannot show) and one accepted; a list from a file giving the C++ writer's
+table; sqgen's `settings` ending in a list, equal to the writer's. Their
+planted bugs are with the Stage's ([stage.md](stage.md#tested)).
 
 Not covered: the cell placement itself (grow, pad, span reach `Cell`, which
 no test reads back without laying out with a painter); the Stage's tests will

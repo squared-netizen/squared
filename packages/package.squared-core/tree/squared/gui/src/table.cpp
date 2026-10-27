@@ -23,10 +23,60 @@ namespace sq::gui
 // original single translation unit; they are shared now.
 using namespace detail;
 
-struct Table::GridMetrics
+namespace
+{
+
+/// A table's working sizes, by column and by row, while it is measured or
+/// laid out. A table in a table is measured while its parent's are in use,
+/// so each nesting borrows its own; they are kept, so once every depth has
+/// been laid out at its largest, a layout allocates nothing. The UI thread
+/// only, as the widgets are.
+struct Lines final
 {
         std::vector<float> columns;
         std::vector<float> rows;
+};
+
+[[nodiscard]] std::vector<std::unique_ptr<Lines>> &lines_kept()
+{
+    static std::vector<std::unique_ptr<Lines>> kept;
+    return kept;
+}
+
+std::size_t lines_in_use = 0;
+
+/// One `Lines`, borrowed until the end of its scope.
+class Borrowed final
+{
+    public:
+        Borrowed()
+        {
+            std::vector<std::unique_ptr<Lines>> &kept = lines_kept();
+            if( lines_in_use == kept.size() ) {
+                kept.push_back( std::make_unique<Lines>() );
+            }
+            lines_ = kept[lines_in_use++].get();
+        }
+        ~Borrowed() { --lines_in_use; }
+        Borrowed( const Borrowed & ) = delete;
+        Borrowed &operator=( const Borrowed & ) = delete;
+        Borrowed( Borrowed && ) = delete;
+        Borrowed &operator=( Borrowed && ) = delete;
+
+        [[nodiscard]] std::vector<float> &columns() noexcept { return lines_->columns; }
+        [[nodiscard]] std::vector<float> &rows() noexcept { return lines_->rows; }
+
+    private:
+        Lines *lines_ = nullptr;
+};
+
+} // namespace
+
+struct Table::GridMetrics
+{
+        Borrowed lines;
+        std::vector<float> &columns = lines.columns();
+        std::vector<float> &rows = lines.rows();
         float width{ 0.0F };
         float height{ 0.0F };
 };
@@ -80,7 +130,7 @@ void Table::set_spacing( float spacing ) noexcept
     invalidate_layout();
 }
 
-Table::GridMetrics Table::measure( Painter &painter, const Skin *skin, bool minimum ) const
+void Table::measure( Painter &painter, const Skin *skin, bool minimum, GridMetrics &result ) const
 {
     const float outer = padding_ < 0.0F ? ( skin ? skin->padding : default_padding ) : padding_;
     const float gap = spacing_ < 0.0F ? ( skin ? skin->spacing : default_spacing ) : spacing_;
@@ -90,7 +140,6 @@ Table::GridMetrics Table::measure( Painter &painter, const Skin *skin, bool mini
         column_count = std::max( column_count, cell.column_ + cell.column_span_ );
         row_count = std::max( row_count, cell.row_ + 1 );
     }
-    GridMetrics result;
     result.columns.assign( column_count, 0.0F );
     result.rows.assign( row_count, 0.0F );
 
@@ -139,29 +188,35 @@ Table::GridMetrics Table::measure( Painter &painter, const Skin *skin, bool mini
     if( !result.rows.empty() ) {
         result.height += gap * static_cast<float>( result.rows.size() - 1 );
     }
-    return result;
 }
 
 Size Table::minimum_size( Painter &painter, const Skin &skin ) const
 {
-    const GridMetrics result = measure( painter, &skin, true );
+    GridMetrics result;
+    measure( painter, &skin, true, result );
     return { result.width, result.height };
 }
 
 Size Table::preferred_size( Painter &painter, const Skin &skin ) const
 {
-    const GridMetrics result = measure( painter, &skin, false );
+    GridMetrics result;
+    measure( painter, &skin, false, result );
     return { result.width, result.height };
 }
 
 void Table::layout( Painter &painter, const Skin &skin )
 {
-    GridMetrics metrics = measure( painter, &skin, false );
-    const GridMetrics minimum = measure( painter, &skin, true );
+    GridMetrics metrics;
+    measure( painter, &skin, false, metrics );
+    GridMetrics minimum;
+    measure( painter, &skin, true, minimum );
     const float outer = padding_ < 0.0F ? skin.padding : padding_;
     const float gap = spacing_ < 0.0F ? skin.spacing : spacing_;
-    std::vector<float> column_grow( metrics.columns.size(), 0.0F );
-    std::vector<float> row_grow( metrics.rows.size(), 0.0F );
+    Borrowed grows;
+    std::vector<float> &column_grow = grows.columns();
+    std::vector<float> &row_grow = grows.rows();
+    column_grow.assign( metrics.columns.size(), 0.0F );
+    row_grow.assign( metrics.rows.size(), 0.0F );
     for( const Cell &cell : cells_ ) {
         const float share = cell.grow_x_ / static_cast<float>( cell.column_span_ );
         for( std::size_t column = cell.column_; column < cell.column_ + cell.column_span_;
@@ -212,8 +267,11 @@ void Table::layout( Painter &painter, const Skin &skin )
     fit( metrics.rows, minimum.rows, row_grow,
          std::max( 0.0F, height() - 2.0F * outer - row_gaps ) );
 
-    std::vector<float> column_x( metrics.columns.size(), outer );
-    std::vector<float> row_y( metrics.rows.size(), outer );
+    Borrowed at;
+    std::vector<float> &column_x = at.columns();
+    std::vector<float> &row_y = at.rows();
+    column_x.assign( metrics.columns.size(), outer );
+    row_y.assign( metrics.rows.size(), outer );
     for( std::size_t index = 1; index < column_x.size(); ++index ) {
         column_x[index] = column_x[index - 1] + metrics.columns[index - 1] + gap;
     }

@@ -1,6 +1,6 @@
 # class Stage
 
-*Defined at [stage/stage.hpp:134](../../../stage/stage.hpp#L134)*
+*Defined at [stage/stage.hpp:136](../../../stage/stage.hpp#L136)*
 
 
 
@@ -22,6 +22,10 @@ public static const std::size_t max_panes
 
 public static const std::size_t max_bindings
 
+public static const std::size_t max_lists
+
+public static const std::size_t max_row_values
+
 public static const std::size_t scratch_nodes
 
 public static const std::size_t scratch_text
@@ -34,25 +38,67 @@ public static const std::size_t scratch_numbers
 
 ### Stage
 
+*public void Stage(messaging::TelegraphUi & telegraph)*
+
+### Stage
+
 *public void Stage(const Stage & )*
 
-*Defined at [stage/stage.hpp:156](../../../stage/stage.hpp#L156)*
+*Defined at [stage/stage.hpp:164](../../../stage/stage.hpp#L164)*
+
+### operator=
+
+*public Stage & operator=(const Stage & )*
+
+*Defined at [stage/stage.hpp:165](../../../stage/stage.hpp#L165)*
 
 ### Stage
 
 *public void Stage(Stage && )*
 
-*Defined at [stage/stage.hpp:158](../../../stage/stage.hpp#L158)*
+*Defined at [stage/stage.hpp:166](../../../stage/stage.hpp#L166)*
 
-### Stage
+### operator=
 
-*public void Stage(messaging::TelegraphUi & telegraph)*
+*public Stage & operator=(Stage && )*
+
+*Defined at [stage/stage.hpp:167](../../../stage/stage.hpp#L167)*
+
+### push
+
+*public bool push()*
+
+*Defined at [stage/stage.hpp:186](../../../stage/stage.hpp#L186)*
+
+
+
+**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
+
+### replace
+
+*public void replace()*
+
+*Defined at [stage/stage.hpp:193](../../../stage/stage.hpp#L193)*
+
+
+
+**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
+
+### open
+
+*public bool open()*
+
+*Defined at [stage/stage.hpp:215](../../../stage/stage.hpp#L215)*
+
+
+
+**brief** Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. 
 
 ### add
 
 *public bool add()*
 
-*Defined at [stage/stage.hpp:221](../../../stage/stage.hpp#L221)*
+*Defined at [stage/stage.hpp:229](../../../stage/stage.hpp#L229)*
 
 
 
@@ -118,48 +164,6 @@ public static const std::size_t scratch_numbers
 
 **brief** How many screens there are, once what waits has happened. 
 
-### operator=
-
-*public Stage & operator=(const Stage & )*
-
-*Defined at [stage/stage.hpp:157](../../../stage/stage.hpp#L157)*
-
-### operator=
-
-*public Stage & operator=(Stage && )*
-
-*Defined at [stage/stage.hpp:159](../../../stage/stage.hpp#L159)*
-
-### push
-
-*public bool push()*
-
-*Defined at [stage/stage.hpp:178](../../../stage/stage.hpp#L178)*
-
-
-
-**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
-
-### replace
-
-*public void replace()*
-
-*Defined at [stage/stage.hpp:185](../../../stage/stage.hpp#L185)*
-
-
-
-**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
-
-### open
-
-*public bool open()*
-
-*Defined at [stage/stage.hpp:207](../../../stage/stage.hpp#L207)*
-
-
-
-**brief** Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. 
-
 ### panes
 
 *public std::size_t panes()*
@@ -208,11 +212,19 @@ public static const std::size_t scratch_numbers
 
 **brief** How many widgets on the screen and its panes show a value of the model's. 
 
+### lists
+
+*public std::size_t lists()*
+
+
+
+**brief** How many lists the screen and its panes show. 
+
 ### showing
 
 *public bool showing()*
 
-*Defined at [stage/stage.hpp:255](../../../stage/stage.hpp#L255)*
+*Defined at [stage/stage.hpp:263](../../../stage/stage.hpp#L263)*
 
 
 
@@ -222,7 +234,7 @@ public static const std::size_t scratch_numbers
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/stage.hpp:267](../../../stage/stage.hpp#L267)*
+*Defined at [stage/stage.hpp:275](../../../stage/stage.hpp#L275)*
 
 
 
@@ -232,7 +244,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:279](../../../stage/stage.hpp#L279)*
+*Defined at [stage/stage.hpp:290](../../../stage/stage.hpp#L290)*
 
 
 

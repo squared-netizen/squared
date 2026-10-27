@@ -115,7 +115,7 @@
 
 *bool operator==(const Telegram & , const Telegram & )*
 
-*Defined at [messaging/telegram.hpp:74](../../../../messaging/telegram.hpp#L74)*
+*Defined at [messaging/telegram.hpp:77](../../../../messaging/telegram.hpp#L77)*
 
 ### operator|
 
