@@ -16,8 +16,9 @@ the rest.
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
 Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, 7.4's
-compiled-in skin, 7.5's bound values and lists, and 7.6's kept screens and
-the model's save.
+compiled-in skin, 7.5's bound values and lists, 7.6's kept screens and the
+model's save, and 7.7's internal host (`ui()` is no longer public: the
+widgets are the Stage's).
 
 ## The shortest call site
 
@@ -114,7 +115,6 @@ edit not finished ([What is kept](#what-is-kept)).
 | `showing<S>()` | whether the C++ screen `S` is the one shown |
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
-| `ui()` | the top screen's widgets, its panes' among them (`sq::gui::Ui`); nullptr while no skin is loaded |
 | `bindings()` | how many widgets are bound now (below) |
 | `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
@@ -194,7 +194,9 @@ Always inside the safe area, and never bigger than it. **Modal** (`true`;
 the default is false): the screen dims and takes no taps until the pane
 closes. Not modal: a tap outside the pane reaches the screen. A pane opened
 over a modal pane is modal too, since nothing beneath a modal pane takes
-taps.
+taps. A pane is drawn in the skin's pane frame (its `pane` window style, on
+`default-pane`): no title bar, no close button; a tap on the frame between
+its widgets stays in the pane.
 
 A C++ screen opens as a pane too, `open<About>()` or `open about` (when it
 is added); two constants, both optional, give its place and modal:
@@ -495,7 +497,7 @@ each file once, briefly) and one block of about 24 KB (on Android
 23,864 bytes: batch, camera, painter, widgets, the 17 KB scratch C++
 screens and panes write into, the 4 KB table of bound widgets and 640 bytes
 for the lists); each screen shown allocates its widgets, and
-each pane opened its window (304 bytes) and widgets, freed when it closes. A
+each pane opened its frame (168 bytes) and widgets, freed when it closes. A
 list shown allocates its row's copy and, as it is first laid out, a row's
 widgets for each row on screen and one more, and 4 bytes a row it asks for.
 A C++ screen itself allocates nothing. **A frame allocates nothing**, a

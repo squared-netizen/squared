@@ -106,10 +106,10 @@ table exists once instead of once per map.
 
 ## 5. `std::function` on interaction paths
 
-Eight `std::function` members across the public API: `Button::Callback`,
+Seven `std::function` members across the public API: `Button::Callback`,
 `ToggleButton::ChangeCallback`, `Slider::ChangeCallback`,
-`Dialog::ResultCallback`, `Widget::TooltipFactory`, `gui::InputListener`,
-and both skin resolvers. 32 bytes each, plus a heap allocation for any capture
+`Widget::TooltipFactory`, `gui::InputListener`, and both skin resolvers
+(`Dialog::ResultCallback` went with `Dialog` in 7.7). 32 bytes each, plus a heap allocation for any capture
 past the small-buffer size, plus an indirect call.
 
 None of these are per-frame in the strict sense &mdash; they fire on input, not
@@ -121,7 +121,8 @@ table keyed by widget, and `Widget` drops to 104 bytes.
 ## 6. Style names are `std::string` members
 
 `std::string style_{"default"}` appears in `Label`, `Panel`, `Button`,
-`TextField`, `Slider`, `ProgressBar`, and `Window`. 32 bytes per widget to
+`TextField`, `Slider` and `ProgressBar` (`Window`'s went in 7.7: a pane frame
+keeps a `std::string_view` to a literal). 32 bytes per widget to
 store a name that is almost always the same short literal, and it is compared
 by value on every lookup. An interned handle is 4 bytes and compares as an
 integer.

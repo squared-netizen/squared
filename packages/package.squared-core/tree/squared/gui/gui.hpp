@@ -12,7 +12,6 @@
 #include <squared/gui/button_group.hpp>
 #include <squared/gui/cell.hpp>
 #include <squared/gui/check_box.hpp>
-#include <squared/gui/dialog.hpp>
 #include <squared/gui/group.hpp>
 #include <squared/gui/image.hpp>
 #include <squared/gui/instantiate.hpp>
@@ -73,10 +72,7 @@
 #include <squared/gui/src/tooltip_config.hpp>
 #include <squared/gui/src/window_style.hpp>
 #include <squared/gui/stack.hpp>
-#include <squared/gui/stage.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/text_field.hpp>
 #include <squared/gui/toggle_button.hpp>
-#include <squared/gui/ui.hpp>
 #include <squared/gui/widget.hpp>
-#include <squared/gui/window.hpp>

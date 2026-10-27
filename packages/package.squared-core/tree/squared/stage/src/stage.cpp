@@ -25,6 +25,8 @@
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
 #include <squared/gui/slider.hpp>
+#include <squared/gui/src/detail/pane_frame.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/src/font_ptr.hpp>
 #include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/insets.hpp>
@@ -35,8 +37,6 @@
 #include <squared/gui/src/skin_load_severity.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/text_field.hpp>
-#include <squared/gui/ui.hpp>
-#include <squared/gui/window.hpp>
 #include <squared/messaging/address.hpp>
 #include <squared/messaging/list_window.hpp>
 #include <squared/messaging/name.hpp>
@@ -555,7 +555,7 @@ void Stage::detach() noexcept
     unbind_all();
     drawing_.reset();
     for( Pane &pane : panes_ ) {
-        pane.window = nullptr;
+        pane.frame = nullptr;
     }
 }
 
@@ -1072,7 +1072,7 @@ void Stage::show_top() noexcept
     unbind_all();
     static_cast<void>( widgets->set_content( std::move( table ) ) );
     for( Pane &pane : panes_ ) {
-        pane.window = nullptr;
+        pane.frame = nullptr;
     }
     if( depth_ == 0 ) {
         return;
@@ -1164,10 +1164,10 @@ void Stage::keep_shown() noexcept
         walk( *widgets->content(), keeping );
     }
     for( Pane &pane : panes_ ) {
-        if( pane.order != 0 && pane.window != nullptr ) {
+        if( pane.order != 0 && pane.frame != nullptr ) {
             pane.kept = {};
             Keeping<Kept> keeping{ pane.kept };
-            walk( pane.window->content_table(), keeping );
+            walk( pane.frame->content_table(), keeping );
         }
     }
 }
@@ -1182,9 +1182,9 @@ void Stage::put_back() noexcept
     Putting<Kept> putting{ kept_[depth_ - 1] };
     walk( *widgets->content(), putting );
     for( Pane &pane : panes_ ) {
-        if( pane.order != 0 && pane.window != nullptr ) {
+        if( pane.order != 0 && pane.frame != nullptr ) {
             Putting<Kept> pane_putting{ pane.kept };
-            walk( pane.window->content_table(), pane_putting );
+            walk( pane.frame->content_table(), pane_putting );
         }
     }
 }
@@ -1499,34 +1499,33 @@ void Stage::build_pane( Pane &pane ) noexcept
     // no taps, so a pane over it would take none either.
     bool modal = layout->pane().modal;
     for( const Pane &below : panes_ ) {
-        if( below.order != 0 && below.order < pane.order && below.window != nullptr ) {
-            modal = modal || below.window->modal();
+        if( below.order != 0 && below.order < pane.order && below.frame != nullptr ) {
+            modal = modal || below.frame->modal();
         }
     }
-    auto window = std::make_unique<gui::Window>();
-    window->set_titled( false );
-    window->set_movable( false );
-    window->set_modal( modal );
+    // The skin's pane frame: its background, no title bar.
+    auto frame = std::make_unique<gui::PaneFrame>( "pane" );
+    frame->set_modal( modal );
     gui::LayoutHooks hooks;
     hooks.tapped = &Stage::tapped_in_pane;
     hooks.bound = &Stage::bound_in_pane;
     hooks.custom = &Stage::made_in_pane;
     hooks.listed = &Stage::listed_in_pane;
     hooks.context = &pane;
-    gui::Table &table = window->content_table();
+    gui::Table &table = frame->content_table();
     const gui::LayoutCheck check = gui::instantiate( *layout, table, widgets->skin(), hooks );
     // A pane that did not build still opens, empty, so back closes it.
     static_cast<void>( built( *layout, check ) );
     pane.place = layout->pane().place;
-    pane.window = &widgets->show_window( std::move( window ), false );
+    pane.frame = &widgets->show_pane( std::move( frame ) );
 }
 
 void Stage::close_pane( Pane &pane ) noexcept
 {
     unbind_owner( static_cast<std::uint8_t>( &pane - panes_.data() ) );
-    if( pane.window != nullptr ) {
+    if( pane.frame != nullptr ) {
         if( gui::Ui *widgets = ui() ) {
-            widgets->close_window( *pane.window ); // frees its widgets
+            widgets->close_pane( *pane.frame ); // frees its widgets
         }
     }
     for( Pane &other : panes_ ) {
@@ -1536,7 +1535,7 @@ void Stage::close_pane( Pane &pane ) noexcept
     }
     --pane_count_;
     pane.shown = {};
-    pane.window = nullptr;
+    pane.frame = nullptr;
     pane.order = 0;
     pane.kept = {};
 }
@@ -1546,7 +1545,7 @@ void Stage::drop_panes() noexcept
     // Their windows, if built, go with the screen's content.
     for( Pane &pane : panes_ ) {
         pane.shown = {};
-        pane.window = nullptr;
+        pane.frame = nullptr;
         pane.order = 0;
         pane.kept = {};
     }
@@ -1562,11 +1561,11 @@ void Stage::place_panes() noexcept
     const float across = std::max( 0.0F, logical_width_ - safe.left - safe.right );
     const float down = std::max( 0.0F, logical_height_ - safe.top - safe.bottom );
     for( Pane &pane : panes_ ) {
-        if( pane.window == nullptr ) {
+        if( pane.frame == nullptr ) {
             continue;
         }
-        gui::Window &window = *pane.window;
-        const gui::Size wanted = window.size_hints( drawing_->painter, widgets.skin() ).preferred;
+        gui::PaneFrame &frame = *pane.frame;
+        const gui::Size wanted = frame.size_hints( drawing_->painter, widgets.skin() ).preferred;
         float width = std::min( wanted.width, across );
         float height = std::min( wanted.height, down );
         float x = left + ( across - width ) * 0.5F;
@@ -1587,8 +1586,8 @@ void Stage::place_panes() noexcept
                 width = across;
                 break;
         }
-        window.set_bounds( x, y, width, height );
-        window.invalidate_layout();
+        frame.set_bounds( x, y, width, height );
+        frame.invalidate_layout();
     }
 }
 

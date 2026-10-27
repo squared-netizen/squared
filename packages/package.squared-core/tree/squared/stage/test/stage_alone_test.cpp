@@ -11,7 +11,7 @@
 #include <squared/gui/button.hpp>
 #include <squared/gui/layout.hpp>
 #include <squared/gui/layout_writer.hpp>
-#include <squared/gui/ui.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/widget.hpp>
 #include <squared/stage/app.hpp>
 
@@ -20,6 +20,12 @@
 #include <cstdlib>
 #include <string>
 #include <string_view>
+
+/// The Stage's widgets, which only a test reaches (internal since 7.7).
+struct sq::detail::StageProbe final
+{
+        static sq::gui::Ui *ui( sq::Stage &stage ) noexcept { return stage.ui(); }
+};
 
 namespace
 {
@@ -81,7 +87,7 @@ int main()
     CHECK( app.stage.depth() == 1 && !app.stage.failed() );
 
     // Tap the button, which fills the screen's middle.
-    sq::gui::Widget &root = *app.stage.ui()->content();
+    sq::gui::Widget &root = *sq::detail::StageProbe::ui( app.stage )->content();
     const sq::gui::Actor &pressed = *root.child_at( 0 );
     sq::app::Event event;
     event.x = root.x() + pressed.x() + pressed.width() * 0.5F;

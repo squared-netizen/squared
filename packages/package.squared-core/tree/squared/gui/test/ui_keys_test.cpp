@@ -10,7 +10,7 @@
 #include <squared/app/src/key_modifiers.hpp>
 #include <squared/app/src/navigation.hpp>
 #include <squared/gui/linear_layout.hpp>
-#include <squared/gui/ui.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/widget.hpp>
 
 #include <cassert>

@@ -226,6 +226,14 @@ public static const std::size_t scratch_numbers
 
 **brief** How many lists the screen and its panes show. 
 
+### describe
+
+*public void describe(app::Report out)*
+
+
+
+**brief** The stack, a line a screen from the root, then the panes over the top, each with what it keeps: what the Console's `screens` shows.
+
 ### showing
 
 *public bool showing()*
@@ -250,7 +258,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:302](../../../stage/stage.hpp#L302)*
+*Defined at [stage/stage.hpp:296](../../../stage/stage.hpp#L296)*
 
 
 
@@ -260,7 +268,7 @@ public static const std::size_t scratch_numbers
 
 *public void keep_screens(bool keep)*
 
-*Defined at [stage/stage.hpp:310](../../../stage/stage.hpp#L310)*
+*Defined at [stage/stage.hpp:304](../../../stage/stage.hpp#L304)*
 
 
 
@@ -270,23 +278,7 @@ public static const std::size_t scratch_numbers
 
 *public bool keeps_screens()*
 
-*Defined at [stage/stage.hpp:311](../../../stage/stage.hpp#L311)*
-
-### ui
-
-*public gui::Ui * ui()*
-
-
-
-**brief** The top screen's widgets, its panes' among them; nullptr while the skin is not loaded (no window yet, or it failed).
-
-### describe
-
-*public void describe(app::Report out)*
-
-
-
-**brief** The stack, a line a screen from the root, then the panes over the top, each with what it keeps: what the Console's `screens` shows.
+*Defined at [stage/stage.hpp:305](../../../stage/stage.hpp#L305)*
 
 
 

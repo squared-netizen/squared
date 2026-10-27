@@ -7,6 +7,7 @@
 
 ## Records
 
+* [ActorRoot](ActorRoot.md)
 * [Actor](Actor.md)
 * [BatchPainter](BatchPainter.md)
 * [ButtonGroup](ButtonGroup.md)
@@ -16,7 +17,6 @@
 * [CheckBoxStyle](CheckBoxStyle.md)
 * [CheckBox](CheckBox.md)
 * [ColorDrawable](ColorDrawable.md)
-* [Dialog](Dialog.md)
 * [Drawable](Drawable.md)
 * [FileProblem](FileProblem.md)
 * [FontResource](FontResource.md)
@@ -53,6 +53,7 @@
 * [NodeTypeOf](NodeTypeOf.md)
 * [NodeWriter](NodeWriter.md)
 * [Painter](Painter.md)
+* [PaneFrame](PaneFrame.md)
 * [PaneShape](PaneShape.md)
 * [PanelStyle](PanelStyle.md)
 * [Panel](Panel.md)
@@ -73,7 +74,6 @@
 * [SliderStyle](SliderStyle.md)
 * [Slider](Slider.md)
 * [Stack](Stack.md)
-* [Stage](Stage.md)
 * [Table](Table.md)
 * [Tap](Tap.md)
 * [TextFieldStyle](TextFieldStyle.md)
@@ -83,7 +83,6 @@
 * [Ui](Ui.md)
 * [Widget](Widget.md)
 * [WindowStyle](WindowStyle.md)
-* [Window](Window.md)
 
 
 ## Functions

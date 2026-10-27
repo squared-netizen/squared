@@ -31,15 +31,17 @@
 #include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
 #include <squared/gui/scroll_pane.hpp>
+#include <squared/gui/skin.hpp>
 #include <squared/gui/slider.hpp>
+#include <squared/gui/src/detail/pane_frame.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
 #include <squared/gui/src/size.hpp>
+#include <squared/gui/src/window_style.hpp>
 #include <squared/gui/table.hpp>
 #include <squared/gui/text_field.hpp>
-#include <squared/gui/ui.hpp>
 #include <squared/gui/widget.hpp>
-#include <squared/gui/window.hpp>
 #include <squared/messaging/key.hpp>
 #include <squared/messaging/model_runner.hpp>
 #include <squared/messaging/telegraph.hpp>
@@ -71,6 +73,9 @@ struct sq::detail::StageProbe final
             stage.skin_files_ = files;
         }
 
+        /// The Stage's widgets: internal since 7.7, a test's to look at.
+        [[nodiscard]] static sq::gui::Ui *ui( sq::Stage &stage ) noexcept { return stage.ui(); }
+
         /// A size or safe area changed, and the layout waits for the next event or frame.
         [[nodiscard]] static bool layout_due( const sq::Stage &stage ) noexcept
         {
@@ -80,6 +85,12 @@ struct sq::detail::StageProbe final
 
 namespace
 {
+
+/// The top screen's widgets, its panes' among them: through the probe.
+[[nodiscard]] sq::gui::Ui *widgets_of( sq::App &app ) noexcept
+{
+    return sq::detail::StageProbe::ui( app.stage );
+}
 
 // A test fails loudly, with its line, in any build.
 #define CHECK( ... )                                                                               \
@@ -730,19 +741,19 @@ sq::gui::Button *button_in( sq::gui::Widget &table, std::string_view text )
 }
 
 /// The `index`th pane's window, the lowest first: after the screen's content.
-sq::gui::Window &window( sq::App &app, std::size_t index )
+sq::gui::PaneFrame &window( sq::App &app, std::size_t index )
 {
-    sq::gui::Group &root = *app.stage.ui()->content()->parent();
+    sq::gui::Group &root = *widgets_of( app )->content()->parent();
     CHECK( index + 1 < root.child_count() );
-    return *static_cast<sq::gui::Window *>( root.child_at( index + 1 ) );
+    return *sq::gui::actor_cast<sq::gui::PaneFrame>( root.child_at( index + 1 ) );
 }
 
 /// The button that says `text`, in a pane (the top one first) or the screen.
 sq::gui::Button *button( sq::App &app, std::string_view text )
 {
-    sq::gui::Ui *ui = app.stage.ui();
+    sq::gui::Ui *ui = widgets_of( app );
     CHECK( ui != nullptr && ui->content() != nullptr );
-    for( std::size_t i = ui->window_count(); i > 0; --i ) {
+    for( std::size_t i = ui->pane_count(); i > 0; --i ) {
         if( sq::gui::Button *found = button_in( window( app, i - 1 ).content_table(), text ) ) {
             return found;
         }
@@ -829,7 +840,7 @@ void starts_and_navigates()
     CHECK( reported( "a model runs already" ) );
     CHECK( !app.stage.failed() );
     CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
-    CHECK( app.stage.ui()->content()->child_count() == 8 );
+    CHECK( widgets_of( app )->content()->child_count() == 8 );
 
     // The model's first state arrives, and a tap's telegram reaches it.
     platform.frame( app );
@@ -890,7 +901,7 @@ void starts_and_navigates()
     app.stage.push( settings.layout );
     app.dispose();
     CHECK( app.running() );
-    CHECK( app.stage.ui() == nullptr );
+    CHECK( widgets_of( app ) == nullptr );
     Platform again( assets_directory() );
     again.open( app );
     CHECK( mains == 1 && counts.made == 1 );
@@ -965,12 +976,12 @@ void cpp_screens()
     tap( app, "About" );
     CHECK( app.stage.showing<About>() && app.stage.depth() == 2 );
     CHECK( app.stage.top_name() == "about" && app.stage.top()->name() == "about" );
-    CHECK( app.stage.ui()->content()->child_count() == 3 );
+    CHECK( widgets_of( app )->content()->child_count() == 3 );
 
     // A custom node made by its maker; one with none stands in, and is said.
     tap( app, "Gauges" );
     CHECK( app.stage.showing<Gauges>() && app.stage.depth() == 3 );
-    sq::gui::Widget &root = *app.stage.ui()->content();
+    sq::gui::Widget &root = *widgets_of( app )->content();
     CHECK( static_cast<sq::gui::Label *>( root.child_at( 0 ) )->text() == "made gauge" );
     CHECK( reported( "stage: gauges: " ) );
     platform.frame( app );
@@ -984,7 +995,7 @@ void cpp_screens()
     opening = &app.stage;
     tap_on( app, *root.child_at( 2 ) );
     CHECK( opener_opened && opener_saw == 2 );
-    CHECK( app.stage.panes() == 2 && app.stage.ui()->window_count() == 2 );
+    CHECK( app.stage.panes() == 2 && widgets_of( app )->pane_count() == 2 );
     CHECK( app.stage.close() && app.stage.close() && !app.stage.close() );
     opening = nullptr;
 
@@ -1029,16 +1040,21 @@ void panes()
     Platform platform( assets_directory() );
     sq::App &app = the_app;
     platform.open( app );
-    sq::gui::Ui &ui = *app.stage.ui();
+    sq::gui::Ui &ui = *widgets_of( app );
 
     // A tap opens a pane over the screen, which stays: modal, at the bottom,
     // the width of the screen, no title bar.
     tap( app, "Pane" );
     CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "discard" );
     CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
-    CHECK( ui.window_count() == 1 );
-    const sq::gui::Window &bottom = window( app, 0 );
-    CHECK( bottom.modal() && !bottom.titled() && !bottom.movable() );
+    CHECK( ui.pane_count() == 1 );
+    const sq::gui::PaneFrame &bottom = window( app, 0 );
+    CHECK( bottom.modal() && bottom.style() == "pane" );
+    // The skin's pane style (default-pane), not its window's, which has a
+    // title bar painted in.
+    const sq::gui::Skin &skin = widgets_of( app )->skin();
+    const sq::gui::WindowStyle &framed = skin.window_style( "pane" );
+    CHECK( framed.background && framed.background != skin.window_style( "default" ).background );
     // No title bar (36 tall by default): the content starts at the insets.
     CHECK( bottom.content_table().y() < 36.0F );
     CHECK( bottom.x() == 0.0F && bottom.width() == logical_width );
@@ -1053,7 +1069,7 @@ void panes()
     // right: the height of the screen.
     tap( app, "Side" );
     CHECK( app.stage.panes() == 2 && app.stage.pane_name() == "side" );
-    const sq::gui::Window &right = window( app, 1 );
+    const sq::gui::PaneFrame &right = window( app, 1 );
     CHECK( right.modal() );
     CHECK( right.x() + right.width() == logical_width && right.x() > 0.0F );
     CHECK( right.y() == 0.0F && right.height() == logical_height );
@@ -1061,9 +1077,9 @@ void panes()
     // Back closes the top pane first; a close closes the pane it is in.
     press_back( app );
     CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "discard" );
-    CHECK( ui.window_count() == 1 );
+    CHECK( ui.pane_count() == 1 );
     tap( app, "No" );
-    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 && app.stage.depth() == 1 );
+    CHECK( app.stage.panes() == 0 && ui.pane_count() == 0 && app.stage.depth() == 1 );
     CHECK( app.stage.pane_name().empty() );
 
     // Not modal: a tap outside reaches the screen. Leaving the screen closes
@@ -1071,27 +1087,27 @@ void panes()
     CHECK( app.stage.open( side.layout ) );
     CHECK( !window( app, 0 ).modal() );
     tap( app, "Settings" );
-    CHECK( app.stage.depth() == 2 && app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.depth() == 2 && app.stage.panes() == 0 && ui.pane_count() == 0 );
     CHECK( app.stage.back() );
-    CHECK( app.stage.depth() == 1 && app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.depth() == 1 && app.stage.panes() == 0 && ui.pane_count() == 0 );
 
     // A C++ pane, by its type: on the left. A close in a pane that is not
     // the top one closes that one.
     CHECK( app.stage.open( side.layout ) );
     CHECK( app.stage.open<Ask>() );
     CHECK( app.stage.pane_name() == "ask" && app.stage.panes() == 2 );
-    const sq::gui::Window &left = window( app, 1 );
+    const sq::gui::PaneFrame &left = window( app, 1 );
     CHECK( left.x() == 0.0F && left.height() == logical_height && !left.modal() );
     tap( app, "Shut" );
     CHECK( app.stage.panes() == 1 && app.stage.pane_name() == "ask" );
     tap( app, "Done" );
-    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.panes() == 0 && ui.pane_count() == 0 );
 
     // A pane's tap navigates the screen: away, and the panes go with it.
     tap( app, "Pane" );
     tap( app, "Away" );
     CHECK( app.stage.depth() == 2 && app.stage.top() == &settings.layout );
-    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.panes() == 0 && ui.pane_count() == 0 );
     CHECK( app.stage.back() );
 
     // By name, an added C++ screen opens as a pane.
@@ -1100,7 +1116,7 @@ void panes()
     CHECK( app.stage.pane_name() == "ask" && window( app, 1 ).modal() );
     while( app.stage.close() ) {
     }
-    CHECK( app.stage.panes() == 0 && ui.window_count() == 0 );
+    CHECK( app.stage.panes() == 0 && ui.pane_count() == 0 );
 
     // What is refused, and said.
     CHECK( !app.stage.open( landing.layout ) );
@@ -1118,7 +1134,7 @@ void panes()
     }
     CHECK( !app.stage.open( side.layout ) && !app.stage.open<Ask>() );
     CHECK( reported( "open side: 4 panes are open already" ) );
-    CHECK( ui.window_count() == 4 );
+    CHECK( ui.pane_count() == 4 );
     platform.frame( app );
     for( int i = 0; i < 10; ++i ) {
         sq::dev::frame_begin();
@@ -1128,17 +1144,17 @@ void panes()
 
     // An activity made again: the screen and its panes come back, built anew.
     app.dispose();
-    CHECK( app.stage.ui() == nullptr && app.stage.panes() == 4 );
+    CHECK( widgets_of( app ) == nullptr && app.stage.panes() == 4 );
     Platform again( assets_directory() );
     again.open( app );
-    CHECK( app.stage.panes() == 4 && app.stage.ui()->window_count() == 4 );
+    CHECK( app.stage.panes() == 4 && widgets_of( app )->pane_count() == 4 );
     CHECK( app.stage.depth() == 1 && app.stage.top() == &landing.layout );
 
     // Back closes them one by one, then leaves at the root.
     for( std::size_t i = 0; i < sq::Stage::max_panes; ++i ) {
         press_back( app );
     }
-    CHECK( app.stage.panes() == 0 && app.stage.ui()->window_count() == 0 );
+    CHECK( app.stage.panes() == 0 && widgets_of( app )->pane_count() == 0 );
     CHECK( !app.quit_requested() );
     press_back( app );
     CHECK( app.quit_requested() );
@@ -1158,7 +1174,7 @@ void bound_values()
     sq::App &app = the_app;
     platform.open( app );
     CHECK( app.stage.push<Bound>() );
-    sq::gui::Widget &root = *app.stage.ui()->content();
+    sq::gui::Widget &root = *widgets_of( app )->content();
     auto &count = *static_cast<sq::gui::Label *>( root.child_at( 0 ) );
     auto &box = *static_cast<sq::gui::CheckBox *>( root.child_at( 1 ) );
     auto &slider = *static_cast<sq::gui::Slider *>( root.child_at( 2 ) );
@@ -1215,14 +1231,14 @@ void bound_values()
     CHECK( zed == sq::messaging::SendResult::sent );
     platform.frame( app );
     CHECK( field.text() == "ann!" );
-    app.stage.ui()->clear_focus();
+    widgets_of( app )->clear_focus();
     platform.frame( app );
     CHECK( field.text() == "zed" && app.telegraph().value( player ) == "zed" );
 
     // Left with changes, without Done: the edit is finished, and sent.
     tap_on( app, field );
     CHECK( field.text_input( "?" ) );
-    app.stage.ui()->clear_focus();
+    widgets_of( app )->clear_focus();
     platform.frame( app );
     CHECK( app.telegraph().value( player ) == "zed?" );
 
@@ -1329,7 +1345,7 @@ void bound_lists()
     platform.frame( app );
     const std::size_t bound_before = app.telegraph().cache_stats().bound;
     CHECK( app.stage.push<Shelf>() );
-    sq::gui::Widget &root = *app.stage.ui()->content();
+    sq::gui::Widget &root = *widgets_of( app )->content();
     sq::gui::List &list = *sq::gui::actor_cast<sq::gui::List>( root.child_at( 0 ) );
     CHECK( app.stage.lists() == 1 );
     // Each row table's three values are bound; the list itself is not a value.
@@ -1485,7 +1501,7 @@ void bound_lists()
     for( int i = 0; i < 4; ++i ) {
         platform.frame( app );
     }
-    sq::gui::Actor *second = app.stage.ui()->content()->child_at( 0 );
+    sq::gui::Actor *second = widgets_of( app )->content()->child_at( 0 );
     sq::gui::List &again = *sq::gui::actor_cast<sq::gui::List>( second );
     CHECK( again.count() == book_count && rows_shown( again, true ) );
     again.set_scroll_y( again.row_height() * static_cast<float>( book_count - 10 ) );
@@ -1570,7 +1586,7 @@ void rotation_lays_out_once()
     CHECK( app.stage.push<Shelf>() );
     platform.frame( app );
     platform.frame( app );
-    sq::gui::Widget *const content = app.stage.ui()->content();
+    sq::gui::Widget *const content = widgets_of( app )->content();
     sq::gui::List &list = *sq::gui::actor_cast<sq::gui::List>( content->child_at( 0 ) );
     const std::size_t built = list.rows_built();
     sq::gui::Table *const first = &list.table( 0 );
@@ -1587,7 +1603,7 @@ void rotation_lays_out_once()
     CHECK( list.width() < logical_width ); // not yet
     platform.frame( app );
     CHECK( !sq::detail::StageProbe::layout_due( app.stage ) );
-    CHECK( app.stage.ui()->content() == content && &list.table( 0 ) == first );
+    CHECK( widgets_of( app )->content() == content && &list.table( 0 ) == first );
     CHECK( list.rows_built() == built ); // shorter: no more tables needed
     CHECK( list.width() > logical_width && list.height() < logical_width );
     float x = 0.0F;
@@ -1622,7 +1638,7 @@ void kept_beneath_the_top()
     platform.frame( app );
     CHECK( app.stage.push<Notes>() );
     platform.frame( app );
-    sq::gui::Widget *root = app.stage.ui()->content();
+    sq::gui::Widget *root = widgets_of( app )->content();
     auto *scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
     auto *note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
     CHECK( scroll != nullptr && note != nullptr );
@@ -1635,7 +1651,7 @@ void kept_beneath_the_top()
     // Pushed over, then back: built again, as it was, the edit unfinished.
     CHECK( app.stage.push<About>() );
     CHECK( app.stage.back() );
-    root = app.stage.ui()->content();
+    root = widgets_of( app )->content();
     scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
     note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
     CHECK( scroll->scroll_y() == 300.0F );
@@ -1647,7 +1663,7 @@ void kept_beneath_the_top()
     tap_on( app, *name );
     CHECK( name->text_input( "e" ) );
     CHECK( app.stage.push<About>() && app.stage.back() );
-    root = app.stage.ui()->content();
+    root = widgets_of( app )->content();
     name = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 0 ) );
     note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
     CHECK( name->text() == "anne" && name->edited() );
@@ -1669,12 +1685,13 @@ void kept_beneath_the_top()
     long_note += "\xC3\xA9 and more"; // é across byte 128
     CHECK( note->text_input( long_note ) );
     CHECK( app.stage.push<About>() && app.stage.back() );
-    note = sq::gui::actor_cast<sq::gui::TextField>( app.stage.ui()->content()->child_at( 2 ) );
+    note = sq::gui::actor_cast<sq::gui::TextField>( widgets_of( app )->content()->child_at( 2 ) );
     CHECK( note->text() == std::string( 127, 'a' ) && note->edited() );
 
     // A lost context builds the screen again (its new widgets may well be
     // where the old ones were in memory): it keeps where it was.
-    scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( app.stage.ui()->content()->child_at( 1 ) );
+    root = widgets_of( app )->content();
+    scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
     scroll->set_scroll_y( 120.0F );
     platform.graphics.destroy();
     sq::graphics::ContextConfig config;
@@ -1682,7 +1699,7 @@ void kept_beneath_the_top()
     config.logical_height = pixel_height;
     CHECK( platform.graphics.create( config ) && !platform.graphics.resources_preserved() );
     app.surface_created( platform.graphics );
-    root = app.stage.ui()->content();
+    root = widgets_of( app )->content();
     scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
     note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
     CHECK( scroll->scroll_y() == 120.0F && note->edited() );
@@ -1696,7 +1713,7 @@ void kept_beneath_the_top()
     app.dispose();
     Platform again( assets_directory() );
     again.open( app );
-    root = app.stage.ui()->content();
+    root = widgets_of( app )->content();
     CHECK( sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->scroll_y() == 120.0F );
     CHECK( sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) )->edited() );
     draft = pane_field( app, 0 );
@@ -1708,11 +1725,11 @@ void kept_beneath_the_top()
     for( int i = 0; i < 3; ++i ) {
         platform.frame( app );
     }
-    auto *list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    auto *list = sq::gui::actor_cast<sq::gui::List>( widgets_of( app )->content()->child_at( 0 ) );
     list->set_scroll_y( list->row_height() * 300.0F );
     const float far = list->scroll_y();
     CHECK( app.stage.push<About>() && app.stage.back() );
-    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    list = sq::gui::actor_cast<sq::gui::List>( widgets_of( app )->content()->child_at( 0 ) );
     for( int i = 0; i < 3; ++i ) {
         platform.frame( app );
     }
@@ -1721,7 +1738,7 @@ void kept_beneath_the_top()
     // Back, and the screen beneath forgets what the one left kept.
     CHECK( app.stage.back() );
     CHECK( app.stage.push<Shelf>() );
-    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    list = sq::gui::actor_cast<sq::gui::List>( widgets_of( app )->content()->child_at( 0 ) );
     platform.frame( app );
     CHECK( list->scroll_y() == 0.0F );
 
@@ -1764,7 +1781,7 @@ void kept_after_the_process()
     CHECK( zed == sq::messaging::SendResult::sent );
     CHECK( app.stage.push<Notes>() );
     platform.frame( app );
-    sq::gui::Widget *root = app.stage.ui()->content();
+    sq::gui::Widget *root = widgets_of( app )->content();
     sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->set_scroll_y( 300.0F );
     auto *note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
     tap_on( app, *note );
@@ -1773,7 +1790,7 @@ void kept_after_the_process()
     for( int i = 0; i < 3; ++i ) {
         platform.frame( app );
     }
-    auto *list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    auto *list = sq::gui::actor_cast<sq::gui::List>( widgets_of( app )->content()->child_at( 0 ) );
     list->set_scroll_y( list->row_height() * 200.0F );
     for( int i = 0; i < 3; ++i ) {
         platform.frame( app );
@@ -1831,11 +1848,11 @@ void kept_after_the_process()
     for( int i = 0; i < 3; ++i ) {
         after.frame( app );
     }
-    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    list = sq::gui::actor_cast<sq::gui::List>( widgets_of( app )->content()->child_at( 0 ) );
     CHECK( std::lround( list->scroll_y() ) == offset && list->first_row() == 200 );
     tap( app, "Shut" );
     press_back( app );
-    root = app.stage.ui()->content();
+    root = widgets_of( app )->content();
     CHECK( app.stage.top_name() == "notes" );
     CHECK( sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->scroll_y() == 300.0F );
     note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
@@ -1949,7 +1966,7 @@ void a_new_activity_forgets_the_old_one()
     Keyboard keyboard;
     app.set_text_input_service( &keyboard );
     CHECK( app.stage.push<Notes>() );
-    tap_on( app, *app.stage.ui()->content()->child_at( 2 ) );
+    tap_on( app, *widgets_of( app )->content()->child_at( 2 ) );
     CHECK( keyboard.asked == 1 );
     platform.frame( app );
     app.quit();
@@ -1960,7 +1977,7 @@ void a_new_activity_forgets_the_old_one()
     again.open( app );
     again.frame( app );
     CHECK( app.stage.push<Notes>() );
-    tap_on( app, *app.stage.ui()->content()->child_at( 2 ) );
+    tap_on( app, *widgets_of( app )->content()->child_at( 2 ) );
     again.frame( app );
     // And the old activity's report is not called either: nothing was set.
     app.quit();
@@ -1994,7 +2011,7 @@ void no_skin_draws_red()
     platform.open( app );
     CHECK( app.stage.failed() );
     CHECK( reported( "stage: the skin did not load: skins/default/skin/uiskin.atlas" ) );
-    CHECK( app.stage.ui() == nullptr );
+    CHECK( widgets_of( app ) == nullptr );
     CHECK( app.stage.depth() == 1 ); // the stack is kept: a window with the skin builds it
     platform.frame( app );
     press_back( app );
@@ -2041,7 +2058,7 @@ void a_bad_layout_is_said()
     reports.clear();
     platform.open( app );
     CHECK( reported( "stage: broken: " ) );
-    CHECK( app.stage.ui()->content()->child_count() == 0 );
+    CHECK( widgets_of( app )->content()->child_count() == 0 );
     platform.frame( app );
     app.quit();
     app.dispose();

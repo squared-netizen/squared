@@ -1,8 +1,8 @@
 #include <squared/gui/actor.hpp>
+#include <squared/gui/src/detail/actor_root.hpp>
 #include <squared/gui/src/input_event.hpp>
 #include <squared/gui/src/input_phase.hpp>
 #include <squared/gui/src/input_type.hpp>
-#include <squared/gui/stage.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -12,32 +12,32 @@
 namespace sq::gui
 {
 
-Stage::Stage( float width, float height ) noexcept
+ActorRoot::ActorRoot( float width, float height ) noexcept
 {
     resize( width, height );
 }
 
-void Stage::resize( float width, float height ) noexcept
+void ActorRoot::resize( float width, float height ) noexcept
 {
     root_.set_bounds( 0.0F, 0.0F, width, height );
 }
 
-void Stage::act( double delta_seconds )
+void ActorRoot::act( double delta_seconds )
 {
     root_.act( delta_seconds );
 }
 
-Actor &Stage::add_actor( std::unique_ptr<Actor> actor )
+Actor &ActorRoot::add_actor( std::unique_ptr<Actor> actor )
 {
     return root_.add_actor( std::move( actor ) );
 }
 
-Actor *Stage::hit( float stage_x, float stage_y, bool require_touchable ) noexcept
+Actor *ActorRoot::hit( float stage_x, float stage_y, bool require_touchable ) noexcept
 {
     return root_.hit( stage_x, stage_y, require_touchable );
 }
 
-bool Stage::dispatch_input( InputEvent &event, Actor *target )
+bool ActorRoot::dispatch_input( InputEvent &event, Actor *target )
 {
     const bool pointer_event =
         event.type == InputType::pointer_move || event.type == InputType::pointer_down ||

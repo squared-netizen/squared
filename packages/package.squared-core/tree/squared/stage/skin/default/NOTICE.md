@@ -22,5 +22,9 @@ tools/embed_files.sh stage/skin/default/skin skins/default/skin \
     default_skin detail/default_skin.hpp stage/src/default_skin.cpp
 ```
 
-`stage_test` fails while the two differ. Unmodified from libGDX's copy, as
-far as squared knows; a change made here is noted here.
+`stage_test` fails while the two differ. Changes made here, from libGDX's
+copy:
+
+| File | Change |
+|---|---|
+| `skin/uiskin.json` | squared, 2026-10-27: a third window style, `pane`, the frame the Stage draws a pane in: `default-pane` (the skin's own pane background, as its scroll panes and tooltips use) and no title bar, since `default-window` has one painted in |

@@ -4,15 +4,14 @@
 #include <squared/app/src/key.hpp>
 #include <squared/app/src/key_modifiers.hpp>
 #include <squared/app/src/text_input.hpp>
-#include <squared/gui/dialog.hpp>
 #include <squared/gui/skin.hpp>
+#include <squared/gui/src/detail/actor_root.hpp>
+#include <squared/gui/src/detail/pane_frame.hpp>
 #include <squared/gui/src/insets.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/rectangle.hpp>
 #include <squared/gui/src/tooltip_config.hpp>
-#include <squared/gui/stage.hpp>
 #include <squared/gui/widget.hpp>
-#include <squared/gui/window.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -35,9 +34,12 @@ class Painter;
 /**
  * @brief Owns one widget tree and consumes the framework application event type.
  *
- * The Ui owns the stage, one content widget, and the set of open windows. All
- * input enters through event(), pointer(), and the key/text entry points. Not
- * thread-safe; one thread must drive it.
+ * The Ui owns the actor root, one content widget, and the panes open over it.
+ * All input enters through event(), pointer(), and the key/text entry points.
+ * Not thread-safe; one thread must drive it.
+ *
+ * Internal (7.7): the Stage holds one per window; an app reaches widgets
+ * through `sq::Stage`.
  */
 class Ui
 {
@@ -58,32 +60,26 @@ class Ui
         Widget &set_content( std::unique_ptr<Widget> content );
 
         /**
-     * @brief Show a floating window.
-     * @param window Window to adopt; ownership transfers to the Ui.
-     * @param center true centers the window over the current viewport.
-     * @return Reference to the shown window.
+     * @brief Show a pane over the content, above the panes already shown.
+     * Its owner places it (`set_bounds`); one with no size takes its
+     * preferred size at the next layout. A modal one takes the focus.
+     * @param pane Pane to adopt; ownership transfers to the Ui.
+     * @return Reference to the shown pane.
      */
-        Window &show_window( std::unique_ptr<Window> window, bool center = true );
+        PaneFrame &show_pane( std::unique_ptr<PaneFrame> pane );
 
         /**
-     * @brief Show a modal dialog.
-     * @param dialog Dialog to adopt; ownership transfers to the Ui.
-     * @param center true centers the dialog over the current viewport.
-     * @return Reference to the shown dialog.
+     * @brief Close a pane now, freeing it and its widgets; the focus goes
+     * back to where it was before the pane took it.
+     * @param pane Pane currently shown by this Ui.
      */
-        Dialog &show_dialog( std::unique_ptr<Dialog> dialog, bool center = true );
+        void close_pane( PaneFrame &pane );
 
         /**
-     * @brief Mark a window closed and remove it on the next update.
-     * @param window Window currently shown by this Ui.
+     * @brief Count the panes shown.
+     * @return Number of open panes.
      */
-        void close_window( Window &window );
-
-        /**
-     * @brief Count currently shown windows and dialogs.
-     * @return Number of open overlays.
-     */
-        [[nodiscard]] std::size_t window_count() const noexcept { return overlays_.size(); }
+        [[nodiscard]] std::size_t pane_count() const noexcept { return overlays_.size(); }
 
         /**
      * @brief Access the content widget.
@@ -102,8 +98,8 @@ class Ui
      *
      * A phone draws the interface edge to edge, so the status bar, the
      * navigation bar and a camera cut-out sit on top of it. Insets move the
-     * content's rectangle in from each edge; windows and dialogs are still
-     * free to use the whole viewport.
+     * content's rectangle in from each edge; panes are placed by their
+     * owner, who reads the insets too.
      *
      * @param insets Distance to keep clear on each side, in logical units.
      * Negative or non-finite values count as zero, and insets larger than the
@@ -127,7 +123,7 @@ class Ui
         void resize( float width, float height );
 
         /**
-     * @brief Advance time-based state and prune close-requested windows.
+     * @brief Advance time-based state: actors' `act`, tooltips.
      * @param delta_seconds Elapsed time in seconds; non-negative.
      * @throws Any exception raised by a tooltip factory, or
      * std::invalid_argument when a factory returns a parented widget.
@@ -238,7 +234,7 @@ class Ui
             return tooltip_config_;
         }
 
-        /** @brief Return true while a tooltip subtree is attached to the Stage.
+        /** @brief Return true while a tooltip subtree is attached to the root.
      * @return true between materialization and dismissal.
      */
         [[nodiscard]] bool tooltip_visible() const noexcept { return tooltip_widget_ != nullptr; }
@@ -249,7 +245,7 @@ class Ui
         [[nodiscard]] const Widget *tooltip_owner() const noexcept { return tooltip_owner_; }
 
         /**
-     * @brief Return the visible tooltip rectangle in Stage coordinates.
+     * @brief Return the visible tooltip rectangle in root coordinates.
      * @return Bounds after layout, or no value when no tooltip is attached.
      */
         [[nodiscard]] std::optional<Rectangle> tooltip_bounds() const noexcept
@@ -290,13 +286,12 @@ class Ui
         void reset_tooltip_candidates() noexcept;
         void layout_tooltip( Painter &painter );
         static void make_subtree_untouchable( Actor &actor ) noexcept;
-        void prune_closed_windows();
-        [[nodiscard]] Window *top_modal() noexcept;
-        [[nodiscard]] const Window *top_modal() const noexcept;
+        [[nodiscard]] PaneFrame *top_modal() noexcept;
+        [[nodiscard]] const PaneFrame *top_modal() const noexcept;
         [[nodiscard]] static bool is_descendant_of( const Actor *actor,
                                                     const Actor *ancestor ) noexcept;
 
-        Stage stage_;
+        ActorRoot root_;
         Skin skin_;
         void place_content() noexcept;
 
@@ -307,9 +302,8 @@ class Ui
         app::TextInputService *text_input_service_{ nullptr };
         struct Overlay
         {
-                Window *window;
+                PaneFrame *pane;
                 Widget *previous_focus;
-                bool center_pending;
         };
         std::vector<Overlay> overlays_;
         TooltipConfig tooltip_config_;

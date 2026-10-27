@@ -189,7 +189,7 @@ class Actor
 
     private:
         friend class Group;
-        friend class Stage;
+        friend class ActorRoot;
         void set_parent( Group *parent ) noexcept { parent_ = parent; }
         void notify_input( InputEvent &event, bool capture_only );
 

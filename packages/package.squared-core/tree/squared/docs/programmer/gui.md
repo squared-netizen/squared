@@ -1,6 +1,6 @@
 # gui
 
-The libGDX-flavoured widget set, skinning and the `Ui` host, on top of the scene graph they're built from: `Actor`, `Group`, `Stage` and input routing.
+The libGDX-flavoured widget set and skinning, on top of the scene graph they're built from: `Actor`, `Group`, `Widget` and input routing. `sq::Stage` holds the widgets of an app's screens and panes ([stage.md](stage.md)); the host types under it are internal since 7.7 ([Panes and the host](#panes-and-the-host)).
 
 Each type lives in its own header. The headers at the module root (`squared/gui/*.hpp`) are the everyday ones. Those under `squared/gui/src/` are supporting types: you can include them directly, but the root headers that use them already include them. `squared/gui/gui.hpp` pulls in the whole module, and `squared/gui/input.hpp` pulls in the input-routing types together. Both are there for convenience; don't include them from a header of your own.
 
@@ -14,16 +14,21 @@ Screens and panes as data &mdash; the node table, writing one from C++, layout f
 |---|---|---|
 | `Actor` | `squared/gui/actor.hpp` | Base node with parent-relative bounds and frame traversal |
 | `Group` | `squared/gui/group.hpp` | Actor that owns children in deterministic insertion order |
-| `Stage` | `squared/gui/stage.hpp` | Root owner for a translation-only two-dimensional actor hierarchy |
 | `ActorInterfaceId` | `squared/gui/src/actor_interface_id.hpp` | Stable identifier for one layer's Actor-derived interface |
+
+**What you subclass is `Widget`**: a custom node (`app.stage.custom( "minimap",
+make )`) is one. `Actor` (position, size, parent, input listeners) and `Group`
+(children) are its bases, kept apart because a widget's children are actors
+of any kind; an app does not make an `Actor` or a `Group` of its own (decided
+in 7.7).
 
 ## Input routing
 
 | Type | Header | Purpose |
 |---|---|---|
-| `InputEvent` | `squared/gui/src/input_event.hpp` | Mutable event routed through a Stage actor path |
+| `InputEvent` | `squared/gui/src/input_event.hpp` | Mutable event routed along the widget tree, root to target and back |
 | `InputType` | `squared/gui/src/input_type.hpp` | Event kind carried by one InputEvent |
-| `InputPhase` | `squared/gui/src/input_phase.hpp` | Dispatch phase of an event inside a Stage |
+| `InputPhase` | `squared/gui/src/input_phase.hpp` | Dispatch phase of an event: capture, target, bubble |
 | `InputListener` | `squared/gui/src/input_listener.hpp` | Callback invoked for each phase during input dispatch |
 | `InputListenerId` | `squared/gui/src/input_listener_id.hpp` | Stable actor-local listener identifier; insertions increase it |
 
@@ -72,7 +77,7 @@ as they arrived, and `squared/gui/input.hpp` and `gui.hpp` include them.
 | `CheckBoxStyle` | `squared/gui/src/check_box_style.hpp` | Style data for a CheckBox widget |
 | `SliderStyle` | `squared/gui/src/slider_style.hpp` | Style data for a Slider widget |
 | `ProgressBarStyle` | `squared/gui/src/progress_bar_style.hpp` | Style data for a non-interactive ProgressBar widget |
-| `WindowStyle` | `squared/gui/src/window_style.hpp` | Style data for a Window widget |
+| `WindowStyle` | `squared/gui/src/window_style.hpp` | Style data for a pane's frame: its background, insets and the dim behind a modal one (a skin's `Window$WindowStyle`) |
 | `Skin` | `squared/gui/skin.hpp` | Named, reusable skin resources and widget styles |
 
 ## Input
@@ -186,44 +191,30 @@ no longer than one the widget held allocates nothing.
 uses to keep a model's value off a slider being moved
 ([stage.md](stage.md#bound-values)).
 
-## Overlays
+## Panes and the host
 
-| Type | Header | Purpose |
-|---|---|---|
-| `Window` | `squared/gui/window.hpp` | Floating table-backed panel with a draggable title bar; `set_titled( false )` leaves no bar, title or close button (a Stage pane's) |
-| `Dialog` | `squared/gui/dialog.hpp` | Modal Window with separate content and action-button tables |
+An app's panes are the Stage's ([stage.md](stage.md#panes)): a layout of kind
+`pane`, or a C++ screen opened as one. Since 7.7 the types under them are
+internal, in `squared/gui/src/detail/` (not part of the API, and not listed
+with the rest):
 
-## Host
+| Was | Now |
+|---|---|
+| `gui::Ui`, `squared/gui/ui.hpp`: the host of one widget tree | internal (`src/detail/ui.hpp`); the Stage holds one per window |
+| `gui::Stage`, `squared/gui/stage.hpp`: the tree's root | internal, `gui::ActorRoot` (`src/detail/actor_root.hpp`): one Stage, the app's |
+| `gui::Window`, `squared/gui/window.hpp` | gone: a pane's frame is `gui::PaneFrame` (internal), the skin's `pane` window style around a table, with no title bar, dragging or resizing |
+| `gui::Dialog`, `squared/gui/dialog.hpp`, `Ui::show_dialog` | gone: a question is a pane layout with buttons (`"tap": "close"`, `"tap": "quit"`, a telegram) |
 
-| Type | Header | Purpose |
-|---|---|---|
-| `Ui` | `squared/gui/ui.hpp` | Owns one widget tree and consumes the framework application event type |
+The demo, which runs its own screens on the `Ui` until it moves to `sq::App`
+(Sprint 9), includes the internal header by its path.
 
-### Keeping clear of the status bar
+**The safe area.** The Stage keeps its screens and panes inside the part of
+the screen the user can see, from what the platform says
+(`Application::safe_area_changed()`): nothing for an app to do.
 
-A phone draws the interface edge to edge, so the status bar, the navigation
-bar and a camera cut-out sit on top of it. Give the `Ui` the distances and the
-content moves in from each edge:
-
-```cpp
-ui.set_safe_area({.left = 0.0F, .top = 48.0F, .right = 0.0F, .bottom = 32.0F});
-```
-
-Values are logical units. Negative or non-finite values count as zero; insets
-larger than the viewport leave the content empty. The setting survives
-`resize()` and `set_content()`, so call it again only when the bars change
-&mdash; `Application::safe_area_changed()` is where you hear that. Windows and
-dialogs are not inset; they may use the whole viewport. `safe_area()` reads the
-current value. Default: all zero, which is the previous behaviour.
-
-Lua: not bound.
-
-### Do not change the content from inside a callback
-
-`set_content()` destroys the widgets it replaces, and a button's callback runs
-while that button is still handling the tap. Switching screens from a callback
-therefore frees the widget that is calling you. Record the request and act on
-it after the event has been handled (the demo's `ScreenStack` does this).
+**Navigation waits for the tap.** A tap's `push`, `back` or `open` is applied
+after the tap has been delivered, since building the next screen frees the
+tapped button ([stage.md](stage.md#custom-nodes)).
 
 ## Skin loading
 
@@ -250,7 +241,7 @@ Lua: not bound.
 
 ## Text-entry widgets and the soft keyboard
 
-`Ui` raises, moves and stops the platform text-input service based on
+The Stage raises, moves and stops the platform text-input service based on
 `Widget::wants_text_input()`. It returns false by default and `TextField`
 returns true, so a custom text-entry widget opts in by overriding it:
 
@@ -327,12 +318,9 @@ if (!painter.set_fill_source(white != nullptr ? &white->region() : nullptr)) {
 painter.set_viewport(640.0F, 480.0F, graphics.pixel_width(),
                      graphics.pixel_height());
 
-// Every frame:
-ui.layout(painter);          // does nothing unless something changed
-if (batch.begin(camera)) {
-    ui.paint(painter);
-    batch.end();
-}
+// Every frame, between batch.begin(camera) and batch.end(): your own drawing
+// (the Stage lays out and paints its widgets through the same calls).
+painter.draw_text("score", 16.0F, 16.0F, font.get(), sq::graphics::Color::white());
 ```
 
 Keep one painter for the life of the interface. It holds the scratch storage

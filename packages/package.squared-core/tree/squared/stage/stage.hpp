@@ -35,11 +35,11 @@ class Context;
 namespace sq::gui
 {
 class List;
+class PaneFrame;
 class Table;
 class TextField;
 class Ui;
 class Widget;
-class Window;
 } // namespace sq::gui
 
 namespace sq::messaging
@@ -292,12 +292,6 @@ class Stage final
         /** @brief How many lists the screen and its panes show. */
         [[nodiscard]] std::size_t lists() const noexcept;
 
-        /**
-         * @brief The top screen's widgets, its panes' among them; nullptr
-         * while the skin is not loaded (no window yet, or it failed).
-         */
-        [[nodiscard]] gui::Ui *ui() noexcept;
-
         /** @brief The skin could not be loaded: the Stage draws dark red. */
         [[nodiscard]] bool failed() const noexcept { return failed_; }
 
@@ -366,7 +360,7 @@ class Stage final
         {
                 Stage *stage = nullptr;
                 Shown shown;
-                gui::Window *window = nullptr;
+                gui::PaneFrame *frame = nullptr;
                 /// 0: free; else its place among the open panes, 1 the lowest.
                 std::uint8_t order = 0;
                 gui::PanePlace place = gui::PanePlace::center;
@@ -419,6 +413,10 @@ class Stage final
 
         /** @brief What the window has: the skin's pieces, the batch, the camera, the widgets. */
         struct Drawing;
+
+        /// The top screen's widgets, its panes' among them; nullptr while the
+        /// skin is not loaded (no window yet, or it failed). Internal since 7.7.
+        [[nodiscard]] gui::Ui *ui() noexcept;
 
         // What the App calls.
         void attach( app::Runtime &runtime );

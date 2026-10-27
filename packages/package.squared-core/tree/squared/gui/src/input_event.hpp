@@ -129,7 +129,7 @@ class InputEvent final
         [[nodiscard]] float local_y() const noexcept { return local_y_; }
 
     private:
-        friend class Stage;
+        friend class ActorRoot;
 
         Actor *target_{ nullptr };
         Actor *current_target_{ nullptr };

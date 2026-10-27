@@ -21,11 +21,11 @@
 #include <squared/gui/linear_layout.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/src/font_resource.hpp>
 #include <squared/gui/src/skin_load_issue.hpp>
 #include <squared/gui/src/skin_load_report.hpp>
 #include <squared/gui/src/skin_load_severity.hpp>
-#include <squared/gui/ui.hpp>
 
 #include <cstddef>
 #include <cstdio>

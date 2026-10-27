@@ -93,18 +93,10 @@ ignoring them is a bug that only shows on device.
 
 ## Feeding the GUI
 
-`sq::gui::Ui::event()` takes an `Event` directly, so a typical
-`handle_event` is one line:
-
-```cpp
-void MyGame::handle_event(const sq::app::Event& event)
-{
-    ui_.event(event);
-}
-```
-
-Pass the `TextInputService*` you receive in `set_text_input_service` to the
-`Ui` so focused text fields raise the soft keyboard.
+`sq::App` is the `Application` an app uses: it hands each event to its
+Stage, which routes it to the widgets, and gives the `TextInputService*` it
+receives to them, so a focused text field raises the soft keyboard. The
+widgets' host it uses (`gui::Ui`) is internal since 7.7.
 
 ## The safe area
 
@@ -116,7 +108,7 @@ they reach and tells you:
 void MyGame::safe_area_changed(const sq::app::SafeArea& area)
 {
     // pixels: area.left, area.top, area.right, area.bottom
-    ui_.set_safe_area(to_logical(area));
+    // (sq::App passes it to its Stage, which keeps screens and panes inside it)
 }
 ```
 

@@ -1,7 +1,7 @@
 # gui &mdash; internals
 
-The libGDX-flavoured widget set, skinning and the `Ui` host, and the scene
-graph under them: `Actor`, `Group`, `Stage` and input routing. Until Sprint 1
+The libGDX-flavoured widget set, skinning, the internal `Ui` host, and the
+scene graph under them: `Actor`, `Group`, `Widget` and input routing. Until Sprint 1
 the scene graph was its own module, `scene2d`. It merged here because `gui`
 was its only user, `Widget` derives from its `Group`, and the seam had bred
 duplicate key and modifier types (deduplicated in Sprint 3).
@@ -10,17 +10,18 @@ Programmer counterpart: [../programmer/gui.md](../programmer/gui.md)
 
 Layouts (the node table, `check`, `LayoutWriter`, `instantiate`): [layouts.md](layouts.md).
 
-- Public types: 70
+- Public types: 66
 
 ## Layout
 
 ```
 gui/
-  *.hpp          29 headers: the widgets, Ui, Skin, the scene graph, and
-                 input.hpp (the input-routing types together); gui.hpp
+  *.hpp          31 headers: the widgets, Skin, the scene graph, layouts,
+                 and input.hpp (the input-routing types together); gui.hpp
                  includes the whole module
-  src/           43 supporting headers, and the module's sources
-    detail/      private: gui_detail.hpp
+  src/           38 supporting headers, and the module's sources
+    detail/      private (7.7): ui.hpp, actor_root.hpp, pane_frame.hpp;
+                 gui_detail.hpp, build_row.hpp
   test/
   Makefile
 ```
@@ -36,9 +37,9 @@ its file to `SOURCES` in the module's `Makefile`. See
 node per entry. See [standard-library-deviations.md](
 standard-library-deviations.md).
 
-`Ui` owns the `Stage`, the content widget, and the overlay stack. It
-is the only type that knows about `sq::app`, which keeps the
-widget set free of any platform dependency.
+`Ui` owns the `ActorRoot`, the content widget, and the panes shown over it.
+It is the only type that knows about `sq::app`, which keeps the widget set
+free of any platform dependency.
 
 `gui/src/detail/gui_detail.hpp` holds the helpers that used to sit in
 `gui.cpp`'s anonymous namespace: colour multiplication, dimension clamping,
@@ -71,6 +72,60 @@ nothing. `TextField` grew from 248 to 264 bytes; `edited_` fits in padding.
 The check box and the slider keep their `std::function` change callbacks
 (debt from before); the Stage's lambdas capture two pointers, which both
 libraries store in place, so binding allocates nothing for them.
+
+## The host made internal (7.7)
+
+Decided 2026-10-27, the user's picks: the `Ui` and the tree's root internal;
+`Dialog` removed; `Window` folded into a lean pane frame; the skin's own
+`pane` style for it; `Actor`, `Group` and `Widget` kept apart.
+
+**Internal** means `src/detail/`: not in `gui.hpp`, not checked by
+`make headers` for reachability, not listed in the programmer pages. The
+names stay in `sq::gui`, so the demo (on the `Ui` until Sprint 9) changes
+two include lines and nothing else. `sq::Stage::ui()` went private with it;
+the stage tests reach it through `detail::StageProbe`.
+
+**`gui::Stage` became `ActorRoot`**, so the one Stage an app sees is
+`sq::Stage`. Unchanged inside: a root `Group`, `hit`, and `dispatch_input`'s
+capture, target and bubble phases. `Actor` and `InputEvent` name it as a
+friend.
+
+**`PaneFrame` (168 bytes) took `Window`'s place (304)**: what a pane used of
+it, a background drawn from a window style, a content table inside the
+style's insets, and `modal`. Gone with it: the title and its bar, the close
+button and its hover and press state, dragging, resizing, the minimum-size
+request, centring and keeping inside the parent (the Stage places panes),
+the close request and escape-to-close (`Dialog`'s), and two `std::string`s
+(the style is a `std::string_view` to a literal). The `Ui`'s overlay entry
+lost its centring flag (16 bytes, from 24), and `prune_closed_windows` went:
+nothing asks to close itself now. A tap on the frame between its widgets
+stays on it; a modal frame takes any tap, as before.
+
+**`Dialog` (a `Window` with two tables and a `std::function` result) and
+`Ui::show_dialog` were removed**, with nothing using them: a question is a
+pane layout. `WindowStyle` stays as it is: the skin loader reads libGDX's
+`Window$WindowStyle` into it, title fields and all, and the frame uses its
+background, insets and modal dim.
+
+**The pane look** comes from the skin itself: `uiskin.json` gained a `pane`
+window style on `default-pane`, the skin's own pane background, since
+`default-window` has a title bar painted into its nine-patch (the grey band
+seen on the phone in 7.3). Noted in the skin's `NOTICE.md` as a change from
+libGDX's copy; embedded again (`tools/embed_files.sh`). Not done in code: a
+look made by code beside the skin would not follow a skin that is changed.
+
+**Tested** in `test/pane_frame_test.cpp` (new): a pane shown with no size
+takes its preferred one (the table's and the insets); laid out, the table
+sits inside the style's insets; painted, the style's background fills it, and
+nothing dims behind it until it is modal; a tap on the frame between its
+widgets stays there, a tap outside a non-modal pane reaches the screen, and
+one outside a modal pane goes nowhere; a style the skin lacks is its
+`default`; closed, the screen takes taps again. The Stage's pane tests run
+on it unchanged, with the frame's `pane` style checked against the skin's.
+
+**`Actor`, `Group`, `Widget` stay three types.** Merging them saves no bytes
+(the vtable and members are the same), and a widget's children may be any
+actor; the programmer pages now say that `Widget` is what an app subclasses.
 
 ## What a screen keeps (7.6)
 
@@ -189,8 +244,9 @@ rectangle rather than a negative size. Pointer coordinates are untouched: a
 point is still in viewport space, and widgets outside the content rectangle
 simply are not hit.
 
-Overlays are deliberately not inset. A dialog centred on the viewport is
-centred on the screen, not on the part of it between the bars.
+Panes are not inset by the `Ui`: their owner, the Stage, places them inside
+the safe area itself (`place_panes`), since a pane's place (an edge, the
+middle) is the Stage's to decide.
 
 Cost: one call to `place_content()` per resize or content change; nothing per
 frame.

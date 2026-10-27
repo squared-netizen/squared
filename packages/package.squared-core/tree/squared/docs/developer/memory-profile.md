@@ -41,8 +41,7 @@ Regenerate with `tools/measure_sizes.sh`.
 | `gui::LinearLayout` | 176 | 8 |
 | `gui::ScrollPane` | 168 | 8 |
 | `gui::List` | 384 | 8 |
-| `gui::Window` | 304 | 8 |
-| `gui::Dialog` | 360 | 8 |
+| `gui::PaneFrame` (internal) | 168 | 8 |
 | `gui::Ui` | 1048 | 8 |
 | `gui::ButtonGroup` | 40 | 8 |
 | `gui::InputEvent` | 80 | 8 |
@@ -122,8 +121,8 @@ new ones that way. Measured at the change: `gui::Cell` went from 80 to 72
 bytes and `app::Event` from 96 to 88. Every other measured type kept its
 size: the bytes the enums gave up became padding next to wider members.
 Getting them back means ordering members by size, type by type, with the
-table above as the check. `gui::PointerEvent` (32) and `gui::Window` (304) are
-the first candidates, because they hold several. `gui::InputEvent` went from 88
+table above as the check. `gui::PointerEvent` (32) is the first candidate,
+because it holds several (`gui::Window`, the other, went in 7.7). `gui::InputEvent` went from 88
 to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 (Sprint 3.1b).
 
@@ -134,7 +133,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Group::add_actor` | every widget added | global `new`, via `unique_ptr` |
 | `Skin::add_*` | skin load | global `new`, per map node |
 | `Table::add` | every cell added | global `new`, `std::deque` chunk |
-| `Ui::show_window` | per window shown | global `new` |
+| `Ui::show_pane` | per pane shown: its entry in the `Ui`'s list (16 bytes) | global `new`, the vector's growth |
 | compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
 | `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (92,224 bytes at the default knobs, `static_assert`ed against the line as at most line + 4,224; the Stage's 4,056 hold 2,960 bytes of what screens and panes keep) ([stage.md](stage.md#memory-profile)) | none |
 | `App::create`, first start | the platform's paths of the saved screens and the model's save | global `new`, two `std::string`s |
@@ -143,7 +142,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Stage::attach` | each window: the skin's textures and tables, and one `Drawing` (23,864 bytes with libc++, 24,048 with libstdc++; the C++ screens' 17,480-byte scratch, the 4,096-byte table of 128 bound values and 4 list slots of 160 among them); while it loads, each skin file copied once out of the compiled-in bytes (46 KB in all, freed when loaded) | global `new` |
 | the default skin (`stage/src/default_skin.cpp`) | never: 46,305 bytes of read-only data in the program, mapped from its file ([stage.md](stage.md#the-default-skin-74)) | none |
 | `EmbeddedFileSystem::read`, `list` | a copy of the file's bytes; the names listed | global `new`, the result's vector and strings |
-| `Stage::open` | each pane opened: its `gui::Window` (304 bytes) through `Ui::show_window`, and its widgets through `instantiate`; freed when it closes or its screen is left | global `new` |
+| `Stage::open` | each pane opened: its `gui::PaneFrame` (168 bytes) through `Ui::show_pane`, and its widgets through `instantiate`; freed when it closes or its screen is left | global `new` |
 | `gui::instantiate` | a layout built (a screen pushed, a pane opened): each widget, its words, each tap's line | global `new`; `LayoutWriter` and `check` allocate nothing ([layouts.md](layouts.md)) |
 | `gui::List` | when made: a copy of its row (nodes, the layout's words and numbers); as it is first laid out, or made taller: a row table and its widgets for each row on screen and one more; never as it scrolls | global `new` |
 | `Table::measure`, `layout` | the first layout at each depth of nesting, and one with more rows or columns than before at that depth; after that, never (until low memory frees them: `Table::release_kept`) | global `new`, a kept `Lines` per depth ([gui.md](gui.md#a-tables-layout-allocates-nothing-75b)) |

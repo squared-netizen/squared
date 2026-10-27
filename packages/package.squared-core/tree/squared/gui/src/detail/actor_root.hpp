@@ -10,16 +10,21 @@ namespace sq::gui
 
 class InputEvent;
 
-/** @brief Root owner for a translation-only two-dimensional actor hierarchy. */
-class Stage
+/**
+ * @brief The root of the widget tree the Ui holds: its group, hit testing,
+ * and input's capture, target and bubble phases. Internal: an app reaches
+ * widgets through `sq::Stage` (was `gui::Stage` until 7.7, renamed so the one
+ * Stage is the app's).
+ */
+class ActorRoot
 {
     public:
         /**
-     * @brief Construct a stage with a logical viewport.
+     * @brief Construct a root with a logical viewport.
      * @param width Initial logical width.
      * @param height Initial logical height.
      */
-        Stage( float width, float height ) noexcept;
+        ActorRoot( float width, float height ) noexcept;
 
         /**
      * @brief Update the logical viewport dimensions.
@@ -42,7 +47,7 @@ class Stage
         [[nodiscard]] Actor &add_actor( std::unique_ptr<Actor> actor );
 
         /**
-     * @brief Hit-test the hierarchy in stage coordinates.
+     * @brief Hit-test the hierarchy in root coordinates.
      * @param stage_x Horizontal position in stage logical units.
      * @param stage_y Vertical position in stage logical units.
      * @param require_touchable Ignore actors whose touchable flag is false.
@@ -54,7 +59,7 @@ class Stage
         /**
      * @brief Route input through capture, target, and bubble phases.
      *
-     * When target is null, pointer events use stage hit testing. Other event
+     * When target is null, pointer events use root hit testing. Other event
      * types require an explicit target.
      *
      * @param event The event to dispatch.

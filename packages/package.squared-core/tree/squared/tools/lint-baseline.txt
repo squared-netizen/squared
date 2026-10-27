@@ -18,13 +18,12 @@ exceptions gui/src/skin_loader.cpp 3
 exceptions gui/src/stack.cpp 1
 exceptions gui/src/table.cpp 4
 exceptions gui/src/toggle_button.cpp 2
-exceptions gui/src/ui.cpp 11
+exceptions gui/src/ui.cpp 10
 raw-delete dev/src/frame_allocations.cpp 12  # the replacement operator delete definitions (dev builds only)
 raw-new dev/src/frame_allocations.cpp 4  # the replacement operator new definitions (dev builds only)
 std-function assets/asset_manager.hpp 1
 std-function assets/src/asset_loader.hpp 1
 std-function gui/button.hpp 1
-std-function gui/dialog.hpp 1
 std-function gui/slider.hpp 1
 std-function gui/src/input_listener.hpp 1
 std-function gui/src/skin_drawable_resolver.hpp 1

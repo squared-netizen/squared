@@ -4,8 +4,8 @@
 // a unit test, but the rectangle the content is given can be read back.
 
 #include <squared/gui/linear_layout.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/gui/src/insets.hpp>
-#include <squared/gui/ui.hpp>
 
 #include <cassert>
 #include <cmath>

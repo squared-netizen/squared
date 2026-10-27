@@ -21,99 +21,49 @@ void squared_main( sq::App &app ) { app.stage.push( layouts::landing ); }
 The build compiles the layout ([layouts.md](layouts.md)); the App loads the
 skin, shows the screen, routes touches, and quits on the button
 ([stage.md](stage.md)). A generated Android project starts as exactly this.
-The rest of this page is the layer beneath: the widgets and the `Ui`, for a
-program that drives them itself.
+Everything an app writes goes through those two: screens and panes as layout
+files or C++ screens, a model, and the Stage's calls. The widgets' host under
+them (`gui::Ui`) is internal since 7.7.
 
-## The shortest real call site, without the App
+## Your own widget
 
-`Ui` owns the widget tree; you give it a `Painter` implementation and feed it
-events. Building a screen is three statements:
-
-```cpp
-#include <squared/gui/gui.hpp>
-
-sq::gui::Ui ui{1280.0F, 720.0F};
-
-auto& root = ui.set_content(std::make_unique<sq::gui::LinearLayout>());
-static_cast<sq::gui::LinearLayout&>(root)
-    .add(std::make_unique<sq::gui::Label>("hello"));
-```
-
-Per frame:
+What a layout cannot express is a custom node: a `sq::gui::Widget` of your
+own, made by a function the app registers.
 
 ```cpp
-ui.update(delta_seconds);
-ui.layout(painter);
-ui.paint(painter);
-```
+class Dial final : public sq::gui::Widget {
+public:
+    [[nodiscard]] sq::gui::Size preferred_size(sq::gui::Painter&,
+                                               const sq::gui::Skin&) const override
+    {
+        return {120.0F, 120.0F};
+    }
 
-Events arrive either as framework events or as direct injections:
-
-```cpp
-ui.event(application_event);
-ui.pointer(sq::gui::PointerAction::down, x, y);
-ui.key_down(sq::app::Key::enter);
-```
-
-## Supplying a Painter
-
-`Painter` is the only rendering dependency the GUI has. Implement its six pure
-virtuals over your 2D backend and the whole widget set works:
-
-```cpp
-class MyPainter final : public sq::gui::Painter {
-    sq::gui::Size measure_text(std::string_view) override;
-    void fill_rectangle(const sq::gui::Rectangle&,
-                        sq::graphics::Color) override;
-    void stroke_rectangle(const sq::gui::Rectangle&,
-                          sq::graphics::Color, float) override;
-    void draw_region(const sq::graphics::TextureRegion&,
-                     const sq::gui::Rectangle&,
-                     sq::graphics::Color) override;
-    void draw_text(std::string_view, float, float,
-                   sq::graphics::Color) override;
-    void push_clip(const sq::gui::Rectangle&) override;
-    void pop_clip() override;
+    void paint(sq::gui::Painter& painter, const sq::gui::Skin&, float x,
+               float y) const override
+    {
+        painter.fill_rectangle({x, y, width(), height()}, sq::graphics::Color::white());
+    }
 };
+
+std::unique_ptr<sq::gui::Widget> make_dial() { return std::make_unique<Dial>(); }
+
+app.stage.custom("dial", make_dial);   // in squared_main; "type": "custom", "name": "dial"
 ```
 
-The two font-aware overloads (`measure_text` with a `FontResource*`, and the
-matching `draw_text`) have base implementations, so a painter that ignores
-bitmap-font pages still compiles and runs.
-
-## Buttons and callbacks
-
-```cpp
-auto button = std::make_unique<sq::gui::Button>("Play", [] { start(); });
-button->set_style("primary");
-```
-
-## Dialogs
-
-```cpp
-auto dialog = std::make_unique<sq::gui::Dialog>(
-    "Quit", [](std::string_view result) { if (result == "yes") quit(); });
-dialog->text("Discard unsaved changes?")
-      .button("Cancel", "no")
-      .button("Quit", "yes");
-ui.show_dialog(std::move(dialog));
-```
+A widget draws through the `Painter` it is given: `fill_rectangle`,
+`stroke_rectangle`, `draw_region`, `draw_text` and `measure_text`, with
+`push_clip` and `pop_clip`. Input comes to `pointer_event`, `key_down` and
+`text_input`, and `focusable()` says whether it takes the focus
+([gui.md](gui.md)).
 
 ## Skins
 
-A `Skin` carries palette values, named drawables, named fonts, and one style
-table per widget kind. Every lookup falls back to the style named `default`.
-
-```cpp
-ui.skin().add_nine_patch_drawable("button-up", atlas_region);
-
-sq::gui::ButtonStyle style;
-style.normal = ui.skin().drawable("button-up");
-ui.skin().add_button_style("primary", style);
-```
-
-Loading a libGDX skin JSON document is a single call; see
-`squared/gui/skin_loader.hpp`.
+One skin for now: libGDX's default, compiled into the stage library
+([stage.md](stage.md#the-window)); an app ships none. A `Skin` carries palette
+values, named drawables, named fonts, and one style table per widget kind;
+every lookup falls back to the style named `default`. An app's own skin is
+in the backlog.
 
 ## What throws
 

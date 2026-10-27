@@ -35,6 +35,8 @@ cat > "$work/sizes.cpp" <<'EOF'
 #include <squared/files/files.hpp>
 #include <squared/graphics/graphics.hpp>
 #include <squared/gui/gui.hpp>
+#include <squared/gui/src/detail/pane_frame.hpp>
+#include <squared/gui/src/detail/ui.hpp>
 #include <squared/messaging/messaging.hpp>
 #include <cstdio>
 #include <functional>
@@ -50,8 +52,8 @@ int main() {
   P(gui::Actor) P(gui::Group) P(gui::Widget) P(gui::Label)
   P(gui::Button) P(gui::ToggleButton) P(gui::CheckBox) P(gui::TextField)
   P(gui::Slider) P(gui::ProgressBar) P(gui::Panel) P(gui::Cell)
-  P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::List) P(gui::Window)
-  P(gui::Dialog) P(gui::Ui) P(gui::ButtonGroup)
+  P(gui::Table) P(gui::LinearLayout) P(gui::ScrollPane) P(gui::List) P(gui::PaneFrame)
+  P(gui::Ui) P(gui::ButtonGroup)
   P(gui::InputEvent) P(gui::SkinLoadIssue)
   P(graphics::TextureRegion) P(graphics::BitmapGlyph)
   P(graphics::GlyphPlacement) P(graphics::BitmapFontError)

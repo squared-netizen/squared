@@ -106,7 +106,9 @@ function pointer each), the 4 pane slots (192 bytes each, below, 148 of them
 what the pane keeps), what the 16 screens keep (148 bytes each), the report,
 the text-input service, the skin's file system (a test's; below), the
 `Drawing` pointer, the pixel and logical sizes,
-the safe area, a depth, four counts and eight flags. Was 264 in 7.1 and 936 in
+the safe area, a depth, four counts and eight flags. `ui()`, the window's
+`gui::Ui`, is private since 7.7 (the Ui is internal); the tests reach it
+through `detail::StageProbe`. Was 264 in 7.1 and 936 in
 7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8; 7.5a's two
 flags fit in padding; 7.6's kept state is 2,960 (16 screens and 4 panes at
 148), the user's pick ("scrolls and typed text") over 520 for scrolls
@@ -200,7 +202,7 @@ maker needs no captures (it makes a widget, the widget reads the model).
 ## Panes (7.3)
 
 **A pane is a layout of kind `pane`**, shown over the top screen in a
-`gui::Window` (7.3's choices 1 and 3): `open( layout )` takes a compiled one,
+`gui::Window` (7.3's choices 1 and 3; a `gui::PaneFrame` since 7.7): `open( layout )` takes a compiled one,
 `open<S>()` a C++ screen type, and the `open <name>` tap either. Its shape
 (`gui::PaneShape`: a `PanePlace` and `modal`, 2 bytes) is the file's `place`
 and `modal`, which sqgen writes as a sixth constructor argument; it lives in
@@ -214,7 +216,7 @@ one does, and one path builds both. The kinds are checked at the door:
 them in a file's taps; this is the C++ side).
 
 **Slots, not a stack.** 4 `Pane` slots (`max_panes`, choice 5): the Stage's
-address, a `Shown`, the `gui::Window *` while built, its place, and an
+address, a `Shown`, the `gui::PaneFrame *` while built, its place, and an
 `order` (0 free, else 1 for the lowest open pane). The panes' widgets get the
 slot's address as their hooks' context (`tapped_in_pane`, `made_in_pane`),
 so a `close` tap knows which pane it is in, whichever is on top; a slot keeps
@@ -232,16 +234,17 @@ count, so `depth()`, `panes()`, `back()` and the four-pane limit answer for
 the state after it; a push or replace there counts the panes as gone.
 
 **Built when opened, freed when closed** (choice 4, which changed the spec's
-"reused, not rebuilt"): `build_pane` makes a `Window` (no title bar, not
-movable, modal as asked), instantiates the layout into its content table and
-hands it to `Ui::show_window` without centring; `close_pane` calls
-`Ui::close_window`, which frees the tree, then renumbers the slots above.
+"reused, not rebuilt"): `build_pane` makes a `gui::PaneFrame` (the skin's
+`pane` style, modal as asked; a `Window` with no title bar until 7.7),
+instantiates the layout into its content table and hands it to
+`Ui::show_pane`; `close_pane` calls `Ui::close_pane`, which frees the tree,
+then renumbers the slots above.
 Keeping a closed pane's widgets would hold memory for something not shown;
 priority 1 over the speed of a second open.
 
 **They belong to their screen** (choice 5): a push, a replace or a back to
 the screen beneath drops every slot (`drop_panes`) before `show_top`, whose
-`Ui::set_content` frees the windows with the old content. They do not come
+`Ui::set_content` frees the frames with the old content. They do not come
 back with the screen. A window made again (`attach` after `detach`, or a lost
 context) is the same screen, so `show_top` builds its panes again, lowest
 first; `detach` and `show_top` null the windows first, so no slot points at a
@@ -251,11 +254,11 @@ freed one.
 `back` tap alike, so `back()` means what the back key does and is false only
 at the root with no pane open.
 
-**Modal.** gui's `Ui` blocks everything outside its top modal window, a
-window above it included. So a pane opened over a modal one is made modal
+**Modal.** gui's `Ui` blocks everything outside its top modal pane, a pane
+above it included. So a pane opened over a modal one is made modal
 too (`build_pane` looks at the open slots below it); otherwise it would show
 and take no taps. A tap outside a non-modal pane reaches the screen
-(`Window::pointer_event` takes only what is inside it).
+(`PaneFrame::pointer_event` takes only what is inside it).
 
 **Placement** (`place_panes`, before each `Ui::layout`): the safe area is the
 frame; `center` is the pane's preferred size, capped to it and centred in it;
@@ -269,12 +272,10 @@ are unaffected, but `top()` for a C++ screen points into that scratch and is
 documented as valid until a C++ pane is written over it. A second 17 KB
 scratch for panes was the alternative: priority 1.
 
-**gui changed for it:** `Window::set_titled( false )` leaves no title bar
-(`title_height_` 0: no title text, background or close button, and the
-content takes the whole window; `close_bounds` is an empty rectangle so no
-tap lands on a close button that is not there). A bool in the existing
-padding: `Window` is still 304 bytes. 7.7 folds `Window` and `Dialog` into
-the pane.
+**gui changed for it:** in 7.3 `Window::set_titled( false )` left no title
+bar; in 7.7 `Window` went, and `Dialog` with it: a pane's frame is
+`gui::PaneFrame` (168 bytes, internal), drawn with the skin's own `pane`
+window style. gui's developer page has the fold.
 
 ## Bound values (7.5a)
 
@@ -654,7 +655,7 @@ libraries, so binding allocates nothing for them. See
 | a list shown | heap | each list built | its `gui::List` (384 with libstdc++), a copy of its row's nodes (32 bytes each), the layout's words and numbers; its row tables and their widgets, for the rows on screen and one more, as it is first laid out; 4 bytes a row it asks for, once |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
-| a pane | heap | each open | a `gui::Window` (304) and its widgets; freed when it closes |
+| a pane | heap | each open | a `gui::PaneFrame` (168) and its widgets; freed when it closes |
 | a tap's telegram | stack | each tap | 1 KB |
 | a text field's edit | stack | each commit | 1 KB |
 | a bound label's text | stack, then the label's string | each value shown | 128 bytes; the string grows only for a longer text |

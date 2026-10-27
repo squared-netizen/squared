@@ -11,13 +11,13 @@ MODULE_DIR := $(SQUARED_ROOT)/gui
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/actor.cpp \
-    src/button.cpp \
+    src/actor_root.cpp \
     src/batch_painter.cpp \
+    src/button.cpp \
     src/button_group.cpp \
     src/cell.cpp \
     src/check_box.cpp \
     src/color_drawable.cpp \
-    src/dialog.cpp \
     src/font_resource.cpp \
     src/group.cpp \
     src/image.cpp \
@@ -32,6 +32,7 @@ SOURCES := src/actor.cpp \
     src/margin_container.cpp \
     src/nine_patch_drawable.cpp \
     src/painter.cpp \
+    src/pane_frame.cpp \
     src/panel.cpp \
     src/progress_bar.cpp \
     src/radio_button.cpp \
@@ -43,13 +44,11 @@ SOURCES := src/actor.cpp \
     src/skin_loader.cpp \
     src/slider.cpp \
     src/stack.cpp \
-    src/stage.cpp \
     src/table.cpp \
     src/text_field.cpp \
     src/toggle_button.cpp \
     src/ui.cpp \
-    src/widget.cpp \
-    src/window.cpp
+    src/widget.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/gui/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -89,6 +88,10 @@ SKIN_LOADER_TEST := $(BUILD_DIR)/skin_loader_test
 # arrives as itself, with its modifiers.
 KEYS_TEST := $(BUILD_DIR)/ui_keys_test
 
+# A pane's frame shown by the Ui (7.7): its background and insets, the dim
+# and the taps of a modal one, closing it.
+PANE_TEST := $(BUILD_DIR)/pane_frame_test
+
 # Layouts: the checker, the C++ writer (the same table a compiled layout file
 # is, and no allocation), typed taps, and the instantiator with its hooks; a
 # fuzz of random layouts. (console has a layout_test of its own: its text.)
@@ -118,8 +121,8 @@ LAYOUT_LIBS := $(TARGET) $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_
                $(LIB_DIR)/libsquared_time.a $(LIB_DIR)/libsquared_math.a
 
 .PHONY: test
-TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(SCREEN_LAYOUT_TEST) \
-         $(LAYOUT_FILE_TEST) $(SQGEN_TEST)
+TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(PANE_TEST) \
+         $(SCREEN_LAYOUT_TEST) $(LAYOUT_FILE_TEST) $(SQGEN_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -162,6 +165,14 @@ $(SQGEN_TEST): $(MODULE_DIR)/test/sqgen_test.cpp $(SQGEN_GEN)/layouts.cpp $(LAYO
 	    -DSQGEN_FIXTURE='"$(SQGEN_FIXTURE)"' $< $(SQGEN_GEN)/layouts.cpp $(LAYOUT_LIBS) -o $@
 
 $(KEYS_TEST): $(MODULE_DIR)/test/ui_keys_test.cpp $(TARGET) \
+              $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(CXX) $(TESTFLAGS) $(INCLUDES) $< $(TARGET) \
+	    $(LIB_DIR)/libsquared_graphics.a \
+	    $(LIB_DIR)/libsquared_math.a $(LIB_DIR)/libsquared_files.a -o $@
+
+$(PANE_TEST): $(MODULE_DIR)/test/pane_frame_test.cpp $(TARGET) \
               $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_math.a
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
