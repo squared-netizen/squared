@@ -30,7 +30,7 @@ Inherits from FileSystem
 
 *public std::span<const EmbeddedFile> files()*
 
-*Defined at [files/embedded_file_system.hpp:73](../../../../files/embedded_file_system.hpp#L73)*
+*Defined at [files/embedded_file_system.hpp:81](../../../../files/embedded_file_system.hpp#L81)*
 
 
 
@@ -60,6 +60,14 @@ Inherits from FileSystem
 
 **brief** Refused: `ReadOnly`. 
 
+### write_atomically
+
+*public FileError write_atomically(FileType type, std::string_view path, std::span<const std::byte> bytes)*
+
+
+
+**brief** Refused: `ReadOnly`. 
+
 ### list
 
 *public FileError list(FileType type, std::string_view path, std::vector<std::string> & names)*
@@ -83,6 +91,14 @@ Inherits from FileSystem
 
 
 **brief** Refused: `ReadOnly`. 
+
+### resolve_platform_path
+
+*public std::string resolve_platform_path(FileType type, std::string_view path)*
+
+
+
+**brief** Empty: embedded files have no path of their own. 
 
 
 

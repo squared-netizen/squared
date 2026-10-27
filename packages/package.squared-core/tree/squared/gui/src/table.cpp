@@ -72,6 +72,18 @@ class Borrowed final
 
 } // namespace
 
+void Table::release_kept() noexcept
+{
+    if( lines_in_use == 0 ) {
+        std::vector<std::unique_ptr<Lines>>().swap( lines_kept() );
+    }
+}
+
+std::size_t Table::kept_count() noexcept
+{
+    return lines_kept().size();
+}
+
 struct Table::GridMetrics
 {
         Borrowed lines;

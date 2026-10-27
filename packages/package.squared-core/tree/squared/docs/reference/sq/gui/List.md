@@ -206,6 +206,14 @@ public static const std::uint32_t preferred_rows
 
 **brief** Scroll to `offset`, in logical units from the top; kept inside the rows. 
 
+### restore_scroll
+
+*public void restore_scroll(float offset)*
+
+
+
+**brief** Scroll to `offset` once the rows reach it: what the Stage puts back when a screen comes back, before the model has sent the count again. Scrolled as far as the rows go meanwhile; a drag forgets it.
+
 ### row
 
 *public Layout row()*
@@ -242,7 +250,7 @@ public static const std::uint32_t preferred_rows
 
 *public bool short_of_rows()*
 
-*Defined at [gui/list.hpp:136](../../../../gui/list.hpp#L136)*
+*Defined at [gui/list.hpp:144](../../../../gui/list.hpp#L144)*
 
 
 

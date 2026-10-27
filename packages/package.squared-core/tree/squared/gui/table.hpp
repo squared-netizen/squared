@@ -21,6 +21,16 @@ class Table final : public Widget
 {
     public:
         /**
+     * @brief Free the working sizes every table's layout borrows (one set a
+     * nesting depth, kept so a layout allocates nothing once warm): on low
+     * memory. The next layout makes them again. Nothing while one is in use.
+     */
+        static void release_kept() noexcept;
+
+        /** @brief How many sets of working sizes are kept: one a nesting depth laid out. */
+        [[nodiscard]] static std::size_t kept_count() noexcept;
+
+        /**
      * @brief Add a child widget to the current cell.
      * @param child Widget to adopt; ownership transfers to the table.
      * @return Configurable Cell describing the child's placement.

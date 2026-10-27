@@ -173,6 +173,26 @@ FileError FileHandle::write_string( std::string_view text, bool append ) const
     return write_bytes( std::span<const std::byte>{ first, text.size() }, append );
 }
 
+FileError FileHandle::write_atomically( std::span<const std::byte> bytes ) const
+{
+    if( system_ == nullptr ) {
+        return unbound();
+    }
+    const FileHandle directory = parent();
+    if( !directory.path().empty() ) {
+        if( FileError error = directory.make_directories() ) {
+            return error;
+        }
+    }
+    return system_->write_atomically( type_, path_, bytes );
+}
+
+FileError FileHandle::write_atomically( std::string_view text ) const
+{
+    const auto *first = reinterpret_cast<const std::byte *>( text.data() );
+    return write_atomically( std::span<const std::byte>{ first, text.size() } );
+}
+
 FileError FileHandle::list( std::vector<FileHandle> &entries ) const
 {
     entries.clear();

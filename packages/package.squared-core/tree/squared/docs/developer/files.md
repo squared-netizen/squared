@@ -17,7 +17,7 @@ learning where storage comes from.
 
 ## `FileSystem` is a deliberate interface
 
-Eight pure virtuals, in a framework whose policy is to refuse extension points
+Ten pure virtuals (7.6 added `write_atomically` and `resolve_platform_path`), in a framework whose policy is to refuse extension points
 until a second concrete use exists. This is one of the cases the policy names:
 Android `Internal` storage is an asset bundle inside the APK and is not
 reachable through POSIX at all, while Termux and desktop Linux are ordinary
@@ -106,6 +106,25 @@ the comparison's checks; now in `test/posix_file_system_test.cpp`.
 **Writes are checked to the end:** a short `write` is continued, `EINTR` is
 retried, and `close`'s result counts, because a file system that delays
 writes reports a failed one there.
+
+**`write_atomically` (7.6)**, for the App's saves: `open( "<path>.new",
+O_TRUNC )`, the bytes written to the end (the same `write_all` as `write`),
+`fsync`, `close` checked, `rename` over the path, then the directory opened
+`O_DIRECTORY` and `fsync`ed so the rename itself is on storage. A crash
+before the rename leaves the old file and a stray `.new`, which the next
+save truncates; after it, the new file. Any failure unlinks the `.new` and
+returns the error, the file untouched. The directory's `fsync` is best
+effort (some file systems refuse it on a directory: the rename is made, only
+not yet certain); its path is cut into 1 KB on the stack. One allocation
+more than `write`: the `.new` path. `make_directories` is the handle's
+(`FileHandle::write_atomically`), as for `write`.
+
+**`resolve_platform_path`** was a diagnostic of this class's own; 7.6 made it
+the base's virtual, for the App, which keeps the paths of its saves when the
+process starts and writes them later through a root-less `PosixFileSystem`
+and `FileType::Absolute`, from the model's thread, after the activity's file
+system may be gone. Android's answers `Local` and `External` as this class
+does and `Internal` with nothing; `EmbeddedFileSystem` with nothing.
 
 ## AndroidAssetFileSystem
 

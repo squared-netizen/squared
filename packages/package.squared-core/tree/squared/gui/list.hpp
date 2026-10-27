@@ -132,6 +132,14 @@ class List final : public Widget
         void set_scroll_y( float offset ) noexcept;
         [[nodiscard]] float scroll_y() const noexcept { return scroll_; }
 
+        /**
+         * @brief Scroll to `offset` once the rows reach it: what the Stage
+         * puts back when a screen comes back, before the model has sent the
+         * count again. Scrolled as far as the rows go meanwhile; a drag
+         * forgets it.
+         */
+        void restore_scroll( float offset ) noexcept;
+
         /** @brief Whether more rows fit than `max_rows_built`: those stay empty. */
         [[nodiscard]] bool short_of_rows() const noexcept { return short_; }
 
@@ -174,6 +182,7 @@ class List final : public Widget
         float scroll_ = 0.0F;
         float start_y_ = 0.0F;
         float last_y_ = 0.0F;
+        float wanted_ = -1.0F; // restore_scroll's offset, until the rows reach it; < 0: none
         std::uint32_t count_ = 0;
         bool row_context_ = false; // the hooks take the row's table as context
         bool dragging_ = false;    // the pointer has moved past the slop

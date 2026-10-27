@@ -322,6 +322,24 @@ FileError AndroidAssetFileSystem::write( FileType type, std::string_view path,
     return storage_.write( type, path, bytes, append );
 }
 
+FileError AndroidAssetFileSystem::write_atomically( FileType type, std::string_view path,
+                                                    std::span<const std::byte> bytes )
+{
+    if( type == FileType::Internal ) {
+        return read_only( path );
+    }
+    return storage_.write_atomically( type, path, bytes );
+}
+
+std::string AndroidAssetFileSystem::resolve_platform_path( FileType type,
+                                                           std::string_view path ) const
+{
+    if( type == FileType::Internal ) {
+        return {};
+    }
+    return storage_.resolve_platform_path( type, path );
+}
+
 FileError AndroidAssetFileSystem::list( FileType type, std::string_view path,
                                         std::vector<std::string> &names ) const
 {

@@ -1,6 +1,6 @@
 # class ModelHolder
 
-*Defined at [stage/app.hpp:21](../../../../stage/app.hpp#L21)*
+*Defined at [stage/app.hpp:29](../../../../stage/app.hpp#L29)*
 
 
 
@@ -14,37 +14,37 @@
 
 *public void ModelHolder()*
 
-*Defined at [stage/app.hpp:24](../../../../stage/app.hpp#L24)*
+*Defined at [stage/app.hpp:32](../../../../stage/app.hpp#L32)*
 
 ### ~ModelHolder
 
 *public void ~ModelHolder()*
 
-*Defined at [stage/app.hpp:25](../../../../stage/app.hpp#L25)*
+*Defined at [stage/app.hpp:33](../../../../stage/app.hpp#L33)*
 
 ### ModelHolder
 
 *public void ModelHolder(const ModelHolder & )*
 
-*Defined at [stage/app.hpp:26](../../../../stage/app.hpp#L26)*
+*Defined at [stage/app.hpp:34](../../../../stage/app.hpp#L34)*
 
 ### operator=
 
 *public ModelHolder & operator=(const ModelHolder & )*
 
-*Defined at [stage/app.hpp:27](../../../../stage/app.hpp#L27)*
+*Defined at [stage/app.hpp:35](../../../../stage/app.hpp#L35)*
 
 ### ModelHolder
 
 *public void ModelHolder(ModelHolder && )*
 
-*Defined at [stage/app.hpp:28](../../../../stage/app.hpp#L28)*
+*Defined at [stage/app.hpp:36](../../../../stage/app.hpp#L36)*
 
 ### operator=
 
 *public ModelHolder & operator=(ModelHolder && )*
 
-*Defined at [stage/app.hpp:29](../../../../stage/app.hpp#L29)*
+*Defined at [stage/app.hpp:37](../../../../stage/app.hpp#L37)*
 
 ### turn
 

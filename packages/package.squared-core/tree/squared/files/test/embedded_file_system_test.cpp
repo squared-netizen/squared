@@ -97,7 +97,10 @@ void refuses_writing()
     CHECK( files.write( FileType::Internal, "x", one, false ).code == FileErrorCode::ReadOnly );
     CHECK( files.make_directories( FileType::Internal, "d" ).code == FileErrorCode::ReadOnly );
     CHECK( files.remove( FileType::Internal, "top.txt" ).code == FileErrorCode::ReadOnly );
+    CHECK( files.write_atomically( FileType::Internal, "top.txt", one ).code ==
+           FileErrorCode::ReadOnly );
     CHECK( files.exists( FileType::Internal, "top.txt" ) );
+    CHECK( files.resolve_platform_path( FileType::Internal, "top.txt" ).empty() );
 }
 
 void through_a_handle()

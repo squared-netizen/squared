@@ -72,6 +72,22 @@ The check box and the slider keep their `std::function` change callbacks
 (debt from before); the Stage's lambdas capture two pointers, which both
 libraries store in place, so binding allocates nothing for them.
 
+## What a screen keeps (7.6)
+
+For the Stage's kept screens (stage's developer page): `TextField::edited()`
+reads the existing `edited_`, and `restore_edit( text )` is `set_text` with
+`edited_` set, so the restored edit commits as a typed one does. `ScrollPane`
+and `TextField` publish interface ids (`SCRL`, `TXTF`), so the Stage finds
+them with `actor_cast`; no storage, two vtable slots each, as every
+interface. `List::restore_scroll( offset )` keeps the offset in `wanted_`
+(4 bytes, in padding: the List is 384 still) and `layout` scrolls to it as
+far as the count allows, until it reaches it; `set_scroll_y`, a drag's or
+the app's, clears it. A plain clamp at restore time would lose the place,
+since a list shown again after the process ended has no count until the
+model sends it. `Table::release_kept()` swaps the `Lines` pool with an empty
+vector when none is borrowed (not from inside a layout), so low memory can
+free it; `kept_count()` is for the Console and the test.
+
 ## `List` (7.5b)
 
 `list.hpp`, `src/list.cpp`; built by `instantiate` for a `list` node, bound by

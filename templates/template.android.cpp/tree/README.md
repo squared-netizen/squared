@@ -16,6 +16,7 @@ make dev          # the build you debug with: CONSOLE=app DEV_LOG=1 install
 make console      # a CONSOLE build's Console, here in Termux (no adb);
                   # make dev console: build, install, then connect
                   # in it: ls, pull <path>, push <file>, logcat, libs,
+                  # screens (the stack and what each screen keeps),
                   # dump sys (every system command; dump lists the groups)
 ```
 

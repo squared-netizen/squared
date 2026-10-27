@@ -126,6 +126,32 @@ int main()
     assert( fs.remove( local, "a/b" ).code == FileErrorCode::IoFailure ); // not empty
     assert( fs.remove( local, "missing" ).code == FileErrorCode::NotFound );
 
+    // --- writing atomically: the old file or the new, and nothing left beside it --
+    assert( fs.write_atomically( FileType::Internal, "x", kilo ).code == FileErrorCode::ReadOnly );
+    assert( fs.write_atomically( local, "../x", kilo ).code == FileErrorCode::NotSupported );
+    assert( fs.write_atomically( local, "nodir/f", kilo ).code == FileErrorCode::NotFound );
+    assert( !fs.exists( local, "nodir" ) );
+    assert( !fs.write_atomically( local, "a/saved", kilo ) );
+    assert( fs.length( local, "a/saved" ) == 1000 && !fs.exists( local, "a/saved.new" ) );
+    assert( !fs.write_atomically( local, "a/saved", tail ) ); // replaces it whole
+    {
+        const auto read = fs.read( local, "a/saved" );
+        assert( read && read.bytes.size() == 24 && read.bytes.front() == tail.front() );
+    }
+    assert( !fs.exists( local, "a/saved.new" ) );
+    // A directory in the way: refused, the temporary removed, nothing replaced.
+    assert( fs.write_atomically( local, "a/b", tail ).code == FileErrorCode::IsADirectory );
+    assert( fs.is_directory( local, "a/b" ) && !fs.exists( local, "a/b.new" ) );
+    // Through the absolute path the platform gives: what the model's thread uses.
+    {
+        PosixFileSystem none{ PosixFileSystemRoots{} };
+        const std::string where = fs.resolve_platform_path( local, "a/saved" );
+        assert( !none.write_atomically( FileType::Absolute, where, kilo ) );
+        assert( fs.length( local, "a/saved" ) == 1000 );
+        assert( none.resolve_platform_path( local, "a/saved" ).empty() ); // no root
+    }
+    assert( !fs.remove( local, "a/saved" ) );
+
     // --- listing ------------------------------------------------------------------
     assert( !fs.list( local, "a/b/c", names ) && names.size() == 1 && names[0] == "f.bin" );
     assert( !fs.list( local, "", names ) );

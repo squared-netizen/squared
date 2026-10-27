@@ -72,6 +72,15 @@ class FileSystem
         [[nodiscard]] virtual FileError write( FileType type, std::string_view path,
                                                std::span<const std::byte> bytes, bool append ) = 0;
 
+        /**
+         * @brief Write a whole file so that it holds the old bytes or the new,
+         * never a part: written beside it (`<path>.new`), flushed to storage,
+         * and renamed over it. What a save that the process may die during
+         * needs. The directory must exist.
+         */
+        [[nodiscard]] virtual FileError write_atomically( FileType type, std::string_view path,
+                                                          std::span<const std::byte> bytes ) = 0;
+
         /** @brief Fill names with one entry name per directory entry. */
         [[nodiscard]] virtual FileError list( FileType type, std::string_view path,
                                               std::vector<std::string> &names ) const = 0;
@@ -82,6 +91,18 @@ class FileSystem
 
         /** @brief Remove a file, or an empty directory. */
         [[nodiscard]] virtual FileError remove( FileType type, std::string_view path ) = 0;
+
+        /**
+         * @brief The platform's own path a type and relative path name; empty
+         * when there is none (bundled files inside an APK, embedded files, a
+         * root not set, or a path that escapes it).
+         *
+         * For what outlives this file system: the App keeps where it saves,
+         * and writes there through `FileType::Absolute` from the model's
+         * thread after the activity that made this file system is gone.
+         */
+        [[nodiscard]] virtual std::string resolve_platform_path( FileType type,
+                                                                 std::string_view path ) const = 0;
 };
 
 } // namespace sq::files

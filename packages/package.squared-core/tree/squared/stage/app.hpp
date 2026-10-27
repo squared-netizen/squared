@@ -3,13 +3,21 @@
 #include <squared/app/application.hpp>
 #include <squared/messaging/model_runner.hpp>
 #include <squared/messaging/telegraph.hpp>
+#include <squared/stage/save.hpp>
 #include <squared/stage/stage.hpp>
 #include <squared/time/time_point.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
+
+namespace sq::files
+{
+class FileSystem;
+} // namespace sq::files
 
 namespace sq
 {
@@ -47,6 +55,31 @@ class ModelOf final : public ModelHolder
         messaging::ModelRunner<M> runner_;
 };
 
+/** @brief The model's runner, as the App keeps it. */
+using HeldModel = std::unique_ptr<ModelHolder>;
+
+/** @brief A model that saves, run on the UI thread: the tag first, as `ModelRunner` takes it. */
+template<typename S, typename... Rest>
+[[nodiscard]] HeldModel saving_on_ui_thread( messaging::TelegraphLine &line, ModelFile file,
+                                             messaging::OnUiThread tag, Rest &&...rest )
+{
+    return std::make_unique<ModelOf<S>>( line, tag, std::move( file ),
+                                         std::forward<Rest>( rest )... );
+}
+
+/** @brief A model that saves (`S`, a `Saving`), made with where its save is kept. */
+template<typename S, typename... Args>
+[[nodiscard]] HeldModel saving_model( messaging::TelegraphLine &line, ModelFile file,
+                                      Args &&...args )
+{
+    if constexpr( messaging::detail::starts_on_ui_thread<Args...> ) {
+        return saving_on_ui_thread<S>( line, std::move( file ), std::forward<Args>( args )... );
+    } else {
+        return std::make_unique<ModelOf<S>>( line, std::move( file ),
+                                             std::forward<Args>( args )... );
+    }
+}
+
 } // namespace detail
 
 /**
@@ -63,6 +96,13 @@ class ModelOf final : public ModelHolder
  *
  * It is the platform's `sq::app::Application`: an app does not call those
  * methods, the platform does.
+ *
+ * What it keeps (7.6), in the app's private files, `squared/`: the screens,
+ * written when the app goes to the background and shown again at the next
+ * start (once: a quit forgets them, and so does showing them), unless
+ * `stage.keep_screens( false )`; and a model's own save (`sq::Save`), written
+ * on the model's thread after each `background` and given back to it before
+ * its next `start`.
  */
 class App final : public app::Application
 {
@@ -87,7 +127,12 @@ class App final : public app::Application
          * `messaging::on_ui_thread` first, one turn a frame. One model to an
          * app: false, and reported, for a second.
          *
-         * Allocates the runner, the model inside it, once.
+         * A model with `save( sq::Save & )` keeps what it writes there: it
+         * is called after each `background`, and the last save's values come
+         * back to its `receive`, as `set`s, before its `start`.
+         *
+         * Allocates the runner, the model inside it, once; and a model that
+         * saves, its last save, read here and freed once given back.
          */
         template<typename M, typename... Args>
         bool run( Args &&...args )
@@ -96,7 +141,14 @@ class App final : public app::Application
                 report_( "app: run: a model runs already; an app has one" );
                 return false;
             }
-            model_ = std::make_unique<detail::ModelOf<M>>( line_, std::forward<Args>( args )... );
+            if constexpr( SavingModel<M> ) {
+                using Saved = detail::Saving<M>;
+                model_ = detail::saving_model<Saved>( line_, model_file(),
+                                                      std::forward<Args>( args )... );
+            } else {
+                using Held = detail::ModelOf<M>;
+                model_ = std::make_unique<Held>( line_, std::forward<Args>( args )... );
+            }
             return true;
         }
 
@@ -127,18 +179,31 @@ class App final : public app::Application
 
     private:
         void shut_down() noexcept;
+        void find_saves( files::FileSystem &files );
+        [[nodiscard]] detail::ModelFile model_file();
+        void restore_screens();
+        void save_screens();
+        void forget_screens() noexcept;
 
-        std::unique_ptr<detail::ModelHolder> model_;
+        detail::HeldModel model_;
         app::Report report_{};
         time::TimePoint left_at_{};
+        /// Where the screens and the model's save are kept: the platform's
+        /// paths, found when the process first starts; empty: not kept.
+        std::string screens_path_;
+        std::string model_path_;
+        /// The model's thread could not write its save: said when the app comes back.
+        std::atomic<bool> save_failed_{ false };
         bool started_ = false;
         bool quit_ = false;
         bool visible_ = true;
 };
 
 // The Telegraph line (88,000 bytes at the default knobs, which size it), then
-// the Stage, the model's runner, and the App's own few bytes.
-static_assert( sizeof( App ) == sizeof( messaging::TelegraphLine ) + 1216 );
+// the Stage (4,056 bytes, 2,960 of them what screens and panes keep), the
+// model's runner, the two paths, and the App's own few bytes, rounded to the
+// line's 64. libc++'s strings are 8 bytes smaller than libstdc++'s.
+static_assert( sizeof( App ) <= sizeof( messaging::TelegraphLine ) + 4224 );
 
 } // namespace sq
 

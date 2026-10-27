@@ -36,6 +36,12 @@ void TextField::set_text( std::string_view text )
     invalidate_layout();
 }
 
+void TextField::restore_edit( std::string_view text )
+{
+    set_text( text );
+    edited_ = true;
+}
+
 void TextField::set_style( std::string style )
 {
     style_ = std::move( style );

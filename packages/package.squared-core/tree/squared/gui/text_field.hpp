@@ -22,6 +22,18 @@ struct PointerEvent;
 class TextField final : public Widget
 {
     public:
+        static constexpr ActorInterfaceId actor_interface_id = 0x54'58'54'46U;
+
+        [[nodiscard]] void *actor_interface( ActorInterfaceId id ) noexcept override
+        {
+            return id == actor_interface_id ? this : Widget::actor_interface( id );
+        }
+
+        [[nodiscard]] const void *actor_interface( ActorInterfaceId id ) const noexcept override
+        {
+            return id == actor_interface_id ? this : Widget::actor_interface( id );
+        }
+
         /**
      * @brief Construct a text field.
      * @param text Initial text content.
@@ -63,6 +75,19 @@ class TextField final : public Widget
      * @return true while focused.
      */
         [[nodiscard]] bool focused() const noexcept { return focused_; }
+
+        /**
+     * @brief Whether the text was changed and the change not finished yet
+     * (no Enter, no leaving): the edit `set_on_commit` has still to be told.
+     */
+        [[nodiscard]] bool edited() const noexcept { return edited_; }
+
+        /**
+     * @brief Put back an edit that was not finished, as `set_text` and
+     * `edited()` true: the Stage's, when a screen comes back. Told to
+     * `set_on_commit` once it is finished.
+     */
+        void restore_edit( std::string_view text );
 
         /**
      * @brief Change the applied text-field style.

@@ -21,6 +21,7 @@
 #include <squared/gui/label.hpp>
 #include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
+#include <squared/gui/scroll_pane.hpp>
 #include <squared/gui/skin.hpp>
 #include <squared/gui/skin_loader.hpp>
 #include <squared/gui/slider.hpp>
@@ -46,6 +47,7 @@
 #include <squared/stage/stage.hpp>
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdarg>
 #include <cstdint>
@@ -54,6 +56,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -149,6 +152,187 @@ constexpr std::uint8_t screen_owner = 0xFF;
 {
     return layout.name().empty() ? std::string_view( "(unnamed)" ) : layout.name();
 }
+
+/// Visit, in the layout's order, the widgets a screen keeps the state of:
+/// each list, scroll pane and text field. A list's rows are its own, and
+/// change as it scrolls: not visited.
+template<typename Visitor>
+void walk( gui::Actor &actor, Visitor &visitor ) noexcept
+{
+    if( auto *list = gui::actor_cast<gui::List>( &actor ) ) {
+        visitor.list( *list );
+        return;
+    }
+    if( auto *field = gui::actor_cast<gui::TextField>( &actor ) ) {
+        visitor.field( *field );
+        return;
+    }
+    if( auto *pane = gui::actor_cast<gui::ScrollPane>( &actor ) ) {
+        visitor.pane( *pane );
+    }
+    auto *group = gui::actor_cast<gui::Group>( &actor );
+    if( group == nullptr ) {
+        return;
+    }
+    for( std::size_t i = 0; i < group->child_count(); ++i ) {
+        walk( *group->child_at( i ), visitor );
+    }
+}
+
+/// What a screen's widgets are, into its `Kept` (`K`): the first scrolls,
+/// and the first text field with an edit not finished.
+template<typename K>
+struct Keeping final
+{
+        K &kept;
+        std::size_t fields = 0;
+
+        void scroll( float offset ) noexcept
+        {
+            if( kept.scrolls < kept.scroll.size() ) {
+                kept.scroll[kept.scrolls++] = offset;
+            }
+        }
+        void list( gui::List &list ) noexcept { scroll( list.scroll_y() ); }
+        void pane( gui::ScrollPane &pane ) noexcept { scroll( pane.scroll_y() ); }
+        void field( gui::TextField &field ) noexcept
+        {
+            const std::size_t at = fields++;
+            if( kept.field != K::no_field || !field.edited() || at >= K::no_field ) {
+                return;
+            }
+            const std::string_view text = field.text();
+            std::size_t length = std::min( text.size(), kept.text.size() );
+            // Cut where a character starts, never inside one.
+            while( length > 0 && length < text.size() &&
+                   ( static_cast<unsigned char>( text[length] ) & 0xC0U ) == 0x80U ) {
+                --length;
+            }
+            std::copy_n( text.data(), length, kept.text.data() );
+            kept.text_length = static_cast<std::uint8_t>( length );
+            kept.field = static_cast<std::uint8_t>( at );
+        }
+};
+
+/// What was kept, put back into a screen built again: the same widgets, in
+/// the same order.
+template<typename K>
+struct Putting final
+{
+        const K &kept;
+        std::size_t scrolls = 0;
+        std::size_t fields = 0;
+
+        [[nodiscard]] std::optional<float> next() noexcept
+        {
+            const std::size_t at = scrolls++;
+            return at < kept.scrolls ? std::optional<float>( kept.scroll[at] ) : std::nullopt;
+        }
+        void list( gui::List &list ) noexcept
+        {
+            // Its rows come from the model again: as far as they reach meanwhile.
+            if( const std::optional<float> offset = next(); offset && *offset > 0.0F ) {
+                list.restore_scroll( *offset );
+            }
+        }
+        void pane( gui::ScrollPane &pane ) noexcept
+        {
+            if( const std::optional<float> offset = next() ) {
+                pane.set_scroll_y( *offset );
+            }
+        }
+        void field( gui::TextField &field ) noexcept
+        {
+            const std::size_t at = fields++;
+            if( kept.field != K::no_field && at == kept.field ) {
+                field.restore_edit( { kept.text.data(), kept.text_length } );
+            }
+        }
+};
+
+/// Lines into fixed storage: what the saved stack and `describe` write.
+class LineWriter final
+{
+    public:
+        explicit LineWriter( std::span<char> out ) noexcept
+            : out_( out )
+        {}
+
+        void text( std::string_view text ) noexcept
+        {
+            if( full_ || text.size() > out_.size() - used_ ) {
+                full_ = true;
+                return;
+            }
+            std::copy( text.begin(), text.end(),
+                       out_.begin() + static_cast<std::ptrdiff_t>( used_ ) );
+            used_ += text.size();
+        }
+
+        void number( std::int64_t value ) noexcept
+        {
+            std::array<char, 24> digits{};
+            const std::to_chars_result end =
+                std::to_chars( digits.data(), digits.data() + digits.size(), value );
+            text( { digits.data(), static_cast<std::size_t>( end.ptr - digits.data() ) } );
+        }
+
+        /// Each byte as two lowercase hex digits.
+        void hex( std::string_view bytes ) noexcept
+        {
+            constexpr std::string_view digits = "0123456789abcdef";
+            for( const char byte : bytes ) {
+                const auto value = static_cast<unsigned char>( byte );
+                const std::array<char, 2> pair{ digits[value >> 4U], digits[value & 0x0FU] };
+                text( { pair.data(), pair.size() } );
+            }
+        }
+
+        [[nodiscard]] std::string_view written() const noexcept { return { out_.data(), used_ }; }
+        [[nodiscard]] bool full() const noexcept { return full_; }
+
+    private:
+        std::span<char> out_;
+        std::size_t used_ = 0;
+        bool full_ = false;
+};
+
+/// The first word of `line`, taken off it: up to a space, or the end.
+[[nodiscard]] std::string_view take_word( std::string_view &line ) noexcept
+{
+    const std::size_t space = line.find( ' ' );
+    const std::string_view word = line.substr( 0, space );
+    line = space == std::string_view::npos ? std::string_view{} : line.substr( space + 1 );
+    return word;
+}
+
+/// A whole number from `lowest` to `highest`; nothing when the word is not one.
+[[nodiscard]] std::optional<std::int64_t> whole( std::string_view word, std::int64_t lowest,
+                                                 std::int64_t highest ) noexcept
+{
+    std::int64_t value = 0;
+    const char *end = word.data() + word.size();
+    const std::from_chars_result read = std::from_chars( word.data(), end, value );
+    if( word.empty() || read.ec != std::errc{} || read.ptr != end || value < lowest ||
+        value > highest ) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+[[nodiscard]] int hex_digit( char digit ) noexcept
+{
+    if( digit >= '0' && digit <= '9' ) {
+        return digit - '0';
+    }
+    if( digit >= 'a' && digit <= 'f' ) {
+        return digit - 'a' + 10;
+    }
+    return -1;
+}
+
+/// The first line of a saved stack: what it is, and which form.
+constexpr std::string_view saved_header = "squared screens 1";
 
 } // namespace
 
@@ -328,6 +512,8 @@ void Stage::say( const char *format, ... ) noexcept
 
 void Stage::attach( app::Runtime &runtime )
 {
+    keep_shown(); // a window made again without a detach: what it showed is kept
+    unbind_all();
     drawing_.reset();
     failed_ = false;
     // The one allocation a window makes here, besides what the skin holds:
@@ -338,6 +524,7 @@ void Stage::attach( app::Runtime &runtime )
     static_assert( sizeof( Drawing::Scratch ) == 17480 );
     static_assert( sizeof( Binding ) == 32 );
     static_assert( sizeof( ListBinding ) == 160 );
+    static_assert( sizeof( Kept ) == 148 );
     static_assert( max_lists <= 4, "Binding::list is two bits" );
     constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32 + max_lists * 160;
 #if defined( _LIBCPP_VERSION )
@@ -362,7 +549,9 @@ void Stage::attach( app::Runtime &runtime )
 
 void Stage::detach() noexcept
 {
-    // The cache may let their values go; then the panes' windows go too.
+    // What the screen and its panes show is kept for the next window; the
+    // cache may let their values go; then the panes' windows go too.
+    keep_shown();
     unbind_all();
     drawing_.reset();
     for( Pane &pane : panes_ ) {
@@ -377,6 +566,7 @@ void Stage::clear() noexcept
     broken_ = false;
     leave_ = false;
     screens_.fill( {} );
+    kept_.fill( {} );
     drop_panes();
     added_.fill( nullptr );
     customs_.fill( {} );
@@ -423,6 +613,15 @@ void Stage::resize( int pixel_width, int pixel_height ) noexcept
     set_safe_area( safe_area_ );
 }
 
+void Stage::settle() noexcept
+{
+    // A rotation brings a size and new insets, often one call each: laid
+    // out once, with both, and nothing built again.
+    if( layout_due_ ) {
+        lay_out();
+    }
+}
+
 void Stage::set_safe_area( const app::SafeArea &area ) noexcept
 {
     safe_area_ = area;
@@ -438,7 +637,7 @@ void Stage::set_safe_area( const app::SafeArea &area ) noexcept
     const float right = static_cast<float>( area.right ) * x;
     const float bottom = static_cast<float>( area.bottom ) * y;
     widgets->set_safe_area( gui::Insets{ left, top, right, bottom } );
-    lay_out();
+    layout_due_ = true;
 }
 
 void Stage::surface_created( graphics::Context &graphics ) noexcept
@@ -452,6 +651,7 @@ void Stage::surface_created( graphics::Context &graphics ) noexcept
     }
     resize( graphics.pixel_width(), graphics.pixel_height() );
     if( !graphics.resources_preserved() ) {
+        keep_shown(); // the screen is built again: its scrolls and edit with it
         show_top();
     }
 }
@@ -468,6 +668,7 @@ bool Stage::event( const app::Event &event )
     if( event.type == Type::Resize ) {
         return true; // the platform calls resize() with the pixels
     }
+    settle(); // a finger lands where the widgets are now
     app::Event translated = event;
     if( is_pointer( event.type ) && pixel_width_ > 0 && pixel_height_ > 0 ) {
         translated.x = event.x * logical_width_ / static_cast<float>( pixel_width_ );
@@ -497,6 +698,7 @@ void Stage::update( std::chrono::nanoseconds delta ) noexcept
                 stage->changed( received );
             }
     };
+    settle(); // a list knows its height before it asks for rows
     Showing showing{ this };
     static_cast<void>( telegraph_.drain( showing ) );
     ask_views();
@@ -515,6 +717,7 @@ void Stage::render( graphics::Context &graphics ) noexcept
     graphics.clear( slate );
     // What changed since the last frame is laid out again: a bound label's
     // new text, a list scrolled. Nothing, when nothing did.
+    settle();
     drawing_->ui.layout( drawing_->painter );
     if( !drawing_->batch.begin( drawing_->camera ) ) {
         return;
@@ -802,6 +1005,8 @@ void Stage::apply( Change change ) noexcept
                 say( "stage: push: the stack holds %zu screens", max_depth );
                 return;
             }
+            keep_shown(); // the screen beneath keeps where it was
+            kept_[depth_] = {};
             screens_[depth_++] = change.shown;
             break;
         case gui::TapKind::replace:
@@ -809,6 +1014,7 @@ void Stage::apply( Change change ) noexcept
                 depth_ = 1;
             }
             screens_[depth_ - 1] = change.shown;
+            kept_[depth_ - 1] = {};
             break;
         case gui::TapKind::back:
             if( Pane *pane = top_pane_slot() ) {
@@ -818,6 +1024,7 @@ void Stage::apply( Change change ) noexcept
             if( depth_ <= 1 ) {
                 return;
             }
+            kept_[depth_ - 1] = {};
             screens_[--depth_] = {};
             break;
         case gui::TapKind::open:
@@ -891,6 +1098,10 @@ void Stage::show_top() noexcept
         }
     }
     lay_out();
+    // A screen that comes back is where it was: laid out first, so a scroll
+    // pane knows how far it scrolls; then again, for what moved.
+    put_back();
+    lay_out();
 }
 
 bool Stage::built( const gui::Layout &layout, gui::LayoutCheck check ) noexcept
@@ -927,6 +1138,306 @@ void Stage::lay_out() noexcept
         place_panes();
         widgets->layout( drawing_->painter );
     }
+    layout_due_ = false;
+}
+
+// --- what is kept ----------------------------------------------------------
+
+void Stage::low_memory() noexcept
+{
+    // Screens beneath the top hold no widgets: nothing of theirs to let go.
+    // The working sizes every table's layout keeps warm are made again by the
+    // next layout.
+    gui::Table::release_kept();
+}
+
+void Stage::keep_shown() noexcept
+{
+    gui::Ui *widgets = ui();
+    if( widgets == nullptr || widgets->content() == nullptr ) {
+        return; // nothing built: what was kept stays
+    }
+    if( depth_ != 0 ) {
+        Kept &kept = kept_[depth_ - 1];
+        kept = {};
+        Keeping<Kept> keeping{ kept };
+        walk( *widgets->content(), keeping );
+    }
+    for( Pane &pane : panes_ ) {
+        if( pane.order != 0 && pane.window != nullptr ) {
+            pane.kept = {};
+            Keeping<Kept> keeping{ pane.kept };
+            walk( pane.window->content_table(), keeping );
+        }
+    }
+}
+
+void Stage::put_back() noexcept
+{
+    gui::Ui *widgets = ui();
+    if( widgets == nullptr || widgets->content() == nullptr || depth_ == 0 ) {
+        return;
+    }
+    // What is kept is put back while it is shown; kept again when it is left.
+    Putting<Kept> putting{ kept_[depth_ - 1] };
+    walk( *widgets->content(), putting );
+    for( Pane &pane : panes_ ) {
+        if( pane.order != 0 && pane.window != nullptr ) {
+            Putting<Kept> pane_putting{ pane.kept };
+            walk( pane.window->content_table(), pane_putting );
+        }
+    }
+}
+
+std::string_view Stage::name_of_shown( Shown shown ) const noexcept
+{
+    if( shown.layout != nullptr ) {
+        return shown.layout->name();
+    }
+    return shown.screen != nullptr ? shown.screen->name : std::string_view{};
+}
+
+std::size_t Stage::save( std::span<char> out ) noexcept
+{
+    if( depth_ == 0 ) {
+        return 0;
+    }
+    keep_shown();
+    // Each by its name, which must find it again: else none is kept.
+    const auto found = [this]( Shown shown ) noexcept {
+        const Shown again = resolve( name_of_shown( shown ) );
+        return again.layout == shown.layout && again.screen == shown.screen;
+    };
+    LineWriter writer( out );
+    writer.text( saved_header );
+    writer.text( "\n" );
+    const auto line = [&writer]( std::string_view kind, std::string_view name, const Kept &kept ) {
+        writer.text( kind );
+        writer.text( " " );
+        writer.text( name );
+        writer.text( " " );
+        writer.number( kept.scrolls );
+        for( std::size_t i = 0; i < kept.scrolls; ++i ) {
+            writer.text( " " );
+            writer.number( std::lround( kept.scroll[i] ) );
+        }
+        if( kept.field == Kept::no_field ) {
+            writer.text( " - -\n" );
+            return;
+        }
+        writer.text( " " );
+        writer.number( kept.field );
+        writer.text( " x" ); // the edit as hex: "x" alone is an empty one
+        writer.hex( { kept.text.data(), kept.text_length } );
+        writer.text( "\n" );
+    };
+    for( std::size_t i = 0; i < depth_; ++i ) {
+        const std::string_view name = name_of_shown( screens_[i] );
+        if( !found( screens_[i] ) ) {
+            say( "stage: the screens are not kept: %.*s is not found by its name (a layout "
+                 "file, or app.stage.add<...>())",
+                 static_cast<int>( name.size() ), name.data() );
+            return 0;
+        }
+        line( "screen", name, kept_[i] );
+    }
+    for( std::uint8_t order = 1; order <= pane_count_; ++order ) {
+        for( const Pane &pane : panes_ ) {
+            if( pane.order != order ) {
+                continue;
+            }
+            const std::string_view name = name_of_shown( pane.shown );
+            if( !found( pane.shown ) ) {
+                say( "stage: the screens are not kept: the pane %.*s is not found by its name",
+                     static_cast<int>( name.size() ), name.data() );
+                return 0;
+            }
+            line( "pane", name, pane.kept );
+        }
+    }
+    if( writer.full() ) {
+        say( "stage: the screens are not kept: more than %zu bytes", out.size() );
+        return 0;
+    }
+    return writer.written().size();
+}
+
+bool Stage::restore( std::string_view saved ) noexcept
+{
+    std::array<Shown, max_depth> screens{};
+    std::array<Kept, max_depth> kept{};
+    std::array<Shown, max_panes> panes{};
+    std::array<Kept, max_panes> panes_kept{};
+    std::size_t depth = 0;
+    std::size_t pane_count = 0;
+    std::size_t number = 0;
+    const char *problem = nullptr;
+
+    // One line: `screen <name> <scrolls> <each> <field> <edit>`, or `pane ...`.
+    const auto read = [&]( std::string_view line ) noexcept -> const char * {
+        const std::string_view kind = take_word( line );
+        const bool screen = kind == "screen";
+        if( !screen && kind != "pane" ) {
+            return "not a screen or a pane";
+        }
+        if( screen && pane_count != 0 ) {
+            return "a screen after a pane";
+        }
+        if( screen ? depth == max_depth : pane_count == max_panes ) {
+            return screen ? "more screens than the stack holds" : "more panes than open at once";
+        }
+        const std::string_view name = take_word( line );
+        const Shown shown = resolve( name );
+        if( shown.layout == nullptr && shown.screen == nullptr ) {
+            return "no layout or added screen is called that";
+        }
+        const gui::LayoutKind wanted = screen ? gui::LayoutKind::screen : gui::LayoutKind::pane;
+        if( shown.layout != nullptr && shown.layout->kind() != wanted ) {
+            return screen ? "a pane where a screen was" : "a screen where a pane was";
+        }
+        Kept here;
+        const std::optional<std::int64_t> scrolls = whole( take_word( line ), 0, kept_scrolls );
+        if( !scrolls ) {
+            return "not a count of scrolls";
+        }
+        here.scrolls = static_cast<std::uint8_t>( *scrolls );
+        for( std::size_t i = 0; i < here.scrolls; ++i ) {
+            const std::optional<std::int64_t> offset = whole( take_word( line ), 0, 1 << 24 );
+            if( !offset ) {
+                return "not a scroll";
+            }
+            here.scroll[i] = static_cast<float>( *offset );
+        }
+        const std::string_view field = take_word( line );
+        const std::string_view edit = take_word( line );
+        if( field == "-" && edit == "-" ) {
+            here.field = Kept::no_field;
+        } else {
+            const std::optional<std::int64_t> at = whole( field, 0, Kept::no_field - 1 );
+            const std::size_t digits = edit.size() - 1;
+            if( !at || edit.empty() || edit.front() != 'x' || digits % 2 != 0 ||
+                digits / 2 > kept_text ) {
+                return "not an edit";
+            }
+            for( std::size_t i = 0; i < digits / 2; ++i ) {
+                const int high = hex_digit( edit[1 + 2 * i] );
+                const int low = hex_digit( edit[2 + 2 * i] );
+                if( high < 0 || low < 0 ) {
+                    return "not an edit";
+                }
+                here.text[i] = static_cast<char>( high * 16 + low );
+            }
+            here.field = static_cast<std::uint8_t>( *at );
+            here.text_length = static_cast<std::uint8_t>( digits / 2 );
+        }
+        if( !line.empty() ) {
+            return "more on the line than a screen keeps";
+        }
+        if( screen ) {
+            screens[depth] = shown;
+            kept[depth++] = here;
+        } else {
+            panes[pane_count] = shown;
+            panes_kept[pane_count++] = here;
+        }
+        return nullptr;
+    };
+
+    std::string_view rest = saved;
+    while( problem == nullptr && !rest.empty() ) {
+        const std::size_t end = rest.find( '\n' );
+        const std::string_view line = rest.substr( 0, end );
+        rest = end == std::string_view::npos ? std::string_view{} : rest.substr( end + 1 );
+        if( number++ == 0 ) {
+            problem = line == saved_header ? nullptr : "not a saved stack, or another form";
+        } else {
+            problem = read( line );
+        }
+    }
+    if( problem == nullptr && depth == 0 ) {
+        problem = "no screen";
+    }
+    if( problem != nullptr ) {
+        say( "stage: the screens kept were not shown again: line %zu: %s", number, problem );
+        return false;
+    }
+
+    pending_count_ = 0;
+    drop_panes();
+    screens_ = screens;
+    kept_ = kept;
+    depth_ = static_cast<std::uint8_t>( depth );
+    for( std::size_t i = 0; i < pane_count; ++i ) {
+        panes_[i].shown = panes[i];
+        panes_[i].order = static_cast<std::uint8_t>( i + 1 );
+        panes_[i].kept = panes_kept[i];
+    }
+    pane_count_ = static_cast<std::uint8_t>( pane_count );
+    show_top();
+    return true;
+}
+
+void Stage::describe( app::Report out ) noexcept
+{
+    keep_shown(); // as it is now
+    std::array<char, 256> storage{};
+    const auto said = [&out, &storage]( const auto &write ) {
+        LineWriter line( storage );
+        write( line );
+        out( line.written() );
+    };
+    const auto kept_text_of = []( LineWriter &line, const Kept &kept ) {
+        for( std::size_t i = 0; i < kept.scrolls; ++i ) {
+            line.text( i == 0 ? "  scroll " : " " );
+            line.number( std::lround( kept.scroll[i] ) );
+        }
+        if( kept.field != Kept::no_field ) {
+            line.text( "  edit in text field " );
+            line.number( kept.field );
+            line.text( ", " );
+            line.number( kept.text_length );
+            line.text( " bytes" );
+        }
+    };
+    said( [this]( LineWriter &line ) {
+        line.text( "screens: " );
+        line.number( depth_ );
+        line.text( ", panes: " );
+        line.number( pane_count_ );
+        line.text( keep_screens_ ? "; kept in the background" : "; not kept (keep_screens off)" );
+    } );
+    for( std::size_t i = 0; i < depth_; ++i ) {
+        said( [&]( LineWriter &line ) {
+            line.text( "  " );
+            line.number( static_cast<std::int64_t>( i + 1 ) );
+            line.text( " " );
+            line.text( name_of_shown( screens_[i] ) );
+            kept_text_of( line, kept_[i] );
+        } );
+    }
+    for( std::uint8_t order = 1; order <= pane_count_; ++order ) {
+        for( const Pane &pane : panes_ ) {
+            if( pane.order != order ) {
+                continue;
+            }
+            said( [&]( LineWriter &line ) {
+                line.text( "  pane " );
+                line.text( name_of_shown( pane.shown ) );
+                line.text( " (" );
+                line.text( gui::pane_place_name( pane.place ) );
+                line.text( ")" );
+                kept_text_of( line, pane.kept );
+            } );
+        }
+    }
+    said( [this]( LineWriter &line ) {
+        line.text( "bound: " );
+        line.number( static_cast<std::int64_t>( bindings() ) );
+        line.text( " values, " );
+        line.number( static_cast<std::int64_t>( lists() ) );
+        line.text( " lists; table sizes kept: " );
+        line.number( static_cast<std::int64_t>( gui::Table::kept_count() ) );
+    } );
 }
 
 // --- panes -----------------------------------------------------------------
@@ -963,6 +1474,7 @@ void Stage::open_pane( Shown shown ) noexcept
         }
         pane.shown = shown;
         pane.order = ++pane_count_;
+        pane.kept = {};
         build_pane( pane );
         lay_out();
         return;
@@ -1026,6 +1538,7 @@ void Stage::close_pane( Pane &pane ) noexcept
     pane.shown = {};
     pane.window = nullptr;
     pane.order = 0;
+    pane.kept = {};
 }
 
 void Stage::drop_panes() noexcept
@@ -1035,6 +1548,7 @@ void Stage::drop_panes() noexcept
         pane.shown = {};
         pane.window = nullptr;
         pane.order = 0;
+        pane.kept = {};
     }
     pane_count_ = 0;
 }
@@ -1236,8 +1750,11 @@ bool Stage::held( const Binding &binding ) noexcept
     switch( binding.type ) {
         case gui::NodeType::slider:
             return static_cast<const gui::Slider *>( binding.widget )->dragging();
-        case gui::NodeType::text_field:
-            return static_cast<const gui::TextField *>( binding.widget )->focused();
+        case gui::NodeType::text_field: {
+            // An edit put back is the user's still, focused or not.
+            const auto *field = static_cast<const gui::TextField *>( binding.widget );
+            return field->focused() || field->edited();
+        }
         default:
             return false;
     }
@@ -1537,6 +2054,9 @@ void Stage::drop_list( ListBinding &shown ) noexcept
     for( std::uint32_t i = 0; i < shown.asked.rows; ++i ) {
         const std::uint32_t row = shown.asked.first + i;
         telegraph_.unbind( { shown.rows, row } );
+        if( shown.kept.empty() ) {
+            continue; // no row asked for has kept an item yet
+        }
         const std::uint32_t kept = shown.kept[row % shown.kept.size()];
         if( kept != 0 ) {
             keep_item( shown, kept, false );

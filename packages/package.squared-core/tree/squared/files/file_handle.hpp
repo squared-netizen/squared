@@ -136,6 +136,18 @@ class FileHandle final
         [[nodiscard]] FileError write_string( std::string_view text, bool append = false ) const;
 
         /**
+     * @brief Write bytes to this path so that it holds the old bytes or the
+     * new, never a part (`FileSystem::write_atomically`): for a save the
+     * process may die during. Missing parent directories are created first.
+     * @return A no-error FileError on success, otherwise the failure; the
+     * file as it was, when there was one.
+     */
+        [[nodiscard]] FileError write_atomically( std::span<const std::byte> bytes ) const;
+
+        /** @brief Write text so, as `write_atomically( bytes )`. */
+        [[nodiscard]] FileError write_atomically( std::string_view text ) const;
+
+        /**
      * @brief List the entries of this directory.
      * @param entries Cleared, then filled with one handle per entry, in no
      * guaranteed order. `.` and `..` are excluded.

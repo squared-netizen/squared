@@ -106,11 +106,18 @@ float List::most_scroll() const noexcept
 
 void List::set_scroll_y( float offset ) noexcept
 {
+    wanted_ = -1.0F; // scrolled since: what was to be put back is forgotten
     const float kept = std::clamp( offset, 0.0F, most_scroll() );
     if( kept != scroll_ ) {
         scroll_ = kept;
         invalidate_layout();
     }
+}
+
+void List::restore_scroll( float offset ) noexcept
+{
+    wanted_ = std::max( 0.0F, offset );
+    invalidate_layout();
 }
 
 void List::scroll_by( float delta ) noexcept
@@ -173,6 +180,13 @@ void List::layout( Painter &painter, const Skin &skin )
             hooks.context = &table;
         }
         static_cast<void>( detail::build_row( row(), table, skin, hooks ) );
+    }
+    if( wanted_ >= 0.0F ) {
+        // As far as the rows go: all the way, once the count reaches it.
+        scroll_ = wanted_;
+        if( most_scroll() >= wanted_ ) {
+            wanted_ = -1.0F;
+        }
     }
     scroll_ = std::clamp( scroll_, 0.0F, most_scroll() );
     place( painter, skin );

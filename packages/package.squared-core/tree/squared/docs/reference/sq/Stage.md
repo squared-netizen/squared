@@ -26,6 +26,12 @@ public static const std::size_t max_lists
 
 public static const std::size_t max_row_values
 
+public static const std::size_t kept_scrolls
+
+public static const std::size_t kept_text
+
+public static const std::size_t saved_bytes
+
 public static const std::size_t scratch_nodes
 
 public static const std::size_t scratch_text
@@ -38,67 +44,25 @@ public static const std::size_t scratch_numbers
 
 ### Stage
 
-*public void Stage(messaging::TelegraphUi & telegraph)*
+*public void Stage(const Stage & )*
+
+*Defined at [stage/stage.hpp:176](../../../stage/stage.hpp#L176)*
 
 ### Stage
 
-*public void Stage(const Stage & )*
-
-*Defined at [stage/stage.hpp:164](../../../stage/stage.hpp#L164)*
-
-### operator=
-
-*public Stage & operator=(const Stage & )*
-
-*Defined at [stage/stage.hpp:165](../../../stage/stage.hpp#L165)*
+*public void Stage(messaging::TelegraphUi & telegraph)*
 
 ### Stage
 
 *public void Stage(Stage && )*
 
-*Defined at [stage/stage.hpp:166](../../../stage/stage.hpp#L166)*
-
-### operator=
-
-*public Stage & operator=(Stage && )*
-
-*Defined at [stage/stage.hpp:167](../../../stage/stage.hpp#L167)*
-
-### push
-
-*public bool push()*
-
-*Defined at [stage/stage.hpp:186](../../../stage/stage.hpp#L186)*
-
-
-
-**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
-
-### replace
-
-*public void replace()*
-
-*Defined at [stage/stage.hpp:193](../../../stage/stage.hpp#L193)*
-
-
-
-**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
-
-### open
-
-*public bool open()*
-
-*Defined at [stage/stage.hpp:215](../../../stage/stage.hpp#L215)*
-
-
-
-**brief** Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. 
+*Defined at [stage/stage.hpp:178](../../../stage/stage.hpp#L178)*
 
 ### add
 
 *public bool add()*
 
-*Defined at [stage/stage.hpp:229](../../../stage/stage.hpp#L229)*
+*Defined at [stage/stage.hpp:241](../../../stage/stage.hpp#L241)*
 
 
 
@@ -164,6 +128,48 @@ public static const std::size_t scratch_numbers
 
 **brief** How many screens there are, once what waits has happened. 
 
+### operator=
+
+*public Stage & operator=(const Stage & )*
+
+*Defined at [stage/stage.hpp:177](../../../stage/stage.hpp#L177)*
+
+### operator=
+
+*public Stage & operator=(Stage && )*
+
+*Defined at [stage/stage.hpp:179](../../../stage/stage.hpp#L179)*
+
+### push
+
+*public bool push()*
+
+*Defined at [stage/stage.hpp:198](../../../stage/stage.hpp#L198)*
+
+
+
+**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
+
+### replace
+
+*public void replace()*
+
+*Defined at [stage/stage.hpp:205](../../../stage/stage.hpp#L205)*
+
+
+
+**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
+
+### open
+
+*public bool open()*
+
+*Defined at [stage/stage.hpp:227](../../../stage/stage.hpp#L227)*
+
+
+
+**brief** Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. 
+
 ### panes
 
 *public std::size_t panes()*
@@ -224,7 +230,7 @@ public static const std::size_t scratch_numbers
 
 *public bool showing()*
 
-*Defined at [stage/stage.hpp:263](../../../stage/stage.hpp#L263)*
+*Defined at [stage/stage.hpp:275](../../../stage/stage.hpp#L275)*
 
 
 
@@ -234,7 +240,7 @@ public static const std::size_t scratch_numbers
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/stage.hpp:275](../../../stage/stage.hpp#L275)*
+*Defined at [stage/stage.hpp:287](../../../stage/stage.hpp#L287)*
 
 
 
@@ -244,11 +250,27 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.hpp:290](../../../stage/stage.hpp#L290)*
+*Defined at [stage/stage.hpp:302](../../../stage/stage.hpp#L302)*
 
 
 
 **brief** The skin could not be loaded: the Stage draws dark red. 
+
+### keep_screens
+
+*public void keep_screens(bool keep)*
+
+*Defined at [stage/stage.hpp:310](../../../stage/stage.hpp#L310)*
+
+
+
+**brief** Whether the stack is kept when the app goes to the background, to be shown again, panes, scrolls and an unfinished edit with it, at the next start after Android ended the process: on, unless an app says otherwise in `squared_main`. A quit forgets it.
+
+### keeps_screens
+
+*public bool keeps_screens()*
+
+*Defined at [stage/stage.hpp:311](../../../stage/stage.hpp#L311)*
 
 ### ui
 
@@ -257,6 +279,14 @@ public static const std::size_t scratch_numbers
 
 
 **brief** The top screen's widgets, its panes' among them; nullptr while the skin is not loaded (no window yet, or it failed).
+
+### describe
+
+*public void describe(app::Report out)*
+
+
+
+**brief** The stack, a line a screen from the root, then the panes over the top, each with what it keeps: what the Console's `screens` shows.
 
 
 

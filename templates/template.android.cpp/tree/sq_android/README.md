@@ -80,7 +80,10 @@ The app's own files go through it both ways: `ls files`, `pull
 files/crash-previous.txt` (saved in `build/pulled/`), `pull apk`, and `push
 <file> [name]` typed in `make console` (into the app's `files/`); `logcat`
 shows the app's own system log (a library that failed to load, a Java
-exception) and `libs` what it loaded, no adb needed. `dump` runs groups of
+exception) and `libs` what it loaded, no adb needed. `screens` lists your
+App's screens and panes and what each keeps (scrolls, an unfinished edit),
+as the background writes them; `screens low-memory` sends Android's
+low-memory event through it. `dump` runs groups of
 commands, one a frame: `dump sys` (every system command, `gl` and `display`
 among them), `dump memory`, `dump crash` (the last crash report, the last
 run's log, the system log), several at once (`dump sys crash`), `dump all`;

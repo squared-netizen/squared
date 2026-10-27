@@ -20,16 +20,6 @@
 
 ### FileHandle
 
-*public void FileHandle()*
-
-*Defined at [files/file_handle.hpp:39](../../../../files/file_handle.hpp#L39)*
-
-
-
-**brief** Construct an invalid handle that answers no operation. 
-
-### FileHandle
-
 *public void FileHandle(FileSystem & system, FileType type, std::string path)*
 
 
@@ -43,6 +33,16 @@
 **path** Relative path using '/' separators; empty means the root.
 
 **note** Prefer FileSystem::internal() and its siblings, which supply the first two arguments.
+
+### FileHandle
+
+*public void FileHandle()*
+
+*Defined at [files/file_handle.hpp:39](../../../../files/file_handle.hpp#L39)*
+
+
+
+**brief** Construct an invalid handle that answers no operation. 
 
 ### name
 
@@ -79,36 +79,6 @@
 **name** Relative path to append; '/' separators are accepted.
 
 **return** A handle under the same file system and root. No check is made that this handle is a directory or that the child exists.
-
-### valid
-
-*public bool valid()*
-
-*Defined at [files/file_handle.hpp:52](../../../../files/file_handle.hpp#L52)*
-
-
-
-**brief** Report whether this handle is bound to a file system. 
-
-### type
-
-*public FileType type()*
-
-*Defined at [files/file_handle.hpp:55](../../../../files/file_handle.hpp#L55)*
-
-
-
-**brief** Return the root this handle's path is relative to. 
-
-### path
-
-*public const std::string & path()*
-
-*Defined at [files/file_handle.hpp:58](../../../../files/file_handle.hpp#L58)*
-
-
-
-**brief** Return the relative path, with '/' separators. 
 
 ### sibling
 
@@ -157,6 +127,36 @@
 **brief** Return the file's size in bytes.
 
 **return** Size in bytes, or zero when the file is missing, unreadable, or a directory. Use exists() to tell an empty file from a missing one.
+
+### valid
+
+*public bool valid()*
+
+*Defined at [files/file_handle.hpp:52](../../../../files/file_handle.hpp#L52)*
+
+
+
+**brief** Report whether this handle is bound to a file system. 
+
+### type
+
+*public FileType type()*
+
+*Defined at [files/file_handle.hpp:55](../../../../files/file_handle.hpp#L55)*
+
+
+
+**brief** Return the root this handle's path is relative to. 
+
+### path
+
+*public const std::string & path()*
+
+*Defined at [files/file_handle.hpp:58](../../../../files/file_handle.hpp#L58)*
+
+
+
+**brief** Return the relative path, with '/' separators. 
 
 ### read_bytes
 
@@ -209,6 +209,24 @@
 **append** Append rather than truncate.
 
 **return** A no-error FileError on success, otherwise the failure.
+
+### write_atomically
+
+*public FileError write_atomically(std::span<const std::byte> bytes)*
+
+
+
+**brief** Write bytes to this path so that it holds the old bytes or the new, never a part (`FileSystem::write_atomically`): for a save the process may die during. Missing parent directories are created first.
+
+**return** A no-error FileError on success, otherwise the failure; the file as it was, when there was one.
+
+### write_atomically
+
+*public FileError write_atomically(std::string_view text)*
+
+
+
+**brief** Write text so, as `write_atomically( bytes )`. 
 
 ### list
 

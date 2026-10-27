@@ -12,6 +12,12 @@ Inherits from Widget
 
 
 
+## Members
+
+public static const ActorInterfaceId actor_interface_id
+
+
+
 ## Functions
 
 ### TextField
@@ -23,6 +29,18 @@ Inherits from Widget
 **brief** Construct a text field.
 
 **text** Initial text content.
+
+### actor_interface
+
+*public void * actor_interface(ActorInterfaceId id)*
+
+*Defined at [gui/text_field.hpp:27](../../../../gui/text_field.hpp#L27)*
+
+### actor_interface
+
+*public const void * actor_interface(ActorInterfaceId id)*
+
+*Defined at [gui/text_field.hpp:32](../../../../gui/text_field.hpp#L32)*
 
 ### set_text
 
@@ -38,7 +56,7 @@ Inherits from Widget
 
 *public const std::string & text()*
 
-*Defined at [gui/text_field.hpp:42](../../../../gui/text_field.hpp#L42)*
+*Defined at [gui/text_field.hpp:54](../../../../gui/text_field.hpp#L54)*
 
 
 
@@ -50,7 +68,7 @@ Inherits from Widget
 
 *public std::size_t cursor()*
 
-*Defined at [gui/text_field.hpp:48](../../../../gui/text_field.hpp#L48)*
+*Defined at [gui/text_field.hpp:60](../../../../gui/text_field.hpp#L60)*
 
 
 
@@ -62,13 +80,23 @@ Inherits from Widget
 
 *public bool focused()*
 
-*Defined at [gui/text_field.hpp:65](../../../../gui/text_field.hpp#L65)*
+*Defined at [gui/text_field.hpp:77](../../../../gui/text_field.hpp#L77)*
 
 
 
 **brief** Whether the field has focus: it is being edited.
 
 **return** true while focused.
+
+### edited
+
+*public bool edited()*
+
+*Defined at [gui/text_field.hpp:83](../../../../gui/text_field.hpp#L83)*
+
+
+
+**brief** Whether the text was changed and the change not finished yet (no Enter, no leaving): the edit `set_on_commit` has still to be told.
 
 ### set_on_commit
 
@@ -81,6 +109,14 @@ Inherits from Widget
 **callback** Called with `context` and this field; nullptr for none.
 
 **context** Passed back as it is.
+
+### restore_edit
+
+*public void restore_edit(std::string_view text)*
+
+
+
+**brief** Put back an edit that was not finished, as `set_text` and `edited()` true: the Stage's, when a screen comes back. Told to `set_on_commit` once it is finished.
 
 ### set_style
 
@@ -200,7 +236,7 @@ Inherits from Widget
 
 *public bool wants_text_input()*
 
-*Defined at [gui/text_field.hpp:144](../../../../gui/text_field.hpp#L144)*
+*Defined at [gui/text_field.hpp:169](../../../../gui/text_field.hpp#L169)*
 
 
 

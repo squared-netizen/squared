@@ -18,6 +18,18 @@ struct PointerEvent;
 class ScrollPane final : public Widget
 {
     public:
+        static constexpr ActorInterfaceId actor_interface_id = 0x53'43'52'4CU;
+
+        [[nodiscard]] void *actor_interface( ActorInterfaceId id ) noexcept override
+        {
+            return id == actor_interface_id ? this : Widget::actor_interface( id );
+        }
+
+        [[nodiscard]] const void *actor_interface( ActorInterfaceId id ) const noexcept override
+        {
+            return id == actor_interface_id ? this : Widget::actor_interface( id );
+        }
+
         /**
      * @brief Set the single scrollable child.
      * @param content Widget to adopt; ownership transfers to the pane.

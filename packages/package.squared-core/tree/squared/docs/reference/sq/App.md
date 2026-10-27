@@ -1,6 +1,6 @@
 # class App
 
-*Defined at [stage/app.hpp:67](../../../stage/app.hpp#L67)*
+*Defined at [stage/app.hpp:107](../../../stage/app.hpp#L107)*
 
 
 
@@ -9,6 +9,8 @@
  The platform makes it once and keeps it while the process lives, so an activity Android recreates reattaches to the same App and the model keeps running. It calls `squared_main` once, when the first window is there and the skin is loaded; the app pushes its first screen there and starts its model with `run`. Quitting (`quit()`, a `quit` tap, back at the root) stops the model, after it saves, and empties the stack: the next launch in the same process starts afresh.
 
  It is the platform's `sq::app::Application`: an app does not call those methods, the platform does.
+
+ What it keeps (7.6), in the app's private files, `squared/`: the screens, written when the app goes to the background and shown again at the next start (once: a quit forgets them, and so does showing them), unless `stage.keep_screens( false )`; and a model's own save (`sq::Save`), written on the model's thread after each `background` and given back to it before its next `start`.
 
 
 
@@ -28,7 +30,7 @@ public Stage stage
 
 *public void App(const App & )*
 
-*Defined at [stage/app.hpp:79](../../../stage/app.hpp#L79)*
+*Defined at [stage/app.hpp:119](../../../stage/app.hpp#L119)*
 
 ### App
 
@@ -38,7 +40,7 @@ public Stage stage
 
 *public void App(App && )*
 
-*Defined at [stage/app.hpp:81](../../../stage/app.hpp#L81)*
+*Defined at [stage/app.hpp:121](../../../stage/app.hpp#L121)*
 
 ### ~App
 
@@ -66,31 +68,33 @@ public Stage stage
 
 *public App & operator=(const App & )*
 
-*Defined at [stage/app.hpp:80](../../../stage/app.hpp#L80)*
+*Defined at [stage/app.hpp:120](../../../stage/app.hpp#L120)*
 
 ### operator=
 
 *public App & operator=(App && )*
 
-*Defined at [stage/app.hpp:82](../../../stage/app.hpp#L82)*
+*Defined at [stage/app.hpp:122](../../../stage/app.hpp#L122)*
 
 ### run
 
 *public bool run(Args &&... args)*
 
-*Defined at [stage/app.hpp:93](../../../stage/app.hpp#L93)*
+*Defined at [stage/app.hpp:138](../../../stage/app.hpp#L138)*
 
 
 
 **brief** Start the model `M` at the far end of the Telegraph, made from `args` on its own thread (named "model"), or on this one with `messaging::on_ui_thread` first, one turn a frame. One model to an app: false, and reported, for a second.
 
- Allocates the runner, the model inside it, once.
+ A model with `save( sq::Save & )` keeps what it writes there: it is called after each `background`, and the last save's values come back to its `receive`, as `set`s, before its `start`.
+
+ Allocates the runner, the model inside it, once; and a model that saves, its last save, read here and freed once given back.
 
 ### running
 
 *public bool running()*
 
-*Defined at [stage/app.hpp:104](../../../stage/app.hpp#L104)*
+*Defined at [stage/app.hpp:156](../../../stage/app.hpp#L156)*
 
 
 
@@ -100,7 +104,7 @@ public Stage stage
 
 *public void quit()*
 
-*Defined at [stage/app.hpp:107](../../../stage/app.hpp#L107)*
+*Defined at [stage/app.hpp:159](../../../stage/app.hpp#L159)*
 
 
 
@@ -110,7 +114,7 @@ public Stage stage
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/app.hpp:110](../../../stage/app.hpp#L110)*
+*Defined at [stage/app.hpp:162](../../../stage/app.hpp#L162)*
 
 
 

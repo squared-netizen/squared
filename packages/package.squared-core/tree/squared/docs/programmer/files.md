@@ -109,6 +109,31 @@ if (auto error = save.write_string(document)) { report(error); }
 Missing parent directories are created first, as libGDX does, so writing to a
 fresh path needs no setup call.
 
+**A save that must not be half written** (the process can die during it):
+
+```cpp
+if (auto error = fs.local("saves/slot1.json").write_atomically(document)) { report(error); }
+```
+
+`write_atomically( bytes )` and `write_atomically( text )` write beside the
+file (`slot1.json.new`), flush it to storage, and rename it over the file:
+whoever reads it gets the old contents or the new, whole. Missing parent
+directories are created first. Failures as `write`'s, and on any failure the
+file is as it was and nothing is left beside it. `Internal` refuses it
+(`ReadOnly`), as it refuses every write. The same on Termux, a desktop and a
+device: private storage is a directory on each.
+
+**The platform's own path**, for code that outlives the file system it came
+from (a thread that saves after the activity has gone):
+
+```cpp
+const std::string path = fs.resolve_platform_path(sq::files::FileType::Local, "saves/slot1.json");
+```
+
+Empty when there is none: bundled files inside an APK, compiled-in files, a
+root that is not set, a path that escapes its root. Use it later with
+`FileType::Absolute` through any file system.
+
 ## Listing
 
 ```cpp

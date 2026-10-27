@@ -14,6 +14,22 @@ Inherits from Widget
 
 ## Functions
 
+### release_kept
+
+*public static void release_kept()*
+
+
+
+**brief** Free the working sizes every table's layout borrows (one set a nesting depth, kept so a layout allocates nothing once warm): on low memory. The next layout makes them again. Nothing while one is in use.
+
+### kept_count
+
+*public static std::size_t kept_count()*
+
+
+
+**brief** How many sets of working sizes are kept: one a nesting depth laid out. 
+
 ### add
 
 *public Cell & add(std::unique_ptr<Widget> child)*

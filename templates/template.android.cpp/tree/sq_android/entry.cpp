@@ -874,6 +874,10 @@ struct Platform {
                 : 0;
         refused += console.add("app", "app [stop | start | restart]: the application, in this process",
                                app_command, this) != Added::added ? 1 : 0;
+        refused += console.add("screens",
+                               "screens [low-memory]: the screen stack, its panes and what each "
+                               "keeps; low-memory: what the system sends when memory is short",
+                               screens_command, this) != Added::added ? 1 : 0;
         refused += console.add("quit", "quit: close the application and the console",
                                [](sq::console::Console&, const sq::console::Args&, void* self) {
                                    static_cast<Platform*>(self)->quit_asked = true;
@@ -903,6 +907,7 @@ struct Platform {
             ungrouped += console.add_to_group("crash", "log previous") != Grouped::added ? 1 : 0;
         }
         ungrouped += console.add_to_group("crash", "logcat 100") != Grouped::added ? 1 : 0;
+        ungrouped += console.add_to_group("app", "screens") != Grouped::added ? 1 : 0;
 #ifdef SQUARED_DEV_LOG
         ungrouped += console.add_to_group("memory", "alloc") != Grouped::added ? 1 : 0;
 #endif
@@ -970,6 +975,32 @@ struct Platform {
         } else {
             out.print("app: app, app stop, app start or app restart", sq::console::Level::error);
         }
+    }
+
+    /// `screens`: the App's stack, a line a screen from the root, the panes
+    /// over the top, and what each keeps (scrolls, an unfinished edit), as
+    /// the background would write it. `screens low-memory`: Android's
+    /// low-memory event, through the App, as the system sends it.
+    static void screens_command(sq::console::Console& out, const sq::console::Args& args,
+                                void* context) noexcept {
+        auto& self = *static_cast<Platform*>(context);
+        if (!self.created) {
+            out.print("screens: the app is not running (app start)", sq::console::Level::error);
+            return;
+        }
+        const std::string_view verb = args.text(1);
+        if (verb == "low-memory") {
+            self.app.low_memory();
+            out.print("screens: low memory sent: the Stage let go of what it keeps warm, the "
+                      "model hears of it at its next turn");
+        } else if (!verb.empty()) {
+            out.print("screens: screens, or screens low-memory", sq::console::Level::error);
+            return;
+        }
+        const auto line = [](void* console, std::string_view text) noexcept {
+            static_cast<sq::console::Console*>(console)->print(text);
+        };
+        self.app.stage.describe({.write = line, .context = &out});
     }
 
     /// `logcat [lines]`: Android's log as this app may read it, which is its

@@ -106,6 +106,18 @@ FileError EmbeddedFileSystem::write( FileType /*type*/, std::string_view path,
     return error_of( FileErrorCode::ReadOnly, "embedded files cannot be written", path );
 }
 
+FileError EmbeddedFileSystem::write_atomically( FileType /*type*/, std::string_view path,
+                                                std::span<const std::byte> /*bytes*/ )
+{
+    return error_of( FileErrorCode::ReadOnly, "embedded files cannot be written", path );
+}
+
+std::string EmbeddedFileSystem::resolve_platform_path( FileType /*type*/,
+                                                       std::string_view /*path*/ ) const
+{
+    return {};
+}
+
 FileError EmbeddedFileSystem::list( FileType type, std::string_view path,
                                     std::vector<std::string> &names ) const
 {

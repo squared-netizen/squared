@@ -48,6 +48,14 @@ Inherits from FileSystem
 
 *public FileError write(FileType type, std::string_view path, std::span<const std::byte> bytes, bool append)*
 
+### write_atomically
+
+*public FileError write_atomically(FileType type, std::string_view path, std::span<const std::byte> bytes)*
+
+
+
+**brief** Written beside it (`.new`), flushed, renamed over it, its directory flushed. 
+
 ### list
 
 *public FileError list(FileType type, std::string_view path, std::vector<std::string> & names)*
@@ -73,8 +81,6 @@ Inherits from FileSystem
 **path** Relative path, or the whole path for FileType::Absolute.
 
 **return** The resolved path, or an empty string when the root is unset or the relative path escapes it.
-
-**note** Exposed for diagnostics and tests. Code above the file system should not need it.
 
 
 

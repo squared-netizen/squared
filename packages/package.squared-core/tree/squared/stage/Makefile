@@ -17,6 +17,7 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 SOURCES := src/app.cpp \
     src/catalog.cpp \
     src/default_skin.cpp \
+    src/save.cpp \
     src/stage.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/stage/%.o,$(SOURCES))

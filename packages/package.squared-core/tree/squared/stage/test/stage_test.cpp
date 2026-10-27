@@ -6,7 +6,12 @@
 // activity made again reattaches to the running model. C++ screens (7.2), and
 // panes over a screen (7.3). The skin is the compiled-in default (7.4): the
 // app's bundled files are a directory that does not exist, and the embedded
-// bytes are checked against the skin's files.
+// bytes are checked against the skin's files. What screens keep (7.6): a
+// rotation laid out once with nothing built again; scrolls and an unfinished
+// edit kept beneath the top and through a lost context; the stack written
+// in the background, shown again after the process ends, forgotten by a
+// quit; the model's own save given back; the Console's `screens` lines; and
+// a new activity that forgets the old one's keyboard.
 
 #include "detail/default_skin.hpp"
 
@@ -25,6 +30,7 @@
 #include <squared/gui/layout_writer.hpp>
 #include <squared/gui/list.hpp>
 #include <squared/gui/progress_bar.hpp>
+#include <squared/gui/scroll_pane.hpp>
 #include <squared/gui/slider.hpp>
 #include <squared/gui/src/pointer_action.hpp>
 #include <squared/gui/src/pointer_event.hpp>
@@ -47,6 +53,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <span>
@@ -62,6 +69,12 @@ struct sq::detail::StageProbe final
         static void read_skin_from( sq::Stage &stage, sq::files::FileSystem *files ) noexcept
         {
             stage.skin_files_ = files;
+        }
+
+        /// A size or safe area changed, and the layout waits for the next event or frame.
+        [[nodiscard]] static bool layout_due( const sq::Stage &stage ) noexcept
+        {
+            return stage.layout_due_;
         }
 };
 
@@ -274,6 +287,40 @@ struct Ask final
         }
 };
 
+/// What a screen keeps: a text field's unfinished edit, a scroll pane's place.
+struct Notes final
+{
+        static constexpr std::string_view name = "notes";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add<sq::gui::TextField>( "" ).fill_x().bind( player );
+            root.row();
+            sq::gui::NodeWriter pane = root.add<sq::gui::ScrollPane>().grow();
+            sq::gui::NodeWriter lines = pane.add<sq::gui::Table>();
+            for( int i = 0; i < 150; ++i ) {
+                lines.add<sq::gui::Label>( "a line of notes" );
+                lines.row();
+            }
+            root.row();
+            root.add<sq::gui::TextField>( "" ).fill_x();
+            root.row();
+            root.add<sq::gui::Button>( "Back" ).tap( sq::gui::Navigate::back );
+        }
+};
+
+/// A pane that keeps an edit of its own.
+struct Draft final
+{
+        static constexpr std::string_view name = "draft";
+        static constexpr sq::gui::PanePlace place = sq::gui::PanePlace::bottom;
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add<sq::gui::TextField>( "" ).fill_x();
+            root.row();
+            root.add<sq::gui::Button>( "Drop" ).tap( sq::gui::Navigate::close );
+        }
+};
+
 static_assert( sq::detail::screen_entry<Ask>.pane.place == sq::gui::PanePlace::left );
 static_assert( sq::detail::screen_entry<About>.pane == sq::gui::PaneShape{} );
 
@@ -405,6 +452,7 @@ struct Counts final
         std::atomic<int> saves{ 0 };
         std::atomic<int> foregrounds{ 0 };
         std::atomic<int> low_memory{ 0 };
+        std::atomic<int> saved{ 0 };
 };
 
 Counts counts;
@@ -518,6 +566,17 @@ struct Prefs final
 
         void low_memory( Telegraph & /*telegraph*/ ) noexcept { ++counts_->low_memory; }
 
+        // What it keeps: given back as sets before start, the next time.
+        void save( sq::Save &save ) noexcept
+        {
+            save.state( sound, sound_on_ );
+            save.state( volume, volume_ );
+            save.state( player, std::string_view( name_ ) );
+            save.state( level, level_ );
+            save.state( book_kept, 7, books_.kept[7] != 0 );
+            ++counts_->saved;
+        }
+
     private:
         Counts *counts_;
         Books books_;
@@ -539,6 +598,8 @@ enum class Start : std::uint8_t {
 
 Start start = Start::inline_model;
 int mains = 0;
+/// What squared_main tells the Stage: keep the screens in the background.
+bool keep_screens = true;
 
 } // namespace
 
@@ -567,6 +628,10 @@ void squared_main( sq::App &app )
     CHECK( app.stage.add<Ask>() );
     CHECK( app.stage.add<Meter>() );
     CHECK( app.stage.add<ShelfPane>() );
+    CHECK( app.stage.add<Shelf>() );
+    CHECK( app.stage.add<Notes>() );
+    CHECK( app.stage.add<Draft>() );
+    app.stage.keep_screens( keep_screens );
     CHECK( !app.stage.add<BadName>() );
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
@@ -602,18 +667,19 @@ constexpr int pixel_height = 2340;
 constexpr float logical_width = 720.0F;
 constexpr float logical_height = 1560.0F;
 
-/// The app's bundled files at `assets`, nothing writable.
-sq::files::PosixFileSystemRoots roots_at( const std::string &assets )
+/// The app's bundled files at `assets`; its private files at `local`, or none.
+sq::files::PosixFileSystemRoots roots_at( const std::string &assets, const std::string &local )
 {
     sq::files::PosixFileSystemRoots roots;
     roots.internal_root = assets;
+    roots.local_root = local;
     return roots;
 }
 
 struct Platform final
 {
-        explicit Platform( const std::string &assets )
-            : files( roots_at( assets ) )
+        explicit Platform( const std::string &assets, const std::string &local = {} )
+            : files( roots_at( assets, local ) )
             , cache( files )
             , runtime{ graphics, files, cache }
         {
@@ -649,9 +715,10 @@ sq::gui::Button *button_in( sq::gui::Widget &table, std::string_view text )
 {
     for( std::size_t i = 0; i < table.child_count(); ++i ) {
         // In the screens searched so, the buttons are the widgets that take
-        // focus. Bound's slider and text field take it too: tap those by place.
+        // focus, text fields aside. Bound's slider takes it too: tap that by place.
         auto *widget = static_cast<sq::gui::Widget *>( table.child_at( i ) );
-        if( !widget->focusable() ) {
+        const bool field = sq::gui::actor_cast<sq::gui::TextField>( widget ) != nullptr;
+        if( field || !widget->focusable() ) {
             continue;
         }
         auto *found = static_cast<sq::gui::Button *>( widget );
@@ -1441,6 +1508,465 @@ void bound_lists()
     CHECK( app.telegraph().cache_stats().bound == 0 );
 }
 
+// --- what screens keep (7.6) ------------------------------------------------
+
+/// A directory of private files of its own, empty: `<TMPDIR>/sq_stage_<name>`.
+std::string private_files( std::string_view name )
+{
+    const char *temporary = std::getenv( "TMPDIR" );
+    std::string path = std::string( temporary != nullptr ? temporary : "/tmp" ) + "/sq_stage_";
+    path += name;
+    std::filesystem::remove_all( path );
+    std::filesystem::create_directories( path );
+    return path;
+}
+
+/// A file's bytes as text; empty when there is none.
+std::string read_file( const std::string &path )
+{
+    std::ifstream in( path, std::ios::binary );
+    std::ostringstream text;
+    text << in.rdbuf();
+    return text.str();
+}
+
+void write_file( const std::string &path, std::string_view text )
+{
+    std::ofstream out( path, std::ios::binary | std::ios::trunc );
+    out << text;
+}
+
+/// The process ends while the app is in the background, and starts again:
+/// a new App in the same place, as Android's next process makes one.
+void new_process()
+{
+    std::destroy_at( &the_app );
+    std::construct_at( &the_app );
+}
+
+template<typename K>
+concept saves = requires( sq::Save &save, const K &key ) { save.state( key, std::int64_t{} ); };
+
+// A save keeps what the model takes set on: a state-only key does not compile.
+static_assert( saves<decltype( level )> && !saves<decltype( ticks )> );
+
+/// The text field a pane opens with: the `index`th pane's first widget.
+sq::gui::TextField *pane_field( sq::App &app, std::size_t index );
+static_assert( sq::SavingModel<Prefs> && !sq::SavingModel<Books> );
+
+sq::gui::TextField *pane_field( sq::App &app, std::size_t index )
+{
+    sq::gui::Actor *first = window( app, index ).content_table().child_at( 0 );
+    return sq::gui::actor_cast<sq::gui::TextField>( first );
+}
+
+void rotation_lays_out_once()
+{
+    start = Start::inline_model;
+    reports.clear();
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    CHECK( app.stage.push<Shelf>() );
+    platform.frame( app );
+    platform.frame( app );
+    sq::gui::Widget *const content = app.stage.ui()->content();
+    sq::gui::List &list = *sq::gui::actor_cast<sq::gui::List>( content->child_at( 0 ) );
+    const std::size_t built = list.rows_built();
+    sq::gui::Table *const first = &list.table( 0 );
+    CHECK( list.width() < logical_width && list.height() > logical_width );
+
+    // The size, then the insets, as a rotation brings them: nothing is laid
+    // out until the next frame, and then once, with both; nothing is built.
+    app.resize( pixel_height, pixel_width );
+    CHECK( sq::detail::StageProbe::layout_due( app.stage ) );
+    sq::app::SafeArea notch{};
+    notch.left = 90;
+    app.safe_area_changed( notch );
+    CHECK( sq::detail::StageProbe::layout_due( app.stage ) );
+    CHECK( list.width() < logical_width ); // not yet
+    platform.frame( app );
+    CHECK( !sq::detail::StageProbe::layout_due( app.stage ) );
+    CHECK( app.stage.ui()->content() == content && &list.table( 0 ) == first );
+    CHECK( list.rows_built() == built ); // shorter: no more tables needed
+    CHECK( list.width() > logical_width && list.height() < logical_width );
+    float x = 0.0F;
+    float y = 0.0F;
+    stage_position( list, x, y );
+    CHECK( x >= 59.0F ); // 90 pixels of 2,340 across 1,560 units
+
+    // An event lays out what waits first, so a finger lands where it shows.
+    app.resize( pixel_width, pixel_height );
+    app.safe_area_changed( {} );
+    sq::app::Event finger;
+    finger.type = sq::app::Event::Type::PointerDown;
+    finger.x = 1.0F;
+    finger.y = 1.0F;
+    app.handle_event( finger );
+    CHECK( !sq::detail::StageProbe::layout_due( app.stage ) );
+    finger.type = sq::app::Event::Type::PointerUp;
+    app.handle_event( finger );
+    press_back( app );
+    CHECK( app.stage.depth() == 1 );
+    app.quit();
+    app.dispose();
+}
+
+void kept_beneath_the_top()
+{
+    start = Start::inline_model;
+    reports.clear();
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    platform.frame( app );
+    CHECK( app.stage.push<Notes>() );
+    platform.frame( app );
+    sq::gui::Widget *root = app.stage.ui()->content();
+    auto *scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
+    auto *note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    CHECK( scroll != nullptr && note != nullptr );
+    CHECK( sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 0 ) )->text() == "ann" );
+    scroll->set_scroll_y( 300.0F );
+    CHECK( scroll->scroll_y() == 300.0F );
+    tap_on( app, *note );
+    CHECK( note->focused() && note->text_input( "half a thought" ) && note->edited() );
+
+    // Pushed over, then back: built again, as it was, the edit unfinished.
+    CHECK( app.stage.push<About>() );
+    CHECK( app.stage.back() );
+    root = app.stage.ui()->content();
+    scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
+    note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    CHECK( scroll->scroll_y() == 300.0F );
+    CHECK( note->text() == "half a thought" && note->edited() && !note->focused() );
+
+    // A bound field's edit is the user's while it waits: the model's value
+    // does not take its place until it is finished.
+    auto *name = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 0 ) );
+    tap_on( app, *name );
+    CHECK( name->text_input( "e" ) );
+    CHECK( app.stage.push<About>() && app.stage.back() );
+    root = app.stage.ui()->content();
+    name = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 0 ) );
+    note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    CHECK( name->text() == "anne" && name->edited() );
+    CHECK( !note->edited() && note->text().empty() ); // one edit is kept: the first
+    const sq::messaging::SendResult bob = app.telegraph().set( player, std::string_view( "bob" ) );
+    CHECK( bob == sq::messaging::SendResult::sent );
+    platform.frame( app );
+    platform.frame( app );
+    CHECK( name->text() == "anne" );
+    tap_on( app, *name );
+    CHECK( name->key_down( sq::app::Key::enter ) ); // finished: sent
+    platform.frame( app );
+    platform.frame( app );
+    CHECK( app.telegraph().value( player ) == "anne" && !name->edited() );
+
+    // Over 128 bytes, the first 128 kept, cut where a character starts.
+    tap_on( app, *note );
+    std::string long_note( 127, 'a' );
+    long_note += "\xC3\xA9 and more"; // é across byte 128
+    CHECK( note->text_input( long_note ) );
+    CHECK( app.stage.push<About>() && app.stage.back() );
+    note = sq::gui::actor_cast<sq::gui::TextField>( app.stage.ui()->content()->child_at( 2 ) );
+    CHECK( note->text() == std::string( 127, 'a' ) && note->edited() );
+
+    // A lost context builds the screen again (its new widgets may well be
+    // where the old ones were in memory): it keeps where it was.
+    scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( app.stage.ui()->content()->child_at( 1 ) );
+    scroll->set_scroll_y( 120.0F );
+    platform.graphics.destroy();
+    sq::graphics::ContextConfig config;
+    config.logical_width = pixel_width;
+    config.logical_height = pixel_height;
+    CHECK( platform.graphics.create( config ) && !platform.graphics.resources_preserved() );
+    app.surface_created( platform.graphics );
+    root = app.stage.ui()->content();
+    scroll = sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) );
+    note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    CHECK( scroll->scroll_y() == 120.0F && note->edited() );
+
+    // The activity made again (no quit): the screen and its pane are built
+    // anew, as they were.
+    CHECK( app.stage.open<Draft>() );
+    auto *draft = pane_field( app, 0 );
+    tap_on( app, *draft );
+    CHECK( draft->text_input( "pane" ) );
+    app.dispose();
+    Platform again( assets_directory() );
+    again.open( app );
+    root = app.stage.ui()->content();
+    CHECK( sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->scroll_y() == 120.0F );
+    CHECK( sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) )->edited() );
+    draft = pane_field( app, 0 );
+    CHECK( draft->text() == "pane" && draft->edited() );
+    tap( app, "Drop" );
+
+    // A list's place: put back once its rows reach it.
+    CHECK( app.stage.push<Shelf>() );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    auto *list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    list->set_scroll_y( list->row_height() * 300.0F );
+    const float far = list->scroll_y();
+    CHECK( app.stage.push<About>() && app.stage.back() );
+    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    CHECK( list->scroll_y() == far && list->first_row() == 300 );
+    CHECK( title_at( *list, 300 ) == "book 301" );
+    // Back, and the screen beneath forgets what the one left kept.
+    CHECK( app.stage.back() );
+    CHECK( app.stage.push<Shelf>() );
+    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    platform.frame( app );
+    CHECK( list->scroll_y() == 0.0F );
+
+    // The Console's `screens`: the stack, and what each keeps.
+    reports.clear();
+    app.stage.describe( { .write = collect, .context = nullptr } );
+    CHECK( reported( "screens: 3, panes: 0; kept in the background" ) );
+    CHECK( reported( "  1 landing" ) && reported( "  3 shelf  scroll 0" ) );
+    CHECK( reported( "  2 notes  scroll 120  edit in text field 1, 127 bytes" ) );
+    CHECK( reported( "bound: " ) );
+
+    // Low memory: the tables' working sizes go, and come back when needed.
+    CHECK( sq::gui::Table::kept_count() > 0 );
+    const int heard = counts.low_memory;
+    app.low_memory();
+    CHECK( sq::gui::Table::kept_count() == 0 );
+    platform.frame( app );
+    CHECK( counts.low_memory == heard + 1 );
+    list->set_scroll_y( 400.0F );
+    platform.frame( app );
+    CHECK( sq::gui::Table::kept_count() > 0 );
+    app.quit();
+    app.dispose();
+}
+
+void kept_after_the_process()
+{
+    start = Start::inline_model;
+    reports.clear();
+    const std::string local = private_files( "keep" );
+    const std::string screens = local + "/squared/screens";
+    const std::string model = local + "/squared/model.state";
+    Platform platform( assets_directory(), local );
+    sq::App &app = the_app;
+    platform.open( app );
+    CHECK( std::filesystem::is_directory( local + "/squared" ) );
+    platform.frame( app );
+    tap( app, "Quiet" ); // the model's sound off
+    const sq::messaging::SendResult zed = app.telegraph().set( player, std::string_view( "zed" ) );
+    CHECK( zed == sq::messaging::SendResult::sent );
+    CHECK( app.stage.push<Notes>() );
+    platform.frame( app );
+    sq::gui::Widget *root = app.stage.ui()->content();
+    sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->set_scroll_y( 300.0F );
+    auto *note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    tap_on( app, *note );
+    CHECK( note->text_input( "hi \"you\"" ) );
+    CHECK( app.stage.push<Shelf>() );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    auto *list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    list->set_scroll_y( list->row_height() * 200.0F );
+    for( int i = 0; i < 3; ++i ) {
+        platform.frame( app );
+    }
+    tap_on( app, *in_row( *list, 200, 2 ) ); // book 201 kept: not saved, 7 is
+    CHECK( app.stage.open( side.layout ) );
+    CHECK( app.stage.open<Draft>() );
+    tap_on( app, *pane_field( app, 1 ) );
+    CHECK( pane_field( app, 1 )->text_input( "\xC3\xA9" ) );
+    platform.frame( app );
+
+    // To the background: the stack is written, whole; the model saves.
+    const int saved = counts.saved;
+    app.background();
+    CHECK( counts.saved == saved + 1 ); // on this thread: at once
+    const std::string written = read_file( screens );
+    const long offset = std::lround( list->scroll_y() );
+    const std::string expected = "squared screens 1\n"
+                                 "screen landing 0 - -\n"
+                                 "screen notes 1 300 1 x68692022796f7522\n"
+                                 "screen shelf 1 " +
+                                 std::to_string( offset ) +
+                                 " - -\n"
+                                 "pane side 0 - -\n"
+                                 "pane draft 0 0 xc3a9\n";
+    std::printf( "%s", written.c_str() );
+    CHECK( written == expected );
+    CHECK( !std::filesystem::exists( screens + ".new" ) );
+    const std::string kept = read_file( model );
+    CHECK( kept.find( "set settings.sound false\n" ) != std::string::npos );
+    CHECK( kept.find( "set player.name \"zed\"\n" ) != std::string::npos );
+    CHECK( kept.find( "set book[7].kept false\n" ) != std::string::npos );
+    app.foreground();
+
+    // Android ends the process in the background; the next start shows the
+    // stack again, and the model has its values back before it starts: the
+    // sets, and nothing else a hand put in the file.
+    app.background();
+    new_process();
+    write_file( model, read_file( model ) + "state settings.volume 9.5\nnot a line\n" );
+    reports.clear();
+    const int made = counts.made;
+    Platform after( assets_directory(), local );
+    after.open( app );
+    CHECK( counts.made == made + 1 );
+    CHECK( app.stage.depth() == 3 && app.stage.top_name() == "shelf" );
+    CHECK( app.stage.panes() == 2 && app.stage.pane_name() == "draft" );
+    CHECK( !std::filesystem::exists( screens ) ); // shown once
+    auto *draft = pane_field( app, 1 );
+    CHECK( draft->text() == "\xC3\xA9" && draft->edited() );
+    tap( app, "Drop" );
+    after.frame( app );
+    CHECK( app.telegraph().value( sound ) == false );
+    CHECK( app.telegraph().value( player ) == "zed" && app.telegraph().value( volume ) == 5.0 );
+    for( int i = 0; i < 3; ++i ) {
+        after.frame( app );
+    }
+    list = sq::gui::actor_cast<sq::gui::List>( app.stage.ui()->content()->child_at( 0 ) );
+    CHECK( std::lround( list->scroll_y() ) == offset && list->first_row() == 200 );
+    tap( app, "Shut" );
+    press_back( app );
+    root = app.stage.ui()->content();
+    CHECK( app.stage.top_name() == "notes" );
+    CHECK( sq::gui::actor_cast<sq::gui::ScrollPane>( root->child_at( 1 ) )->scroll_y() == 300.0F );
+    note = sq::gui::actor_cast<sq::gui::TextField>( root->child_at( 2 ) );
+    CHECK( note->text() == "hi \"you\"" && note->edited() );
+
+    // A save the model's thread cannot write is said when the app comes back.
+    std::filesystem::remove( model );
+    std::filesystem::create_directory( model ); // a directory in the way
+    reports.clear();
+    app.background();
+    app.foreground();
+    CHECK( reported( "the model's save could not be written" ) );
+    std::filesystem::remove( model );
+
+    // A quit forgets the screens, in the background and when it ends; the
+    // model's save stays.
+    press_back( app );
+    app.background();
+    CHECK( std::filesystem::exists( screens ) && std::filesystem::exists( model ) );
+    app.foreground();
+    press_back( app );
+    CHECK( app.quit_requested() );
+    app.background();
+    CHECK( !std::filesystem::exists( screens ) );
+    write_file( screens, "squared screens 1\nscreen landing 0 - -\n" );
+    app.dispose();
+    CHECK( !std::filesystem::exists( screens ) && std::filesystem::exists( model ) );
+
+    // A saved stack that cannot be shown is said, and forgotten; the stack
+    // is squared_main's.
+    write_file( screens, "squared screens 1\nscreen landing 0 - -\nscreen nowhere 0 - -\n" );
+    reports.clear();
+    Platform bad( assets_directory(), local );
+    bad.open( app );
+    CHECK( reported( "the screens kept were not shown again: line 3: no layout or added screen" ) );
+    CHECK( app.stage.depth() == 1 && !std::filesystem::exists( screens ) );
+    const auto refused = [&app, &screens, &local]( std::string_view wrong ) {
+        new_process();
+        write_file( screens, wrong );
+        reports.clear();
+        Platform again( assets_directory(), local );
+        again.open( app );
+        CHECK( reported( "the screens kept were not shown again" ) && app.stage.depth() == 1 );
+    };
+    refused( "squared screens 2\nscreen landing 0 - -\n" );
+    refused( "squared screens 1\npane side 0 - -\n" );
+    refused( "squared screens 1\nscreen side 0 - -\n" );
+    refused( "squared screens 1\nscreen notes 5 1 2 3 4 5 - -\n" );
+    refused( "squared screens 1\nscreen notes 0 1 xa\n" );
+    refused( "squared screens 1\nscreen notes 0 - - more\n" );
+    refused( "squared screens 1\nscreen landing 0 - -\npane side 0 - -\nscreen notes 0 - -\n" );
+    refused( "squared screens 1\nscreen notes 1 -5 - -\n" );
+
+    // An app that keeps none: nothing written, and a file there is not shown.
+    keep_screens = false;
+    new_process();
+    write_file( screens, "squared screens 1\nscreen landing 0 - -\nscreen notes 0 - -\n" );
+    Platform off( assets_directory(), local );
+    off.open( app );
+    CHECK( app.stage.depth() == 1 && !std::filesystem::exists( screens ) );
+    CHECK( app.stage.push<Notes>() );
+    app.background();
+    CHECK( !std::filesystem::exists( screens ) );
+    keep_screens = true;
+
+    // A screen pushed by its layout alone, not found by its name: nothing kept.
+    app.stage.keep_screens( true );
+    app.foreground();
+    Written loose;
+    sq::gui::LayoutWriter writer( loose.nodes, loose.text, loose.numbers, "loose" );
+    writer.add<sq::gui::Label>( "not in layouts::all()" );
+    loose.layout = writer.layout();
+    CHECK( app.stage.push( loose.layout ) );
+    reports.clear();
+    app.background();
+    CHECK( reported( "the screens are not kept: loose is not found by its name" ) );
+    CHECK( !std::filesystem::exists( screens ) );
+    app.quit();
+    app.dispose();
+    std::filesystem::remove_all( local );
+}
+
+/// A keyboard that lives as long as one activity, as the template's does.
+struct Keyboard final : sq::app::TextInputService
+{
+        bool alive = true;
+        int asked = 0;
+        void start( const sq::app::TextInputRequest & /*request*/ ) override
+        {
+            CHECK( alive );
+            ++asked;
+        }
+        void update_area( const sq::app::TextInputArea & /*area*/ ) override { CHECK( alive ); }
+        void stop() override { CHECK( alive ); }
+        [[nodiscard]] bool active() const noexcept override
+        {
+            CHECK( alive );
+            return asked > 0;
+        }
+};
+
+void a_new_activity_forgets_the_old_one()
+{
+    // Quit, then opened again from the recent apps: the process lives on, the
+    // activity that handed over its keyboard is gone. (The phone's SIGSEGV at
+    // 0x28, pkg57: the Ui asked the old keyboard whether it was active.)
+    start = Start::inline_model;
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    Keyboard keyboard;
+    app.set_text_input_service( &keyboard );
+    CHECK( app.stage.push<Notes>() );
+    tap_on( app, *app.stage.ui()->content()->child_at( 2 ) );
+    CHECK( keyboard.asked == 1 );
+    platform.frame( app );
+    app.quit();
+    app.dispose();
+    keyboard.alive = false;
+    reports.clear();
+    Platform again( assets_directory() );
+    again.open( app );
+    again.frame( app );
+    CHECK( app.stage.push<Notes>() );
+    tap_on( app, *app.stage.ui()->content()->child_at( 2 ) );
+    again.frame( app );
+    // And the old activity's report is not called either: nothing was set.
+    app.quit();
+    app.dispose();
+}
+
 void back_tap_at_the_root_leaves()
 {
     start = Start::no_model;
@@ -1533,6 +2059,10 @@ int main()
     panes();
     bound_values();
     bound_lists();
+    rotation_lays_out_once();
+    kept_beneath_the_top();
+    kept_after_the_process();
+    a_new_activity_forgets_the_old_one();
     back_tap_at_the_root_leaves();
     no_skin_draws_red();
     a_bad_layout_is_said();

@@ -138,9 +138,18 @@ units) on a row's button, the button lets go and the list scrolls.
 `max_rows_built` (64) row tables; a list that would need more leaves the
 rest empty (`short_of_rows()`). `Button::pressed()` is public now, so a
 button a list took the finger from can be seen to have let go.
+`restore_scroll(offset)` scrolls to `offset` once the rows reach it: as far
+as they go until then (the count may not have come yet), and forgotten by
+any scroll since. What the Stage puts back when a screen comes back.
 
 **A `Table` lays out without allocating**, once each depth of tables has
 been laid out at its largest: its working sizes are kept between layouts.
+`Table::release_kept()` frees them (on low memory; the next layout makes
+them again), and `Table::kept_count()` says how many sets there are, one a
+depth.
+
+`ScrollPane`, `TextField` and `List` answer `actor_cast` (below) by their
+own type.
 
 ## Controls
 
@@ -158,7 +167,10 @@ been laid out at its largest: its working sizes are kept between layouts.
 calls `callback( context, field )` on Enter (the keyboard's Done), and when
 the field loses the focus after its text changed; `field.text()` is the
 edit. A function pointer and a context, so it allocates nothing; nullptr
-for none. `focused()` says whether the field has the focus now.
+for none. `focused()` says whether the field has the focus now, and
+`edited()` whether its text changed since the last commit: an edit not
+finished. `restore_edit( text )` puts one back, as `set_text` with
+`edited()` true: committed, as any edit, on Enter or on leaving the field.
 
 ```cpp
 void named( void *context, sq::gui::TextField &field ) { /* field.text() */ }

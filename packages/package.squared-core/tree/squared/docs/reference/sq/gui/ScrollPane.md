@@ -12,13 +12,31 @@ Inherits from Widget
 
 
 
+## Members
+
+public static const ActorInterfaceId actor_interface_id
+
+
+
 ## Functions
+
+### actor_interface
+
+*public void * actor_interface(ActorInterfaceId id)*
+
+*Defined at [gui/scroll_pane.hpp:23](../../../../gui/scroll_pane.hpp#L23)*
+
+### actor_interface
+
+*public const void * actor_interface(ActorInterfaceId id)*
+
+*Defined at [gui/scroll_pane.hpp:28](../../../../gui/scroll_pane.hpp#L28)*
 
 ### scroll_y
 
 *public float scroll_y()*
 
-*Defined at [gui/scroll_pane.hpp:38](../../../../gui/scroll_pane.hpp#L38)*
+*Defined at [gui/scroll_pane.hpp:50](../../../../gui/scroll_pane.hpp#L50)*
 
 
 

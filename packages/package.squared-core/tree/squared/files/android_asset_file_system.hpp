@@ -78,12 +78,23 @@ class AndroidAssetFileSystem final : public FileSystem
         [[nodiscard]] FileError write( FileType type, std::string_view path,
                                        std::span<const std::byte> bytes, bool append ) override;
 
+        /** @brief Local and External, as PosixFileSystem does; Internal refused, `ReadOnly`. */
+        [[nodiscard]] FileError write_atomically( FileType type, std::string_view path,
+                                                  std::span<const std::byte> bytes ) override;
+
         [[nodiscard]] FileError list( FileType type, std::string_view path,
                                       std::vector<std::string> &names ) const override;
 
         [[nodiscard]] FileError make_directories( FileType type, std::string_view path ) override;
 
         [[nodiscard]] FileError remove( FileType type, std::string_view path ) override;
+
+        /**
+         * @brief Local, External and Absolute as PosixFileSystem resolves
+         * them; empty for Internal: a zip entry has no path.
+         */
+        [[nodiscard]] std::string resolve_platform_path( FileType type,
+                                                         std::string_view path ) const override;
 
     private:
         AAssetManager *assets_;

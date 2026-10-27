@@ -59,6 +59,10 @@ class EmbeddedFileSystem final : public FileSystem
         [[nodiscard]] FileError write( FileType type, std::string_view path,
                                        std::span<const std::byte> bytes, bool append ) override;
 
+        /** @brief Refused: `ReadOnly`. */
+        [[nodiscard]] FileError write_atomically( FileType type, std::string_view path,
+                                                  std::span<const std::byte> bytes ) override;
+
         /** @brief The names directly under `path`, files and directories, sorted, each once. */
         [[nodiscard]] FileError list( FileType type, std::string_view path,
                                       std::vector<std::string> &names ) const override;
@@ -68,6 +72,10 @@ class EmbeddedFileSystem final : public FileSystem
 
         /** @brief Refused: `ReadOnly`. */
         [[nodiscard]] FileError remove( FileType type, std::string_view path ) override;
+
+        /** @brief Empty: embedded files have no path of their own. */
+        [[nodiscard]] std::string resolve_platform_path( FileType type,
+                                                         std::string_view path ) const override;
 
         /** @brief The table it reads. */
         [[nodiscard]] std::span<const EmbeddedFile> files() const noexcept { return files_; }

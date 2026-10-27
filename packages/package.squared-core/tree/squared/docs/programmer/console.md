@@ -261,6 +261,7 @@ The groups that come with squared:
 | `sys` | `mem`, `heap`, `threads`, `fds`, `device`, `smaps`, `libs`; `gl`, `display` | `add_system_commands`; the Android template |
 | `memory` | `mem`, `heap`, `smaps`; `alloc` with `DEV_LOG` | `add_system_commands`; the Android template |
 | `crash` | `crash`, `log previous`, `logcat 100` | the Android template |
+| `app` | `screens` | the Android template |
 | `telegraph` | `telegraph` | `TelegraphTools::add_commands` |
 | `state` | `telegraph state` | `TelegraphTools::add_commands` |
 
@@ -289,6 +290,7 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
 | `alloc` | the frame-allocation counter's figures, what `operator new` holds now (your code and squared's, apart from the GPU driver's and the C library's own `malloc`), and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
 | `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
+| `screens` | your `App`'s screens: a line a screen from the first, then the panes over the top, each with what it keeps (its scrolls, an unfinished edit; [stage.md](stage.md#what-is-kept)), and the bound values and lists. `screens low-memory` sends Android's low-memory event through the App first. Added by the Android template |
 | `crash` | the last crash report again (above). Added by the Android template |
 | `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
 | `ls`, `pull`, `push` | the app's files ([Files](#files)); added by the Android template |

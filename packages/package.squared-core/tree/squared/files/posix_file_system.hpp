@@ -63,6 +63,10 @@ class PosixFileSystem final : public FileSystem
         [[nodiscard]] FileError write( FileType type, std::string_view path,
                                        std::span<const std::byte> bytes, bool append ) override;
 
+        /** @brief Written beside it (`.new`), flushed, renamed over it, its directory flushed. */
+        [[nodiscard]] FileError write_atomically( FileType type, std::string_view path,
+                                                  std::span<const std::byte> bytes ) override;
+
         [[nodiscard]] FileError list( FileType type, std::string_view path,
                                       std::vector<std::string> &names ) const override;
 
@@ -76,11 +80,9 @@ class PosixFileSystem final : public FileSystem
      * @param path Relative path, or the whole path for FileType::Absolute.
      * @return The resolved path, or an empty string when the root is unset or
      * the relative path escapes it.
-     * @note Exposed for diagnostics and tests. Code above the file system
-     * should not need it.
      */
         [[nodiscard]] std::string resolve_platform_path( FileType type,
-                                                         std::string_view path ) const;
+                                                         std::string_view path ) const override;
 
     private:
         PosixFileSystemRoots roots_;

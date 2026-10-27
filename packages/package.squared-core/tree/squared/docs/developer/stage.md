@@ -1,11 +1,13 @@
 # stage &mdash; internals
 
 Programmer docs: [../programmer/stage.md](../programmer/stage.md). The
-decision record: the refactor plan's 7.1 to 7.5 ("yes to all",
-2026-10-26) and the app model's Ownership and Lifecycle sections.
+decision record: the refactor plan's 7.1 to 7.6 ("yes to all",
+2026-10-26; 7.6's four picks, 2026-10-27) and the app model's Ownership and
+Lifecycle sections.
 
 `stage/app.hpp` (`sq::App`, `squared_main`), `stage/stage.hpp`
-(`sq::Stage`), `src/app.cpp`, `src/stage.cpp`, and `src/catalog.cpp` with
+(`sq::Stage`), `stage/save.hpp` (`sq::Save`, `detail::Saving`), `src/app.cpp`,
+`src/stage.cpp`, `src/save.cpp`, and `src/catalog.cpp` with
 `src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
 C++ screens, 7.3's panes, 7.4's compiled-in skin and 7.5's bound values and
@@ -28,6 +30,10 @@ is linked only when something refers to it.
 | `Stage::Drawing` (skin pieces, batch, camera, painter, widgets) | a window: `attach` to `detach` | the Stage, one allocation |
 | the top screen's widgets | from shown to replaced | `instantiate`, on each navigation |
 | a pane's window and widgets | from opened to closed, or its screen left | `build_pane`, on each open |
+| what each screen and pane keeps (`Stage::Kept`) | inside the Stage, at its depth or in its pane slot | `keep_shown`, when it is left or loses its widgets |
+| `squared/screens` | the app's private files, from a background to the next start or a quit | `App::save_screens` |
+| `squared/model.state` | the app's private files, from a save to the next | the model's thread (`detail::Saving`) |
+| the model's last save, read | from `run` to the model's `start` | `App::model_file` |
 
 **Member order is the start order.** `line_` is the App's first member,
 private and declared before the public `stage`, so it is made first and
@@ -41,6 +47,18 @@ reference to the process's App. `create()` always calls `Stage::attach`
 built again), and calls `squared_main` only when `started_` is false: the
 first window, or the first since a quit. `dispose()` without a quit only
 detaches the window's half; the model runs on.
+
+**What the activity handed over goes with it.** The text-input service and
+the report are the platform's, per activity (the template's `Platform`
+holds both, and its report's context is the `Platform`). `dispose()`, quit
+or not, sets both back to none: the next activity hands its own, after its
+`create()`. Found on the phone (pkg57): quit, then opened again from the
+recent apps, the process lived on, and the new window's first layout asked
+the destroyed activity's keyboard `active()`, a call through a freed vtable
+(SIGSEGV at `0x28`, the slot of `active`). The template hands the service
+over after `create()`, so a dangling one was used for the whole of a
+`create()`. Tested with a keyboard that fails any call once its activity is
+gone.
 
 **A quit** (`quit()`, the Stage's `leave_` from a `quit` tap or back at the
 root, or an unconsumed back or quit event) is acted on in `dispose()`, after
@@ -80,19 +98,21 @@ runner's own precondition is one to a line).
 
 ## The Stage
 
-1,112 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
+4,056 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
 the same in both standard libraries): the screens (16 `Shown`s, two pointers
 each), 4 waiting changes (a `TapKind`, a pane slot and a `Shown`), the 16
 added C++ screens (a pointer each), the 16 custom types (a name and a
-function pointer each), the 4 pane slots (40 bytes each, below), the report,
+function pointer each), the 4 pane slots (192 bytes each, below, 148 of them
+what the pane keeps), what the 16 screens keep (148 bytes each), the report,
 the text-input service, the skin's file system (a test's; below), the
 `Drawing` pointer, the pixel and logical sizes,
-the safe area, a depth, four counts and six flags. Was 264 in 7.1 and 936 in
+the safe area, a depth, four counts and eight flags. Was 264 in 7.1 and 936 in
 7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8; 7.5a's two
-flags fit in padding. In the App
-it costs less than it adds: the App is `TelegraphLine`-aligned (64), so it
-grew from line + 1,088 to line + 1,216, and 7.4's 8 bytes fit in its
-padding.
+flags fit in padding; 7.6's kept state is 2,960 (16 screens and 4 panes at
+148), the user's pick ("scrolls and typed text") over 520 for scrolls
+alone. In the App, with its two paths (7.6), line + 4,224 under libstdc++
+(`static_assert`ed as at most that: libc++'s strings are 8 bytes smaller,
+and the App is `TelegraphLine`-aligned, 64).
 
 **The stack holds a layout or a C++ screen per entry**, nothing else (7.1's
 choice 7, 7.2's choice 3): `Shown` is a `const Layout *` and a
@@ -100,8 +120,9 @@ choice 7, 7.2's choice 3): `Shown` is a `const Layout *` and a
 widgets. `show_top` makes a new root `Table`, hands it to
 the `Ui` (which frees the old tree), and runs `instantiate` with the Stage's
 hooks: `tapped` is a static member taking the Stage as context. So `back`
-rebuilds the screen beneath from its layout, and 7.6's "release hidden
-screens under memory pressure" has nothing left to release. Cost: a
+rebuilds the screen beneath from its layout (and puts back what it kept,
+below), and 7.6's "release hidden screens under memory pressure" has
+nothing left to release. Cost: a
 navigation allocates a screen's widgets (tens of small allocations); a frame
 allocates nothing.
 
@@ -376,6 +397,127 @@ the tables, so a row keeps its table while it stays on screen; a drag is
 watched in the capture phase, so a finger on a row's button scrolls once it
 moves `drag_slop`, and the button gets a cancel.
 
+## What is kept (7.6)
+
+Decided 2026-10-27, the user's four picks: (1) a screen keeps its scrolls
+and an unfinished edit; (2) the stack and its panes are saved in
+`background()` and shown again at the next start; (3) a model's optional
+`save( sq::Save & )`, given back as sets before `start`; (4) the Console's
+`screens` and `screens low-memory`.
+
+**`Stage::Kept`** (148 bytes, `static_assert`ed): the first
+`kept_scrolls` (4) scroll offsets, in the layout's order, and the first
+text field with an unfinished edit: its index among the screen's text
+fields (`no_field`, 0xFF, for none) and up to `kept_text` (128) bytes of its
+text, cut where a UTF-8 character starts. One per depth (`kept_`) and one
+per pane slot (`Pane::kept`). A **memento**, held by the Stage, not the
+widgets.
+
+**`walk`** visits a widget tree in document order (the `Group` children's
+order, which is the layout's) and calls the visitor's `list`, `pane` or
+`field`: `gui::List` and `gui::TextField` end the walk there (a list's rows
+are its own, and change as it scrolls); a `ScrollPane` is visited and walked
+into. Widgets are found with `gui::actor_cast`, so `ScrollPane` and
+`TextField` gained interface ids (7.6; the List had one). `Keeping` and
+`Putting` are the two visitors, templates on the kept type so the private
+`Kept` is named only inside the Stage's members.
+
+**When it is kept** (`keep_shown`, the top screen and every built pane):
+before a push covers the top; in `detach` (the window going); in `attach`
+when a window is made again without a detach; before a lost context's
+`show_top`; and before the background's save. **When it is cleared**: the
+slot a push fills, the screen a replace puts in, the screen `back` pops, a
+pane opened, closed or dropped, and `clear()`. **When it is put back**: at the
+end of `show_top`, after a first layout (a scroll pane clamps to its
+content's height, which the layout gives it), then laid out again for what
+moved. A list does not clamp there: `List::restore_scroll` keeps the offset
+as `wanted_` and each layout scrolls as far as the rows reach, until they
+reach it (the model sends the count again after a process ends); any scroll
+since forgets it.
+
+**An edit put back is held.** `Stage::held` counts a text field with
+`edited()` as held, focused or not, so the model's value waits (`stale`)
+instead of replacing the user's text; Done or leaving the field commits it
+as before, and `stale` shows the latest after. `TextField::restore_edit` sets
+the text and `edited_`; `edited()` is new and public.
+
+**The saved stack** is text, one line a screen from the root and then one
+a pane from the lowest: `squared screens 1`, then `screen <name> <n>
+<offset>... <field> <edit>` (`pane` likewise), offsets as whole units, the
+edit as `x` and hex (`x` alone for an empty edit), `- -` for none.
+`Stage::save` writes it into the App's 8 KB with `LineWriter` (no
+allocation, `std::to_chars`); every name must find the same screen again
+through `resolve` (a layout file, or an added C++ screen), or nothing is
+saved and the reason said. `Stage::restore` parses all of it into locals
+first (`take_word`, `std::from_chars` with bounds, the kinds checked: a
+screen's layout a screen, a pane's a pane; screens before panes; at least
+one screen), and replaces the stack only when every line read: else it says
+the line and why, and `squared_main`'s stack stays. Then `show_top` builds
+the top and the panes, and puts back what they keep.
+
+**The App's part.** At the first start, `find_saves` makes the app's
+private directory `squared/` (`FileSystem::local( ... ).make_directories()`)
+and keeps the platform's paths of `squared/screens` and
+`squared/model.state` (`FileSystem::resolve_platform_path`, new, 7.6). They
+are written and read through a `files::PosixFileSystem` with no roots, made
+on the stack each time, with `FileType::Absolute`: the activity's file
+system dies with the activity, and the model's thread writes after it may
+have gone. Private storage is POSIX on both targets (Android's Local is
+`internalDataPath`), so this crosses no porting line. `restore_screens`,
+after `squared_main`, reads the file, removes it (shown once: a stack that
+crashes is not shown again at every start), and gives it to the Stage
+unless `keep_screens( false )`. `background()` gives an inline model its
+turn at once (it saves before the app stops; a threaded model wakes for
+it), then `save_screens`: none, or removed, when `keep_screens` is off or a
+quit is asked for (the template's quit runs `background` before
+`dispose`); else written with `FileSystem::write_atomically` (`<path>.new`,
+`fsync`, `rename`, the directory `fsync`ed; files' page). `shut_down` (a
+quit) removes it too, for a quit with no background.
+
+**The model's save: `detail::Saving<M>`**, a decorator the App runs instead
+of `M` when `M` has `save( sq::Save & )` (`SavingModel`); any other model
+runs as before, with nothing added. It owns a `ModelFile` (the path, the
+last save's bytes, a pointer to the App's `save_failed_`) and `M`, and
+forwards each hook `M` has: `tick`, `low_memory`, `foreground`, `wake_at`
+and `due` are members constrained on `M` having them, so the Telegraph's
+and the runner's `requires` checks see exactly `M`'s set. `start` gives the
+last save back first (`give_back`: each line read with
+`messaging::read_telegram`, only `set`s, as a `Received` with its text or
+uids from a 1 KB `TelegramData`), frees it, then calls `M::start`.
+`background` calls `M::background`, then `M::save` into 8 KB on the model
+thread's stack, then `write_save` (atomic, as above); a full save or a
+failed write sets `save_failed_`, which `foreground` reports (the model's
+thread has no report). `run<M>` makes it with the tag first when it is
+`on_ui_thread` (`saving_on_ui_thread`), since `ModelRunner` takes the tag
+second.
+
+**`sq::Save`** writes each value as `write_telegram` does, with the key's
+own text registered in a one-name `NameTable` (256 bytes on the stack), so
+the line reads as the key is written. `state` is constrained on the key
+carrying `set` (`messaging::sendable<K, Verb::set, V>`): a key the model only
+states does not compile, since the value would come back as a `set` it does
+not take.
+
+**A rotation lays out once.** `resize` and `set_safe_area` no longer lay
+out: they set `layout_due_`, and `settle()` lays out what waits at the
+first of the next event (`event`, so a finger lands where the widgets
+are), `update` (so a list's height is known before it asks for rows) or
+`render`. The platform calls `resize` and `safe_area_changed` one after the
+other on a rotation; before, each laid out, with the old insets for the
+first (the refactor notes' "three layouts in one frame"). Navigation still
+lays out at once (`show_top`, `open_pane`): a test, and the next tap, find
+the new screen placed.
+
+**Low memory.** `Stage::low_memory` frees gui's kept table working sizes
+(`gui::Table::release_kept`, which drops the process-wide `Lines` pool when
+none is borrowed); the App then passes it to the model. Screens beneath the
+top hold nothing already.
+
+**The Console's `screens`** is the template's (`entry.cpp`): it calls the
+public `Stage::describe( Report )` (it keeps the shown screen first, so the
+lines are what a background would write) and, for `screens low-memory`,
+`App::low_memory()`, as Android's `onLowMemory` reaches it.
+
 ## `Stage::Drawing`
 
 23,864 bytes under libc++ (Android, Termux) and 24,048 under libstdc++:
@@ -436,9 +578,10 @@ failure test.
 
 **Logical units**: the short side is 720 and the long side follows the
 drawable's aspect, as in the demo. Pointers are scaled once in `event`; the
-safe area is converted per axis. `resize` re-lays out the shown screen
-without building it again; a lost context (`resources_preserved()` false)
-does build it again.
+safe area is converted per axis. `resize` lays the shown screen out again
+without building it, once with the safe area that follows (above); a lost
+context (`resources_preserved()` false) does build it again, and puts back
+what it kept.
 
 **Failures** go to the platform's `Report` through `say`, a `printf`-style
 member formatting into 256 bytes on the stack. A skin that does not load
@@ -466,6 +609,14 @@ drawable missing) is reported and shown.
   for each table on screen; the tables are reused as it scrolls.
 - **Observer (low frequency)**: the drain's `state` hook tells the Stage a
   value changed, through a compile-time handler, not a list of callbacks.
+- **Memento**: `Stage::Kept`, what a screen's widgets were, kept by the Stage
+  while they do not exist; and the saved stack, the same in a file. 148
+  bytes a screen or pane, no indirection.
+- **Decorator (static)**: `detail::Saving<M>` wraps a model that saves,
+  forwarding the hooks it has, adding the give-back and the save; a model
+  without `save` is not wrapped. No virtual: the runner holds it by value.
+- **Visitor (static)**: `walk` with `Keeping` and `Putting`, resolved at
+  compile time.
 
 ## Standard library
 
@@ -474,7 +625,13 @@ Kept: `std::unique_ptr` for the runner and the `Drawing` (single owners);
 while a skin loads (once per window, in `attach`); a `std::vector` of the
 items kept per list (sized once, when the list first has a height, 4 bytes
 a row asked for); `gui::FontPtr`
-(`std::shared_ptr`), gui's own type. Passed over: `std::vector` for the
+(`std::shared_ptr`), gui's own type; two `std::string`s in the App, the
+platform's paths of what it keeps (once, at start; a fixed array would hold
+256 bytes resident each, the strings about 50 on the heap); the
+`std::vector<std::byte>` of the model's last save, from `run` to the
+model's `start`; `std::atomic<bool>` for a failed save, written on the
+model's thread, read on the UI thread; `std::to_chars` and `std::from_chars`
+for the saved stack. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
 hooks, the report and the text field's commit (function pointers). The
 check box's and the slider's change callbacks are gui's `std::function`s,
@@ -486,7 +643,11 @@ libraries, so binding allocates nothing for them. See
 
 | What | Where | When | Size |
 |---|---|---|---|
-| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 1,216 (the Stage is 1,112) |
+| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,000 at the default knobs) + 4,224 (the Stage is 4,056, 2,960 of it what screens and panes keep) |
+| the two paths | heap | first start | the platform's path of `squared/screens` and `squared/model.state` |
+| the saved stack | stack, then the file | each background | 8 KB on the stack; the file is a line a screen (tens of bytes) |
+| a model's save | the model thread's stack, then the file | each background, after `background` | 8 KB (`Save::capacity`) |
+| the model's last save | heap | `run`, freed at the model's `start` | the file's size |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
 | `Stage::Drawing` | heap | each window | 23,864 (libc++; 24,048 libstdc++), the scratch's 17,480, the bound values' 4,096 and the lists' 640 included, plus the skin's textures and tables |
@@ -581,6 +742,36 @@ pane's bound label shows the cached value at once and closing it unbinds
 it; leaving the screen unbinds all; 130 bound labels: 128 bound, the rest
 said once.
 
+**What is kept (7.6):** a rotation's size and insets wait for the next
+frame, are laid out once together, and build nothing (the same tables, the
+list wider and shorter, placed past the inset); an event lays out what
+waits first. A C++ screen with a bound field, a scroll pane and a second
+field: pushed over and back, the scroll and the second field's edit are put
+back, the edit held and not focused; the first field's edit is kept instead
+when it has one, and the model's value waits until Done, which sends it; an
+edit over 128 bytes keeps 127 (a two-byte character across the cut); a lost
+context and an activity made again keep the scroll and the edit, a pane's
+edit too; a list's place comes back, and a screen pushed after a back starts
+at 0; `describe`'s lines; low memory frees the tables' working sizes, which
+come back with the next layout, and reaches the model. The stack written in
+the background, line for line (a screen's scroll and edit, a list's offset,
+two panes, one with an edit); the model's save in its file (a uid key, text
+quoted), at once for an inline model; a new process (a new App in the same
+storage) shows the stack again, panes and edits, the file then gone; the
+list scrolls to its place once the count comes; the model has its values
+back before `start`, its text included, and a `state` line or a line that
+is not one in the file is passed over; a save the model cannot write
+(a directory in the way) is said when the app comes back; a quit forgets
+the screens (in the background, and in `dispose` without one), the model's
+file stays; a saved stack naming a screen there is not, another form, a
+pane first, a screen where a pane was, five scrolls, odd hex, more on the
+line, a pane before a screen, a negative scroll: each said, the stack
+`squared_main`'s; `keep_screens( false )`: a file there is not shown, and
+nothing written; a layout not in `layouts::all()` on the stack: nothing
+kept, and said. Quit, then a new activity: the old keyboard is never called
+(the phone's crash, pkg57). A state-only key cannot be saved
+(`static_assert`).
+
 `stage/test/stage_alone_test.cpp`: an App with no layout files links (the
 weak default), shows a C++ layout, and a `push` tap to a name says there is
 none.
@@ -647,6 +838,29 @@ no count, and the UI's reset sent as a view. Eight got through at first; the
 tests above were added for seven. The one left: the window's cap at half
 the cache made four times larger, which the test's list (a 20-row screen, a
 row of three values: 240 entries in a window of three screens) never reaches.
+
+Planted bugs for 7.6, 50 (`plant78.py`), 48 caught: in the Stage, a push
+keeping nothing, nothing put back, `detach` or a lost context keeping
+nothing, a pane not kept or not put back, a list or a scroll pane not
+visited, any field kept, the last field kept, a cut inside a character, a
+field's index off by one, no layout before an event, the safe area laid
+out at once, the layout never settling, an edit not held, a save skipping
+the names or dropping the panes or writing the edit raw, a restore taking
+any kind, any header, more on the line, odd hex, a screen after a pane, no
+screen, dropping the panes or a negative scroll, low memory keeping; in the
+App, the keyboard kept past `dispose` (the phone's crash), a quit keeping
+the screens, a background saving none, an inline model saving late, the
+screens shown at every start, a restore when keeping is off, a save when it
+is off or while quitting, a failed save not said; in the save, lines run
+together, every verb given back, text not given back, the failure not
+marked, nothing given back; in gui, a restored scroll forgotten at once or
+ignored, a restored edit not an edit, the kept sizes kept; in files, no
+rename, a temporary left. The event's layout was missed at first; the
+rotation test now touches after a rotation. The two left are equivalent
+pairs: a push clears the slot it fills and `back` clears the one it pops,
+and either alone keeps a stale record from a new screen (nothing else
+writes those slots), so planting one finds the other still there; both
+kept, as hygiene.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

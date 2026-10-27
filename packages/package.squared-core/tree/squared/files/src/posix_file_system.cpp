@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -228,6 +229,49 @@ FileReadResult PosixFileSystem::read( FileType type, std::string_view path ) con
     return result;
 }
 
+namespace
+{
+
+/** @brief Write all of `bytes` to `fd`; false, with errno, when it cannot. */
+bool write_all( int fd, std::span<const std::byte> bytes ) noexcept
+{
+    for( std::size_t used = 0; used < bytes.size(); ) {
+        const ssize_t put = ::write( fd, bytes.data() + used, bytes.size() - used );
+        if( put < 0 && errno == EINTR ) {
+            continue;
+        }
+        if( put <= 0 ) {
+            return false;
+        }
+        used += static_cast<std::size_t>( put );
+    }
+    return true;
+}
+
+/** @brief Flush the directory `path` is in, so a rename in it is kept. */
+void flush_directory_of( const std::string &path ) noexcept
+{
+    const std::size_t slash = path.rfind( '/' );
+    std::array<char, 1024> directory{};
+    if( slash == std::string::npos ) {
+        directory[0] = '.';
+    } else if( slash == 0 ) {
+        directory[0] = '/';
+    } else if( slash < directory.size() ) {
+        std::memcpy( directory.data(), path.data(), slash );
+    } else {
+        return; // longer than any directory a save is kept in
+    }
+    // Some file systems refuse fsync on a directory: the rename is still
+    // made, only not yet certain to be on storage.
+    const Descriptor parent{ ::open( directory.data(), O_RDONLY | O_DIRECTORY | O_CLOEXEC ) };
+    if( parent.fd >= 0 ) {
+        static_cast<void>( ::fsync( parent.fd ) );
+    }
+}
+
+} // namespace
+
 FileError PosixFileSystem::write( FileType type, std::string_view path,
                                   std::span<const std::byte> bytes, bool append )
 {
@@ -240,21 +284,40 @@ FileError PosixFileSystem::write( FileType type, std::string_view path,
     if( file.fd < 0 ) {
         return from_errno( std::move( to.path ) );
     }
-    for( std::size_t used = 0; used < bytes.size(); ) {
-        const ssize_t put = ::write( file.fd, bytes.data() + used, bytes.size() - used );
-        if( put < 0 && errno == EINTR ) {
-            continue;
-        }
-        if( put <= 0 ) {
-            return from_errno( std::move( to.path ) );
-        }
-        used += static_cast<std::size_t>( put );
+    if( !write_all( file.fd, bytes ) ) {
+        return from_errno( std::move( to.path ) );
     }
     // close reports a failed write back, on file systems that delay them
     const int fd = std::exchange( file.fd, -1 );
     if( ::close( fd ) != 0 ) {
         return from_errno( std::move( to.path ) );
     }
+    return {};
+}
+
+FileError PosixFileSystem::write_atomically( FileType type, std::string_view path,
+                                             std::span<const std::byte> bytes )
+{
+    Target to = target( *this, type, path, true );
+    if( to.error ) {
+        return std::move( to.error );
+    }
+    std::string written = to.path + ".new";
+    Descriptor file{ ::open( written.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644 ) };
+    if( file.fd < 0 ) {
+        return from_errno( std::move( written ) );
+    }
+    // On storage before the rename: a crash then leaves the old file or the
+    // new one, whole.
+    bool kept = write_all( file.fd, bytes ) && ::fsync( file.fd ) == 0;
+    const int fd = std::exchange( file.fd, -1 );
+    kept = ::close( fd ) == 0 && kept;
+    if( !kept || ::rename( written.c_str(), to.path.c_str() ) != 0 ) {
+        FileError error = from_errno( std::move( to.path ) );
+        static_cast<void>( ::unlink( written.c_str() ) );
+        return error;
+    }
+    flush_directory_of( to.path );
     return {};
 }
 

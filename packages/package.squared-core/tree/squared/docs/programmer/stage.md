@@ -12,10 +12,12 @@ the rest.
 |---|---|
 | `squared/stage/app.hpp` | `sq::App`, `squared_main` |
 | `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
+| `squared/stage/save.hpp` | `sq::Save`, `sq::SavingModel`: what a model keeps |
 | `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
 Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, 7.4's
-compiled-in skin, and 7.5's bound values and lists.
+compiled-in skin, 7.5's bound values and lists, and 7.6's kept screens and
+the model's save.
 
 ## The shortest call site
 
@@ -67,11 +69,12 @@ screens come back as they were.
 
 A model is a plain struct with `receive`, and optionally `start`, `tick`,
 `background`, `foreground`, `low_memory` (the model's page,
-[messaging.md](messaging.md)). The App calls them through the Telegraph:
+[messaging.md](messaging.md)), and `save` ([What is kept](#what-is-kept)).
+The App calls them through the Telegraph:
 
 | Android | The model |
 |---|---|
-| leaving the screen | `background( telegraph )`: save here; it may never come back |
+| leaving the screen | `background( telegraph )`, then `save( sq::Save & )` if it has one: it may never come back. A model on the UI thread takes that turn at once |
 | coming back | `foreground( telegraph, elapsed )`, `elapsed` in milliseconds, deep sleep included |
 | short of memory | `low_memory( telegraph )` |
 | a quit | `background`, if it was not already, then it is destroyed on its thread |
@@ -88,8 +91,9 @@ an app does not.
 ## `sq::Stage`
 
 A stack of screens, each a layout. Only the top one has widgets; a screen
-that comes back (`back`) is built again from its layout, from scratch, so it
-loses its scroll position and half-typed text until 7.6 keeps them.
+that comes back (`back`) is built again from its layout, and what it kept
+when it was left is put back: where its lists and scroll panes were, and an
+edit not finished ([What is kept](#what-is-kept)).
 
 | Member | Does |
 |---|---|
@@ -114,6 +118,8 @@ loses its scroll position and half-typed text until 7.6 keeps them.
 | `bindings()` | how many widgets are bound now (below) |
 | `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
+| `keep_screens( false )` | in `squared_main`: the stack is not kept for the next start ([What is kept](#what-is-kept)); `keeps_screens()` says which |
+| `describe( report )` | the stack, a line a screen from the root, then the panes, with what each keeps: the Console's `screens` |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
 a compiled one (`layouts::settings`) is a constant, so it always does.
@@ -309,6 +315,79 @@ showing it) stays empty, and it is reported. A row shows up to
 `max_row_values` (8) of its item's values; one list in a row is refused (one
 level, for now).
 
+## What is kept
+
+**A screen keeps where it was.** While a screen is not built (beneath the
+top, or with no window), the Stage keeps, for it and for each open pane:
+
+| What | How much |
+|---|---|
+| where its lists and scroll panes were scrolled | the first `kept_scrolls` (4), in the layout's order; a list's rows are not counted |
+| an edit not finished (typed, no Done, not left) | the first text field that has one, up to `kept_text` (128) bytes, cut where a character starts |
+
+It is put back when the screen is built again: back to it, a window made
+again, a lost context. A list's place comes back once the model has sent its
+count again (the rows reach it). An edit put back is the user's still: it
+is sent on Done, or on leaving the field, and what the model says meanwhile
+waits, as for a field with the focus.
+
+**The stack outlives the process.** When the app goes to the background
+the App writes the stack, the panes over the top, and what each keeps, to
+`squared/screens` in the app's private files (whole or not at all: written
+beside it, flushed, renamed). At the next start, after `squared_main`, the
+stack is shown again as it was, and the file is forgotten: shown once. A
+quit forgets it, so a quit's next start begins at `squared_main`'s screen.
+Each screen is found again by its name, so every screen on the stack must be
+a layout file or an added C++ screen; one that is not (a layout pushed that
+`layouts::all()` does not list) keeps nothing, and it is reported.
+
+```cpp
+void squared_main( sq::App &app )
+{
+    app.stage.keep_screens( false ); // start at the landing screen, always
+    app.stage.push( layouts::landing );
+}
+```
+
+> Android ends a process in the background for its memory, and also when
+> the app is swiped away from the recent apps. Both are kept: only a quit
+> forgets.
+
+**A model keeps its own values** with a `save`: called after each
+`background` (a quit's too), on the model's thread, it writes the values to
+keep with `sq::Save::state`, as the Telegraph's `state` takes them:
+
+```cpp
+struct Hello {
+    bool sound = true;
+    double volume = 5.0;
+
+    void receive( sq::messaging::Telegraph &t, const sq::messaging::Received &m );  // takes the sets
+
+    void save( sq::Save &save )
+    {
+        save.state( names::settings_sound, sound );
+        save.state( names::settings_volume, volume );
+    }
+};
+```
+
+Each is kept as a `set` line (`set settings.volume 5.0`) in
+`squared/model.state`. At the next start, before `start`, each comes back to
+`receive` as the UI's `set` would: what `receive` already does with the
+Settings screen's sets is all it takes to read them. A key must carry `set`
+to be saved (a key without it does not compile); a key with a uid takes it:
+`save.state( item_kept, 17, true )`. A save holds `sq::Save::capacity` (8 KB);
+one that does not fit is not written, and the last stays. The file is the
+model's: a quit keeps it.
+
+| `sq::Save` | Does |
+|---|---|
+| `state( key, value )` | keep `value` for `key`, which carries `set` |
+| `state( key, uid, value )` | the same, for item `uid` of a key with a uid |
+| `lines()` | how many values are kept |
+| `full()` | one did not fit: nothing is written |
+
 ## Custom nodes
 
 A layout's `"type": "custom"` node (`add_custom( "minimap" )` in C++) is made
@@ -354,7 +433,16 @@ compiled into the stage library, so an app ships no skin files and has
 nothing to load or say where. Its files are in the package at
 `stage/skin/default/` (with their notice and the Apache License 2.0 they
 come under). One skin for now: an app's own
-comes later. Rotation re-lays out the screen without rebuilding it.
+comes later.
+
+**A rotation lays the screen out again, once, and builds nothing**: its new
+size and its new safe area wait for the next frame (or the next touch, so a
+finger lands where the widgets are), and are laid out together. A list
+taller than it was builds a row's widgets for each row it now shows.
+
+**Short of memory**, Android's `onLowMemory`: screens beneath the top hold
+no widgets already; the Stage frees the working sizes every table's layout
+keeps warm (made again at the next layout), and the model hears of it.
 
 ## When something goes wrong
 
@@ -386,13 +474,21 @@ Nothing stops the app; each failure is one line to the platform's report
 | `stage: tap <line>: its row's item has not come yet; not sent` | a row's tap before the model said what the row shows |
 | `stage: an edit was not sent: the Telegraph had no room` | the ring was full when a widget sent `set` |
 | `stage: an edit was not sent: more than 1024 bytes of text` | a text field's text was too long to send |
+| `stage: the screens are not kept: <name> is not found by its name ...` | in the background: a screen or pane on the stack is not a layout file or an added C++ screen |
+| `stage: the screens are not kept: more than 8192 bytes` | in the background: very long names |
+| `stage: the screens kept were not shown again: line N: ...` | at start: the saved stack names a screen there is no longer, or is not one; the stack is `squared_main`'s |
+| `app: the screens were not saved: ...` | the file could not be written |
+| `app: the model's save could not be written; the one before it stays` | when the app comes back: the model's thread could not write its save, or it was over 8 KB |
+| `app: the model's last save could not be read: ...` | at `run`: the model starts without it |
+| `app: nothing will be kept: ...` | at start: the app's private files could not be made |
 
 ## Memory
 
 The App is made once, in static storage, not on the heap: the Telegraph line
-(88,000 bytes at the default sizes, which its knobs set) and 1,216 bytes more
-(the Stage is 1,112: its stack, the added screens and custom types, the pane
-slots). The skin's files are 46 KB of read-only data in the program, mapped
+(88,000 bytes at the default sizes, which its knobs set) and 4,224 bytes more
+(the Stage is 4,056: its stack, the added screens and custom types, the pane
+slots, and 2,960 bytes of what 16 screens and 4 panes keep), and the two
+paths where it keeps things (allocated once, at start). The skin's files are 46 KB of read-only data in the program, mapped
 from its file, not the heap. A model's runner is one allocation, at `run`.
 Each window allocates the skin's textures and tables (reading them copies
 each file once, briefly) and one block of about 24 KB (on Android
@@ -404,6 +500,10 @@ list shown allocates its row's copy and, as it is first laid out, a row's
 widgets for each row on screen and one more, and 4 bytes a row it asks for.
 A C++ screen itself allocates nothing. **A frame allocates nothing**, a
 list scrolling included, once each part of the screen has been laid out once.
+
+Keeping: the background writes the stack from an 8 KB buffer on the stack;
+a model's save writes into one on its thread's stack; the model's last save
+is read into one allocation at `run` and freed once given back.
 
 ## Lua
 

@@ -89,6 +89,14 @@ int main()
         assert( !save.write_string( "{\"level\":3}" ) );
         assert( save.exists() );
         assert( save.read_string().text == "{\"level\":3}" );
+        // Saved whole or not at all, as on a desktop: the storage is the same.
+        assert( !save.write_atomically( "{\"level\":4}" ) );
+        assert( save.read_string().text == "{\"level\":4}" );
+        assert( !fs.local( "saves/slot1.json.new" ).exists() );
+        assert( fs.internal( "skin/new.png" ).write_atomically( "x" ).code ==
+                FileErrorCode::ReadOnly );
+        assert( fs.resolve_platform_path( FileType::Internal, "skin" ).empty() );
+        assert( !fs.resolve_platform_path( FileType::Local, "saves" ).empty() );
 
         std::vector<FileHandle> saves;
         assert( !fs.local( "saves" ).list( saves ) );

@@ -154,6 +154,18 @@ class Stage final
         /** @brief How many of its item's values a list's row shows at most. */
         static constexpr std::size_t max_row_values = 8;
 
+        /**
+         * @brief What a screen or a pane keeps while its widgets are not
+         * built (beneath the top, with no window, after the process ended):
+         * its first `kept_scrolls` scroll panes' and lists' places, and an
+         * edit not finished, up to `kept_text` bytes.
+         */
+        static constexpr std::size_t kept_scrolls = 4;
+        static constexpr std::size_t kept_text = 128;
+
+        /** @brief The most the saved stack takes: what the App writes it into. */
+        static constexpr std::size_t saved_bytes = 8192;
+
         /** @brief The scratch a C++ screen writes into: nodes, bytes of text, numbers. */
         static constexpr std::size_t scratch_nodes = 256;
         static constexpr std::size_t scratch_text = 8192;
@@ -289,9 +301,42 @@ class Stage final
         /** @brief The skin could not be loaded: the Stage draws dark red. */
         [[nodiscard]] bool failed() const noexcept { return failed_; }
 
+        /**
+         * @brief Whether the stack is kept when the app goes to the
+         * background, to be shown again, panes, scrolls and an unfinished
+         * edit with it, at the next start after Android ended the process:
+         * on, unless an app says otherwise in `squared_main`. A quit forgets it.
+         */
+        void keep_screens( bool keep ) noexcept { keep_screens_ = keep; }
+        [[nodiscard]] bool keeps_screens() const noexcept { return keep_screens_; }
+
+        /**
+         * @brief The stack, a line a screen from the root, then the panes over
+         * the top, each with what it keeps: what the Console's `screens` shows.
+         */
+        void describe( app::Report out ) noexcept;
+
     private:
         friend class App;
         friend struct detail::StageProbe;
+
+        /**
+         * @brief What a screen or a pane keeps of its widgets while they are
+         * not built: its first scrolls, in the layout's order (a list's rows
+         * not counted), and which text field had an edit not finished, with
+         * its text.
+         */
+        struct Kept final
+        {
+                /// `field` when there is no edit kept.
+                static constexpr std::uint8_t no_field = 0xFF;
+
+                std::array<float, kept_scrolls> scroll{};
+                std::array<char, kept_text> text{};
+                std::uint8_t scrolls = 0;
+                std::uint8_t field = no_field;
+                std::uint8_t text_length = 0;
+        };
 
         /** @brief A screen on the stack: a layout, or a C++ screen. */
         struct Shown final
@@ -325,6 +370,8 @@ class Stage final
                 /// 0: free; else its place among the open panes, 1 the lowest.
                 std::uint8_t order = 0;
                 gui::PanePlace place = gui::PanePlace::center;
+                /// What it keeps while it is not built.
+                Kept kept;
         };
 
         /** @brief The screens and panes there will be, once what waits has happened. */
@@ -387,6 +434,15 @@ class Stage final
         void set_text_input_service( app::TextInputService *service ) noexcept;
         [[nodiscard]] bool leave_requested() const noexcept { return leave_; }
         void check_screens() noexcept;
+        void low_memory() noexcept;
+        [[nodiscard]] std::size_t save( std::span<char> out ) noexcept;
+        bool restore( std::string_view saved ) noexcept;
+        void settle() noexcept;
+
+        // What screens and panes keep while they are not built.
+        void keep_shown() noexcept;
+        void put_back() noexcept;
+        [[nodiscard]] std::string_view name_of_shown( Shown shown ) const noexcept;
 
         // The stack.
         bool push_screen( const detail::ScreenEntry &screen ) noexcept;
@@ -482,6 +538,8 @@ class Stage final
         std::array<const detail::ScreenEntry *, max_added> added_{};
         std::array<Custom, max_added> customs_{};
         std::array<Pane, max_panes> panes_{};
+        /// What each screen on the stack keeps, at its depth.
+        std::array<Kept, max_depth> kept_{};
         app::SafeArea safe_area_{};
         int pixel_width_ = 0;
         int pixel_height_ = 0;
@@ -498,11 +556,15 @@ class Stage final
         bool failed_ = false;
         bool broken_ = false;
         bool leave_ = false;
+        bool keep_screens_ = true;
+        /// The size or the safe area changed: laid out once, at the next event or frame.
+        bool layout_due_ = false;
 };
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
-// custom types, as a pointer and a name each; 4 pane slots of 40 bytes.
-// The bindings are the window's, in its Drawing.
-static_assert( sizeof( Stage ) == 1112 );
+// custom types, as a pointer and a name each; 4 pane slots of 192 bytes; 16
+// screens' and 4 panes' kept scrolls and edits (148 bytes each). The
+// bindings are the window's, in its Drawing.
+static_assert( sizeof( Stage ) == 4056 );
 
 } // namespace sq
