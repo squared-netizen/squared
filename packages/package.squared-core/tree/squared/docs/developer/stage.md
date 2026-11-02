@@ -537,9 +537,9 @@ lines are what a background would write) and, for `screens low-memory`,
 
 ## `Stage::Drawing`
 
-23,864 bytes under libc++ (Android, Termux) and 24,048 under libstdc++:
-1,648 and 1,832 for the window's own pieces (`static_assert`ed for each: the
-`Ui` holds standard containers, whose sizes are the library's), the
+23,864 bytes under libc++, the one standard library since 2026-11-02 (24,048
+under libstdc++ before): 1,648 for the window's own pieces (`static_assert`ed:
+the `Ui` holds standard containers, whose sizes are the library's), the
 17,480-byte scratch, the 4,096-byte table of bound values and the 4 list
 slots (160 bytes each: the list, its names, its `ListWindow`, the rows
 asked for, the kept items' vector, the 8 value names), last, so they add
@@ -668,8 +668,8 @@ libraries, so binding allocates nothing for them. See
 | the model's last save | heap | `run`, freed at the model's `start` | the file's size |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
-| `Stage::Drawing` | heap | each window | 23,864 (libc++; 24,048 libstdc++), the scratch's 17,480, the bound values' 4,096 and the lists' 640 included, plus the skin's textures and tables |
-| a list shown | heap | each list built | its `gui::List` (384 with libstdc++), a copy of its row's nodes (32 bytes each), the layout's words and numbers; its row tables and their widgets, for the rows on screen and one more, as it is first laid out; 4 bytes a row it asks for, once |
+| `Stage::Drawing` | heap | each window | 23,864 (libc++, 64-bit), the scratch's 17,480, the bound values' 4,096 and the lists' 640 included, plus the skin's textures and tables |
+| a list shown | heap | each list built | its `gui::List` (400, libc++), a copy of its row's nodes (32 bytes each), the layout's words and numbers; its row tables and their widgets, for the rows on screen and one more, as it is first laid out; 4 bytes a row it asks for, once |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
 | a pane | heap | each open | a `gui::PaneFrame` (168) and its widgets; freed when it closes |

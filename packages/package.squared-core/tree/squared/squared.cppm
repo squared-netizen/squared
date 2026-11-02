@@ -4,7 +4,7 @@
 
 export module squared;
 
-export import sq.std;
+export import std;
 export import sq.app;
 export import sq.gui;
 export import sq.messaging;

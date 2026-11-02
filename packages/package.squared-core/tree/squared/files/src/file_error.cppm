@@ -1,7 +1,7 @@
 export module sq.files:src.file_error;
 
 export import :src.file_error_code;
-import sq.std;
+import std;
 
 export namespace sq::files
 {

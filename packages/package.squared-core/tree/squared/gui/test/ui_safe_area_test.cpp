@@ -3,11 +3,11 @@
 // What a phone shows - a bar over the top of the screen - cannot be seen from
 // a unit test, but the rectangle the content is given can be read back.
 
-import sq.gui;
-
 #include <assert.h>
 
-import sq.std;
+import sq.gui;
+
+import std;
 
 using namespace sq::gui;
 

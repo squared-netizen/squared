@@ -1,7 +1,7 @@
 export module sq.graphics:texture_region;
 
 export import :texture;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

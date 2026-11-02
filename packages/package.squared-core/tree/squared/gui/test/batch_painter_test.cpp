@@ -4,12 +4,12 @@
 // an interface costs, and whether a clip rectangle was converted into the
 // right scissor. The null backend records both.
 
+#include <assert.h>
+
 import sq.graphics;
 import sq.gui;
 
-#include <assert.h>
-
-import sq.std;
+import std;
 
 namespace sq::graphics::detail
 {

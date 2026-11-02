@@ -1,6 +1,6 @@
 export module sq.graphics:src.texture_filter;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

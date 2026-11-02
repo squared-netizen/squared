@@ -10,16 +10,16 @@
 // Every wait here has a timeout, so a lost wakeup fails a CHECK instead of
 // hanging the test.
 
-import sq.messaging;
-import sq.time;
-
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
 #include <time.h>
 
-import sq.std;
+import sq.messaging;
+import sq.time;
+
+import std;
 
 namespace
 {

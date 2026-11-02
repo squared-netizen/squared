@@ -1,6 +1,6 @@
 export module sq.gles:src.vertex_attribute;
 
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

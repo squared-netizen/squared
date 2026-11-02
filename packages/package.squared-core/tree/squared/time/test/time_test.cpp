@@ -4,11 +4,11 @@
 // next_due, the ordered walk, no allocation, and 200,000 random steps
 // against a model.
 
-import sq.time;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.time;
+
+import std;
 
 namespace
 {

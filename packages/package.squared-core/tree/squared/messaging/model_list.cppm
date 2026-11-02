@@ -2,7 +2,7 @@ export module sq.messaging:model_list;
 
 export import :name;
 export import :telegram;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

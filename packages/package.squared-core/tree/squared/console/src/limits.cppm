@@ -9,7 +9,7 @@ module;
 
 export module sq.console:src.limits;
 
-import sq.std;
+import std;
 
 #ifndef SQUARED_CONSOLE_SCROLLBACK
 #define SQUARED_CONSOLE_SCROLLBACK 65536

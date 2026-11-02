@@ -2,7 +2,7 @@ module sq.stage;
 
 import sq.files;
 import sq.messaging;
-import sq.std;
+import std;
 
 namespace sq
 {

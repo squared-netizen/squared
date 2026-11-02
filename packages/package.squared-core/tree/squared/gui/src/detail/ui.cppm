@@ -9,7 +9,7 @@ export import :src.rectangle;
 export import :src.tooltip_config;
 export import :widget;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

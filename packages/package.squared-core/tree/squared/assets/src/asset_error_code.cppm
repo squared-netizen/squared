@@ -1,6 +1,6 @@
 export module sq.assets:src.asset_error_code;
 
-import sq.std;
+import std;
 
 export namespace sq::assets
 {

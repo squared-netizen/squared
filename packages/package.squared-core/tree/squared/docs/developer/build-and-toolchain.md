@@ -2,8 +2,9 @@
 
 ## What the build is
 
-GNU make plus clang (since 7b.4: squared is C++20 modules, built the way
-clang builds them, [modules.md](modules.md); until then g++). One
+GNU make plus clang and libc++ (since 7b.4: squared is modules, built the
+way clang builds them, [modules.md](modules.md); until then g++; C++23 with
+libc++'s `import std;` since 2026-11-02). One
 `build/common.mk` with every shared setting, one
 `Makefile` per module, one top-level `Makefile`, and two bash entry points in
 `tools/`. No CMake, no generator step, no network access, no `sudo`, and no
@@ -16,7 +17,7 @@ Android and on desktop Linux.
 make                 # every module, release
 make BUILD=debug     # -O0 -g
 make gui             # one module
-make headers         # sq.std current, the module order (tools/check_modules.sh)
+make headers         # the pinned std sources, the module order (tools/check_modules.sh)
 make sqgen           # sqgen and sqconsole, the host tools, in build/<BUILD>/
 make lint            # format, source-rule and clang-tidy checks
 make V=1             # every command in full
@@ -105,7 +106,9 @@ and `$PREFIX` and `~` shorten paths.
 reading `common.mk`, a `CXXFLAGS` from the environment would otherwise reach
 the module makes with the extra flags already in it and get them twice.
 
-Tests and tools build with `TESTFLAGS = -std=c++20 -O1 -g $(SQUARED_ABI)`. The
+Tests and tools build with `TESTFLAGS = $(STANDARD) -O1 -g $(SQUARED_ABI)`
+(`STANDARD`: `-std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline`,
+[modules.md](modules.md#what-an-importer-must-share)). The
 `$(SQUARED_ABI)` is new: before, `make SQUARED_ABI=-fno-rtti test` failed to
 link `gui`'s tests, built with RTTI against archives without it (`undefined
 reference to typeinfo for sq::gui::Widget`).
@@ -123,7 +126,7 @@ reads (no line printed, the stamp untouched).
 Defaults in `build/common.mk`:
 
 ```
--std=c++20 -O2 -DNDEBUG
+-std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline -O2 -DNDEBUG
 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
 -fno-common -ffunction-sections -fdata-sections -fvisibility=hidden
 ```
@@ -261,7 +264,8 @@ is fixed (2026-10-19):
 
 *Until 7b.4. The precompiled header below was replaced by sq.std, squared's
 own module of the standard library, when squared became modules: the two do
-not mix ([modules.md](modules.md#sqstd)). `build/std_pch.hpp`,
+not mix. sq.std was replaced by libc++'s `import std;` on 2026-11-02
+([modules.md](modules.md#std)). `build/std_pch.hpp`,
 `tools/std_pch.sh`, `SQUARED_PCH` and `-fpch-instantiate-templates` are gone.
 What follows is kept for the measurements.*
 
@@ -334,11 +338,12 @@ standard library's parse, shared by every file of one configuration.
 one at a time). The printed steps of a package no longer run `make
 docs-check` after `make docs`, which has just written the pages it checks.
 
-Not done: `import std`. Termux's libc++ ships no `std.cppm`; the NDK's does
-(`toolchains/llvm/prebuilt/linux-arm64/share/libc++/v1/`), and it failed to
-build against the NDK's headers as tried (`std/cctype.inc:11`). The
-precompiled header takes the same parse off today; squared's own headers as
-modules come after this (7b).
+Not done then: `import std`. Termux's libc++ ships no `std.cppm`; the NDK's
+does (`toolchains/llvm/prebuilt/linux-arm64/share/libc++/v1/`), and it failed
+to build against the NDK's headers as tried (`std/cctype.inc:11`). Done on
+2026-11-02: the NDK's sources pinned in `third_party/libcxx/`, and
+`-D__BIONIC_CTYPE_INLINE=inline` for the ctype functions
+([modules.md](modules.md#std)).
 
 **The link check** (template `Makefile`, `verify-link`) refuses a library that
 needs `libc++_shared.so` (the runtime was not linked in) and, when
@@ -539,8 +544,9 @@ Since 7b.4 there are no headers to compile alone: an interface compiles
 alone by construction, and the self-containment check went (the user's call,
 2026-10-27). What `make headers` checks now, in seconds, with no compile:
 
-1. **sq.std is current**: `tools/std_module.sh --check`. A new `std::` name
-   fails it until `tools/std_module.sh` writes the module again.
+1. **The pinned std sources are what `PINNED` says**: each file of
+   `third_party/libcxx/` against its sha256 (since 2026-11-02; until then,
+   that sq.std named every `std::` name the sources used).
 2. **The build order covers every import**: each module that a module's files
    import is built before it, by the top Makefile's order lines. Under `make
    -j` a missing line would race the BMI it needs.

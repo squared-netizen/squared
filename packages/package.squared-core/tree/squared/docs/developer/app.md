@@ -90,7 +90,7 @@ bytes held by Android's process, not this one.
 ## Memory
 
 `Event` carries a `std::string text` member for `TextInput` and `TextEditing`
-events, which makes it 88 bytes (libstdc++, measured) and heap-capable, and it
+events, which makes it 80 bytes (libc++, measured; 88 under libstdc++) and heap-capable, and it
 is passed by const reference everywhere &mdash; so no copy is made on the
 dispatch path. The platform adapter owns the one live `Event`. `KeyModifiers`
 is one byte (`static_assert`ed). `TextInputArea` is four floats.

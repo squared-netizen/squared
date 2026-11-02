@@ -3,11 +3,11 @@
 // insets; a modal one dims what is beneath and takes every tap; a tap on the
 // frame between its widgets stays there; closing one gives the focus back.
 
-import sq.gui;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.gui;
+
+import std;
 
 namespace
 {

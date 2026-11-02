@@ -3,7 +3,7 @@ export module sq.gles:buffer;
 export import :src.buffer_target;
 export import :src.buffer_usage;
 export import :src.gles_error;
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

@@ -5,7 +5,7 @@ export import :src.insets;
 export import :src.nine_patch_splits;
 export import :src.size;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

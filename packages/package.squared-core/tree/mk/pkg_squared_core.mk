@@ -269,21 +269,26 @@ SQ_SQUARED_MODULES := app assets console data dev files gles graphics gui \
 # are still headers (and squared's third_party/).
 SQ_SQUARED_INC := -I$(SQ_SQUARED_DIR)/..
 
-# squared is C++20 modules (7b.4): your code writes `import squared;` (or
-# `import sq.gui;`, ...), and the compiler reads the framework's BMIs from
-# its build. Your C++ is compiled with what every importer of a squared module
-# must share with it: -pthread (clang refuses a BMI made with threads when
-# the importer has none, and the same for the C++ standard, RTTI and
-# exceptions: keep CXXSTD at c++20). CPPFLAGS, not SQ_CPPFLAGS: the NDK's
-# native-app-glue is C, and imports nothing.
+# squared is C++23 modules: your code writes `import squared;` (or
+# `import sq.gui;`, ...; `import std;` for the standard library alone), and the
+# compiler reads the framework's BMIs from its build, std's among them (a link
+# to the one shared by every project, squared/build/common.mk). Your C++ is
+# compiled with what every importer of a squared module must share with it:
+# -pthread (clang refuses a BMI made with threads when the importer has none,
+# and the same for the C++ standard, RTTI and exceptions: keep CXXSTD at
+# c++23), and -D__BIONIC_CTYPE_INLINE=inline, which the std module was made
+# with (Android's ctype functions plain inline, not static: the std module
+# exports them). CPPFLAGS, not SQ_CPPFLAGS: the NDK's native-app-glue is C,
+# and imports nothing.
 SQ_SQUARED_BMI_DIR := $(SQ_SQUARED_DIR)/build/release/modules
-CPPFLAGS += -pthread -fprebuilt-module-path=$(SQ_SQUARED_BMI_DIR)
+CPPFLAGS += -pthread -D__BIONIC_CTYPE_INLINE=inline -fprebuilt-module-path=$(SQ_SQUARED_BMI_DIR)
 
 # Your objects are compiled after the framework's BMIs, and again when one
 # changes (clang refuses an importer built against an older BMI): the flags
 # stamp, which every object depends on, waits for them. squared.pcm is made
-# last, after every module it re-exports.
-SQ_SQUARED_BMIS := $(SQ_SQUARED_BMI_DIR)/squared.pcm $(SQ_SQUARED_BMI_DIR)/sq.std.pcm
+# last, after every module it re-exports; std.ready when std's BMI is there
+# (std.pcm itself is a link, dated as the shared BMI is).
+SQ_SQUARED_BMIS := $(SQ_SQUARED_BMI_DIR)/squared.pcm $(SQ_SQUARED_BMI_DIR)/std.ready
 $(BUILD)/.flags: $(SQ_SQUARED_BMIS)
 $(SQ_SQUARED_BMIS): squared-core ;
 
@@ -292,7 +297,7 @@ $(SQ_SQUARED_BMIS): squared-core ;
 # squared (the one import) first; stage (the App and the Stage) needs gui,
 # assets, messaging and time; gui and stage need app; gui needs graphics;
 # graphics needs math and files; assets needs files; everything that parses
-# needs data; every module, and your code, needs sq.std, last. gles stands
+# needs data; every module, and your code, needs std, last. gles stands
 # alone. An app that has no sq::App (the demo, still on its own) links
 # nothing of stage: an archive's member comes in only when something refers to
 # it. (Since 7b.4 each archive also holds its module's interfaces: what an

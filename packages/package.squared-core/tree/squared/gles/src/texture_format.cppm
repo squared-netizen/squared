@@ -1,6 +1,6 @@
 export module sq.gles:src.texture_format;
 
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

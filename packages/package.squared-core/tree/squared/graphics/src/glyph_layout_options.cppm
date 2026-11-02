@@ -1,7 +1,7 @@
 export module sq.graphics:src.glyph_layout_options;
 
 export import :src.glyph_alignment;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

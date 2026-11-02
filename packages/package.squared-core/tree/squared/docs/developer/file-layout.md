@@ -8,7 +8,7 @@ How the build makes and uses the modules: [modules.md](modules.md).
 
 ## A module directory
 
-Since 7b.4 each module is one C++20 named module, `sq.<module>`, and each of
+Since 7b.4 each module is one named module, `sq.<module>`, and each of
 its types is a partition of it.
 
 ```
@@ -28,8 +28,9 @@ squared/<module>/
 `squared/third_party/`, `squared/docs/`, `squared/tools/` and
 `squared/build/` sit beside the modules and follow none of this.
 `squared/squared.cppm` is the one import for an app (`export module squared;`,
-re-exporting `sq.std`, app, gui, messaging and stage), and
-`squared/build/std.cppm` is `sq.std` ([modules.md](modules.md#sqstd)).
+re-exporting `std`, app, gui, messaging and stage), and
+`squared/third_party/libcxx/` holds the pinned sources of `std`
+([modules.md](modules.md#std)).
 
 **A partition is named for its path**, the slashes as dots:
 `gui/src/detail/ui.cppm` is `sq.gui:src.detail.ui`. `tools/module_deps.sh`
@@ -128,7 +129,7 @@ declaration: the C headers whose macros a unit uses (`<assert.h>`,
 `<errno.h>`, `<stdarg.h>`, `<stdint.h>`, `<stddef.h>`, `<stdio.h>`,
 `<signal.h>`, `<stdlib.h>`, `<time.h>`, `<ctype.h>`), the POSIX and NDK
 headers, and third_party (`<yyjson.h>`, `<stb_image.h>`). An `#if` block of
-includes goes there whole. Every standard C++ header is `import sq.std;`.
+includes goes there whole. Every standard C++ header is `import std;`.
 
 **Configuration macros** (the Telegraph's and the Console's capacities,
 `-DSQUARED_TELEGRAPH_RING=512`) are read where the module is compiled, in its

@@ -1,6 +1,6 @@
 module sq.time;
 
-import sq.std;
+import std;
 
 namespace sq::time
 {

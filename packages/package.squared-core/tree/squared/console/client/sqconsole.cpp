@@ -28,8 +28,6 @@
 // A tool, not part of an app: built for the host (Termux, or a desktop) by
 // `make console` in a project, and by the console module's tests.
 
-import sq.console;
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -40,7 +38,9 @@ import sq.console;
 #include <sys/stat.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.console;
+
+import std;
 
 namespace
 {

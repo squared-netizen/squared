@@ -1,6 +1,6 @@
 export module sq.gui:src.skin_load_limits;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

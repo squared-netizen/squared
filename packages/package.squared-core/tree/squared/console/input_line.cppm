@@ -2,7 +2,7 @@ export module sq.console:input_line;
 
 export import :scrollback;
 export import :src.limits;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

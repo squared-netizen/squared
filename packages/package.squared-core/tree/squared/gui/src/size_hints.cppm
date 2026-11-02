@@ -1,7 +1,7 @@
 export module sq.gui:src.size_hints;
 
 export import :src.size;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

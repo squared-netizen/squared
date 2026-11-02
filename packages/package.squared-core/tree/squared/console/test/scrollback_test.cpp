@@ -5,12 +5,12 @@
 // many random pushes into several storage sizes, so wrapping, dropping and
 // cutting long lines are all exercised, not only the cases written out here.
 
+#include <assert.h>
+
 import sq.console;
 import sq.dev;
 
-#include <assert.h>
-
-import sq.std;
+import std;
 
 using sq::console::Level;
 using sq::console::Line;

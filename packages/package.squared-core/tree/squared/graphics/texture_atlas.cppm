@@ -4,7 +4,7 @@ export import :atlas_region;
 export import :src.texture_recovery_policy;
 export import :texture;
 import sq.files;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

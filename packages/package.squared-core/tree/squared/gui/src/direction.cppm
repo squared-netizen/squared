@@ -1,6 +1,6 @@
 export module sq.gui:src.direction;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

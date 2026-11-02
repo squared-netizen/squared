@@ -5,9 +5,6 @@
 // it runs in microseconds and the assertions can see state a device cannot be
 // asked about.
 
-import sq.files;
-import sq.graphics;
-
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
 #include <stb_image_write.h>
@@ -15,7 +12,10 @@ import sq.graphics;
 #include <assert.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.files;
+import sq.graphics;
+
+import std;
 
 using namespace sq;
 

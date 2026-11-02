@@ -3,7 +3,7 @@ export module sq.app:event;
 export import :src.key;
 export import :src.key_modifiers;
 export import :src.navigation;
-import sq.std;
+import std;
 
 export namespace sq::app
 {

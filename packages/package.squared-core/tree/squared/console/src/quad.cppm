@@ -1,7 +1,7 @@
 export module sq.console:src.quad;
 
 export import :src.colour;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

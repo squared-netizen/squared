@@ -4,7 +4,7 @@ module;
 
 export module sq.console:line_reader;
 
-import sq.std;
+import std;
 
 export namespace sq::console
 {

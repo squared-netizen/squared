@@ -2,15 +2,15 @@
 // its history, completion, keys, and running commands. Nothing it does may
 // allocate, which the frame-allocation counter checks at the end.
 
-import sq.console;
-import sq.dev;
-
 #include <assert.h>
 #include <stdio.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.console;
+import sq.dev;
+
+import std;
 
 using namespace sq::console;
 using sq::app::Key;

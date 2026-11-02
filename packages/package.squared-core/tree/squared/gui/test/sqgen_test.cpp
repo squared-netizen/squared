@@ -5,16 +5,17 @@
 // test/sqgen/bad/ and keyword/ it prints what each expected.txt holds, writes
 // nothing, and fails.
 
-import sq.gui;
-import sq.messaging;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 
-import sq.std;
 #include <layouts.hpp>
 #include <names.hpp>
+
+import sq.gui;
+import sq.messaging;
+
+import std;
 
 using namespace sq::gui;
 namespace fs = std::filesystem;

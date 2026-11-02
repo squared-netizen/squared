@@ -1,6 +1,6 @@
 export module sq.graphics:color;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

@@ -2,7 +2,7 @@ export module sq.gui:layout;
 
 export import :src.alignment;
 import sq.messaging;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

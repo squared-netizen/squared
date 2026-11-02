@@ -10,7 +10,7 @@ import sq.files;
 import sq.graphics;
 import sq.gui;
 import sq.messaging;
-import sq.std;
+import std;
 
 namespace sq
 {
@@ -475,19 +475,15 @@ void Stage::attach( app::Runtime &runtime )
     // The one allocation a window makes here, besides what the skin holds:
     // the skin's pieces, the batch, the camera, the painter, the widgets,
     // and the scratch a C++ screen writes into. The widgets hold standard
-    // containers, whose sizes are the library's: libc++ (Android, Termux)
-    // and libstdc++ (desktop Linux) differ. The scratch is the same in both.
+    // containers, whose sizes are the library's: libc++'s, everywhere since
+    // 2026-11-02 (64-bit; libstdc++ made it 1832 + the tables).
     static_assert( sizeof( Drawing::Scratch ) == 17480 );
     static_assert( sizeof( Binding ) == 32 );
     static_assert( sizeof( ListBinding ) == 160 );
     static_assert( sizeof( Kept ) == 148 );
     static_assert( max_lists <= 4, "Binding::list is two bits" );
     constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32 + max_lists * 160;
-#if defined( _LIBCPP_VERSION )
     static_assert( sizeof( Drawing ) == 1648 + tables );
-#else
-    static_assert( sizeof( Drawing ) == 1832 + tables );
-#endif
     // The skin is compiled in: the app's own files are not read for it.
     files::FileSystem &skin = skin_files_ != nullptr ? *skin_files_ : default_skin_files();
     std::string why;

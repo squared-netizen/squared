@@ -5,7 +5,7 @@ module;
 export module sq.console:system_commands;
 
 export import :console;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

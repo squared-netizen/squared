@@ -9,7 +9,7 @@ export import :src.asset_loader;
 export import :src.asset_manager_options;
 export import :src.asset_type_id;
 import sq.files;
-import sq.std;
+import std;
 
 export namespace sq::assets
 {

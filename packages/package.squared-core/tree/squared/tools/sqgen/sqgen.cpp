@@ -14,13 +14,13 @@
 // the machine that builds the app (HOST_CXX), like sqconsole; a build-time
 // tool, so the standard library is used freely here.
 
-import sq.gui;
-import sq.messaging;
-
 #include <stdint.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.gui;
+import sq.messaging;
+
+import std;
 
 namespace
 {
@@ -410,7 +410,7 @@ constexpr std::string_view keywords[] = {
     std::ostringstream out;
     out << banner( source, "that file" );
     out << "#pragma once\n\n";
-    out << "import sq.messaging;\nimport sq.std;\n\n";
+    out << "import sq.messaging;\nimport std;\n\n";
     out << "namespace names\n{\n\n";
     for( std::size_t i = 0; i < schema.names.size(); ++i ) {
         const sq::gui::NameEntry &entry = schema.names[i];
@@ -444,7 +444,7 @@ constexpr std::string_view keywords[] = {
     std::ostringstream out;
     out << banner( source, "the layout files" );
     out << "#pragma once\n\n";
-    out << "import sq.gui;\nimport sq.std;\n\n";
+    out << "import sq.gui;\nimport std;\n\n";
     out << "namespace layouts\n{\n\n";
     for( const Compiled &layout : layouts ) {
         out << "/// " << layout.name << ".json, a " << kind_word( layout.kind ) << "\n";
@@ -519,7 +519,7 @@ void layout_definition( std::ostringstream &out, const Compiled &layout )
     std::ostringstream out;
     out << banner( source, "the layout files" );
     out << "#include <layouts.hpp>\n\n";
-    out << "import sq.gui;\nimport sq.messaging;\nimport sq.std;\n\n";
+    out << "import sq.gui;\nimport sq.messaging;\nimport std;\n\n";
     out << "namespace layouts\n{\n\nnamespace\n{\n\n";
     for( const Compiled &layout : layouts ) {
         layout_tables( out, layout );

@@ -5,7 +5,7 @@ export import :src.colour;
 export import :src.font8x8;
 export import :src.frame;
 export import :src.quad;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

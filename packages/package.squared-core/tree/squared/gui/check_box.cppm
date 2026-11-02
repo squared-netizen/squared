@@ -2,7 +2,7 @@ export module sq.gui:check_box;
 
 export import :src.size;
 export import :toggle_button;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -1,6 +1,6 @@
 export module sq.dev:frame_allocations;
 
-import sq.std;
+import std;
 
 export namespace sq::dev
 {

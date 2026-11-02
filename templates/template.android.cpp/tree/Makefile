@@ -39,7 +39,7 @@
 
 CXX      ?= clang++
 CC       ?= clang
-CXXSTD   ?= c++20
+CXXSTD   ?= c++23
 OPT      ?= -O2
 WARN     ?= -Wall -Wextra -Wpedantic
 

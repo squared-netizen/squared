@@ -6,7 +6,7 @@
 export module sq.stage:src.detail.catalog;
 
 import sq.gui;
-import sq.std;
+import std;
 
 export extern "C++"
 {

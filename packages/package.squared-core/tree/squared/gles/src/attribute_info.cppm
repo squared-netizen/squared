@@ -1,6 +1,6 @@
 export module sq.gles:src.attribute_info;
 
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

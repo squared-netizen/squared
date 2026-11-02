@@ -6,7 +6,7 @@
 
 export module sq.messaging:src.telegraph_config;
 
-import sq.std;
+import std;
 
 #ifndef SQUARED_TELEGRAPH_RING
 #define SQUARED_TELEGRAPH_RING 256 // telegrams each way

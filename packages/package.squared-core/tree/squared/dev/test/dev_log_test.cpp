@@ -1,4 +1,3 @@
-import sq.dev;
 
 #include <arpa/inet.h>
 #include <assert.h>
@@ -8,7 +7,9 @@ import sq.dev;
 #include <sys/wait.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.dev;
+
+import std;
 
 namespace
 {

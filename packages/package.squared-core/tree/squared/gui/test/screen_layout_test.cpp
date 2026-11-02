@@ -4,13 +4,13 @@
 // from nodes, with its hooks. A fuzz writes random layouts: each one checks,
 // and builds.
 
+#include <stdio.h>
+
 import sq.dev;
 import sq.gui;
 import sq.messaging;
 
-#include <stdio.h>
-
-import sq.std;
+import std;
 
 using namespace sq::gui;
 using sq::messaging::do_;

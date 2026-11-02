@@ -3,7 +3,7 @@
 // produces, which is the behaviour the real reader loop exists for.
 #include <android/asset_manager.h>
 
-import sq.std;
+import std;
 
 namespace assetstub
 {

@@ -1,6 +1,6 @@
 module sq.files;
 
-import sq.std;
+import std;
 
 namespace sq::files
 {

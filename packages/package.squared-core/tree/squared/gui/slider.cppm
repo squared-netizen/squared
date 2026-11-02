@@ -3,7 +3,7 @@ export module sq.gui:slider;
 export import :src.size;
 export import :widget;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -11,7 +11,7 @@ export import :src.wake;
 export import :telegram;
 export import :telegram_ring;
 export import :value_cache;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

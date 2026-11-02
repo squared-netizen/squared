@@ -2,7 +2,7 @@ export module sq.console:commands;
 
 export import :src.command;
 export import :src.limits;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

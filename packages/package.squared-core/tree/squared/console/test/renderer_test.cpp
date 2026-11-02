@@ -5,15 +5,15 @@
 
 #include "gl_stub.hpp"
 
-import sq.console;
-import sq.dev;
-
 #include <GLES3/gl3.h>
 
 #include <assert.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.console;
+import sq.dev;
+
+import std;
 
 using namespace sq::console;
 

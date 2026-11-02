@@ -2,7 +2,7 @@ export module sq.time:deadline_queue;
 
 export import :duration;
 export import :time_point;
-import sq.std;
+import std;
 
 export namespace sq::time
 {

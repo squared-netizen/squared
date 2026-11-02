@@ -1,7 +1,7 @@
 export module sq.gui:toggle_button;
 
 export import :button;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -2,7 +2,7 @@ export module sq.gui:cell;
 
 export import :src.alignment;
 export import :src.insets;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

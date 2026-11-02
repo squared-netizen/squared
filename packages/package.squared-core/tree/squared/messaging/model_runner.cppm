@@ -6,7 +6,7 @@ export module sq.messaging:model_runner;
 
 export import :telegraph;
 import sq.time;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

@@ -11,7 +11,7 @@ module;
 module sq.graphics;
 
 import sq.math;
-import sq.std;
+import std;
 
 namespace sq::graphics
 {

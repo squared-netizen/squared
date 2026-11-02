@@ -1,7 +1,7 @@
 export module sq.console:log_file;
 
 export import :console;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

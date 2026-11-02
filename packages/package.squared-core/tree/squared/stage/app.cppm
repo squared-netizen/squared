@@ -6,7 +6,7 @@ import sq.app;
 import sq.files;
 import sq.messaging;
 import sq.time;
-import sq.std;
+import std;
 
 export namespace sq
 {

@@ -3,7 +3,7 @@ export module sq.gui:margin_container;
 export import :src.insets;
 export import :src.size;
 export import :widget;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -1,7 +1,7 @@
 export module sq.gui:src.skin_drawable_resolver;
 
 export import :src.drawable_ptr;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -5,7 +5,7 @@
 module sq.stage;
 
 import sq.files;
-import sq.std;
+import std;
 
 namespace sq::detail
 {

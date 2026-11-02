@@ -10,7 +10,7 @@ export import :groups;
 export import :input_line;
 export import :scrollback;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

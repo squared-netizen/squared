@@ -13,7 +13,7 @@ export import :src.skin_load_limits;
 export import :src.skin_load_report;
 export import :src.skin_load_severity;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

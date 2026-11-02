@@ -5,7 +5,7 @@ export import :src.font_ptr;
 export import :src.size;
 export import :widget;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -4,8 +4,6 @@
 // then the system's), the report is shown once and kept for `crash`, and the
 // handlers come back off.
 
-import sq.console;
-
 #include <assert.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -13,7 +11,9 @@ import sq.console;
 #include <sys/wait.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.console;
+
+import std;
 
 using namespace sq::console;
 

@@ -2,7 +2,7 @@ export module sq.graphics:context;
 
 export import :color;
 export import :src.context_config;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

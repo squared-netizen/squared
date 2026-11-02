@@ -15,9 +15,10 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [Extension policy](extension-policy.md) &mdash; why squared adds fewer
   extension points than a linked library would, and what that obliges
 - [Design patterns](design-patterns.md)
-- [Modules](modules.md) &mdash; squared as C++20 modules (7b.4): what the
-  build makes and in what order, `sq.std`, what an importer must share, the
-  measured cost of a partition per type
+- [Modules](modules.md) &mdash; squared as modules (7b.4; C++23 since
+  2026-11-02): what the build makes and in what order, `import std` (libc++'s,
+  pinned, made once per toolchain and shared), what an importer must share,
+  the measured cost of a partition per type
 - [Build and toolchain](build-and-toolchain.md)
 - [Code style](code-style.md) &mdash; CDDA's formatting rules, as
   `squared/.clang-format`, and where squared differs

@@ -1,6 +1,6 @@
 export module sq.console:src.font8x8;
 
-import sq.std;
+import std;
 
 export namespace sq::console
 {

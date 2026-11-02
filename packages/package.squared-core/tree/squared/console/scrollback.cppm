@@ -3,7 +3,7 @@ export module sq.console:scrollback;
 export import :src.level;
 export import :src.limits;
 export import :src.line;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

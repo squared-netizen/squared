@@ -4,7 +4,7 @@ export import :address;
 export import :src.value_type;
 export import :src.verb;
 export import :telegram;
-import sq.std;
+import std;
 
 export namespace sq::messaging::detail
 {

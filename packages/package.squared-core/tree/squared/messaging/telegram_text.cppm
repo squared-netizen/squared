@@ -3,7 +3,7 @@ export module sq.messaging:telegram_text;
 export import :name_table;
 export import :telegram;
 export import :telegram_data;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

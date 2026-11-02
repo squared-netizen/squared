@@ -1,6 +1,6 @@
 export module sq.app:src.key;
 
-import sq.std;
+import std;
 
 export namespace sq::app
 {

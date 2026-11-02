@@ -3,7 +3,7 @@ export module sq.console:telegraph_tools;
 export import :console;
 import sq.messaging;
 import sq.time;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

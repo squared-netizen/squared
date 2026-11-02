@@ -1,7 +1,7 @@
 module sq.gui;
 
 import sq.graphics;
-import sq.std;
+import std;
 
 namespace sq::gui
 {

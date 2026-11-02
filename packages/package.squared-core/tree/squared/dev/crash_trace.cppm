@@ -7,7 +7,7 @@ module;
 export module sq.dev:crash_trace;
 
 export import :src.crash_line;
-import sq.std;
+import std;
 
 export namespace sq::dev
 {

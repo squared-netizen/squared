@@ -4,8 +4,10 @@
 # compiles on its own by construction, so that check went (the user's call,
 # 2026-10-27). What can still go wrong without a compile error:
 #
-#   1. sq.std behind the sources: a file names std::<something> that
-#      build/std.cppm does not export yet (tools/std_module.sh --check).
+#   1. The pinned std module sources (third_party/libcxx/) edited or
+#      missing: each file's sha256 against PINNED's. Since 2026-11-02, when
+#      `import std;` (C++23, libc++'s) replaced squared's sq.std; until then
+#      this checked sq.std named every std:: name the sources used.
 #   2. The build order: a module imports one the top Makefile does not build
 #      before it (`gui: graphics ...`). Under make -j the import would race
 #      the BMI it needs: sometimes built, sometimes "module not found".
@@ -22,7 +24,18 @@ cd "$root"
 status=0
 
 # --- 1 -----------------------------------------------------------------------
-bash tools/std_module.sh --check || status=1
+pinned=third_party/libcxx/PINNED
+if [ ! -f "$pinned" ]; then
+    echo "check_modules: no third_party/libcxx/PINNED: pin libc++'s std module sources (tools/pin_libcxx_modules.sh)" >&2
+    status=1
+elif ! bad=$(cd third_party/libcxx && grep -E '^[0-9a-f]{64}  ' PINNED | sha256sum -c --quiet 2>&1); then
+    printf '%s\n' "$bad" | head -5 | sed 's/^/  /' >&2
+    echo "check_modules: third_party/libcxx/ is not what PINNED says: pin again (tools/pin_libcxx_modules.sh), never edit it" >&2
+    status=1
+else
+    files=$(grep -cE '^[0-9a-f]{64}  ' "$pinned")
+    echo "check_modules: std: $files pinned files as PINNED says ($(sed -n 's/^libc++: //p' "$pinned"))"
+fi
 
 # --- 2 -----------------------------------------------------------------------
 modules=$(make -s --no-print-directory -f Makefile -f /dev/stdin print-modules <<'EOF' 2>/dev/null

@@ -1,6 +1,6 @@
 module sq.math;
 
-import sq.std;
+import std;
 
 namespace sq::math
 {

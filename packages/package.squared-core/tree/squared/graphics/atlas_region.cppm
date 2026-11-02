@@ -1,7 +1,7 @@
 export module sq.graphics:atlas_region;
 
 export import :texture_region;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

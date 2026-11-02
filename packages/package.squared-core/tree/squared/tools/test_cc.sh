@@ -25,7 +25,7 @@
 # empty or unset, beside the output, not shared. SQUARED_TEST_DEPS: files an
 # object is also made again after (the BMIs it may import, build/modules.mk:
 # clang's dependency file does not name them). SQUARED_TEST_LINK: archives
-# every link ends with (sq.std's object, the app module's: build/common.mk).
+# every link ends with (std's object, the app module's: build/common.mk).
 
 set -euo pipefail
 

@@ -4,7 +4,7 @@ export import :src.actor_interface_id;
 export import :src.input_event;
 export import :src.input_listener;
 export import :src.input_listener_id;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

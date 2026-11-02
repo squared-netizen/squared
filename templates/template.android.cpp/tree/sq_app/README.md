@@ -32,12 +32,13 @@ squared is C++20 modules: a file of yours writes
 import squared;          // the App, the Stage, widgets, the Telegraph, std
 ```
 
-`import squared;` brings the standard library too (`std::string`,
-`std::vector`, ...). Two things still need an include: C macros (`assert`,
-`errno`, `va_start`, `UINT32_MAX`: `#include <assert.h>`, ...), and a standard
-name squared does not use (`#include <map>`), beside the import. Keep `CXXSTD`
-at `c++20`: a file compiled otherwise cannot read squared's modules. More:
-`squared/docs/programmer/include-layout.md`.
+`import squared;` brings the whole standard library too (C++23's `import
+std;`: `std::string`, `std::map`, `std::print`, ...). Only C macros still need
+an include (`assert`, `errno`, `va_start`, `UINT32_MAX`: `#include <assert.h>`,
+...), and every `#include` goes above the imports: a header such as
+`<stdio.h>` read after the standard library came in by import is refused. Keep
+`CXXSTD` at `c++23`: a file compiled otherwise cannot read squared's modules.
+More: `squared/docs/programmer/include-layout.md`.
 
 ## Screens are layout files
 

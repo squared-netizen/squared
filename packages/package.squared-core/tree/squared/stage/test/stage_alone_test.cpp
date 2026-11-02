@@ -2,6 +2,8 @@
 // framework's own, empty one links in its place. A C++ layout still shows, and
 // a tap naming another layout says there is none.
 
+#include <stdio.h>
+
 import sq.app;
 import sq.assets;
 import sq.files;
@@ -9,11 +11,10 @@ import sq.graphics;
 import sq.gui;
 import sq.stage;
 
-#include <stdio.h>
-
-import sq.std;
+import std;
 
 /// The Stage's widgets, which only a test reaches (internal since 7.7).
+
 struct sq::detail::StageProbe final
 {
         static sq::gui::Ui *ui( sq::Stage &stage ) noexcept { return stage.ui(); }

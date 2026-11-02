@@ -1,9 +1,10 @@
-import sq.files;
 
 #include <assert.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.files;
+
+import std;
 
 namespace assetstub
 {

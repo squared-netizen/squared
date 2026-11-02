@@ -10,7 +10,7 @@ import sq.files;
 import sq.graphics;
 import sq.gui;
 
-import sq.std;
+import std;
 
 namespace sq::graphics::detail
 {

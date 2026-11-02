@@ -1,6 +1,6 @@
 export module sq.messaging:list_window;
 
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

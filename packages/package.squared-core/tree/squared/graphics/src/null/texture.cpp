@@ -8,7 +8,7 @@
 
 module sq.graphics;
 
-import sq.std;
+import std;
 
 namespace sq::graphics
 {

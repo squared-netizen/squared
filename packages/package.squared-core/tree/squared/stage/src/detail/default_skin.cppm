@@ -1,7 +1,7 @@
 export module sq.stage:src.detail.default_skin;
 
 import sq.files;
-import sq.std;
+import std;
 
 export namespace sq::detail
 {

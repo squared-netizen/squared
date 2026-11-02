@@ -1,6 +1,6 @@
 export module sq.messaging:name;
 
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

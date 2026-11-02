@@ -4,7 +4,7 @@ module;
 
 module sq.gles;
 
-import sq.std;
+import std;
 
 namespace sq::gles
 {

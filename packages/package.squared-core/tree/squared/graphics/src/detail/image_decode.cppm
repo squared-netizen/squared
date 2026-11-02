@@ -1,6 +1,6 @@
 export module sq.graphics:src.detail.image_decode;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics::detail
 {

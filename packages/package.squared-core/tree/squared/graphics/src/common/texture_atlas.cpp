@@ -7,7 +7,7 @@
 module sq.graphics;
 
 import sq.files;
-import sq.std;
+import std;
 
 namespace sq::graphics
 {

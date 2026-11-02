@@ -5,7 +5,7 @@ module;
 module sq.gui;
 
 import sq.messaging;
-import sq.std;
+import std;
 
 namespace sq::gui
 {

@@ -1,7 +1,7 @@
 export module sq.messaging:telegram_ring;
 
 export import :telegram;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

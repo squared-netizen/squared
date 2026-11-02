@@ -1,6 +1,6 @@
 export module sq.app:src.text_input_purpose;
 
-import sq.std;
+import std;
 
 export namespace sq::app
 {

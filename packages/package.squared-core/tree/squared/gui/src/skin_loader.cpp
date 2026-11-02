@@ -5,7 +5,7 @@ module;
 module sq.gui;
 
 import sq.data;
-import sq.std;
+import std;
 
 namespace sq::gui
 {

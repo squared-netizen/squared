@@ -1,6 +1,6 @@
 export module sq.assets:src.asset_manager_options;
 
-import sq.std;
+import std;
 
 export namespace sq::assets
 {

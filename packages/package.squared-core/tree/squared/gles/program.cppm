@@ -3,7 +3,7 @@ export module sq.gles:program;
 export import :src.attribute_info;
 export import :src.gles_error;
 export import :src.uniform_info;
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

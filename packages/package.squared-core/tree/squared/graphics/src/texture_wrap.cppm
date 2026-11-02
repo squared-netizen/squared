@@ -1,6 +1,6 @@
 export module sq.graphics:src.texture_wrap;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

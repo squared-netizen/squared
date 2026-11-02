@@ -7,12 +7,12 @@
 // leaves the font or layout as it was, and that a failed layout of warm storage
 // allocates nothing, which an owned message could not promise.
 
+#include <assert.h>
+
 import sq.dev;
 import sq.graphics;
 
-#include <assert.h>
-
-import sq.std;
+import std;
 
 using sq::graphics::BitmapFont;
 using sq::graphics::BitmapFontError;

@@ -9,7 +9,7 @@ module;
 
 module sq.dev;
 
-import sq.std;
+import std;
 
 namespace sq::dev
 {

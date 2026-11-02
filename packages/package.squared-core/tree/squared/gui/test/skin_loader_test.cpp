@@ -11,7 +11,7 @@
 
 import sq.gui;
 
-import sq.std;
+import std;
 
 using namespace sq::gui;
 

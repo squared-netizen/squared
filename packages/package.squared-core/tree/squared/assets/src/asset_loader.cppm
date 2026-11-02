@@ -2,7 +2,7 @@ export module sq.assets:src.asset_loader;
 
 export import :src.asset_load_context;
 export import :src.asset_load_result;
-import sq.std;
+import std;
 
 export namespace sq::assets
 {

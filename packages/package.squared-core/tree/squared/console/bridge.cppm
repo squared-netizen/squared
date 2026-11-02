@@ -2,7 +2,7 @@ export module sq.console:bridge;
 
 export import :src.bridge_protocol;
 export import :src.level;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

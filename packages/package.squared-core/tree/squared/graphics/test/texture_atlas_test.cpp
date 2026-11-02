@@ -4,9 +4,6 @@
 // skin, verbatim - including a rotated region and a nine-patch with splits and
 // pads, which are the two cases a hand-written fixture usually omits.
 
-import sq.files;
-import sq.graphics;
-
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
 #include <stb_image_write.h>
@@ -14,7 +11,10 @@ import sq.graphics;
 #include <assert.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.files;
+import sq.graphics;
+
+import std;
 
 using namespace sq;
 

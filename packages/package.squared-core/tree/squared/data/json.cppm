@@ -11,7 +11,7 @@ export import :src.json_parse_options;
 export import :src.json_parse_result;
 export import :src.json_write_options;
 export import :src.json_write_result;
-import sq.std;
+import std;
 
 export namespace sq::data
 {

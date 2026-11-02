@@ -1,6 +1,6 @@
 export module sq.graphics:src.coordinate_origin;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

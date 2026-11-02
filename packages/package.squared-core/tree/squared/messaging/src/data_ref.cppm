@@ -1,6 +1,6 @@
 export module sq.messaging:src.data_ref;
 
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

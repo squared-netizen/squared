@@ -2,7 +2,7 @@ export module sq.gles:shader;
 
 export import :src.gles_error;
 export import :src.shader_stage;
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

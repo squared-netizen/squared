@@ -1,6 +1,6 @@
 export module sq.gles:src.gles_error_code;
 
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

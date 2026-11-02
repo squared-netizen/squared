@@ -5,7 +5,7 @@ module;
 module sq.gles;
 
 import sq.graphics;
-import sq.std;
+import std;
 
 namespace sq::gles
 {

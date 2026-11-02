@@ -3,7 +3,7 @@ export module sq.gui:linear_layout;
 export import :src.direction;
 export import :src.size;
 export import :widget;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

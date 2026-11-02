@@ -95,7 +95,7 @@ fi
 rm -rf "$work"
 mkdir -p "$work/probe" "$work/tu"
 printf '#include <cstdint>\n' > "$work/probe/probe.cpp"
-printf '[{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-c","%s"]}]\n' \
+printf '[{"directory":"%s","file":"%s","arguments":["%s","-std=c++23","-stdlib=libc++","-c","%s"]}]\n' \
     "$work/probe" "$work/probe/probe.cpp" "$cxx" "$work/probe/probe.cpp" \
     > "$work/probe/compile_commands.json"
 if ! "$clang_doc" --format=md --output="$work/probe/out" --executor=all-TUs --extra-arg=-v \
@@ -124,7 +124,8 @@ fi
 #
 #   module;                     an empty line
 #   export module <name>;       #pragma once
-#   [export] import sq.std;     #include "build/std.cppm" (its #include lines)
+#   [export] import std;        #include "build/std.hpp": the standard headers
+#                               the pinned std.cppm includes
 #   [export] import sq.<m>;     #include "<m>/module.cppm"
 #   [export] import :<a>.<b>;   #include "<this module>/<a>/<b>.cppm"
 #   export namespace / extern   namespace / extern
@@ -138,7 +139,7 @@ as_text() { # as_text <module> <in> <out>
     awk -v module="$1" '
         /^module;$/ { print ""; next }
         /^export module [^;]*;$/ { print "#pragma once"; next }
-        /^(export )?import sq\.std;$/ { print "#include \"build/std.cppm\""; next }
+        /^(export )?import std;$/ { print "#include \"build/std.hpp\""; next }
         /^(export )?import sq\.[a-z0-9_]+;$/ {
             name = $0; sub( /^(export )?import sq\./, "", name ); sub( /;$/, "", name )
             print "#include \"" name "/module.cppm\""; next
@@ -153,9 +154,17 @@ as_text() { # as_text <module> <in> <out>
 }
 rm -rf "$view"
 mkdir -p "$view/build"
-# sq.std: the headers its global module fragment includes, nothing after.
-awk '/^export module / { print "#pragma once"; exit } /^#/ { print; next } { print "" }' \
-    "$root/build/std.cppm" > "$view/build/std.cppm"
+# std: the standard headers the pinned std.cppm includes (third_party/libcxx/),
+# by their names: not libc++'s own (<__config>), nor its #if around some.
+# libc++'s, as the build's (-stdlib=libc++ below, the probe's too).
+if [ ! -f "$root/third_party/libcxx/std.cppm" ]; then
+    echo "docs: no third_party/libcxx/std.cppm: pin libc++'s std module sources (tools/pin_libcxx_modules.sh)" >&2
+    exit 2
+fi
+{
+    echo '#pragma once'
+    sed -n 's/^#[ ]*include <\([a-z][a-z0-9_.]*\)>.*/#include <\1>/p' "$root/third_party/libcxx/std.cppm"
+} > "$view/build/std.hpp"
 while IFS= read -r unit; do
     as_text "${unit%%/*}" "$root/$unit" "$view/$unit"
 done < <(
@@ -179,7 +188,7 @@ while IFS= read -r header; do headers+=("$header"); done < <(
         unit="$view/$header"
         [ "$first" = 1 ] || printf ','
         first=0
-        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-pthread","-Wno-pragma-once-outside-header","-I%s","-x","c++","-c","%s"]}' \
+        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++23","-stdlib=libc++","-pthread","-D__BIONIC_CTYPE_INLINE=inline","-Wno-pragma-once-outside-header","-I%s","-x","c++","-c","%s"]}' \
             "$view" "$unit" "$cxx" "$view" "$unit"
     done
     printf '\n]\n'

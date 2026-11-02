@@ -1,6 +1,6 @@
 export module sq.time:time_point;
 
-import sq.std;
+import std;
 
 export namespace sq::time
 {

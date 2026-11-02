@@ -5,7 +5,7 @@ module;
 module sq.assets;
 
 import sq.files;
-import sq.std;
+import std;
 
 namespace sq::assets
 {

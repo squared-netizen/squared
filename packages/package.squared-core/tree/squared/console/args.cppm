@@ -1,7 +1,7 @@
 export module sq.console:args;
 
 export import :src.limits;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

@@ -1,10 +1,12 @@
 # Building
 
 squared builds with clang and GNU make. No CMake, no generator step, no
-network access, and nothing that assumes a desktop. Since 7b.4 squared is
-C++20 modules ([include-layout.md](include-layout.md)), which it builds the
-way clang does: `CXX` is clang++ by default, and another compiler stops the
-build at once. On Termux, `g++` and `c++` are clang already.
+network access, and nothing that assumes a desktop. squared is modules, in
+C++23 ([include-layout.md](include-layout.md)), which it builds the way clang
+does: `CXX` is clang++ by default, and another compiler stops the build at
+once. On Termux, `g++` and `c++` are clang already. The standard library is
+libc++, everywhere: Android's and Termux's already; on a desktop, install it
+(Debian and Ubuntu: `apt install libc++-dev libc++abi-dev`).
 
 ## Desktop Linux and Termux
 
@@ -20,7 +22,7 @@ Or drive make directly:
 make                 # every module
 make gui             # one module
 make BUILD=debug
-make headers         # sq.std current, the modules' build order
+make headers         # the pinned std sources, the modules' build order
 make sqgen           # sqgen and sqconsole, for this machine, in build/<BUILD>/
 make test            # every module's tests, each only if it changed (below)
 make retest          # every test again
@@ -157,20 +159,23 @@ and the Console ([console.md](console.md)) work without either.
 make CXX=clang++ BUILD=debug CXXFLAGS_EXTRA=-fsanitize=address
 ```
 
-Defaults are `-std=c++20 -O2 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
--Wsign-conversion`, plus `-ffunction-sections -fdata-sections
+Defaults are `-std=c++23 -stdlib=libc++ -O2 -Wall -Wextra -Wpedantic -Wshadow
+-Wconversion -Wsign-conversion`, plus `-ffunction-sections -fdata-sections
 -fvisibility=hidden` so the linker can drop what an application does not use.
 The tree builds warning-free at that level.
 
 **Every module is compiled before what imports it** (7b.4): `mod
 sq.gui-label` is an interface becoming its BMI, in
-`build/<BUILD>/modules/`. The standard library is a module too, `sq.std`
-(`build/std.cppm`), made first: the standard headers are parsed once per flag
-set, and every file reads from it only what it uses. A `std::` name your
-change starts to use that sq.std does not export yet fails the compile, and
-`make headers`: `tools/std_module.sh` writes the module again. (Until 7b.4 the
-standard headers were precompiled; a precompiled header and modules do not
-mix.)
+`build/<BUILD>/modules/`. The standard library is a module too, `std`
+(C++23; libc++'s own sources, pinned in `third_party/libcxx/`), made first,
+and only once for each compiler, flag set and libc++ on the device: in
+`~/sqsysroot/.sqpg/std/` when squared-pg is set up, shared by every project
+(`mod  std (libc++ 210000, made before: ...)` when another project made
+it), else in the build. Every file reads from it only what it uses. When
+the NDK's libc++ moves to another major version, the build says to pin
+again: `tools/pin_libcxx_modules.sh` (`third_party/libcxx/README.md`).
+(Until 7b.4 the standard headers were precompiled; until 2026-11-02 squared
+had its own module of them, `sq.std`.)
 
 **A test is rebuilt only when something it includes changes**, and the
 objects of the sources tests share are kept in

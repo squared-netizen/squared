@@ -5,12 +5,12 @@
 // a widget receives is exactly what the event carried, for every named key,
 // and that focus moves and unknown input behave as before the merge.
 
+#include <assert.h>
+
 import sq.app;
 import sq.gui;
 
-#include <assert.h>
-
-import sq.std;
+import std;
 
 using namespace sq;
 

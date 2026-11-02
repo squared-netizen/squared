@@ -144,7 +144,7 @@ built before. The few headers left (a test's stub) are analysed through the
 files that include them; findings are deduplicated by place and check.
 
 A tree without Makefiles (a test fixture) falls back to every
-`<module>/src/**.cpp` with `-std=c++20` and the layout's include paths.
+`<module>/src/**.cpp` with `-std=c++23` and the layout's include paths.
 
 ### Versions
 

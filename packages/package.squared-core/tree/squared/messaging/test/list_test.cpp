@@ -3,11 +3,11 @@
 // allocation), the widget's window (when it asks), and the two together
 // through a stand-in, a fling and a sort with every row on screen checked.
 
-import sq.messaging;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

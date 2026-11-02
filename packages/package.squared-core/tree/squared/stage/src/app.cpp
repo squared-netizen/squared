@@ -7,7 +7,7 @@ module sq.stage;
 import sq.app;
 import sq.files;
 import sq.time;
-import sq.std;
+import std;
 
 namespace sq
 {

@@ -2,7 +2,7 @@ export module sq.messaging:name_table;
 
 export import :address;
 export import :name;
-import sq.std;
+import std;
 
 // The test's probe (test/address_test.cpp), which NameTable befriends: the
 // global module's, as the test that defines it is not in sq.messaging.

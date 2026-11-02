@@ -3,7 +3,7 @@ export module sq.console:renderer;
 export import :console;
 export import :src.frame;
 export import :src.quad;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

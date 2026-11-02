@@ -1,6 +1,6 @@
 export module sq.dev:dev_log;
 
-import sq.std;
+import std;
 
 export namespace sq::dev
 {

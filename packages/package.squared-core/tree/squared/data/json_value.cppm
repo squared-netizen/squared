@@ -1,6 +1,6 @@
 export module sq.data:json_value;
 
-import sq.std;
+import std;
 
 export namespace sq::data
 {

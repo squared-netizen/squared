@@ -3,7 +3,7 @@ export module sq.gui:src.input_event;
 export import :src.input_phase;
 export import :src.input_type;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

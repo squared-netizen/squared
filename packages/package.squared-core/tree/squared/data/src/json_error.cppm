@@ -1,7 +1,7 @@
 export module sq.data:src.json_error;
 
 export import :src.json_error_code;
-import sq.std;
+import std;
 
 export namespace sq::data
 {

@@ -1,6 +1,6 @@
 export module sq.gui:src.skin_load_severity;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

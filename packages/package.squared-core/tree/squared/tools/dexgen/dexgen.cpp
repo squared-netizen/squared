@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 
-import sq.std;
+import std;
 
 namespace
 {

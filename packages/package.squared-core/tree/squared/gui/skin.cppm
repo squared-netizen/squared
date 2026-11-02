@@ -13,7 +13,7 @@ export import :src.slider_style;
 export import :src.text_field_style;
 export import :src.window_style;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

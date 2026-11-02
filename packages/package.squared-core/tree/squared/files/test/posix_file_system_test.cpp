@@ -1,14 +1,14 @@
 // PosixFileSystem against real directories under $TMPDIR: every operation,
 // its failures, and how many allocations the everyday ones make.
 
-import sq.files;
-
 #include <assert.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.files;
+
+import std;
 
 namespace
 {

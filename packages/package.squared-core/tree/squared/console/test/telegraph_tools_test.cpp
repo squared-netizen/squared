@@ -6,16 +6,16 @@
 // off); recording, and replaying at the recorded pace and fast, through a
 // full ring, past bad and overlong lines; refused files; no allocation.
 
-import sq.console;
-import sq.dev;
-import sq.messaging;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.console;
+import sq.dev;
+import sq.messaging;
+
+import std;
 
 using namespace sq::console;
 using namespace sq::messaging;

@@ -4,7 +4,7 @@
 
 #include "android_text.hpp"
 
-import sq.std;
+import std;
 
 namespace sq_android {
 

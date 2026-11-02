@@ -1,7 +1,7 @@
 export module sq.graphics:sprite_batch;
 
 export import :color;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

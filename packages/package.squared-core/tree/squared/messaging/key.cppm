@@ -3,7 +3,7 @@ export module sq.messaging:key;
 export import :name;
 export import :src.value_type;
 export import :src.verb;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

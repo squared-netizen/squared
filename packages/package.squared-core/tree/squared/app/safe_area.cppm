@@ -1,6 +1,6 @@
 export module sq.app:safe_area;
 
-import sq.std;
+import std;
 
 export namespace sq::app
 {

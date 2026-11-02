@@ -4,7 +4,7 @@ module;
 
 module sq.console;
 
-import sq.std;
+import std;
 
 namespace sq::console
 {

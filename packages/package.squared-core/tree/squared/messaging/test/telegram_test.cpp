@@ -2,11 +2,11 @@
 // compiler refuses, the exact lines, what is read and refused, a fuzz test
 // both ways, and no allocation.
 
-import sq.messaging;
-
 #include <assert.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

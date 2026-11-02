@@ -1,6 +1,6 @@
 export module sq.gles:src.buffer_usage;
 
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

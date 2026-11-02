@@ -149,7 +149,7 @@ free it; `kept_count()` is for the Console and the test.
 ## `List` (7.5b)
 
 `list.cppm`, `src/list.cpp`; built by `instantiate` for a `list` node, bound by
-the Stage. 384 bytes (libstdc++): the row's copy (a vector of nodes, the
+the Stage. 400 bytes (libc++, 64-bit; 384 under libstdc++, before 2026-11-02): the row's copy (a vector of nodes, the
 layout's words and numbers), the hooks, the row tables and the row each
 shows (two vectors), and a few floats.
 

@@ -1,7 +1,7 @@
 export module sq.files:src.file_read_result;
 
 export import :src.file_error;
-import sq.std;
+import std;
 
 export namespace sq::files
 {

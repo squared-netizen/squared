@@ -1,6 +1,6 @@
 export module sq.messaging:src.value_type;
 
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

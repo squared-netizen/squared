@@ -3,11 +3,11 @@
 // long random run against a model; and two real threads, the consumer
 // checking every telegram's order and bytes.
 
-import sq.messaging;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

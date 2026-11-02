@@ -1,7 +1,7 @@
 export module sq.gui:panel;
 
 export import :widget;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

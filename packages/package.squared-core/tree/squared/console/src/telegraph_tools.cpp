@@ -9,7 +9,7 @@ module sq.console;
 
 import sq.messaging;
 import sq.time;
-import sq.std;
+import std;
 
 namespace sq::console
 {

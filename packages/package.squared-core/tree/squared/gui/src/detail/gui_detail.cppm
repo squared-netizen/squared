@@ -8,7 +8,7 @@ export module sq.gui:src.detail.gui_detail;
 export import :src.rectangle;
 export import :widget;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui::detail
 {

@@ -8,7 +8,7 @@ export import :file_handle;
 export import :src.file_error;
 export import :src.file_read_result;
 export import :src.file_type;
-import sq.std;
+import std;
 
 export namespace sq::files
 {

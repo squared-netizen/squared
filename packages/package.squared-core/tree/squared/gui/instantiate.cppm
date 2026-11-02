@@ -1,7 +1,7 @@
 export module sq.gui:instantiate;
 
 export import :layout;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -1,6 +1,6 @@
 export module sq.math:matrix4;
 
-import sq.std;
+import std;
 
 export namespace sq::math
 {

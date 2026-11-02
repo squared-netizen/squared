@@ -14,7 +14,7 @@
 #
 #   INTERFACES    every .cppm in the module's directory (not test/)
 #   USES_MODULES  every other module its files import (`import sq.gui;`, in
-#                 any of them, tests included); sq.std is everyone's
+#                 any of them, tests included); std is everyone's
 #
 # What it gives:
 #
@@ -22,7 +22,7 @@
 #     BMI, build/<BUILD>/modules/sq.<module>[-<partition>].pcm, where
 #     -fprebuilt-module-path (SQUARED_MODULE_USE) finds it for every importer;
 #   - each object and test of the module waits for, and is rebuilt after, the
-#     BMIs it may import: sq.std's, its own module's, and those of
+#     BMIs it may import: std's, its own module's, and those of
 #     USES_MODULES (a BMI changes only when an interface changes, and clang
 #     refuses an importer built against an older one);
 #   - the interfaces' order inside the module, from their import lines
@@ -57,10 +57,10 @@ OBJECTS += $(INTERFACE_OBJECTS)
 # which the modules after this one read.
 $(TARGET): $(INTERFACE_OBJECTS) $(if $(INTERFACES),$(SQUARED_MODULE_DIR)/sq.$(MODULE).inputs)
 
-# The BMIs this module's code may import: sq.std's, its own primary, the
+# The BMIs this module's code may import: std's (its std.ready), its own primary, the
 # primaries of the modules it uses; and the lists of their sources.
 SQUARED_MODULE_INPUTS_FILE := $(SQUARED_MODULE_DIR)/sq.$(MODULE).inputs
-SQUARED_USED_PCMS := $(SQUARED_STD_PCM) $(foreach m,$(USES_MODULES),$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
+SQUARED_USED_PCMS := $(SQUARED_STD_READY) $(foreach m,$(USES_MODULES),$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
 SQUARED_USED_INPUTS := $(SQUARED_STD_INPUTS) $(foreach m,$(USES_MODULES),$(SQUARED_MODULE_DIR)/sq.$(m).inputs)
 SQUARED_IMPORT_PCMS := $(SQUARED_USED_PCMS) $(if $(INTERFACES),$(SQUARED_MODULE_DIR)/sq.$(MODULE).pcm)
 SQUARED_IMPORT_INPUTS := $(if $(INTERFACES),$(SQUARED_MODULE_INPUTS_FILE),$(SQUARED_USED_INPUTS))
@@ -71,8 +71,11 @@ SQUARED_IMPORT_INPUTS := $(if $(INTERFACES),$(SQUARED_MODULE_INPUTS_FILE),$(SQUA
 SQUARED_TEST_ARCHIVES = $(TARGET) $(foreach m,$(USES_MODULES),$(LIB_DIR)/libsquared_$(m).a)
 
 # Another module's BMI that is not there: that module is built first (the
-# top Makefile's order), so this is `make -C <this module>` alone.
-$(SQUARED_MODULE_DIR)/%.pcm $(SQUARED_MODULE_DIR)/%.inputs:
+# top Makefile's order), so this is `make -C <this module>` alone. squared's
+# modules only (sq.*): std's BMI and std.inputs are build/common.mk's, and a
+# pattern that matched them made std.pcm a target here, "missing" whenever
+# std.inputs was older than what makes it (2026-11-02).
+$(SQUARED_MODULE_DIR)/sq.%.pcm $(SQUARED_MODULE_DIR)/sq.%.inputs:
 	@echo "squared: $(notdir $@) is missing: build the module it belongs to first (make at the top builds them in order)" >&2
 	@false
 
@@ -106,7 +109,7 @@ $(SQUARED_MODULE_ORDER): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_ROO
 -include $(INTERFACE_OBJECTS:.o=.d)
 
 # The interface sources whose BMIs an importer of this module reads: its own
-# and every used module's (sq.std's among them), one path a line.
+# and every used module's (std's PINNED among them), one path a line.
 $(SQUARED_MODULE_INPUTS_FILE): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_USED_INPUTS) \
                                $(MODULE_DIR)/Makefile
 	@mkdir -p $(dir $@)

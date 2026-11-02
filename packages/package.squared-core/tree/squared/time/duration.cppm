@@ -1,6 +1,6 @@
 export module sq.time:duration;
 
-import sq.std;
+import std;
 
 export namespace sq::time
 {

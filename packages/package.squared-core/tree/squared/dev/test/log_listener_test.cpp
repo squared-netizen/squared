@@ -3,11 +3,11 @@
 // thread that set it, never once cleared; report_allocations() arrives through
 // it too. No socket is needed.
 
-import sq.dev;
-
 #include <assert.h>
 
-import sq.std;
+import sq.dev;
+
+import std;
 
 namespace
 {

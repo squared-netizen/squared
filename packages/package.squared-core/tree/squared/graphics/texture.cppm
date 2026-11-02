@@ -7,7 +7,7 @@ export import :src.texture_recovery_options;
 export import :src.texture_recovery_policy;
 export import :src.texture_wrap;
 import sq.files;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

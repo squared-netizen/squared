@@ -2,7 +2,7 @@ export module sq.gui:src.detail.actor_root;
 
 export import :actor;
 export import :group;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

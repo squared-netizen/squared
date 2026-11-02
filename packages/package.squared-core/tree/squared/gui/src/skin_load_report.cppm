@@ -1,7 +1,7 @@
 export module sq.gui:src.skin_load_report;
 
 export import :src.skin_load_issue;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

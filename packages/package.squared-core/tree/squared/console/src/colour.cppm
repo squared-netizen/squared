@@ -1,6 +1,6 @@
 export module sq.console:src.colour;
 
-import sq.std;
+import std;
 
 export namespace sq::console
 {

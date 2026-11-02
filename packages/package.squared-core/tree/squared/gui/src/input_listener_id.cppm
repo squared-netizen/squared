@@ -1,6 +1,6 @@
 export module sq.gui:src.input_listener_id;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

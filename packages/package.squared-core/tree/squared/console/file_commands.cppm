@@ -2,7 +2,7 @@ export module sq.console:file_commands;
 
 export import :bridge;
 export import :console;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

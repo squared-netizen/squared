@@ -3,7 +3,7 @@ export module sq.gui:table;
 export import :cell;
 export import :src.size;
 export import :widget;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

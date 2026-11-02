@@ -43,7 +43,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `time` | 5 | 0 | `import sq.time;` |
 
 `import squared;` is everything an app is written against: the standard
-library (`sq.std`), app, gui, messaging and stage. Private partitions under
+library (`std`), app, gui, messaging and stage. Private partitions under
 `src/detail/` are not counted: they are the framework's own.
 
 ## Reading the tables

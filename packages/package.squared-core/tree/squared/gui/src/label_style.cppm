@@ -2,7 +2,7 @@ export module sq.gui:src.label_style;
 
 export import :src.font_ptr;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

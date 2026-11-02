@@ -1,7 +1,7 @@
 export module sq.messaging:telegram_data;
 
 export import :src.data_ref;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

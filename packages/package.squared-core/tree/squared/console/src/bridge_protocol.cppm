@@ -20,7 +20,7 @@
 
 export module sq.console:src.bridge_protocol;
 
-import sq.std;
+import std;
 
 export namespace sq::console::bridge_protocol
 {

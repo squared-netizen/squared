@@ -5,7 +5,7 @@ import sq.files;
 import sq.graphics;
 import sq.gui;
 import sq.messaging;
-import sq.std;
+import std;
 
 export namespace sq
 {

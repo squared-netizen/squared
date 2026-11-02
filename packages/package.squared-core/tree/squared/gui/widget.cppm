@@ -4,7 +4,7 @@ export import :group;
 export import :src.size;
 export import :src.size_hints;
 import sq.app;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

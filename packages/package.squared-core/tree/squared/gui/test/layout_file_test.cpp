@@ -6,12 +6,12 @@
 // The cases are in layout_file_cases.txt, one per line: a kind, the JSON, and
 // the problem expected. Every case runs; each one that fails is printed.
 
+#include <stdio.h>
+
 import sq.gui;
 import sq.messaging;
 
-#include <stdio.h>
-
-import sq.std;
+import std;
 
 using namespace sq::gui;
 namespace data = sq::data;

@@ -13,8 +13,9 @@
 // quit; the model's own save given back; the Console's `screens` lines; and
 // a new activity that forgets the old one's keyboard.
 
-import sq.stage;
+#include <stdio.h>
 
+import sq.stage;
 import sq.app;
 import sq.assets;
 import sq.dev;
@@ -23,11 +24,10 @@ import sq.graphics;
 import sq.gui;
 import sq.messaging;
 
-#include <stdio.h>
-
-import sq.std;
+import std;
 
 /// What lets a test point the Stage at another skin.
+
 struct sq::detail::StageProbe final
 {
         static void read_skin_from( sq::Stage &stage, sq::files::FileSystem *files ) noexcept

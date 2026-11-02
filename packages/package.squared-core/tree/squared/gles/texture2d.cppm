@@ -3,7 +3,7 @@ export module sq.gles:texture2d;
 export import :src.gles_error;
 export import :src.texture_format;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

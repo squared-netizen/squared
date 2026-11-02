@@ -36,7 +36,7 @@ import sq.files;
 import sq.graphics;
 import sq.gui;
 import sq.messaging;
-import sq.std;
+import std;
 using namespace sq;
 #define P(T) std::printf("%-26s %4zu %4zu\n", #T, sizeof(T), alignof(T));
 int main() {
@@ -64,7 +64,7 @@ EOF
 lib="$root/build/$BUILD/lib"
 [ -f "$lib/libsquared_std.a" ] || { echo "measure_sizes: build first (make), the modules' BMIs are read" >&2; exit 2; }
 # shellcheck disable=SC2086
-"$CXX" -std=c++20 -pthread -O2 $includes $SQUARED_EXTERNAL_INCLUDES \
+"$CXX" -std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline -O2 $includes $SQUARED_EXTERNAL_INCLUDES \
   -fprebuilt-module-path="$root/build/$BUILD/modules" "$work/sizes.cpp" \
   -Wl,--start-group "$lib"/libsquared_*.a -Wl,--end-group -o "$work/sizes"
 "$work/sizes"

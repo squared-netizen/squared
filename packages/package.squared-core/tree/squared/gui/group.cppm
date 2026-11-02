@@ -1,7 +1,7 @@
 export module sq.gui:group;
 
 export import :actor;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

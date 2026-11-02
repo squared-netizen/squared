@@ -2,14 +2,14 @@
 // emits, read back into a grid of characters and checked row by row. Also the
 // font atlas, and that laying out allocates nothing.
 
-import sq.console;
-import sq.dev;
-
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 
-import sq.std;
+import sq.console;
+import sq.dev;
+
+import std;
 
 using namespace sq::console;
 

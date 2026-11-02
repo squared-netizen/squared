@@ -6,7 +6,7 @@ export import :src.bitmap_font_page;
 export import :src.bitmap_font_parse_limits;
 export import :src.bitmap_glyph;
 export import :src.bitmap_kerning;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

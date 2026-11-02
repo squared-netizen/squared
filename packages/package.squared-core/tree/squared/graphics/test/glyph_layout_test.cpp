@@ -1,9 +1,10 @@
-import sq.dev;
-import sq.graphics;
 
 #include <assert.h>
 
-import sq.std;
+import sq.dev;
+import sq.graphics;
+
+import std;
 
 namespace
 {

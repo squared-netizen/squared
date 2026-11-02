@@ -1,6 +1,6 @@
 export module sq.gui:src.pointer_action;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

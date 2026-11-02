@@ -4,7 +4,7 @@ module;
 
 export module sq.gui:button_group;
 
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

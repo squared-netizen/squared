@@ -1,7 +1,7 @@
 export module sq.graphics:src.bitmap_font_error;
 
 export import :src.bitmap_font_error_code;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

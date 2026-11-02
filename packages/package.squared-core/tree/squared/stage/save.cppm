@@ -2,7 +2,7 @@ export module sq.stage:save;
 
 import sq.messaging;
 import sq.time;
-import sq.std;
+import std;
 
 export namespace sq
 {

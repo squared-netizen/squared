@@ -1,7 +1,7 @@
 export module sq.data:src.json_write_result;
 
 export import :src.json_error;
-import sq.std;
+import std;
 
 export namespace sq::data
 {

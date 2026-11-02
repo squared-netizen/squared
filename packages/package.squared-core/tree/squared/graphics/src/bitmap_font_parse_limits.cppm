@@ -1,6 +1,6 @@
 export module sq.graphics:src.bitmap_font_parse_limits;
 
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

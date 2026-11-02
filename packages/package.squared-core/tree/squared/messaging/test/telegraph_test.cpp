@@ -3,12 +3,12 @@
 // coalesced, the order kept, lists wired in, the lifecycle in order, and no
 // allocation. The model runs inline: `deliver` called where its thread will.
 
-import sq.messaging;
-
 #include <stdio.h>
 #include <stdlib.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

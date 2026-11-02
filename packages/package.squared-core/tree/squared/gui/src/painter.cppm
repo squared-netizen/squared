@@ -2,7 +2,7 @@ export module sq.gui:src.painter;
 
 export import :src.size;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

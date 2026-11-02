@@ -1,8 +1,8 @@
-# squared - Linux/Android SDK in C++20 with a Lua 5.4 scripting layer.
+# squared - Linux/Android SDK in C++23 with a Lua 5.4 scripting layer.
 #
 #   make                 build every module (release)
 #   make BUILD=debug     unoptimised with symbols
-#   make headers         check sq.std and the modules' build order
+#   make headers         check the pinned std sources and the modules' build order
 #                        (tools/check_modules.sh; until 7b.4, every header
 #                        compiled on its own)
 #   make lint            format, source-rule and clang-tidy checks
@@ -60,9 +60,9 @@ messaging: time
 console: app dev messaging time
 stage: app gui graphics assets dev files messaging data time math
 
-# sq.std first, here, once: every module imports it, and they build at the
+# std first, here, once: every module imports it, and they build at the
 # same time under -j (build/common.mk, "the standard library, as a module").
-$(MODULES): $(SQUARED_STD_PCM)
+$(MODULES): $(SQUARED_STD_READY)
 	$(MAKE) -C $@ -f Makefile
 
 # squared, the one import for an app (squared.cppm: the standard library, the
@@ -75,7 +75,7 @@ SQUARED_UMBRELLA_LIB := $(LIB_DIR)/libsquared.a
 # would all compile again).
 umbrella: app gui messaging stage
 	$(MAKE) --no-print-directory $(SQUARED_UMBRELLA_LIB)
-$(SQUARED_UMBRELLA_LIB): squared.cppm $(SQUARED_STD_PCM) $(SQUARED_FLAGS_STAMP) \
+$(SQUARED_UMBRELLA_LIB): squared.cppm $(SQUARED_STD_READY) $(SQUARED_FLAGS_STAMP) \
                          $(foreach m,app gui messaging stage,$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
 	@mkdir -p $(OBJ_DIR)/squared
 	$(call say,mod,squared)

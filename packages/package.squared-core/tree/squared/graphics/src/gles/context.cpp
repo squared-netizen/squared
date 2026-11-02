@@ -5,7 +5,7 @@ module;
 
 module sq.graphics;
 
-import sq.std;
+import std;
 
 #if defined( __ANDROID__ )
 /*

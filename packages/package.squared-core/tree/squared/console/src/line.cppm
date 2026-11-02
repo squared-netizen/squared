@@ -1,7 +1,7 @@
 export module sq.console:src.line;
 
 export import :src.level;
-import sq.std;
+import std;
 
 export namespace sq::console
 {

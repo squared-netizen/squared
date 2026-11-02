@@ -4,7 +4,7 @@ export import :src.bitmap_font_error;
 export import :src.glyph_layout_options;
 export import :src.glyph_line;
 export import :src.glyph_placement;
-import sq.std;
+import std;
 
 export namespace sq::graphics
 {

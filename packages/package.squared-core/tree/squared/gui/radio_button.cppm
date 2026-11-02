@@ -1,7 +1,7 @@
 export module sq.gui:radio_button;
 
 export import :check_box;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

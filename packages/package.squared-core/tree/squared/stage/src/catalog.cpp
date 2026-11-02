@@ -4,7 +4,7 @@
 
 module sq.stage;
 
-import sq.std;
+import std;
 
 // extern "C++": declared there in the global module, as sqgen's are.
 extern "C++" {

@@ -4,7 +4,7 @@ module;
 
 module sq.data;
 
-import sq.std;
+import std;
 
 namespace sq::data
 {

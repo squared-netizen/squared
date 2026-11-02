@@ -52,7 +52,7 @@ fi
   printf '// Written by tools/embed_files.sh from %s/: do not edit.\n' "$source_dir"
   printf '// Change the files and run it again (its comment has the command line).\n\n'
   printf 'module %s;\n\n' "$module"
-  printf 'import sq.files;\nimport sq.std;\n\n'
+  printf 'import sq.files;\nimport std;\n\n'
   printf 'namespace sq::detail\n{\n\nnamespace\n{\n\n// clang-format off\n'
   index=0
   printf '%s\n' "$files" | while IFS= read -r name; do

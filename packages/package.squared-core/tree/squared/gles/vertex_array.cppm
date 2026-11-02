@@ -2,7 +2,7 @@ export module sq.gles:vertex_array;
 
 export import :src.gles_error;
 export import :src.vertex_attribute;
-import sq.std;
+import std;
 
 export namespace sq::gles
 {

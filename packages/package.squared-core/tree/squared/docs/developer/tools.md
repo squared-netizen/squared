@@ -68,8 +68,9 @@ with no comment (constructors, destructors and assignments are left out).
 - **The interfaces as text** (2026-11-02): clang-doc reads a copy of the
   interfaces, `build/release/docs/view/`, not the modules. In the copy,
   `export module` is `#pragma once`, each import is an `#include` of the
-  partition's or module's file (`import sq.std;` includes `build/std.cppm`'s
-  headers), and `export namespace`/`export extern` lose `export`. The rewrite
+  partition's or module's file (`import std;` includes the standard headers
+  the pinned `third_party/libcxx/std.cppm` includes, read with
+  `-stdlib=libc++`), and `export namespace`/`export extern` lose `export`. The rewrite
   keeps every line on its line, so "Defined at" points at the real file.
   Why: clang never writes comments into a named module's BMI (ASTWriter.cpp:
   "Don't write comments to BMI to reduce the size of BMI"; no option turns it
@@ -137,6 +138,33 @@ with no comment (constructors, destructors and assignments are left out).
   shown; an override shows no text (its comment is on the base); enums appear
   on the namespace page.
 - Memory: a tool, so priority 1 does not apply. About 25 s for 92 headers here.
+
+## pin_libcxx_modules.sh
+
+`tools/pin_libcxx_modules.sh <share/libc++/v1>`: copies libc++'s std module
+sources (`std.cppm`, `std/*.inc`) from a libc++ installation into
+`third_party/libcxx/`, replacing what was pinned, and writes `PINNED`: where
+from (with `~` and `$PREFIX`), the `_LIBCPP_VERSION` of the headers beside
+them (the NDK's `sysroot/usr/include/c++/v1`, or an installation's
+`include/c++/v1`), the date, and a sha256 for each file. Refuses a directory
+without them, or without headers beside it. `make headers` checks the sums.
+Run when the NDK's libc++ moves; then build, test, commit. Why pinned, and
+from where: [modules.md](modules.md#std).
+
+## std_bmi.sh
+
+`tools/std_bmi.sh <module dir> <archive> <compiler> <flags>...`, run by
+`build/common.mk`'s std rule: makes `import std;`'s BMI and object for one
+compiler, flag set and libc++, once on the device, in
+`$(SQUARED_STD_HOME)/<key>/`, or finds them made; links the build's
+`modules/std.pcm` to it, writes `modules/std.d` and `std.inputs`, archives
+`libsquared_std.a`, and removes keys beyond `SQUARED_STD_KEEP` (6). Refuses a
+standard library that is not libc++, and libc++ headers of another major
+version than `PINNED`. Fits its copy of the sources to the headers (libc++'s
+header-availability checks out; a `using` of a name the C library makes
+static left out, and said: Termux's `tmpfile`), never the pinned files. One
+`mod  std (...)` line, `into` or `made before`.
+The key, the sharing and the races: [modules.md](modules.md#std).
 
 ## format.sh
 

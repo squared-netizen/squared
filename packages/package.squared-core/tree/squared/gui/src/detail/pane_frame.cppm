@@ -2,7 +2,7 @@ export module sq.gui:src.detail.pane_frame;
 
 export import :src.size;
 export import :widget;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

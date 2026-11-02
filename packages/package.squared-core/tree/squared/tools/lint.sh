@@ -382,7 +382,7 @@ if run tidy; then
         if [ ! -s "$TMP/plan" ]; then
             # No Makefiles to ask: every .cpp under <module>/src/, layout defaults.
             grep -E '^[a-z][a-z0-9_]*/src/.*\.cpp$' "$TMP/files" | while IFS= read -r f; do
-                printf '%s\037layout\037-std=c++20 -I%s -I%s/%s/src\n' "$f" "$(dirname "$root")" "$root" "${f%%/*}"
+                printf '%s\037layout\037-std=c++23 -I%s -I%s/%s/src\n' "$f" "$(dirname "$root")" "$root" "${f%%/*}"
             done >"$TMP/plan"
         fi
         # The selected files the build compiles. A selected header brings in

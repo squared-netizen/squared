@@ -1,7 +1,7 @@
 export module sq.gui:src.drawable_ptr;
 
 export import :src.drawable;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

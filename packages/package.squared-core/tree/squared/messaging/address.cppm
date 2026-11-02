@@ -1,7 +1,7 @@
 export module sq.messaging:address;
 
 export import :name;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

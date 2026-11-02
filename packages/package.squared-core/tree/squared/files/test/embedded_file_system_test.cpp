@@ -1,11 +1,11 @@
 // The embedded backend: files compiled into the program, read through the
 // FileSystem interface and a handle, as the Stage reads its default skin.
 
-import sq.files;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.files;
+
+import std;
 
 namespace
 {

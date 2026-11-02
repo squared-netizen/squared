@@ -4,9 +4,6 @@
 // Termux end, sqconsole, run for real: --run, and interactive with its
 // reconnect when the app's bridge opens again.
 
-import sq.console;
-import sq.dev;
-
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -19,11 +16,14 @@ import sq.dev;
 #include <sys/wait.h>
 #include <unistd.h>
 
-import sq.std;
-
 #ifndef SQCONSOLE_PATH
 #error "SQCONSOLE_PATH: the test is built by console/Makefile, which names the sqconsole it built"
 #endif
+
+import sq.console;
+import sq.dev;
+
+import std;
 
 namespace
 {

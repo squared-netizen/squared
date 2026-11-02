@@ -3,11 +3,11 @@
 // order, bound entries kept, full and too large, no allocation; and a long
 // random run against a model.
 
-import sq.messaging;
-
 #include <stdio.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

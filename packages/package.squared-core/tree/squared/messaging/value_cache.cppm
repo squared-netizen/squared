@@ -2,7 +2,7 @@ export module sq.messaging:value_cache;
 
 export import :address;
 export import :telegram;
-import sq.std;
+import std;
 
 export namespace sq::messaging
 {

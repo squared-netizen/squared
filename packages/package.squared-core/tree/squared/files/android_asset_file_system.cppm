@@ -9,7 +9,7 @@ export import :posix_file_system;
 export import :src.file_error;
 export import :src.file_read_result;
 export import :src.file_type;
-import sq.std;
+import std;
 
 export extern "C++"
 {

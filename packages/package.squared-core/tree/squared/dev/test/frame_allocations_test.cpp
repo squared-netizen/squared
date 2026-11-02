@@ -1,4 +1,3 @@
-import sq.dev;
 
 #include <arpa/inet.h>
 #include <assert.h>
@@ -6,7 +5,9 @@ import sq.dev;
 #include <sys/socket.h>
 #include <unistd.h>
 
-import sq.std;
+import sq.dev;
+
+import std;
 
 namespace
 {

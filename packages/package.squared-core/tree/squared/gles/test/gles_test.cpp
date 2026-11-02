@@ -1,8 +1,9 @@
-import sq.gles;
 
 #include <assert.h>
 
-import sq.std;
+import sq.gles;
+
+import std;
 
 namespace glstub
 {

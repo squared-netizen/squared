@@ -4,12 +4,12 @@
 // one draw call or a thousand, and only the frame time tells you which. The
 // null backend counts draw calls, so the decisions can be asserted directly.
 
+#include <assert.h>
+
 import sq.files;
 import sq.graphics;
 
-#include <assert.h>
-
-import sq.std;
+import std;
 
 namespace sq::graphics::detail
 {

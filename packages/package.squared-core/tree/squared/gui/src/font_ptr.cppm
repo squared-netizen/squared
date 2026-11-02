@@ -1,7 +1,7 @@
 export module sq.gui:src.font_ptr;
 
 export import :src.font_resource;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

@@ -1,11 +1,11 @@
 // Names, addresses and the name table (Telegraph v2, 6.1): the hash, the text
 // form both ways, registration and its failures, and no allocation anywhere.
 
-import sq.messaging;
-
 #include <assert.h>
 
-import sq.std;
+import sq.messaging;
+
+import std;
 
 namespace
 {

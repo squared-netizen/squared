@@ -1,6 +1,6 @@
 export module sq.console:src.clipboard_writer;
 
-import sq.std;
+import std;
 
 export namespace sq::console
 {

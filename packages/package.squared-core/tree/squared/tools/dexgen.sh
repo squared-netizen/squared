@@ -40,7 +40,7 @@ build() { # build <binary> [defines...]
     mkdir -p "$out"
     if [ ! -x "$bin" ] || [ "$src" -nt "$bin" ] || [ $# -gt 0 ]; then
         echo "  building $(basename "$bin") with $($cxx --version 2>/dev/null | head -1)"
-        "$cxx" -std=c++20 -O2 -Wall -Wextra -Wpedantic "$@" "$src" -o "$bin" ||
+        "$cxx" -std=c++23 -O2 -Wall -Wextra -Wpedantic "$@" "$src" -o "$bin" ||
             { echo "dexgen.sh: dexgen did not build" >&2; exit 2; }
     fi
 }

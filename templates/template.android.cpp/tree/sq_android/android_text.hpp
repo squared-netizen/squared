@@ -17,12 +17,12 @@
 
 #pragma once
 
-import sq.app;
-import sq.std;
-
 #include <android/native_activity.h>
 #include <jni.h>
 
+import sq.app;
+
+import std;
 
 namespace sq_android {
 

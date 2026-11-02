@@ -35,7 +35,15 @@ OBJ_DIR := $(BUILD_DIR)/obj
 # exceptions when the importer has them ("configuration mismatch"). Tests,
 # tools and the template's app code are compiled with it too (-pthread: the
 # Telegraph's threads; on Android it changes nothing but the check).
-STANDARD := -std=c++20 -pthread
+#
+# C++23, with libc++ (decided 2026-11-02): `import std;` is libc++'s own
+# module (third_party/libcxx/), and libc++ is the standard library everywhere,
+# Android's, Termux's and a desktop's alike (libstdc++ ships no std module
+# before GCC 15). -D__BIONIC_CTYPE_INLINE=inline: Android's <ctype.h> makes
+# isalpha and the rest static inline, which a module cannot export; with it
+# they are plain inline, in the std module and in a file that includes
+# <ctype.h> itself alike. Elsewhere it names nothing.
+STANDARD := -std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline
 WARNINGS := -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
 
 ifeq ($(BUILD),debug)
@@ -95,14 +103,21 @@ SQUARED_CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1 | tr ' '
 SQUARED_MODULE_DIR := $(BUILD_DIR)/modules
 SQUARED_MODULE_USE := -fprebuilt-module-path=$(SQUARED_MODULE_DIR)
 
-# sq.std, squared's module of the standard library (build/std.cppm, written by
-# tools/std_module.sh): its BMI, and the list of its source for the cache.
-# The root Makefile makes them first, with libsquared_std.a, which holds its
-# object: every program that imports a squared module links it.
-SQUARED_STD_SOURCE := $(SQUARED_ROOT)/build/std.cppm
-SQUARED_STD_PCM := $(SQUARED_MODULE_DIR)/sq.std.pcm
-SQUARED_STD_INPUTS := $(SQUARED_MODULE_DIR)/sq.std.inputs
+# std, the standard library as a module (C++23, libc++'s, pinned in
+# third_party/libcxx/), made by tools/std_bmi.sh once per compiler, flags and
+# libc++, and shared: modules/std.pcm links to it. std.ready is made with it,
+# and is what everything that imports std waits for (std.pcm's own date is the
+# shared BMI's, older than this build's). std.inputs lists PINNED for the
+# build cache's key. libsquared_std.a holds its object: every program that
+# imports a squared module links it. The root Makefile makes them first.
+SQUARED_LIBCXX := $(SQUARED_ROOT)/third_party/libcxx
+SQUARED_STD_PINNED := $(SQUARED_LIBCXX)/PINNED
+SQUARED_STD_READY := $(SQUARED_MODULE_DIR)/std.ready
+SQUARED_STD_INPUTS := $(SQUARED_MODULE_DIR)/std.inputs
 SQUARED_STD_LIB := $(LIB_DIR)/libsquared_std.a
+# One per device when squared-pg is set up, as the build cache is.
+SQUARED_STD_HOME ?= $(if $(wildcard $(SQUARED_SQPG_HOME)/.),$(SQUARED_SQPG_HOME)/std,$(SQUARED_MODULE_DIR)/std)
+SQUARED_STD_KEEP ?= 6
 
 # --- the build cache (7b.3) ---------------------------------------------------
 #
@@ -207,7 +222,7 @@ squared_show_prefix = $(if $(PREFIX),$(subst $(PREFIX),$$PREFIX,$(1)),$(1))
 
 ifneq ($(squared_building),)
   ifeq ($(findstring clang,$(SQUARED_CXX_VERSION)),)
-    $(error squared: $(CXX) is not clang ($(or $(SQUARED_CXX_VERSION),not found)); squared's C++20 modules build with clang: make CXX=clang++)
+    $(error squared: $(CXX) is not clang ($(or $(SQUARED_CXX_VERSION),not found)); squared's C++23 modules build with clang: make CXX=clang++)
   endif
   squared_flags_before := $(file <$(SQUARED_FLAGS_STAMP))
   ifneq ($(squared_flags),$(squared_flags_before))
@@ -234,30 +249,38 @@ $(SQUARED_FLAGS_STAMP):
 	@mkdir -p $(dir $@)
 	$(file >$@,$(squared_flags))
 
-# --- the standard library, as a module (7b.4) ---------------------------------
+# --- the standard library, as a module: import std (C++23) ---------------------
 #
-# Until 7b.4 the standard headers were precompiled (7b.2): a precompiled
-# header and modules do not mix (clang 18 crashed on a module built with one;
-# std from a precompiled header beside std from a module is "different
-# definitions in different modules"). sq.std does the same work: the 47
-# headers parsed once per flag set, and every file reads from the BMI only
-# what it uses. Measured on the phone (2026-10-27, clang 21, every framework
-# file 8 at a time): 35.1 s with the precompiled header, 33.3 s with sq.std;
-# the NDK's 35.9 s and 31.8 s.
+# Every file imports std and names any standard type without saying where it
+# comes from; a C macro is the exception (assert, errno, PROP_VALUE_MAX): it
+# needs its C header, in the file's global module fragment.
 #
-# The precompiled header was included into every file, and sq.std is
-# imported by every file, so a file can name a standard type without saying
-# where it comes from, as with C++23's `import std`. A C macro is the
-# exception: it needs its C header (tools/std_module.sh).
-$(SQUARED_STD_PCM) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB): $(SQUARED_STD_SOURCE) $(SQUARED_FLAGS_STAMP)
-	@mkdir -p $(SQUARED_MODULE_DIR) $(OBJ_DIR)/std $(LIB_DIR)
-	$(call say,mod,sq.std)
-	$(CXX) $(SQUARED_CXXFLAGS) -MD -MP -MT $(SQUARED_STD_PCM) -MF $(OBJ_DIR)/std/std.d \
-	    -c $< -fmodule-output=$(SQUARED_STD_PCM) -o $(OBJ_DIR)/std/std.o
-	printf '%s\n' '$(SQUARED_STD_SOURCE)' > $(SQUARED_STD_INPUTS)
-	rm -f $(SQUARED_STD_LIB)
-	$(AR) rcs $(SQUARED_STD_LIB) $(OBJ_DIR)/std/std.o
--include $(OBJ_DIR)/std/std.d
+# History: the standard headers were precompiled (7b.2), then squared's own
+# sq.std (7b.4, build/std.cppm, a generated list of 161 names) until 2026-11-02,
+# when C++23 brought libc++'s std module. A precompiled header and modules do
+# not mix (clang 18 crashed on a module built with one). Measured on the phone
+# (2026-10-27, clang 21, every framework file 8 at a time): 35.1 s with the
+# precompiled header, 33.3 s with sq.std.
+#
+# tools/std_bmi.sh makes it, or finds it made (by this build before, or by
+# another project with the same compiler, flags and libc++), and prints one
+# `mod std` line either way. It runs when the flags or PINNED change, when a
+# libc++ header it read changes (std.d), and when the shared BMI went (the
+# link dangles: pruned, or ~/sqsysroot/.sqpg wiped).
+squared_std_gone := $(if $(wildcard $(SQUARED_STD_READY)),$(if $(realpath $(SQUARED_MODULE_DIR)/std.pcm),,squared-std-gone))
+.PHONY: squared-std-gone
+$(SQUARED_STD_READY) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB) &: $(SQUARED_STD_PINNED) $(SQUARED_FLAGS_STAMP) \
+                                                            $(SQUARED_ROOT)/tools/std_bmi.sh $(squared_std_gone)
+	@mkdir -p $(SQUARED_MODULE_DIR) $(LIB_DIR)
+	SQUARED_STD_HOME='$(SQUARED_STD_HOME)' SQUARED_STD_KEEP='$(SQUARED_STD_KEEP)' AR='$(AR)' \
+	    SQUARED_SAY='$(if $(filter 1,$(V)),,1)' \
+	    bash $(SQUARED_ROOT)/tools/std_bmi.sh $(SQUARED_MODULE_DIR) $(SQUARED_STD_LIB) \
+	    $(CXX) $(SQUARED_CXXFLAGS)
+	touch $(SQUARED_STD_READY)
+-include $(SQUARED_MODULE_DIR)/std.d
+# The shared copy of the sources, gone (pruned, or ~/sqsysroot/.sqpg wiped):
+# std.d names it, and make makes std again rather than stop.
+$(SQUARED_STD_HOME)/%/src/std.cppm: ;
 
 # An object compiled before 7b.4 names the precompiled header in its
 # dependency file, without -MP's empty rule for it (clang lists it first, as
@@ -272,7 +295,7 @@ $(SQUARED_ROOT)/build/std_pch.hpp $(BUILD_DIR)/pch/std.pch $(BUILD_DIR)/pch/std-
 # includes, then linked. The objects are kept in build/<BUILD>/test-objects/
 # and shared between the tests that compile the same source with the same
 # flags. Every test ends its link with its module's archive, those of the
-# modules it uses, sq.app's and sq.std's (SQUARED_TEST_LINK, one group;
+# modules it uses, sq.app's and std's (SQUARED_TEST_LINK, one group;
 # archives, so only what a test needs comes in).
 TEST_CXX = SQUARED_TEST_OBJECTS='$(BUILD_DIR)/test-objects' \
     SQUARED_TEST_DEPS='$(strip $(SQUARED_IMPORT_PCMS))' \

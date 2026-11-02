@@ -7,7 +7,7 @@ export import :src.report;
 export import :src.text_input;
 export import :src.text_input_service;
 import sq.graphics;
-import sq.std;
+import std;
 
 export namespace sq::app
 {

@@ -3,12 +3,12 @@
 // once each, `all`, `stop`, unknown groups, the system groups, the table's
 // limits, and no allocation.
 
+#include <stdio.h>
+
 import sq.console;
 import sq.dev;
 
-#include <stdio.h>
-
-import sq.std;
+import std;
 
 using namespace sq::console;
 

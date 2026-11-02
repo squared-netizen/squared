@@ -4,7 +4,7 @@ export import :layout;
 export import :layout_writer;
 import sq.data;
 import sq.messaging;
-import sq.std;
+import std;
 
 export namespace sq::gui
 {

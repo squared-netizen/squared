@@ -11,7 +11,7 @@ module;
 
 module sq.graphics;
 
-import sq.std;
+import std;
 
 #define STBI_NO_STDIO
 
