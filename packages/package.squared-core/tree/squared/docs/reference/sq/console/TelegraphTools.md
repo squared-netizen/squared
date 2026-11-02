@@ -1,6 +1,6 @@
 # class TelegraphTools
 
-*Defined at [console/telegraph_tools.hpp:35](../../../../console/telegraph_tools.hpp#L35)*
+*Defined at [console/telegraph_tools.cppm:28](../../../../console/telegraph_tools.cppm#L28)*
 
 
 
@@ -28,25 +28,25 @@
 
 *public void TelegraphTools(const TelegraphTools & )*
 
-*Defined at [console/telegraph_tools.hpp:48](../../../../console/telegraph_tools.hpp#L48)*
+*Defined at [console/telegraph_tools.cppm:41](../../../../console/telegraph_tools.cppm#L41)*
 
 ### operator=
 
 *public TelegraphTools & operator=(const TelegraphTools & )*
 
-*Defined at [console/telegraph_tools.hpp:49](../../../../console/telegraph_tools.hpp#L49)*
+*Defined at [console/telegraph_tools.cppm:42](../../../../console/telegraph_tools.cppm#L42)*
 
 ### TelegraphTools
 
 *public void TelegraphTools(TelegraphTools && )*
 
-*Defined at [console/telegraph_tools.hpp:50](../../../../console/telegraph_tools.hpp#L50)*
+*Defined at [console/telegraph_tools.cppm:43](../../../../console/telegraph_tools.cppm#L43)*
 
 ### operator=
 
 *public TelegraphTools & operator=(TelegraphTools && )*
 
-*Defined at [console/telegraph_tools.hpp:51](../../../../console/telegraph_tools.hpp#L51)*
+*Defined at [console/telegraph_tools.cppm:44](../../../../console/telegraph_tools.cppm#L44)*
 
 ### ~TelegraphTools
 
@@ -64,7 +64,7 @@
 
 *public const messaging::NameTable & names()*
 
-*Defined at [console/telegraph_tools.hpp:74](../../../../console/telegraph_tools.hpp#L74)*
+*Defined at [console/telegraph_tools.cppm:67](../../../../console/telegraph_tools.cppm#L67)*
 
 ### set_sink
 
@@ -122,25 +122,25 @@
 
 *public const messaging::TelegraphUi & ui()*
 
-*Defined at [console/telegraph_tools.hpp:75](../../../../console/telegraph_tools.hpp#L75)*
+*Defined at [console/telegraph_tools.cppm:68](../../../../console/telegraph_tools.cppm#L68)*
 
 ### tapping
 
 *public bool tapping()*
 
-*Defined at [console/telegraph_tools.hpp:76](../../../../console/telegraph_tools.hpp#L76)*
+*Defined at [console/telegraph_tools.cppm:69](../../../../console/telegraph_tools.cppm#L69)*
 
 ### recording
 
 *public bool recording()*
 
-*Defined at [console/telegraph_tools.hpp:77](../../../../console/telegraph_tools.hpp#L77)*
+*Defined at [console/telegraph_tools.cppm:70](../../../../console/telegraph_tools.cppm#L70)*
 
 ### replaying
 
 *public bool replaying()*
 
-*Defined at [console/telegraph_tools.hpp:78](../../../../console/telegraph_tools.hpp#L78)*
+*Defined at [console/telegraph_tools.cppm:71](../../../../console/telegraph_tools.cppm#L71)*
 
 
 

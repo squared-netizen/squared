@@ -1,11 +1,9 @@
-#include <squared/files/android_asset_file_system.hpp>
-#include <squared/files/files.hpp>
+import sq.files;
 
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <vector>
+#include <assert.h>
+#include <stdio.h>
+
+import sq.std;
 
 namespace assetstub
 {

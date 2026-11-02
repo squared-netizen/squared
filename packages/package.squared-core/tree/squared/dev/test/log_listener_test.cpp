@@ -3,16 +3,11 @@
 // thread that set it, never once cleared; report_allocations() arrives through
 // it too. No socket is needed.
 
-#include <squared/dev/dev_log.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.dev;
 
-#include <cassert>
-#include <cstdint>
-#include <cstdio>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 namespace
 {

@@ -4,13 +4,13 @@
 // bookkeeping live in src/common/texture_common.cpp and are shared by every
 // backend.
 
-#include <squared/graphics/src/texture_filter.hpp>
-#include <squared/graphics/src/texture_wrap.hpp>
-#include <squared/graphics/texture.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <cstdint>
+module sq.graphics;
+
+import sq.std;
 
 namespace sq::graphics
 {

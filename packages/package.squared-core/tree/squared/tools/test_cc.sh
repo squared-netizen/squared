@@ -21,9 +21,11 @@
 # -o <output>, link inputs (.a, .o, .so, -l, -L, -Wl,), and everything else,
 # which is a compile flag (and given to the link too: -fsanitize, -pthread).
 #
-# SQUARED_TEST_PCH: a precompiled header for the C++ sources (build/common.mk);
-# empty or unset, none. SQUARED_TEST_OBJECTS: where the objects are kept;
-# empty or unset, beside the output, not shared.
+# SQUARED_TEST_OBJECTS: where the objects are kept;
+# empty or unset, beside the output, not shared. SQUARED_TEST_DEPS: files an
+# object is also made again after (the BMIs it may import, build/modules.mk:
+# clang's dependency file does not name them). SQUARED_TEST_LINK: archives
+# every link ends with (sq.std's object, the app module's: build/common.mk).
 
 set -euo pipefail
 
@@ -58,26 +60,20 @@ if [ -z "$out" ] || [ ${#sources[@]} -eq 0 ]; then
     exit 2
 fi
 
-pch=()
-if [ -n "${SQUARED_TEST_PCH:-}" ]; then
-    # Made with -pthread (build/common.mk): every source must say the same.
-    pch=(-include-pch "$SQUARED_TEST_PCH" -pthread)
-fi
-
-# The objects' directory: one per compiler, flags and precompiled header, so
-# an object is only ever reused for exactly what made it.
-key=$(printf '%s\n' "$cxx" "${flags[@]}" "${pch[@]}" | cksum | cut -d' ' -f1)
+# The objects' directory: one per compiler and flags, so an object is only
+# ever reused for exactly what made it.
+key=$(printf '%s\n' "$cxx" "${flags[@]}" | cksum | cut -d' ' -f1)
 store="${SQUARED_TEST_OBJECTS:-$out.parts}/$key"
 mkdir -p "$store"
 
 # fresh <object> <deps>: the object exists, and nothing its .d names is newer.
 fresh() {
     [ -f "$1" ] && [ -f "$2" ] || return 1
-    # A precompiled header made again (a new libc++): every object with it.
-    if [ -n "${SQUARED_TEST_PCH:-}" ] && [ "$SQUARED_TEST_PCH" -nt "$1" ]; then
-        return 1
-    fi
     local dep
+    for dep in ${SQUARED_TEST_DEPS:-}; do
+        [ -e "$dep" ] || return 1
+        [ "$dep" -nt "$1" ] && return 1
+    done
     # The .d's words: the target, a colon, then the files; -MP's empty rules
     # repeat them. Backslashes join lines.
     for dep in $(tr -d '\\' <"$2" | tr ' ' '\n' | grep -v ':$' || true); do
@@ -99,12 +95,7 @@ for source in "${sources[@]}"; do
     object="$store/$name.o"
     depfile="$store/$name.d"
     if ! fresh "$object" "$depfile"; then
-        # A C source takes no C++ precompiled header.
-        case $source in
-            *.c) use=() ;;
-            *) use=("${pch[@]}") ;;
-        esac
-        "$cxx" "${flags[@]}" "${use[@]}" -MMD -MP -MT SQUARED_OBJECT -MF "$depfile.$$" \
+        "$cxx" "${flags[@]}" -MMD -MP -MT SQUARED_OBJECT -MF "$depfile.$$" \
             -c "$source" -o "$object.$$"
         mv -f "$object.$$" "$object"
         mv -f "$depfile.$$" "$depfile"
@@ -113,8 +104,7 @@ for source in "${sources[@]}"; do
     sed "s|^SQUARED_OBJECT:|$out:|" "$depfile" >>"$deps"
     objects+=("$object")
 done
-threads=()
-[ ${#pch[@]} -eq 0 ] || threads=(-pthread)
-"$cxx" "${flags[@]}" "${threads[@]}" "${objects[@]}" "${link[@]}" -o "$out"
+# shellcheck disable=SC2086 # a list of archives
+"$cxx" "${flags[@]}" "${objects[@]}" "${link[@]}" ${SQUARED_TEST_LINK:-} -o "$out"
 # Only once it linked: a failed build leaves the last good list, or none.
 mv -f "$deps" "$out.d"

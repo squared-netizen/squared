@@ -1,16 +1,6 @@
 # class FileSystem
 
-*Defined at [files/file_system.hpp:30](../../../../files/file_system.hpp#L30)*
-
-
-
-**brief** The framework's porting layer for storage.
-
- This is one of the few interfaces squared declares on purpose. A second concrete implementation is guaranteed by the architecture rather than speculative: Android internal storage is an asset bundle inside the APK and is not reachable through POSIX, while Termux and desktop Linux are ordinary directories. Everything above this class names a FileType and a relative path and never learns which backend answered.
-
- Implementations are not required to be thread-safe.
-
-
+*Defined at [files/file_system.cppm:28](../../../../files/file_system.cppm#L28)*
 
 ## Functions
 
@@ -18,31 +8,31 @@
 
 *public void FileSystem()*
 
-*Defined at [files/file_system.hpp:33](../../../../files/file_system.hpp#L33)*
+*Defined at [files/file_system.cppm:31](../../../../files/file_system.cppm#L31)*
 
 ### ~FileSystem
 
 *public void ~FileSystem()*
 
-*Defined at [files/file_system.hpp:34](../../../../files/file_system.hpp#L34)*
+*Defined at [files/file_system.cppm:32](../../../../files/file_system.cppm#L32)*
 
 ### FileSystem
 
 *public void FileSystem(const FileSystem & )*
 
-*Defined at [files/file_system.hpp:36](../../../../files/file_system.hpp#L36)*
+*Defined at [files/file_system.cppm:34](../../../../files/file_system.cppm#L34)*
 
 ### operator=
 
 *public FileSystem & operator=(const FileSystem & )*
 
-*Defined at [files/file_system.hpp:37](../../../../files/file_system.hpp#L37)*
+*Defined at [files/file_system.cppm:35](../../../../files/file_system.cppm#L35)*
 
 ### FileSystem
 
 *public void FileSystem(FileSystem && )*
 
-*Defined at [files/file_system.hpp:38](../../../../files/file_system.hpp#L38)*
+*Defined at [files/file_system.cppm:36](../../../../files/file_system.cppm#L36)*
 
 ### internal
 
@@ -80,7 +70,7 @@
 
 *public FileSystem & operator=(FileSystem && )*
 
-*Defined at [files/file_system.hpp:39](../../../../files/file_system.hpp#L39)*
+*Defined at [files/file_system.cppm:37](../../../../files/file_system.cppm#L37)*
 
 ### resolve
 

@@ -3,20 +3,11 @@
 // long random run against a model; and two real threads, the consumer
 // checking every telegram's order and bytes.
 
-#include <squared/messaging/telegram_ring.hpp>
+import sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <deque>
-#include <random>
-#include <string_view>
-#include <thread>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

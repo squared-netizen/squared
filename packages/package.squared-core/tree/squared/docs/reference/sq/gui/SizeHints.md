@@ -1,12 +1,6 @@
 # struct SizeHints
 
-*Defined at [gui/src/size_hints.hpp:11](../../../../gui/src/size_hints.hpp#L11)*
-
-
-
-**brief** Proposed minimum, preferred, and maximum sizes for one widget. 
-
-
+*Defined at [gui/src/size_hints.cppm:10](../../../../gui/src/size_hints.cppm#L10)*
 
 ## Members
 

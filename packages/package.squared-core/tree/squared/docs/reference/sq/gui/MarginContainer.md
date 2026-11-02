@@ -1,12 +1,6 @@
 # class MarginContainer
 
-*Defined at [gui/margin_container.hpp:16](../../../../gui/margin_container.hpp#L16)*
-
-
-
-**brief** Container adding fixed insets around one child. 
-
-
+*Defined at [gui/margin_container.cppm:15](../../../../gui/margin_container.cppm#L15)*
 
 Inherits from Widget
 

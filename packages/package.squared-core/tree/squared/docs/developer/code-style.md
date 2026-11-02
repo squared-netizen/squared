@@ -82,11 +82,13 @@ continuation lines of a multi-line `#define` alone. squared has few, and none
 in a header a user reads.
 
 **Includes are sorted and grouped.** astyle never reorders includes, so CDDA
-says nothing about it. squared regroups them: the file's local `"detail/..."`
-headers, then `<squared/...>`, then platform and third-party C headers, then
-the standard library, alphabetical within each group. This is safe only because
-every squared header is self-contained (`tools/check_headers.sh`): no header
-depends on another having been included first, so order cannot change meaning.
+says nothing about it. squared regroups them: the file's local headers, then
+platform and third-party C headers, then the C library's own, alphabetical
+within each group. Since 7b.4 a squared unit includes only those (in its
+global module fragment): squared's types and the standard library are
+imports, which clang-format leaves in their order. This is safe only because
+every header left is self-contained: no header depends on another having been
+included first, so order cannot change meaning.
 A file whose includes really must stay in order &mdash; a third-party
 implementation file with `#define`s between its includes &mdash; keeps it,
 because sorting stops at anything that is not an `#include` line.

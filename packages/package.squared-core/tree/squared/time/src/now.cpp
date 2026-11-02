@@ -1,8 +1,11 @@
-#include <squared/time/now.hpp>
+module;
 
 #include <time.h> // NOLINT(modernize-deprecated-headers): clock_gettime and the clock ids are POSIX
+#include <time.h>
 
-#include <chrono>
+module sq.time;
+
+import sq.std;
 
 namespace sq::time
 {

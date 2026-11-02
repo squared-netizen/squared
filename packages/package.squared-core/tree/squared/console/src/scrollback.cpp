@@ -1,8 +1,10 @@
-#include <squared/console/scrollback.hpp>
+module;
 
-#include <algorithm>
-#include <cassert>
-#include <cstring>
+#include <assert.h>
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

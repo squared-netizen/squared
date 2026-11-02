@@ -59,11 +59,14 @@ with no comment (constructors, destructors and assignments are left out).
 
 - **Committed, on purpose** (decided 2026-10-19): the reference reads on
   GitHub without building anything. So it is made again in the same commit as
-  any change to a public header's declarations or comments, and never edited.
-- **Input:** one generated translation unit per workhorse header (the `.hpp`
-  files at a module's root), each including just that header, so the reference
-  is what a user can include. The headers are self-contained (`make headers`),
-  so these compile anywhere with `-std=c++20 -I` the tree.
+  any change to a public interface's declarations or comments, and never
+  edited.
+- **Input:** since 7b.4, each public interface (the partitions at a module's
+  root, what were the workhorse headers) is a translation unit of its own, so
+  the reference is what a user imports. Each reads the BMIs of what it
+  imports, so the framework is built first (`make`); gles is built for it when
+  the GLES headers are there, and left out otherwise. Until 7b.4: a generated
+  unit per workhorse header, including just that header.
 - **Tidying:** "Defined at" becomes a link to the header's line; `_Bool` reads
   `bool`, `basic_string` and `basic_string_view` read `std::string` and
   `std::string_view`; lists, and a namespace page's enums and functions, are
@@ -111,7 +114,7 @@ with no comment (constructors, destructors and assignments are left out).
 
 ## format.sh
 
-Runs clang-format over every `.hpp` and `.cpp` under `squared/`, skipping
+Runs clang-format over every `.hpp`, `.cpp` and `.cppm` under `squared/`, skipping
 `third_party/`, `build/` and `docs/`, with `squared/.clang-format`. The rules
 and their source are in [code-style.md](code-style.md).
 

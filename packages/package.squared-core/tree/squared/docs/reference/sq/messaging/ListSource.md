@@ -1,12 +1,6 @@
 # struct ListSource
 
-*Defined at [messaging/model_list.hpp:39](../../../../messaging/model_list.hpp#L39)*
-
-
-
-**brief** A model's list as three plain functions over it: what `ModelList` calls. Made by `list_source`; no virtual call, nothing allocated.
-
-
+*Defined at [messaging/model_list.cppm:35](../../../../messaging/model_list.cppm#L35)*
 
 ## Members
 

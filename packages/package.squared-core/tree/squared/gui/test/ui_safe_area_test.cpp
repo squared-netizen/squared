@@ -3,15 +3,11 @@
 // What a phone shows - a bar over the top of the screen - cannot be seen from
 // a unit test, but the rectangle the content is given can be read back.
 
-#include <squared/gui/linear_layout.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/src/insets.hpp>
+import sq.gui;
 
-#include <cassert>
-#include <cmath>
-#include <cstdio>
-#include <limits>
-#include <memory>
+#include <assert.h>
+
+import sq.std;
 
 using namespace sq::gui;
 

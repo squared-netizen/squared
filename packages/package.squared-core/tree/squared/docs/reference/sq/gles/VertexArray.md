@@ -1,6 +1,6 @@
 # class VertexArray
 
-*Defined at [gles/vertex_array.hpp:24](../../../../gles/vertex_array.hpp#L24)*
+*Defined at [gles/vertex_array.cppm:22](../../../../gles/vertex_array.cppm#L22)*
 
 
 
@@ -18,19 +18,19 @@
 
 *public void VertexArray()*
 
-*Defined at [gles/vertex_array.hpp:27](../../../../gles/vertex_array.hpp#L27)*
+*Defined at [gles/vertex_array.cppm:25](../../../../gles/vertex_array.cppm#L25)*
 
 ### VertexArray
 
 *public void VertexArray(const VertexArray & )*
 
-*Defined at [gles/vertex_array.hpp:30](../../../../gles/vertex_array.hpp#L30)*
+*Defined at [gles/vertex_array.cppm:28](../../../../gles/vertex_array.cppm#L28)*
 
 ### operator=
 
 *public VertexArray & operator=(const VertexArray & )*
 
-*Defined at [gles/vertex_array.hpp:31](../../../../gles/vertex_array.hpp#L31)*
+*Defined at [gles/vertex_array.cppm:29](../../../../gles/vertex_array.cppm#L29)*
 
 ### ~VertexArray
 
@@ -116,7 +116,7 @@
 
 *public bool valid()*
 
-*Defined at [gles/vertex_array.hpp:71](../../../../gles/vertex_array.hpp#L71)*
+*Defined at [gles/vertex_array.cppm:69](../../../../gles/vertex_array.cppm#L69)*
 
 
 
@@ -126,7 +126,7 @@
 
 *public std::uint32_t name()*
 
-*Defined at [gles/vertex_array.hpp:74](../../../../gles/vertex_array.hpp#L74)*
+*Defined at [gles/vertex_array.cppm:72](../../../../gles/vertex_array.cppm#L72)*
 
 
 

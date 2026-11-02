@@ -14,8 +14,11 @@
 # Steps, each skipped cleanly if its tool is missing:
 #   1. format  files clang-format would change (tools/format.sh fixes them)
 #   2. rules   tools/lint-rules.txt, checked against tools/lint-baseline.txt
-#   3. tidy    clang-tidy with squared/.clang-tidy, on each .cpp the build
-#              compiles (also the Android sources when the NDK is installed)
+#   3. tidy    clang-tidy with squared/.clang-tidy, on each unit the build
+#              compiles, module interfaces (.cppm) and implementations (.cpp);
+#              also the Android sources when the NDK is installed. It reads
+#              the BMIs, so it builds first (make: quick when built; for the
+#              Android sources, a build of its own in build/lint-android)
 #
 # --jobs defaults to the number of CPUs, at most 4: one clang-tidy can take a
 # few hundred MB on a large file, and a phone has little to spare.
@@ -95,7 +98,7 @@ SECONDS=0
 
 all_sources() {
     (cd "$root" && find . \( -path ./third_party -o -path ./build -o -path ./docs \) -prune \
-        -o -type f \( -name '*.hpp' -o -name '*.cpp' \) -print | sed 's|^\./||' | LC_ALL=C sort)
+        -o -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.cppm' \) -print | sed 's|^\./||' | LC_ALL=C sort)
 }
 if [ ${#named[@]} -gt 0 ]; then
     printf '%s\n' "${named[@]}" >"$TMP/files"
@@ -108,7 +111,7 @@ elif [ "$changed" -eq 1 ]; then
     # header has nothing of it left to check.
     { git -C "$root" diff --name-only --relative --diff-filter=d "$base" -- .
       git -C "$root" ls-files --others --exclude-standard -- . ; } \
-        | grep -E '\.(hpp|cpp)$' | grep -vE '^(third_party|build|docs)/' | LC_ALL=C sort -u >"$TMP/files"
+        | grep -E '\.(hpp|cpp|cppm)$' | grep -vE '^(third_party|build|docs)/' | LC_ALL=C sort -u >"$TMP/files"
 else
     all_sources >"$TMP/files"
 fi
@@ -299,8 +302,10 @@ fi
 
 # What clang-tidy analyses is what the build compiles, with the build's flags,
 # both read from the Makefiles (and so from build/common.mk and local.mk): the
-# root Makefile's MODULES, then each module's SOURCES, STANDARD, OPTIMISE
-# (NDEBUG decides which asserts exist), SQUARED_ABI and INCLUDES. Warning flags
+# root Makefile's MODULES, then each module's SOURCES and INTERFACES (its
+# .cppm units, 7b.4), STANDARD, OPTIMISE (NDEBUG decides which asserts
+# exist), SQUARED_ABI, INCLUDES and SQUARED_MODULE_USE (where the BMIs are: a
+# unit's imports are read from them, so they are built first). Warning flags
 # are left out; the build already reports those. Nothing is built: a helper
 # makefile adds one target that prints a variable.
 #
@@ -339,9 +344,9 @@ plan_config() { # plan_config <name>; uses ${overrides[@]}
     mods=$(mk_print "$root" MODULES)
     for m in $mods; do
         [ -f "$root/$m/Makefile" ] || continue
-        out=$(mk_print "$root/$m" SOURCES STANDARD OPTIMISE SQUARED_ABI INCLUDES)
-        srcs=$(printf '%s\n' "$out" | sed -n 1p)
-        flags=$(printf '%s\n' "$out" | sed 1d | tr '\n' ' ')
+        out=$(mk_print "$root/$m" SOURCES INTERFACES STANDARD OPTIMISE SQUARED_ABI INCLUDES SQUARED_MODULE_USE)
+        srcs=$(printf '%s\n' "$out" | sed -n '1,2p' | tr '\n' ' ')
+        flags=$(printf '%s\n' "$out" | sed 1,2d | tr '\n' ' ')
         for src in $srcs; do
             grep -qF "$m/$src"$'\037' "$TMP/plan" || printf '%s\037%s\037%s\n' "$m/$src" "$cfg" "$flags" >>"$TMP/plan"
         done
@@ -370,7 +375,7 @@ if run tidy; then
         ndk=$(ndk_include || true)
         if [ -n "$ndk" ]; then
             sysroot=${ndk%/usr/include}
-            overrides=(SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android
+            overrides=(BUILD=lint-android SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android
                 "SQUARED_EXTERNAL_INCLUDES=--target=aarch64-linux-android$android_api --sysroot=$sysroot -stdlib++-isystem $sysroot/usr/include/c++/v1")
             plan_config android
         fi
@@ -391,7 +396,26 @@ if run tidy; then
         awk -F'\037' 'FILENAME == ARGV[1] { want[$0] = 1; next } $1 in want' "$TMP/want" "$TMP/plan" \
             | LC_ALL=C sort >"$TMP/tidyplan"
         total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
-        echo "  $(clang-tidy --version | sed -n 's/.*version \([0-9.]*\).*/clang-tidy \1/p'), $total translation unit(s) ($([ -n "$ndk" ] && echo "host and android" || echo "host only: no NDK headers found")); headers are checked through the files that include them"
+        # The BMIs every unit imports: the host build, and the Android one in
+        # build/lint-android (its objects come from the build cache when the
+        # same were built before).
+        if [ "$total" -gt 0 ]; then
+            echo "  building the BMIs first (make)"
+            if ! make -s --no-print-directory -C "$root" -j"$jobs" all >"$TMP/build-host.log" 2>&1; then
+                echo "  the build failed; tidy needs its BMIs:" >&2
+                tail -n 20 "$TMP/build-host.log" >&2
+                exit 2
+            fi
+            if grep -q $'\037android\037' "$TMP/tidyplan" &&
+                ! make -s --no-print-directory -C "$root" -j"$jobs" "${overrides[@]}" all >"$TMP/build-android.log" 2>&1; then
+                echo "  the Android build for tidy failed; its units are skipped:" >&2
+                tail -n 10 "$TMP/build-android.log" >&2
+                grep -v $'\037android\037' "$TMP/tidyplan" >"$TMP/tidyplan.host" || true
+                mv -f "$TMP/tidyplan.host" "$TMP/tidyplan"
+                total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
+            fi
+        fi
+        echo "  $(clang-tidy --version | sed -n 's/.*version \([0-9.]*\).*/clang-tidy \1/p'), $total translation unit(s) ($([ -n "$ndk" ] && echo "host and android" || echo "host only: no NDK headers found")); a module's interfaces are units of their own"
         # Selected sources no configuration compiles are named, not analysed.
         cut -d$'\037' -f1 "$TMP/plan" | LC_ALL=C sort >"$TMP/planned"
         grep -E '^[a-z][a-z0-9_]*/src/.*\.cpp$' "$TMP/files" | LC_ALL=C sort | LC_ALL=C comm -23 - "$TMP/planned" \

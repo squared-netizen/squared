@@ -2,19 +2,17 @@
 // on the next launch. Every function the handler calls is a write() of a
 // fixed buffer, except the trace's dladdr and unwinder (crash_trace.hpp).
 
-#include <squared/console/crash_file.hpp>
-#include <squared/console/line_reader.hpp>
-#include <squared/dev/crash_trace.hpp>
+module;
 
 #include <fcntl.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-#include <array>
-#include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <string_view>
+module sq.console;
+
+import sq.dev;
+import sq.std;
 
 namespace sq::console
 {

@@ -1,12 +1,6 @@
 # class LinearLayout
 
-*Defined at [gui/linear_layout.hpp:19](../../../../gui/linear_layout.hpp#L19)*
-
-
-
-**brief** Container stacking children along one axis with optional growth.
-
-
+*Defined at [gui/linear_layout.cppm:17](../../../../gui/linear_layout.cppm#L17)*
 
 Inherits from Widget
 

@@ -1,6 +1,6 @@
 # struct Event
 
-*Defined at [app/event.hpp:21](../../../../app/event.hpp#L21)*
+*Defined at [app/event.cppm:19](../../../../app/event.cppm#L19)*
 
 
 
@@ -65,7 +65,7 @@ public int editing_length
 | TextInputHidden |
 
 
-*Defined at [app/event.hpp:24](../../../../app/event.hpp#L24)*
+*Defined at [app/event.cppm:22](../../../../app/event.cppm#L22)*
 
 
 

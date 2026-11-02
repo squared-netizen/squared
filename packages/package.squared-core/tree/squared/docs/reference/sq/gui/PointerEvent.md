@@ -1,12 +1,6 @@
 # struct PointerEvent
 
-*Defined at [gui/src/pointer_event.hpp:11](../../../../gui/src/pointer_event.hpp#L11)*
-
-
-
-**brief** Portable pointer event payload in widget-local logical units. 
-
-
+*Defined at [gui/src/pointer_event.cppm:10](../../../../gui/src/pointer_event.cppm#L10)*
 
 ## Members
 

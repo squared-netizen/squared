@@ -8,15 +8,15 @@ Developer counterpart: [../developer/assets.md](../developer/assets.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `AssetManager` | `squared/assets/asset_manager.hpp` | Typed asset cache over one file system |
-| `AssetManagerOptions` | `squared/assets/src/asset_manager_options.hpp` | Resource limits fixed for one AssetManager |
-| `AssetHandle` | `squared/assets/src/asset_handle.hpp` | Shared immutable reference to one loaded asset |
-| `AssetLoader` | `squared/assets/src/asset_loader.hpp` | Callback that turns a path into one asset of type T |
-| `AssetLoadContext` | `squared/assets/src/asset_load_context.hpp` | The restricted view of the manager a loader is given |
-| `AssetLoadResult` | `squared/assets/src/asset_load_result.hpp` | One loaded asset, or the failure that prevented loading it |
-| `AssetTypeId` | `squared/assets/src/asset_type_id.hpp` | Stable per-type identifier used to key the loader and cache tables |
-| `AssetError` | `squared/assets/src/asset_error.hpp` | Structured asset loading failure information |
-| `AssetErrorCode` | `squared/assets/src/asset_error_code.hpp` | Stable error categories produced by asset loading |
+| `AssetManager` | `squared/assets/asset_manager.cppm` | Typed asset cache over one file system |
+| `AssetManagerOptions` | `squared/assets/src/asset_manager_options.cppm` | Resource limits fixed for one AssetManager |
+| `AssetHandle` | `squared/assets/src/asset_handle.cppm` | Shared immutable reference to one loaded asset |
+| `AssetLoader` | `squared/assets/src/asset_loader.cppm` | Callback that turns a path into one asset of type T |
+| `AssetLoadContext` | `squared/assets/src/asset_load_context.cppm` | The restricted view of the manager a loader is given |
+| `AssetLoadResult` | `squared/assets/src/asset_load_result.cppm` | One loaded asset, or the failure that prevented loading it |
+| `AssetTypeId` | `squared/assets/src/asset_type_id.cppm` | Stable per-type identifier used to key the loader and cache tables |
+| `AssetError` | `squared/assets/src/asset_error.cppm` | Structured asset loading failure information |
+| `AssetErrorCode` | `squared/assets/src/asset_error_code.cppm` | Stable error categories produced by asset loading |
 
 ## The shortest call site
 

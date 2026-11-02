@@ -1,12 +1,6 @@
 # struct JsonParseOptions
 
-*Defined at [data/src/json_parse_options.hpp:9](../../../../data/src/json_parse_options.hpp#L9)*
-
-
-
-**brief** Limits and strictness applied to one parse operation. 
-
-
+*Defined at [data/src/json_parse_options.cppm:9](../../../../data/src/json_parse_options.cppm#L9)*
 
 ## Members
 

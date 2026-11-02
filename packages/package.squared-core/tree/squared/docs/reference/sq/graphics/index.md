@@ -1,5 +1,10 @@
 # namespace graphics
 
+## Namespaces
+
+* [detail](detail/index.md)
+
+
 ## Records
 
 * [AtlasRegion](AtlasRegion.md)
@@ -43,11 +48,7 @@
 | invalid_utf8 |
 
 
-*Defined at [graphics/src/bitmap_font_error_code.hpp:9](../../../../graphics/src/bitmap_font_error_code.hpp#L9)*
-
-
-
-**brief** Stable failure categories for BMFont parsing and glyph layout. 
+*Defined at [graphics/src/bitmap_font_error_code.cppm:9](../../../../graphics/src/bitmap_font_error_code.cppm#L9)*
 
 | enum class CoordinateOrigin |
 
@@ -57,11 +58,7 @@
 | TopLeft |
 
 
-*Defined at [graphics/src/coordinate_origin.hpp:11](../../../../graphics/src/coordinate_origin.hpp#L11)*
-
-
-
-**brief** Coordinate orientation used by an orthographic camera.
+*Defined at [graphics/src/coordinate_origin.cppm:11](../../../../graphics/src/coordinate_origin.cppm#L11)*
 
 | enum class GlyphAlignment |
 
@@ -72,11 +69,7 @@
 | end |
 
 
-*Defined at [graphics/src/glyph_alignment.hpp:9](../../../../graphics/src/glyph_alignment.hpp#L9)*
-
-
-
-**brief** Horizontal placement within an optional target width. 
+*Defined at [graphics/src/glyph_alignment.cppm:9](../../../../graphics/src/glyph_alignment.cppm#L9)*
 
 | enum class TextureFilter |
 
@@ -86,13 +79,7 @@
 | Linear |
 
 
-*Defined at [graphics/src/texture_filter.hpp:14](../../../../graphics/src/texture_filter.hpp#L14)*
-
-
-
-**brief** How a texture is sampled between texels.
-
- The one filter vocabulary in squared: `graphics::Texture` and the lower-level `gles::Texture2D` both take it.
+*Defined at [graphics/src/texture_filter.cppm:14](../../../../graphics/src/texture_filter.cppm#L14)*
 
 | enum class TextureRecoveryPolicy |
 
@@ -104,13 +91,7 @@
 | Discard |
 
 
-*Defined at [graphics/src/texture_recovery_policy.hpp:15](../../../../graphics/src/texture_recovery_policy.hpp#L15)*
-
-
-
-**brief** CPU-side recipe used to recover a texture after context loss.
-
- Policies are backend-neutral. They describe what source data Squared keeps or asks the application to regenerate; they do not expose the selected windowing or graphics API.
+*Defined at [graphics/src/texture_recovery_policy.cppm:15](../../../../graphics/src/texture_recovery_policy.cppm#L15)*
 
 | enum class TextureWrap |
 
@@ -121,11 +102,5 @@
 | MirroredRepeat |
 
 
-*Defined at [graphics/src/texture_wrap.hpp:14](../../../../graphics/src/texture_wrap.hpp#L14)*
-
-
-
-**brief** How sampling outside the zero-to-one range behaves.
-
- The one wrap vocabulary in squared: `graphics::Texture` and the lower-level `gles::Texture2D` both take it.
+*Defined at [graphics/src/texture_wrap.cppm:14](../../../../graphics/src/texture_wrap.cppm#L14)*
 

@@ -1,11 +1,6 @@
-#include <squared/messaging/address.hpp>
+module sq.messaging;
 
-#include <algorithm>
-#include <charconv>
-#include <cstdint>
-#include <optional>
-#include <string_view>
-#include <system_error>
+import sq.std;
 
 namespace sq::messaging
 {

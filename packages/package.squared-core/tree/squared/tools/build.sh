@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build every squared module with g++ and GNU make.
+# Build every squared module with clang and GNU make (C++20 modules, 7b.4).
 #
 #   ./tools/build.sh                     release
 #   ./tools/build.sh debug               unoptimised with symbols
@@ -21,7 +21,7 @@ if [ "$build" != "release" ] && [ "$build" != "debug" ]; then
 fi
 
 command -v make >/dev/null 2>&1 || { echo "make not found" >&2; exit 1; }
-: "${CXX:=g++}"
+: "${CXX:=clang++}"
 command -v "$CXX" >/dev/null 2>&1 || { echo "$CXX not found" >&2; exit 1; }
 
 echo "squared: building $build with $CXX"

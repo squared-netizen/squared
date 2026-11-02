@@ -1,17 +1,10 @@
-#include <squared/gles/program.hpp>
-#include <squared/gles/shader.hpp>
-#include <squared/gles/src/attribute_info.hpp>
-#include <squared/gles/src/gles_error.hpp>
-#include <squared/gles/src/gles_error_code.hpp>
-#include <squared/gles/src/shader_stage.hpp>
-#include <squared/gles/src/uniform_info.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+module sq.gles;
+
+import sq.std;
 
 namespace sq::gles
 {

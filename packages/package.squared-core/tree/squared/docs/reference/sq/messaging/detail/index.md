@@ -12,9 +12,7 @@
 
 *int earliest(int first, int second)*
 
-*Defined at [messaging/model_runner.hpp:49](../../../../../messaging/model_runner.hpp#L49)*
-
- The earlier of two timeouts in milliseconds, -1 meaning none.
+*Defined at [messaging/model_runner.cppm:45](../../../../../messaging/model_runner.cppm#L45)*
 
 ### milliseconds_until
 
@@ -38,5 +36,5 @@
 
 *Packed pack(Verb verb, Address to, const V & value)*
 
-*Defined at [messaging/src/pack.hpp:26](../../../../../messaging/src/pack.hpp#L26)*
+*Defined at [messaging/src/pack.cppm:20](../../../../../messaging/src/pack.cppm#L20)*
 

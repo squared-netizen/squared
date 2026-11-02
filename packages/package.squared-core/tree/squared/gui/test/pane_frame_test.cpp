@@ -3,27 +3,11 @@
 // insets; a modal one dims what is beneath and takes every tap; a tap on the
 // frame between its widgets stays there; closing one gives the focus back.
 
-#include <squared/gui/button.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/linear_layout.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/src/color_drawable.hpp>
-#include <squared/gui/src/detail/pane_frame.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/painter.hpp>
-#include <squared/gui/src/pointer_action.hpp>
-#include <squared/gui/src/rectangle.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/src/window_style.hpp>
-#include <squared/gui/table.hpp>
+import sq.gui;
 
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-#include <string_view>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

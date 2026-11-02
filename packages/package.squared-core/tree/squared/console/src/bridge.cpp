@@ -1,16 +1,17 @@
-#include <squared/console/bridge.hpp>
+module;
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <cerrno>
-#include <charconv>
-#include <cstdio>
-#include <cstring>
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

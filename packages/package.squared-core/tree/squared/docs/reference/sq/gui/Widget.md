@@ -1,14 +1,6 @@
 # class Widget
 
-*Defined at [gui/widget.hpp:32](../../../../gui/widget.hpp#L32)*
-
-
-
-**brief** Base class for every GUI node. Widgets may own other widgets.
-
- Widget inherits the composite ownership model: children owned via Group. Widgets carry layout, painting, and input behavior.
-
-
+*Defined at [gui/widget.cppm:27](../../../../gui/widget.cppm#L27)*
 
 Inherits from Group
 
@@ -26,39 +18,19 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/widget.hpp:49](../../../../gui/widget.hpp#L49)*
-
-
-
-**brief** Publish the Widget interface to actor_cast().
-
-**id** Identifier of the requested interface.
-
-**return** This widget for the Widget identifier, otherwise the Group answer, so actor_cast<Group>() still resolves.
+*Defined at [gui/widget.cppm:44](../../../../gui/widget.cppm#L44)*
 
 ### actor_interface
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/widget.hpp:60](../../../../gui/widget.hpp#L60)*
-
-
-
-**brief** Publish the Widget interface to actor_cast(), read-only.
-
-**id** Identifier of the requested interface.
-
-**return** This widget for the Widget identifier, otherwise the Group answer.
+*Defined at [gui/widget.cppm:55](../../../../gui/widget.cppm#L55)*
 
 ### has_tooltip
 
 *public bool has_tooltip()*
 
-*Defined at [gui/widget.hpp:216](../../../../gui/widget.hpp#L216)*
-
-
-
-**brief** Return true when this widget declares tooltip content. 
+*Defined at [gui/widget.cppm:211](../../../../gui/widget.cppm#L211)*
 
 ### minimum_size
 
@@ -270,13 +242,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool enabled()*
 
-*Defined at [gui/widget.hpp:194](../../../../gui/widget.hpp#L194)*
-
-
-
-**brief** Read the enabled state.
-
-**return** true while the widget is enabled.
+*Defined at [gui/widget.cppm:189](../../../../gui/widget.cppm#L189)*
 
 ### set_tooltip
 
@@ -304,31 +270,19 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void ~Widget()*
 
-*Defined at [gui/widget.hpp:41](../../../../gui/widget.hpp#L41)*
+*Defined at [gui/widget.cppm:36](../../../../gui/widget.cppm#L36)*
 
 ### layout_valid
 
 *public bool layout_valid()*
 
-*Defined at [gui/widget.hpp:113](../../../../gui/widget.hpp#L113)*
-
-
-
-**brief** Check whether cached layout is current.
-
-**return** true while the layout is valid.
+*Defined at [gui/widget.cppm:108](../../../../gui/widget.cppm#L108)*
 
 ### set_enabled
 
 *public void set_enabled(bool enabled)*
 
-*Defined at [gui/widget.hpp:188](../../../../gui/widget.hpp#L188)*
-
-
-
-**brief** Control the enabled state.
-
-**enabled** false disables interaction and dims rendering.
+*Defined at [gui/widget.cppm:183](../../../../gui/widget.cppm#L183)*
 
 
 

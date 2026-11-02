@@ -1,6 +1,6 @@
 # class Shader
 
-*Defined at [gles/shader.hpp:23](../../../../gles/shader.hpp#L23)*
+*Defined at [gles/shader.cppm:21](../../../../gles/shader.cppm#L21)*
 
 
 
@@ -18,19 +18,19 @@
 
 *public void Shader()*
 
-*Defined at [gles/shader.hpp:26](../../../../gles/shader.hpp#L26)*
+*Defined at [gles/shader.cppm:24](../../../../gles/shader.cppm#L24)*
 
 ### Shader
 
 *public void Shader(const Shader & )*
 
-*Defined at [gles/shader.hpp:29](../../../../gles/shader.hpp#L29)*
+*Defined at [gles/shader.cppm:27](../../../../gles/shader.cppm#L27)*
 
 ### operator=
 
 *public Shader & operator=(const Shader & )*
 
-*Defined at [gles/shader.hpp:30](../../../../gles/shader.hpp#L30)*
+*Defined at [gles/shader.cppm:28](../../../../gles/shader.cppm#L28)*
 
 ### ~Shader
 
@@ -78,7 +78,7 @@
 
 *public bool valid()*
 
-*Defined at [gles/shader.hpp:51](../../../../gles/shader.hpp#L51)*
+*Defined at [gles/shader.cppm:49](../../../../gles/shader.cppm#L49)*
 
 
 
@@ -88,7 +88,7 @@
 
 *public std::uint32_t name()*
 
-*Defined at [gles/shader.hpp:54](../../../../gles/shader.hpp#L54)*
+*Defined at [gles/shader.cppm:52](../../../../gles/shader.cppm#L52)*
 
 
 
@@ -98,7 +98,7 @@
 
 *public ShaderStage stage()*
 
-*Defined at [gles/shader.hpp:57](../../../../gles/shader.hpp#L57)*
+*Defined at [gles/shader.cppm:55](../../../../gles/shader.cppm#L55)*
 
 
 

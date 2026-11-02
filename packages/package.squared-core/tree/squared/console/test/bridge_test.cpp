@@ -4,35 +4,22 @@
 // Termux end, sqconsole, run for real: --run, and interactive with its
 // reconnect when the app's bridge opens again.
 
-#include <squared/console/bridge.hpp>
-#include <squared/console/console.hpp>
-#include <squared/console/file_commands.hpp>
-#include <squared/console/log_file.hpp>
-#include <squared/console/system_commands.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.console;
+import sq.dev;
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <array>
-#include <atomic>
-#include <cassert>
-#include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <functional>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <vector>
+import sq.std;
 
 #ifndef SQCONSOLE_PATH
 #error "SQCONSOLE_PATH: the test is built by console/Makefile, which names the sqconsole it built"

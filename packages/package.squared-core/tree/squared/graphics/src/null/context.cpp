@@ -1,8 +1,6 @@
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/src/context_config.hpp>
+module sq.graphics;
 
-#include <cstdint>
+import sq.std;
 
 namespace sq::graphics
 {

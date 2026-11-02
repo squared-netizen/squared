@@ -4,18 +4,12 @@
 // one draw call or a thousand, and only the frame time tells you which. The
 // null backend counts draw calls, so the decisions can be asserted directly.
 
-#include <squared/files/files.hpp>
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/coordinate_origin.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_region.hpp>
+import sq.files;
+import sq.graphics;
 
-#include <cassert>
-#include <cstddef>
-#include <cstdio>
+#include <assert.h>
+
+import sq.std;
 
 namespace sq::graphics::detail
 {

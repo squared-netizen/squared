@@ -2,7 +2,9 @@
 
 ## What the build is
 
-GNU make plus g++. One `build/common.mk` with every shared setting, one
+GNU make plus clang (since 7b.4: squared is C++20 modules, built the way
+clang builds them, [modules.md](modules.md); until then g++). One
+`build/common.mk` with every shared setting, one
 `Makefile` per module, one top-level `Makefile`, and two bash entry points in
 `tools/`. No CMake, no generator step, no network access, no `sudo`, and no
 path outside the project root &mdash; the same build runs under Termux on
@@ -14,7 +16,8 @@ Android and on desktop Linux.
 make                 # every module, release
 make BUILD=debug     # -O0 -g
 make gui             # one module
-make headers         # compile every public header standalone
+make headers         # sq.std current, the module order (tools/check_modules.sh)
+make sqgen           # sqgen and sqconsole, the host tools, in build/<BUILD>/
 make lint            # format, source-rule and clang-tidy checks
 make V=1             # every command in full
 make SQUARED_CACHE=off   # no build cache (below)
@@ -34,6 +37,7 @@ directory" lines and a "Nothing to be done". The same build now prints:
 
 ```
 squared release: flags as before
+  mod  sq.gui-label
   cc   gui/src/stage.cpp
   ar   libsquared_gui.a (38 from the cache)
   bin  gui/ui_keys_test
@@ -52,6 +56,8 @@ How, all in `build/common.mk`, with no filter and no pipe:
   The path is from `squared/` (`$(MODULE)/$*.cpp`). Every line names its
   module because `make -j` interleaves modules; a heading per module would be
   wrong as soon as two build at once.
+- An interface unit's compile says `mod` and its BMI's name (`sq.gui-label`,
+  7b.4).
 - An object's compile is said by `tools/cached_cc.sh` (`SQUARED_SAY`), and
   only when it compiles: an object from the build cache prints nothing, and
   the archive's line counts them, `(38 from the cache)` (7b.3, below).
@@ -253,6 +259,12 @@ is fixed (2026-10-19):
 
 ## Build speed (7b.2)
 
+*Until 7b.4. The precompiled header below was replaced by sq.std, squared's
+own module of the standard library, when squared became modules: the two do
+not mix ([modules.md](modules.md#sqstd)). `build/std_pch.hpp`,
+`tools/std_pch.sh`, `SQUARED_PCH` and `-fpch-instantiate-templates` are gone.
+What follows is kept for the measurements.*
+
 Measured on the phone first (2026-10-27, `measure_build.sh`, the 7b.1
 package): 8 cores, clang 21.1.8, libc++ 21 on both sides, NDK 29.
 
@@ -260,7 +272,7 @@ package): 8 cores, clang 21.1.8, libc++ 21 on both sides, NDK 29.
 |---|---|
 | the framework, clean, `-j8` | 124.6 s, 95 files |
 | `make test`, every test built | 757 s, 39 binaries |
-| `make test` after `stage/save.hpp`, which only stage includes | 766 s: 38 of 39 rebuilt |
+| `make test` after `stage/save.cppm`, which only stage includes | 766 s: 38 of 39 rebuilt |
 | one framework file, whole / front end | 3.0 to 8.8 s / 2.7 to 5.5 s |
 | the 47 standard headers squared includes, parsed alone | 4.3 s |
 | the same files with those precompiled, whole / front end | 0.9 to 5.8 s / 0.6 to 2.7 s |
@@ -272,7 +284,7 @@ So two changes, decided with the user (plan, 7b):
 compile-and-link a recipe would have run, compiles each source on its own
 with `-MMD` (one command with several sources keeps only the last one's
 dependencies), links the objects, and writes `<binary>.d`; each module
-includes its tests' `.d` files. After `stage/save.hpp`: the two stage tests,
+includes its tests' `.d` files. After `stage/save.cppm`: the two stage tests,
 where it was 38. The objects are kept in `build/<BUILD>/test-objects/<key>/`,
 the key a checksum of the compiler, the flags and the precompiled header, and
 shared between tests: the tests had compiled the same sources 230 times for
@@ -297,6 +309,21 @@ names the tests' flags, the choice and the compiler's version, so a new
 clang makes everything again (a precompiled header from another version is
 refused).
 
+**Its templates instantiated once (7b.4).** A precompiled header leaves
+pending the templates its own headers instantiate among themselves
+(`std::format`'s machinery, `<cmath>`'s special functions, `<chrono>`'s
+clocks), and clang instantiated them again at the end of every file that
+included it, used or not. A `-ftime-trace` of all 91 host-built framework
+files (2026-10-27, x86, clang 18, libstdc++): instantiation was 54% of the
+compile time, `std::vformat_to` alone 27% (265 times, about 3 a file), the
+special functions twice in every file. Both precompiled headers are now made
+with `-fpch-instantiate-templates` (`SQUARED_PCH_FLAGS`; CMake passes the
+same for clang), which does it once, there: the instantiation share fell to
+15%, and the framework clean, `-j8`, from 51 s to 34 s. The flags stamp says
+`pch:on-fpch-instantiate-templates`, and the build cache keys objects by it
+(`SQUARED_CACHE_SALT`), so no object from the old header is reused. Every
+test passes with it. The phone (libc++) is measured by `measure_build.sh`.
+
 What the precompiled header costs: every source sees all 47 headers, so a
 `.cpp` that forgets `#include <vector>` still builds here. `make lint`
 (clang-tidy, which compiles without it) and `make headers` (each header
@@ -318,6 +345,10 @@ needs `libc++_shared.so` (the runtime was not linked in) and, when
 `SQ_MIN_SDK` is below 23, one without `DT_HASH`.
 
 ## The build cache (7b.3)
+
+*Since 7b.4 the precompiled header named below is gone, and an object's key
+also holds the sources of the module interfaces it may import; interface
+units are compiled in each workspace: [modules.md](modules.md#the-build-cache).*
 
 A fresh workspace compiled all 95 framework files, though the device had
 compiled the very same files with the same compiler and flags in the last
@@ -501,29 +532,22 @@ here changes what it analyses too.
 ## Checking the headers
 
 ```sh
-./tools/check_headers.sh
+make headers          # bash tools/check_modules.sh
 ```
 
-Two checks, which together protect the layout ([file-layout.md](file-layout.md)):
+Since 7b.4 there are no headers to compile alone: an interface compiles
+alone by construction, and the self-containment check went (the user's call,
+2026-10-27). What `make headers` checks now, in seconds, with no compile:
 
-1. **Reachability.** Every header under `src/` must be reached through the
-   includes of a header at a module root (not counting the module's
-   aggregate). Instant.
-2. **Self-containment.** Every public header is compiled alone with
-   `-Wall -Wextra -Wpedantic`.
+1. **sq.std is current**: `tools/std_module.sh --check`. A new `std::` name
+   fails it until `tools/std_module.sh` writes the module again.
+2. **The build order covers every import**: each module that a module's files
+   import is built before it, by the top Makefile's order lines. Under `make
+   -j` a missing line would race the BMI it needs.
+3. **Every interface is named for its path** (`tools/module_deps.sh`, for
+   every module at once).
 
-Exit status is 0 when both pass, 1 when either fails, and 2 for a usage or
-environment error. `make headers` runs it; run it in CI.
-
-Each header is a full compile, so the second check takes minutes on a phone. Two
-things make that bearable:
-
-```sh
-./tools/check_headers.sh               # one compile per core (nproc)
-JOBS=1 ./tools/check_headers.sh        # one at a time
-./tools/check_headers.sh gui           # one module
-```
-
-It prints a dot per header as it goes. That is not decoration: a check this
-slow that prints nothing is indistinguishable from a hung one, and it will get
-killed halfway by someone who reasonably assumes it wedged.
+Exit status is 0 when all pass, 1 when one fails. Until 7b.4 this was
+`tools/check_headers.sh`, which checked that every header under `src/` was
+reached from a module root, and compiled each public header alone (minutes
+on the phone, a dot per header).

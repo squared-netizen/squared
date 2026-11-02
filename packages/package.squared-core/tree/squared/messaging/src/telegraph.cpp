@@ -1,11 +1,10 @@
-#include <squared/messaging/telegraph.hpp>
+module;
 
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cassert>
-#include <chrono>
-#include <string_view>
+#include <assert.h>
+
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

@@ -10,23 +10,16 @@
 // Every wait here has a timeout, so a lost wakeup fails a CHECK instead of
 // hanging the test.
 
-#include <squared/messaging/model_runner.hpp>
-#include <squared/time/deadline_queue.hpp>
+import sq.messaging;
+import sq.time;
 
 #include <poll.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/prctl.h>
+#include <time.h>
 
-#include <array>
-#include <atomic>
-#include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <string>
-#include <thread>
+import sq.std;
 
 namespace
 {

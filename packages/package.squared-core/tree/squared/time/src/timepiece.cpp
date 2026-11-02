@@ -1,6 +1,6 @@
-#include <squared/time/timepiece.hpp>
+module sq.time;
 
-#include <chrono>
+import sq.std;
 
 namespace sq::time
 {

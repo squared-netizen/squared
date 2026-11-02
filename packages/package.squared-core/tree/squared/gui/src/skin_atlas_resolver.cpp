@@ -1,8 +1,6 @@
-#include <squared/gui/skin_loader.hpp>
+module sq.gui;
 
-#include <memory>
-#include <optional>
-#include <string>
+import sq.std;
 
 namespace sq::gui
 {

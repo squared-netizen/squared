@@ -4,36 +4,13 @@
 // from nodes, with its hooks. A fuzz writes random layouts: each one checks,
 // and builds.
 
-#include <squared/dev/frame_allocations.hpp>
-#include <squared/gui/button.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/instantiate.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/layout.hpp>
-#include <squared/gui/layout_writer.hpp>
-#include <squared/gui/list.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/scroll_pane.hpp>
-#include <squared/gui/separator.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/stack.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/text_field.hpp>
-#include <squared/messaging/key.hpp>
-#include <squared/messaging/name.hpp>
+import sq.dev;
+import sq.gui;
+import sq.messaging;
 
-#include <array>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-#include <random>
-#include <span>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq::gui;
 using sq::messaging::do_;

@@ -19,12 +19,12 @@ it when a screen is shown (`app.stage.push( layouts::settings )`,
 
 | Header | Gives you |
 |---|---|
-| `squared/gui/layout.hpp` | `Layout`, `LayoutNode`, `NodeType`, `LayoutKind`, `read_tap`, `check` |
-| `squared/gui/layout_writer.hpp` | `LayoutWriter`, `NodeWriter`, `Navigate` |
-| `squared/gui/instantiate.hpp` | `instantiate`, `LayoutHooks` |
-| `squared/gui/layout_file.hpp` | Reading `names.json` and layout files yourself: what `sqgen` uses |
+| `squared/gui/layout.cppm` | `Layout`, `LayoutNode`, `NodeType`, `LayoutKind`, `read_tap`, `check` |
+| `squared/gui/layout_writer.cppm` | `LayoutWriter`, `NodeWriter`, `Navigate` |
+| `squared/gui/instantiate.cppm` | `instantiate`, `LayoutHooks` |
+| `squared/gui/layout_file.cppm` | Reading `names.json` and layout files yourself: what `sqgen` uses |
 
-The first three come with `squared/gui/gui.hpp`. `layout_file.hpp` does not:
+The first three come with `squared/gui/module.cppm`. `layout_file.cppm` does not:
 it brings in the JSON reader, which an app does not carry (a release app
 reads no layout file; `sqgen` did that when it was built).
 
@@ -253,7 +253,7 @@ Without `--names`, a layout's binds and telegram taps have no address to be
 checked against, so each one is a problem. Without `--layouts`,
 `layouts.hpp` declares none.
 
-## Reading files yourself: `layout_file.hpp`
+## Reading files yourself: `layout_file.cppm`
 
 What `sqgen` is made of, for a tool of your own (an editor, a checker).
 Every problem is added to a `FileProblems` (a list of `{where, what}`) and

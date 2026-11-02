@@ -5,7 +5,12 @@
 #   make CXXFLAGS_EXTRA=-fsanitize=address
 #   make V=1                  every command in full, as make prints them
 
-CXX ?= g++
+# clang: squared is C++20 modules (7b.4), built the way clang builds them. On
+# Termux, g++ and c++ are clang already. (make's own default for CXX is g++,
+# which ?= would keep.)
+ifeq ($(origin CXX),default)
+  CXX := clang++
+endif
 AR ?= ar
 BUILD ?= release
 
@@ -25,7 +30,12 @@ BUILD_DIR ?= $(SQUARED_ROOT)/build/$(BUILD)
 LIB_DIR := $(BUILD_DIR)/lib
 OBJ_DIR := $(BUILD_DIR)/obj
 
-STANDARD := -std=c++20
+# The language every importer of a squared module must share with it: clang
+# refuses a BMI made with another standard, or without threads, RTTI or
+# exceptions when the importer has them ("configuration mismatch"). Tests,
+# tools and the template's app code are compiled with it too (-pthread: the
+# Telegraph's threads; on Android it changes nothing but the check).
+STANDARD := -std=c++20 -pthread
 WARNINGS := -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
 
 ifeq ($(BUILD),debug)
@@ -80,22 +90,19 @@ SQUARED_EXTERNAL_INCLUDES ?=
 # One word, for the stamp: `clang_version_21.1.8`.
 SQUARED_CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1 | tr ' ' '_')
 
-# Whether the standard headers are precompiled (below, "the standard headers,
-# precompiled").
-SQUARED_PCH_HEADER := $(SQUARED_ROOT)/build/std_pch.hpp
-ifneq ($(findstring clang,$(SQUARED_CXX_VERSION)),)
-  SQUARED_PCH ?= on
-endif
-SQUARED_PCH_ON := $(filter on,$(SQUARED_PCH))
-ifneq ($(SQUARED_PCH_ON),)
-  SQUARED_PCH_FILE := $(BUILD_DIR)/pch/std.pch
-  SQUARED_TEST_PCH_FILE := $(BUILD_DIR)/pch/std-test.pch
-  SQUARED_PCH_USE := -include-pch $(SQUARED_PCH_FILE)
-else
-  SQUARED_PCH_FILE :=
-  SQUARED_TEST_PCH_FILE :=
-  SQUARED_PCH_USE :=
-endif
+# C++20 modules (7b.4, build/modules.mk): every BMI in one directory, where
+# every compile looks for what it imports.
+SQUARED_MODULE_DIR := $(BUILD_DIR)/modules
+SQUARED_MODULE_USE := -fprebuilt-module-path=$(SQUARED_MODULE_DIR)
+
+# sq.std, squared's module of the standard library (build/std.cppm, written by
+# tools/std_module.sh): its BMI, and the list of its source for the cache.
+# The root Makefile makes them first, with libsquared_std.a, which holds its
+# object: every program that imports a squared module links it.
+SQUARED_STD_SOURCE := $(SQUARED_ROOT)/build/std.cppm
+SQUARED_STD_PCM := $(SQUARED_MODULE_DIR)/sq.std.pcm
+SQUARED_STD_INPUTS := $(SQUARED_MODULE_DIR)/sq.std.inputs
+SQUARED_STD_LIB := $(LIB_DIR)/libsquared_std.a
 
 # --- the build cache (7b.3) ---------------------------------------------------
 #
@@ -126,7 +133,8 @@ SQUARED_CC = SQUARED_CACHE='$(SQUARED_CACHE)' SQUARED_PUBLIC_ROOT='$(PUBLIC_ROOT
     SQUARED_CXX_VERSION='$(SQUARED_CXX_VERSION)' \
     SQUARED_SAY='$(if $(filter 1,$(V)),,$(patsubst $(SQUARED_ROOT)/%,%,$<))' \
     SQUARED_HITS='$(OBJ_DIR)/$(MODULE)/.cache-hits' \
-    bash $(SQUARED_ROOT)/tools/cached_cc.sh $(CXX)
+    SQUARED_CACHE_INPUTS='$(strip $(SQUARED_IMPORT_INPUTS))' \
+    bash $(SQUARED_ROOT)/tools/cached_cc.sh $(CXX) $(SQUARED_MODULE_USE)
 
 # $(call say_archive,<archive>): the `ar` line, with how many of its objects
 # this build took from the cache.
@@ -179,10 +187,10 @@ SQUARED_FLAGS_STAMP := $(BUILD_DIR)/flags
 squared_space := $(subst ,, )
 squared_flags := $(strip $(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES) \
     tests:$(subst $(squared_space),:,$(strip $(TESTFLAGS))) \
-    pch:$(if $(SQUARED_PCH_ON),on,off) $(SQUARED_CXX_VERSION))
+    $(SQUARED_CXX_VERSION))
 
 squared_goals := $(or $(MAKECMDGOALS),all)
-squared_building := $(strip $(filter all test retest,$(squared_goals)) \
+squared_building := $(strip $(filter all test retest umbrella sqgen sqconsole,$(squared_goals)) \
     $(wildcard $(patsubst %,$(SQUARED_ROOT)/%/Makefile,$(squared_goals))))
 
 # $(squared_nothing) starts an indented $(info) line: make drops the spaces
@@ -198,6 +206,9 @@ squared_show = $(if $(HOME),$(subst $(HOME),~,$(squared_show_prefix)),$(squared_
 squared_show_prefix = $(if $(PREFIX),$(subst $(PREFIX),$$PREFIX,$(1)),$(1))
 
 ifneq ($(squared_building),)
+  ifeq ($(findstring clang,$(SQUARED_CXX_VERSION)),)
+    $(error squared: $(CXX) is not clang ($(or $(SQUARED_CXX_VERSION),not found)); squared's C++20 modules build with clang: make CXX=clang++)
+  endif
   squared_flags_before := $(file <$(SQUARED_FLAGS_STAMP))
   ifneq ($(squared_flags),$(squared_flags_before))
     $(shell mkdir -p '$(BUILD_DIR)')
@@ -223,48 +234,42 @@ $(SQUARED_FLAGS_STAMP):
 	@mkdir -p $(dir $@)
 	$(file >$@,$(squared_flags))
 
-# --- the standard headers, precompiled (7b.2) -------------------------------
+# --- the standard library, as a module (7b.4) ---------------------------------
 #
-# The standard headers are most of each compile (measured on the phone,
-# 2026-10-27: the 47 squared includes take 4.3 s to parse alone, and a file's
-# front end is 2.7 to 5.5 s). build/std_pch.hpp includes them all, and is
-# compiled once per flag set into a precompiled header (22 MB): the
-# framework's objects, with SQUARED_CXXFLAGS, and the tests, with TESTFLAGS.
-# Every source is then compiled with -include-pch, which takes a third to
-# three quarters off each.
+# Until 7b.4 the standard headers were precompiled (7b.2): a precompiled
+# header and modules do not mix (clang 18 crashed on a module built with one;
+# std from a precompiled header beside std from a module is "different
+# definitions in different modules"). sq.std does the same work: the 47
+# headers parsed once per flag set, and every file reads from the BMI only
+# what it uses. Measured on the phone (2026-10-27, clang 21, every framework
+# file 8 at a time): 35.1 s with the precompiled header, 33.3 s with sq.std;
+# the NDK's 35.9 s and 31.8 s.
 #
-# clang only (-include-pch); g++ builds as before. Off with SQUARED_PCH=off.
-# The precompiled header is included into every file, so a .cpp that forgets
-# a standard include still builds here: `make lint` (clang-tidy, no
-# precompiled header) and `make headers` still find it.
-# The tests' precompiled header is made with -pthread, and tools/test_cc.sh
-# compiles every test source with it: some tests run threads, and clang
-# refuses a precompiled header made with the other choice ("POSIX thread
-# support was disabled in PCH file").
-#
+# The precompiled header was included into every file, and sq.std is
+# imported by every file, so a file can name a standard type without saying
+# where it comes from, as with C++23's `import std`. A C macro is the
+# exception: it needs its C header (tools/std_module.sh).
+$(SQUARED_STD_PCM) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB): $(SQUARED_STD_SOURCE) $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(SQUARED_MODULE_DIR) $(OBJ_DIR)/std $(LIB_DIR)
+	$(call say,mod,sq.std)
+	$(CXX) $(SQUARED_CXXFLAGS) -MD -MP -MT $(SQUARED_STD_PCM) -MF $(OBJ_DIR)/std/std.d \
+	    -c $< -fmodule-output=$(SQUARED_STD_PCM) -o $(OBJ_DIR)/std/std.o
+	printf '%s\n' '$(SQUARED_STD_SOURCE)' > $(SQUARED_STD_INPUTS)
+	rm -f $(SQUARED_STD_LIB)
+	$(AR) rcs $(SQUARED_STD_LIB) $(OBJ_DIR)/std/std.o
+-include $(OBJ_DIR)/std/std.d
+
 # A test, or a host tool built beside the tests, through tools/test_cc.sh:
-# each source compiled on its own (with the test precompiled header), so the
-# binary's .d lists what it really includes, then linked. The objects are kept
-# in build/<BUILD>/test-objects/ and shared between the tests that compile the
-# same source with the same flags.
-TEST_CXX = SQUARED_TEST_PCH='$(SQUARED_TEST_PCH_FILE)' SQUARED_TEST_OBJECTS='$(BUILD_DIR)/test-objects' \
-    bash $(SQUARED_ROOT)/tools/test_cc.sh $(CXX)
-
-ifneq ($(SQUARED_PCH_ON),)
-# -MD, not -MMD: the standard headers are system headers, and a new libc++
-# must make the precompiled header again (clang refuses a stale one).
-$(SQUARED_PCH_FILE): $(SQUARED_PCH_HEADER) $(SQUARED_FLAGS_STAMP)
-	@mkdir -p $(dir $@)
-	$(call say,pch,standard headers ($(notdir $@)))
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES) -x c++-header $< -MD -MP -MF $@.d -o $@
-
-$(SQUARED_TEST_PCH_FILE): $(SQUARED_PCH_HEADER) $(SQUARED_FLAGS_STAMP)
-	@mkdir -p $(dir $@)
-	$(call say,pch,standard headers ($(notdir $@)))
-	$(CXX) $(TESTFLAGS) -pthread -x c++-header $< -MD -MP -MF $@.d -o $@
-
--include $(SQUARED_PCH_FILE).d $(SQUARED_TEST_PCH_FILE).d
-endif
+# each source compiled on its own, so the binary's .d lists what it really
+# includes, then linked. The objects are kept in build/<BUILD>/test-objects/
+# and shared between the tests that compile the same source with the same
+# flags. Every test ends its link with its module's archive, those of the
+# modules it uses, sq.app's and sq.std's (SQUARED_TEST_LINK, one group;
+# archives, so only what a test needs comes in).
+TEST_CXX = SQUARED_TEST_OBJECTS='$(BUILD_DIR)/test-objects' \
+    SQUARED_TEST_DEPS='$(strip $(SQUARED_IMPORT_PCMS))' \
+    SQUARED_TEST_LINK='-Wl,--start-group $(sort $(SQUARED_TEST_ARCHIVES) $(wildcard $(LIB_DIR)/libsquared_app.a)) $(SQUARED_STD_LIB) -Wl,--end-group' \
+    bash $(SQUARED_ROOT)/tools/test_cc.sh $(CXX) $(SQUARED_MODULE_USE)
 
 # --- tests: run again only when something they cover changed ---------------
 #

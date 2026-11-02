@@ -2,7 +2,7 @@
 
 The libGDX-flavoured widget set and skinning, on top of the scene graph they're built from: `Actor`, `Group`, `Widget` and input routing. `sq::Stage` holds the widgets of an app's screens and panes ([stage.md](stage.md)); the host types under it are internal since 7.7 ([Panes and the host](#panes-and-the-host)).
 
-Each type lives in its own header. The headers at the module root (`squared/gui/*.hpp`) are the everyday ones. Those under `squared/gui/src/` are supporting types: you can include them directly, but the root headers that use them already include them. `squared/gui/gui.hpp` pulls in the whole module, and `squared/gui/input.hpp` pulls in the input-routing types together. Both are there for convenience; don't include them from a header of your own.
+`import sq.gui;` gives every type here, and the `sq::graphics` and `sq::app` types the widgets' interfaces name. Each type is written in a file of its own, a partition of the module: the ones at the module root (`squared/gui/*.cppm`) are the everyday ones, those under `squared/gui/src/` the supporting types they are made of. See [include-layout.md](include-layout.md).
 
 Developer counterpart: [../developer/gui.md](../developer/gui.md)
 
@@ -12,9 +12,9 @@ Screens and panes as data &mdash; the node table, writing one from C++, layout f
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Actor` | `squared/gui/actor.hpp` | Base node with parent-relative bounds and frame traversal |
-| `Group` | `squared/gui/group.hpp` | Actor that owns children in deterministic insertion order |
-| `ActorInterfaceId` | `squared/gui/src/actor_interface_id.hpp` | Stable identifier for one layer's Actor-derived interface |
+| `Actor` | `squared/gui/actor.cppm` | Base node with parent-relative bounds and frame traversal |
+| `Group` | `squared/gui/group.cppm` | Actor that owns children in deterministic insertion order |
+| `ActorInterfaceId` | `squared/gui/src/actor_interface_id.cppm` | Stable identifier for one layer's Actor-derived interface |
 
 **What you subclass is `Widget`**: a custom node (`app.stage.custom( "minimap",
 make )`) is one. `Actor` (position, size, parent, input listeners) and `Group`
@@ -26,66 +26,66 @@ in 7.7).
 
 | Type | Header | Purpose |
 |---|---|---|
-| `InputEvent` | `squared/gui/src/input_event.hpp` | Mutable event routed along the widget tree, root to target and back |
-| `InputType` | `squared/gui/src/input_type.hpp` | Event kind carried by one InputEvent |
-| `InputPhase` | `squared/gui/src/input_phase.hpp` | Dispatch phase of an event: capture, target, bubble |
-| `InputListener` | `squared/gui/src/input_listener.hpp` | Callback invoked for each phase during input dispatch |
-| `InputListenerId` | `squared/gui/src/input_listener_id.hpp` | Stable actor-local listener identifier; insertions increase it |
+| `InputEvent` | `squared/gui/src/input_event.cppm` | Mutable event routed along the widget tree, root to target and back |
+| `InputType` | `squared/gui/src/input_type.cppm` | Event kind carried by one InputEvent |
+| `InputPhase` | `squared/gui/src/input_phase.cppm` | Dispatch phase of an event: capture, target, bubble |
+| `InputListener` | `squared/gui/src/input_listener.cppm` | Callback invoked for each phase during input dispatch |
+| `InputListenerId` | `squared/gui/src/input_listener_id.cppm` | Stable actor-local listener identifier; insertions increase it |
 
 Keys, modifiers and navigation are `sq::app` types, shared with the platform
 layer: `app::Key`, `app::KeyModifiers` and `app::Navigation`
 ([app.md](app.md#keys-modifiers-and-navigation)). `InputEvent` carries them
-as they arrived, and `squared/gui/input.hpp` and `gui.hpp` include them.
+as they arrived, and `squared/gui/input.cppm` and `module.cppm` include them.
 
 ## Geometry
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Size` | `squared/gui/src/size.hpp` | Two-dimensional extent in logical units |
-| `Rectangle` | `squared/gui/src/rectangle.hpp` | Axis-aligned rectangle in logical units |
-| `Insets` | `squared/gui/src/insets.hpp` | Insets from the edges of a rectangle, in logical units |
-| `SizeHints` | `squared/gui/src/size_hints.hpp` | Proposed minimum, preferred, and maximum sizes for one widget |
+| `Size` | `squared/gui/src/size.cppm` | Two-dimensional extent in logical units |
+| `Rectangle` | `squared/gui/src/rectangle.cppm` | Axis-aligned rectangle in logical units |
+| `Insets` | `squared/gui/src/insets.cppm` | Insets from the edges of a rectangle, in logical units |
+| `SizeHints` | `squared/gui/src/size_hints.cppm` | Proposed minimum, preferred, and maximum sizes for one widget |
 
 ## Drawing boundary
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Painter` | `squared/gui/src/painter.hpp` | Portable drawing boundary, implemented over `sq::graphics` by `BatchPainter` |
-| `Drawable` | `squared/gui/src/drawable.hpp` | Skin image abstraction; it never exposes SDL or another backend type |
-| `DrawablePtr` | `squared/gui/src/drawable_ptr.hpp` | Shared ownership of an immutable drawable |
-| `ColorDrawable` | `squared/gui/src/color_drawable.hpp` | Drawable that paints a flat, optionally inset color |
-| `RegionDrawable` | `squared/gui/src/region_drawable.hpp` | Drawable that samples one texture region |
-| `NinePatchSplits` | `squared/gui/src/nine_patch_splits.hpp` | Scissor amounts used by nine-patch scaling |
-| `NinePatchDrawable` | `squared/gui/src/nine_patch_drawable.hpp` | Scalable drawable that preserves corners and stretches edges and center |
-| `BatchPainter` | `squared/gui/batch_painter.hpp` | The `Painter` that draws widgets through a `graphics::SpriteBatch` |
+| `Painter` | `squared/gui/src/painter.cppm` | Portable drawing boundary, implemented over `sq::graphics` by `BatchPainter` |
+| `Drawable` | `squared/gui/src/drawable.cppm` | Skin image abstraction; it never exposes SDL or another backend type |
+| `DrawablePtr` | `squared/gui/src/drawable_ptr.cppm` | Shared ownership of an immutable drawable |
+| `ColorDrawable` | `squared/gui/src/color_drawable.cppm` | Drawable that paints a flat, optionally inset color |
+| `RegionDrawable` | `squared/gui/src/region_drawable.cppm` | Drawable that samples one texture region |
+| `NinePatchSplits` | `squared/gui/src/nine_patch_splits.cppm` | Scissor amounts used by nine-patch scaling |
+| `NinePatchDrawable` | `squared/gui/src/nine_patch_drawable.cppm` | Scalable drawable that preserves corners and stretches edges and center |
+| `BatchPainter` | `squared/gui/batch_painter.cppm` | The `Painter` that draws widgets through a `graphics::SpriteBatch` |
 
 ## Fonts
 
 | Type | Header | Purpose |
 |---|---|---|
-| `FontResource` | `squared/gui/src/font_resource.hpp` | Immutable portable bitmap-font resource selected by GUI styles |
-| `FontPtr` | `squared/gui/src/font_ptr.hpp` | Immutable shared ownership of one GUI font resource |
+| `FontResource` | `squared/gui/src/font_resource.cppm` | Immutable portable bitmap-font resource selected by GUI styles |
+| `FontPtr` | `squared/gui/src/font_ptr.cppm` | Immutable shared ownership of one GUI font resource |
 
 ## Styles
 
 | Type | Header | Purpose |
 |---|---|---|
-| `PanelStyle` | `squared/gui/src/panel_style.hpp` | Style data for a Panel widget |
-| `LabelStyle` | `squared/gui/src/label_style.hpp` | Style data for a Label widget |
-| `ButtonStyle` | `squared/gui/src/button_style.hpp` | Style data for a Button widget |
-| `TextFieldStyle` | `squared/gui/src/text_field_style.hpp` | Style data for a TextField widget |
-| `CheckBoxStyle` | `squared/gui/src/check_box_style.hpp` | Style data for a CheckBox widget |
-| `SliderStyle` | `squared/gui/src/slider_style.hpp` | Style data for a Slider widget |
-| `ProgressBarStyle` | `squared/gui/src/progress_bar_style.hpp` | Style data for a non-interactive ProgressBar widget |
-| `WindowStyle` | `squared/gui/src/window_style.hpp` | Style data for a pane's frame: its background, insets and the dim behind a modal one (a skin's `Window$WindowStyle`) |
-| `Skin` | `squared/gui/skin.hpp` | Named, reusable skin resources and widget styles |
+| `PanelStyle` | `squared/gui/src/panel_style.cppm` | Style data for a Panel widget |
+| `LabelStyle` | `squared/gui/src/label_style.cppm` | Style data for a Label widget |
+| `ButtonStyle` | `squared/gui/src/button_style.cppm` | Style data for a Button widget |
+| `TextFieldStyle` | `squared/gui/src/text_field_style.cppm` | Style data for a TextField widget |
+| `CheckBoxStyle` | `squared/gui/src/check_box_style.cppm` | Style data for a CheckBox widget |
+| `SliderStyle` | `squared/gui/src/slider_style.cppm` | Style data for a Slider widget |
+| `ProgressBarStyle` | `squared/gui/src/progress_bar_style.cppm` | Style data for a non-interactive ProgressBar widget |
+| `WindowStyle` | `squared/gui/src/window_style.cppm` | Style data for a pane's frame: its background, insets and the dim behind a modal one (a skin's `Window$WindowStyle`) |
+| `Skin` | `squared/gui/skin.cppm` | Named, reusable skin resources and widget styles |
 
 ## Input
 
 | Type | Header | Purpose |
 |---|---|---|
-| `PointerAction` | `squared/gui/src/pointer_action.hpp` | Pointer action delivered to widgets |
-| `PointerEvent` | `squared/gui/src/pointer_event.hpp` | Portable pointer event payload in widget-local logical units |
+| `PointerAction` | `squared/gui/src/pointer_action.cppm` | Pointer action delivered to widgets |
+| `PointerEvent` | `squared/gui/src/pointer_event.cppm` | Portable pointer event payload in widget-local logical units |
 
 A widget of your own takes keys by overriding `key_down`, with the `sq::app`
 types:
@@ -103,32 +103,32 @@ bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Widget` | `squared/gui/widget.hpp` | Base class for every GUI node. Widgets may own other widgets |
-| `TooltipConfig` | `squared/gui/src/tooltip_config.hpp` | Timing and placement policy for transient Ui tooltips |
+| `Widget` | `squared/gui/widget.cppm` | Base class for every GUI node. Widgets may own other widgets |
+| `TooltipConfig` | `squared/gui/src/tooltip_config.cppm` | Timing and placement policy for transient Ui tooltips |
 
 ## Leaf widgets
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Label` | `squared/gui/label.hpp` | Read-only text widget |
-| `Image` | `squared/gui/image.hpp` | Widget rendering one shared drawable |
-| `Separator` | `squared/gui/separator.hpp` | Thin vertical or horizontal divider line |
-| `ProgressBar` | `squared/gui/progress_bar.hpp` | Read-only determinate progress indicator |
+| `Label` | `squared/gui/label.cppm` | Read-only text widget |
+| `Image` | `squared/gui/image.cppm` | Widget rendering one shared drawable |
+| `Separator` | `squared/gui/separator.cppm` | Thin vertical or horizontal divider line |
+| `ProgressBar` | `squared/gui/progress_bar.cppm` | Read-only determinate progress indicator |
 
 ## Containers
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Direction` | `squared/gui/src/direction.hpp` | Main stacking axis of a linear layout |
-| `Alignment` | `squared/gui/src/alignment.hpp` | Per-cell alignment relative to the cell box |
-| `Panel` | `squared/gui/panel.hpp` | Container painting a single style background |
-| `Cell` | `squared/gui/cell.hpp` | Per-child constraints returned by Table::add for fluent configuration |
-| `Table` | `squared/gui/table.hpp` | Grid layout with libGDX-style rows and chainable cell constraints |
-| `LinearLayout` | `squared/gui/linear_layout.hpp` | Container stacking children along one axis with optional growth |
-| `Stack` | `squared/gui/stack.hpp` | Container overlaying children into the same box, later on top |
-| `MarginContainer` | `squared/gui/margin_container.hpp` | Container adding fixed insets around one child |
-| `ScrollPane` | `squared/gui/scroll_pane.hpp` | Container clipping and vertically scrolling a larger child |
-| `List` | `squared/gui/list.hpp` | A list of any length holding widgets only for the rows it shows, reused as it scrolls |
+| `Direction` | `squared/gui/src/direction.cppm` | Main stacking axis of a linear layout |
+| `Alignment` | `squared/gui/src/alignment.cppm` | Per-cell alignment relative to the cell box |
+| `Panel` | `squared/gui/panel.cppm` | Container painting a single style background |
+| `Cell` | `squared/gui/cell.cppm` | Per-child constraints returned by Table::add for fluent configuration |
+| `Table` | `squared/gui/table.cppm` | Grid layout with libGDX-style rows and chainable cell constraints |
+| `LinearLayout` | `squared/gui/linear_layout.cppm` | Container stacking children along one axis with optional growth |
+| `Stack` | `squared/gui/stack.cppm` | Container overlaying children into the same box, later on top |
+| `MarginContainer` | `squared/gui/margin_container.cppm` | Container adding fixed insets around one child |
+| `ScrollPane` | `squared/gui/scroll_pane.cppm` | Container clipping and vertically scrolling a larger child |
+| `List` | `squared/gui/list.cppm` | A list of any length holding widgets only for the rows it shows, reused as it scrolls |
 
 **`List`** is what a layout's `list` node builds; the Stage binds it to a
 model's list ([stage.md](stage.md#bound-lists)), and an app rarely touches
@@ -160,13 +160,13 @@ own type.
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Button` | `squared/gui/button.hpp` | Clickable, focusable control with an optional label and icon |
-| `ToggleButton` | `squared/gui/toggle_button.hpp` | Two-state button that reports changes through a callback |
-| `CheckBox` | `squared/gui/check_box.hpp` | Toggle button rendering a checkbox glyph and label |
-| `RadioButton` | `squared/gui/radio_button.hpp` | CheckBox-shaped choice intended for a one-of-many ButtonGroup |
-| `ButtonGroup` | `squared/gui/button_group.hpp` | Non-owning coordinator for toggle buttons and radio-style choices |
-| `TextField` | `squared/gui/text_field.hpp` | Single-line editable text input with cursor and composition support |
-| `Slider` | `squared/gui/slider.hpp` | Draggable one-axis value selector with an optional gradient fill |
+| `Button` | `squared/gui/button.cppm` | Clickable, focusable control with an optional label and icon |
+| `ToggleButton` | `squared/gui/toggle_button.cppm` | Two-state button that reports changes through a callback |
+| `CheckBox` | `squared/gui/check_box.cppm` | Toggle button rendering a checkbox glyph and label |
+| `RadioButton` | `squared/gui/radio_button.cppm` | CheckBox-shaped choice intended for a one-of-many ButtonGroup |
+| `ButtonGroup` | `squared/gui/button_group.cppm` | Non-owning coordinator for toggle buttons and radio-style choices |
+| `TextField` | `squared/gui/text_field.cppm` | Single-line editable text input with cursor and composition support |
+| `Slider` | `squared/gui/slider.cppm` | Draggable one-axis value selector with an optional gradient fill |
 
 **When an edit is finished.** `TextField::set_on_commit( callback, context )`
 calls `callback( context, field )` on Enter (the keyboard's Done), and when
@@ -200,8 +200,8 @@ with the rest):
 
 | Was | Now |
 |---|---|
-| `gui::Ui`, `squared/gui/ui.hpp`: the host of one widget tree | internal (`src/detail/ui.hpp`); the Stage holds one per window |
-| `gui::Stage`, `squared/gui/stage.hpp`: the tree's root | internal, `gui::ActorRoot` (`src/detail/actor_root.hpp`): one Stage, the app's |
+| `gui::Ui`, `squared/gui/ui.hpp`: the host of one widget tree | internal (`src/detail/ui.cppm`); the Stage holds one per window |
+| `gui::Stage`, `squared/gui/stage.hpp`: the tree's root | internal, `gui::ActorRoot` (`src/detail/actor_root.cppm`): one Stage, the app's |
 | `gui::Window`, `squared/gui/window.hpp` | gone: a pane's frame is `gui::PaneFrame` (internal), the skin's `pane` window style around a table, with no title bar, dragging or resizing |
 | `gui::Dialog`, `squared/gui/dialog.hpp`, `Ui::show_dialog` | gone: a question is a pane layout with buttons (`"tap": "close"`, `"tap": "quit"`, a telegram) |
 
@@ -232,12 +232,12 @@ Lua: not bound.
 
 | Type | Header | Purpose |
 |---|---|---|
-| `SkinLoadSeverity` | `squared/gui/src/skin_load_severity.hpp` | Severity of one skin-loading diagnostics entry |
-| `SkinLoadIssue` | `squared/gui/src/skin_load_issue.hpp` | One path-tagged diagnostics entry produced by skin loading |
-| `SkinLoadLimits` | `squared/gui/src/skin_load_limits.hpp` | Explicit resource limits applied to one transactional skin load |
-| `SkinLoadReport` | `squared/gui/src/skin_load_report.hpp` | Counted result of one transactional skin load |
-| `SkinDrawableResolver` | `squared/gui/src/skin_drawable_resolver.hpp` | Resolves one atlas/resource name without exposing storage or backend APIs |
-| `SkinFontResolver` | `squared/gui/src/skin_font_resolver.hpp` | Resolve one declared bitmap-font resource without fixing an I/O API |
+| `SkinLoadSeverity` | `squared/gui/src/skin_load_severity.cppm` | Severity of one skin-loading diagnostics entry |
+| `SkinLoadIssue` | `squared/gui/src/skin_load_issue.cppm` | One path-tagged diagnostics entry produced by skin loading |
+| `SkinLoadLimits` | `squared/gui/src/skin_load_limits.cppm` | Explicit resource limits applied to one transactional skin load |
+| `SkinLoadReport` | `squared/gui/src/skin_load_report.cppm` | Counted result of one transactional skin load |
+| `SkinDrawableResolver` | `squared/gui/src/skin_drawable_resolver.cppm` | Resolves one atlas/resource name without exposing storage or backend APIs |
+| `SkinFontResolver` | `squared/gui/src/skin_font_resolver.cppm` | Resolve one declared bitmap-font resource without fixing an I/O API |
 
 ## Text-entry widgets and the soft keyboard
 
@@ -307,7 +307,7 @@ Widgets draw through a `Painter`. `BatchPainter` is the one that puts them on
 screen:
 
 ```cpp
-#include <squared/gui/batch_painter.hpp>
+import sq.gui;
 
 // Once, after the skin's atlas and font are loaded:
 sq::gui::BatchPainter painter{batch, font.get()};   // font: the skin's FontPtr

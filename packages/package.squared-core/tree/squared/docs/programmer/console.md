@@ -66,7 +66,7 @@ While it is open, a gesture that starts on it is the Console's, and while it has
 
 ## Console
 
-`#include <squared/console/console.hpp>`
+`import sq.console;`
 
 ```cpp
 // Once, at start: hold it in something long-lived. It is about 70 KB.
@@ -108,7 +108,7 @@ Four commands are built in: `help` (all commands, or `help <name>` for one), `cl
 
 ## Crash reports
 
-`#include <squared/console/crash_file.hpp>`. The Android template does all of this in a Console build: a crash writes `files/crash.txt` in the app's private files, the next launch shows it in the Console in red, once, and `crash` shows it again.
+`import sq.console;`. The Android template does all of this in a Console build: a crash writes `files/crash.txt` in the app's private files, the next launch shows it in the Console in red, once, and `crash` shows it again.
 
 ```text
 the last run crashed; its report follows, and `crash` shows it again
@@ -183,7 +183,7 @@ push build/x.lua game.lua      under another name
 | `another connection took over` | A second `make console` started |
 | `bridge: N lines dropped (the client read too slowly)` | Termux fell behind (a huge burst of log); the Console itself kept every line |
 
-To wire it yourself (another template), `#include <squared/console/bridge.hpp>`:
+To wire it yourself (another template), `import sq.console;`:
 
 ```cpp
 sq::console::Bridge bridge;   // about 17 KB; hold it beside the Console
@@ -216,7 +216,7 @@ Nothing allocates, and it never waits on a timer: it acts only when `ready` is c
 
 ## Files
 
-`#include <squared/console/file_commands.hpp>`
+`import sq.console;`
 
 ```cpp
 static_cast<void>(sq::console::add_file_commands(console, "/data/user/0/<package>", &bridge));
@@ -226,7 +226,7 @@ static_cast<void>(sq::console::add_file_commands(console, "/data/user/0/<package
 
 ## The last run's log
 
-`#include <squared/console/log_file.hpp>`. The Android template keeps the end of every run, not only a crash's: the newest 200 lines are saved to `files/log.txt` when the app leaves the screen and when it ends; the next launch moves them to `files/log-previous.txt`, and `log previous` shows them. A swipe from the recent apps, a `quit` and Android closing the app for memory are all covered, because the app leaves the screen first.
+`import sq.console;`. The Android template keeps the end of every run, not only a crash's: the newest 200 lines are saved to `files/log.txt` when the app leaves the screen and when it ends; the next launch moves them to `files/log-previous.txt`, and `log previous` shows them. A swipe from the recent apps, a `quit` and Android closing the app for memory are all covered, because the app leaves the screen first.
 
 | Call | Does |
 |---|---|
@@ -267,12 +267,12 @@ The groups that come with squared:
 
 Nothing is allocated: the groups and the queue are fixed tables in the Console (about 3 KB). Group names and lines are kept as pointers: pass string literals.
 
-`squared/console/line_reader.hpp` has the reader these use: `for_each_line(fd, buffer, line)` calls `line(std::string_view)` for each line of a descriptor, through a buffer you give it, with no allocation.
+`squared/console/line_reader.cppm` has the reader these use: `for_each_line(fd, buffer, line)` calls `line(std::string_view)` for each line of a descriptor, through a buffer you give it, with no allocation.
 
 ## Built-in commands
 
 ```cpp
-#include <squared/console/system_commands.hpp>
+import sq.console;
 
 if (sq::console::add_system_commands(console) != 0) { /* the table was too small */ }
 ```
@@ -286,13 +286,13 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `device` | `device: <maker> <model>, Android 16 (API 36), arm64-v8a` (Android and Termux), then `kernel: Linux <release>, aarch64` |
 | `libs` | `libs: <n> libraries, <size> MB of address space`, then each library with the space it maps, from `/proc/self/maps` (the first 256) |
 | `smaps` | memory by kind, largest first: this program's code, the native heap, the GPU driver, the Java runtime, stacks, other libraries, other files, other anonymous memory. Each with PSS (this process's fair share of pages it shares with others), RSS (every page it touches, shared ones whole) and private dirty (pages only it has written: what it alone costs the device) |
-| `gl` | the driver's version, renderer and vendor; the GLSL version; texture, renderbuffer and viewport limits, vertex attributes, texture units; the extension count. With the gles backend: `add_gl_command(console)`, from `renderer.hpp` |
+| `gl` | the driver's version, renderer and vendor; the GLSL version; texture, renderbuffer and viewport limits, vertex attributes, texture units; the extension count. With the gles backend: `add_gl_command(console)`, from `renderer.cppm` |
 | `display` | pixels, dpi, the Console's cell and grid, the safe area. Added by the Android template |
 | `alloc` | the frame-allocation counter's figures, what `operator new` holds now (your code and squared's, apart from the GPU driver's and the C library's own `malloc`), and every site it found (`sq::dev::report_allocations()`). Added by the Android template with `DEV_LOG` |
 | `app`, `quit` | stop, start or restart your `App`; quit. Added by the Android template |
 | `screens` | your `App`'s screens: a line a screen from the first, then the panes over the top, each with what it keeps (its scrolls, an unfinished edit; [stage.md](stage.md#what-is-kept)), and the bound values and lists. `screens low-memory` sends Android's low-memory event through the App first. Added by the Android template |
 | `crash` | the last crash report again (above). Added by the Android template |
-| `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.hpp`; added by the Android template |
+| `log` | `log previous`: the end of the last run's log (below). `add_log_command(console, previous_path)`, from `log_file.cppm`; added by the Android template |
 | `ls`, `pull`, `push` | the app's files ([Files](#files)); added by the Android template |
 | `logcat` | `logcat [lines]`: the app's own system log, newest 200 by default (`/system/bin/logcat -d`). Added by the Android template, through `run_program` |
 | `telegraph` | each capacity of the Telegraph and its highest fill since start, the states held back, the lists, and how often the model waited for room or was refused. From `TelegraphTools`, below |
@@ -301,16 +301,16 @@ if (sq::console::add_system_commands(console) != 0) { /* the table was too small
 | `telegraph record [file] \| record stop` | what the UI sends, to `files/replay.txt` (or `file`), each line with its milliseconds since the start |
 | `telegraph replay [file] [fast] \| replay stop` | send a recording again, at its pace or as fast as the ring takes it |
 
-| `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.hpp`; the Android template's writer is the system clipboard |
+| `copy` | `copy`: every line; `copy errors`: the error lines; `copy 20`: the last 20. The command's own echo is left out. `add_copy_command(console, writer)`, from `copy_command.cppm`; the Android template's writer is the system clipboard |
 
-**`run_program(console, argv, max_lines)`** (`system_commands.hpp`) runs a program to its end and prints what it writes, stdout and stderr, at most `max_lines` lines and then how many more there were. `argv` is its path, its arguments, `nullptr`; no `PATH` search. It runs as the app does. False when it could not run. The template's `logcat` is one call:
+**`run_program(console, argv, max_lines)`** (`system_commands.cppm`) runs a program to its end and prints what it writes, stdout and stderr, at most `max_lines` lines and then how many more there were. `argv` is its path, its arguments, `nullptr`; no `PATH` search. It runs as the app does. False when it could not run. The template's `logcat` is one call:
 
 ```cpp
 const char* const argv[] = {"/system/bin/logcat", "-d", "-t", "200", "-v", "brief", nullptr};
 sq::console::run_program(console, argv, 208);
 ```
 
-**The Telegraph's tools** (`squared/console/telegraph_tools.hpp`): the commands above, the name table the text form uses, the tap, and recording and replaying. One per line, beside the Console, in Console builds (about 15 KB, the name table most of it):
+**The Telegraph's tools** (`squared/console/telegraph_tools.cppm`): the commands above, the name table the text form uses, the tap, and recording and replaying. One per line, beside the Console, in Console builds (about 15 KB, the name table most of it):
 
 ```cpp
 sq::console::TelegraphTools tools(line->ui(), files_directory);   // files_directory may be nullptr
@@ -355,7 +355,7 @@ The highest fills are what the `TELEGRAPH_*` make variables are set from. A valu
 
 `add_system_commands` returns how many did not fit in the table (0 when all did); `add_gl_command` and `add_copy_command` return the table's `AddResult`. None of them allocates or keeps anything.
 
-**`ClipboardWriter`** (`squared/console/src/clipboard_writer.hpp`) is where `copy` writes: a `context` and three functions, `begin(context)` (false: there is no clipboard), `append(context, text)` as often as needed, and `end(context)` (false: it refused). The text arrives in pieces, so nothing builds a copy of the whole scrollback first. `add_copy_command` keeps the writer by address: it must outlive the Console.
+**`ClipboardWriter`** (`squared/console/src/clipboard_writer.cppm`) is where `copy` writes: a `context` and three functions, `begin(context)` (false: there is no clipboard), `append(context, text)` as often as needed, and `end(context)` (false: it refused). The text arrives in pieces, so nothing builds a copy of the whole scrollback first. `add_copy_command` keeps the writer by address: it must outlive the Console.
 
 ```cpp
 std::string clip;   // a test's clipboard
@@ -375,7 +375,7 @@ Nothing the Console does allocates, and nothing fails with an error value: a ful
 
 ## Args
 
-`#include <squared/console/args.hpp>`. What a command receives: the words of its line, word 0 its name. Words are separated by spaces; double quotes group words (`say "two words"`). Every word is a view into the line being run, valid while the command runs.
+`import sq.console;`. What a command receives: the words of its line, word 0 its name. Words are separated by spaces; double quotes group words (`say "two words"`). Every word is a view into the line being run, valid while the command runs.
 
 | Call | Returns |
 |---|---|
@@ -388,17 +388,17 @@ At most 16 words, the name included.
 
 ## InputLine
 
-`#include <squared/console/input_line.hpp>`. The line being typed, which the Console owns and edits through `key()` and `text()`; use it directly to show the text and the cursor, or to edit by hand. UTF-8: the cursor moves, and deletes, whole characters. 256 bytes; text beyond is cut at a character boundary, and control characters are dropped. The history holds about 50 earlier lines (2 KB): `previous()` and `next()` walk it, keeping the line you were typing to come back to; `remember()` adds the current line unless it is empty or repeats the newest.
+`import sq.console;`. The line being typed, which the Console owns and edits through `key()` and `text()`; use it directly to show the text and the cursor, or to edit by hand. UTF-8: the cursor moves, and deletes, whole characters. 256 bytes; text beyond is cut at a character boundary, and control characters are dropped. The history holds about 50 earlier lines (2 KB): `previous()` and `next()` walk it, keeping the line you were typing to come back to; `remember()` adds the current line unless it is empty or repeats the newest.
 
 ## Scrollback
 
-`#include <squared/console/scrollback.hpp>`
+`import sq.console;`
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Scrollback` | `squared/console/scrollback.hpp` | The ring of lines: pushed in, read oldest first, the oldest dropped when full |
-| `Line` | `squared/console/src/line.hpp` | One line as the ring hands it out: `text` and `level` |
-| `Level` | `squared/console/src/level.hpp` | `info`, `warning`, `error` |
+| `Scrollback` | `squared/console/scrollback.cppm` | The ring of lines: pushed in, read oldest first, the oldest dropped when full |
+| `Line` | `squared/console/src/line.cppm` | One line as the ring hands it out: `text` and `level` |
+| `Level` | `squared/console/src/level.cppm` | `info`, `warning`, `error` |
 
 ```cpp
 std::array<char, sq::console::scrollback_bytes> storage;
@@ -430,7 +430,7 @@ Nothing here fails: there are no error values. A line that doesn't fit drops old
 The template does this for you. To draw the Console somewhere else, or in another engine's frame:
 
 ```cpp
-#include <squared/console/renderer.hpp>
+import sq.console;
 
 sq::console::Renderer renderer;                        // 16 KB; keep it with the Console
 if (!renderer.create()) { /* no GLES 3.0: draw nothing */ }
@@ -441,12 +441,12 @@ renderer.draw(console, {.x = 0, .y = 0, .width = w, .height = h / 2, .cell = 24}
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Renderer` | `squared/console/renderer.hpp` | Draws a `Console` with GLES 3.0. Built with the gles backend only |
-| `Frame` | `squared/console/src/frame.hpp` | Where: `x`, `y`, `width`, `height` in pixels from the top left; `cell`, the character size in pixels; `scroll`, rows moved back from the newest |
-| `layout()` | `squared/console/layout.hpp` | Where each character goes, as `Quad`s, without drawing: for another renderer, or a test |
-| `grid(frame)` | `squared/console/layout.hpp` | The columns and rows a frame holds |
-| `touches_close(frame, x, y)` | `squared/console/layout.hpp` | Whether a point is on `[x]` |
-| `scroll_limit(console, frame)` | `squared/console/layout.hpp` | The largest useful `frame.scroll`: clamp a scroll you keep to it, so scrolling back down takes effect at once |
+| `Renderer` | `squared/console/renderer.cppm` | Draws a `Console` with GLES 3.0. Built with the gles backend only |
+| `Frame` | `squared/console/src/frame.cppm` | Where: `x`, `y`, `width`, `height` in pixels from the top left; `cell`, the character size in pixels; `scroll`, rows moved back from the newest |
+| `layout()` | `squared/console/layout.cppm` | Where each character goes, as `Quad`s, without drawing: for another renderer, or a test |
+| `grid(frame)` | `squared/console/layout.cppm` | The columns and rows a frame holds |
+| `touches_close(frame, x, y)` | `squared/console/layout.cppm` | Whether a point is on `[x]` |
+| `scroll_limit(console, frame)` | `squared/console/layout.cppm` | The largest useful `frame.scroll`: clamp a scroll you keep to it, so scrolling back down takes effect at once |
 
 | Call | Does |
 |---|---|

@@ -1,12 +1,6 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/painter.hpp>
-#include <squared/gui/src/rectangle.hpp>
-#include <squared/gui/src/region_drawable.hpp>
-#include <squared/gui/src/size.hpp>
+import sq.graphics;
 
 namespace sq::gui
 {

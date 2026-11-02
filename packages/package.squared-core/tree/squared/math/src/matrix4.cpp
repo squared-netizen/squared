@@ -1,6 +1,6 @@
-#include <squared/math/matrix4.hpp>
+module sq.math;
 
-#include <cmath>
+import sq.std;
 
 namespace sq::math
 {

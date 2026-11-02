@@ -1,6 +1,6 @@
-#include <squared/console/groups.hpp>
+module sq.console;
 
-#include <string_view>
+import sq.std;
 
 namespace sq::console
 {

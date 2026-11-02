@@ -1,9 +1,10 @@
-#include <squared/messaging/telegram.hpp>
+module;
 
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <cstring>
+#include <assert.h>
+
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

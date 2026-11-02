@@ -1,7 +1,10 @@
 # Building
 
-squared builds with g++ and GNU make. No CMake, no generator step, no network
-access, and nothing that assumes a desktop.
+squared builds with clang and GNU make. No CMake, no generator step, no
+network access, and nothing that assumes a desktop. Since 7b.4 squared is
+C++20 modules ([include-layout.md](include-layout.md)), which it builds the
+way clang does: `CXX` is clang++ by default, and another compiler stops the
+build at once. On Termux, `g++` and `c++` are clang already.
 
 ## Desktop Linux and Termux
 
@@ -17,7 +20,8 @@ Or drive make directly:
 make                 # every module
 make gui             # one module
 make BUILD=debug
-make headers         # compile every public header on its own
+make headers         # sq.std current, the modules' build order
+make sqgen           # sqgen and sqconsole, for this machine, in build/<BUILD>/
 make test            # every module's tests, each only if it changed (below)
 make retest          # every test again
 make clean
@@ -30,6 +34,7 @@ once:
 
 ```
 squared release: flags as before
+  mod  sq.messaging-telegram
   cc   messaging/src/telegram.cpp
   ar   libsquared_messaging.a
   bin  messaging/telegram_test
@@ -52,8 +57,8 @@ make V=1             # every command, and every test's output, in full
 ```
 
 **Tests run only when something they cover changed.** A test binary is
-rebuilt when its sources, the archives it links, any header in the tree or
-the flags change, and `make test` runs it only when it was rebuilt since it
+rebuilt when its sources, the archives it links, the files and module
+interfaces it reads or the flags change, and `make test` runs it only when it was rebuilt since it
 last passed. A module whose tests were all kept says how many: `gui: 4
 unchanged since they passed`. With nothing changed `make test` takes about a
 second; `make retest` (or `make test RETEST=1`) runs all of them. A failed
@@ -157,20 +162,24 @@ Defaults are `-std=c++20 -O2 -Wall -Wextra -Wpedantic -Wshadow -Wconversion
 -fvisibility=hidden` so the linker can drop what an application does not use.
 The tree builds warning-free at that level.
 
-**The standard headers are precompiled** with clang (7b.2): the build makes
-`build/<BUILD>/pch/std.pch` (and `std-test.pch` for the tests) once per
-flag set, about 22 MB each, and compiles every source with it, which takes a
-third to three quarters off each compile on the phone. `make SQUARED_PCH=off`
-builds without it. A standard header your change starts to include, that
-`build/std_pch.hpp` does not list, still works but is not precompiled: `make
-headers` says so, and `tools/std_pch.sh` writes the list again.
+**Every module is compiled before what imports it** (7b.4): `mod
+sq.gui-label` is an interface becoming its BMI, in
+`build/<BUILD>/modules/`. The standard library is a module too, `sq.std`
+(`build/std.cppm`), made first: the standard headers are parsed once per flag
+set, and every file reads from it only what it uses. A `std::` name your
+change starts to use that sq.std does not export yet fails the compile, and
+`make headers`: `tools/std_module.sh` writes the module again. (Until 7b.4 the
+standard headers were precompiled; a precompiled header and modules do not
+mix.)
 
 **A test is rebuilt only when something it includes changes**, and the
 objects of the sources tests share are kept in
 `build/<BUILD>/test-objects/` and reused.
 
 **Framework objects are cached** (7b.3), by what each compile reads: the
-source and every header by content, the compiler and the flags. A compile
+source and every file it includes by content, the module interfaces it may
+import, the compiler and the flags. The interfaces themselves are compiled
+in each workspace. A compile
 that would read the same again takes the object instead: a new workspace, a
 `make clean`, a header edited and edited back. With squared-pg set up the
 cache is one for every workspace on the device, `~/sqsysroot/.sqpg/cache`;

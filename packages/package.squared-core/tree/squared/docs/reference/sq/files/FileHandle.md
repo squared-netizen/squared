@@ -1,20 +1,6 @@
 # class FileHandle
 
-*Defined at [files/file_handle.hpp:35](../../../../files/file_handle.hpp#L35)*
-
-
-
-**brief** A named location, modelled on libGDX's FileHandle.
-
- A handle is a value: a file system, a root type, and a relative path. It is 48 bytes, it holds no descriptor, and constructing one touches nothing, so building handles in a loop costs only the path string. Nothing is opened until an operation is called, and nothing stays open after one returns.
-
- The file system is referenced, not owned, and must outlive every handle resolved from it. Handles are freely copyable and comparable.
-
-
-
-**note** Every failing operation returns its failure. None of them throw, and none of them assert on a missing file — a missing file is an ordinary result here, not a programmer error.
-
-
+*Defined at [files/file_handle.cppm:33](../../../../files/file_handle.cppm#L33)*
 
 ## Functions
 
@@ -38,11 +24,7 @@
 
 *public void FileHandle()*
 
-*Defined at [files/file_handle.hpp:39](../../../../files/file_handle.hpp#L39)*
-
-
-
-**brief** Construct an invalid handle that answers no operation. 
+*Defined at [files/file_handle.cppm:37](../../../../files/file_handle.cppm#L37)*
 
 ### name
 
@@ -132,31 +114,19 @@
 
 *public bool valid()*
 
-*Defined at [files/file_handle.hpp:52](../../../../files/file_handle.hpp#L52)*
-
-
-
-**brief** Report whether this handle is bound to a file system. 
+*Defined at [files/file_handle.cppm:50](../../../../files/file_handle.cppm#L50)*
 
 ### type
 
 *public FileType type()*
 
-*Defined at [files/file_handle.hpp:55](../../../../files/file_handle.hpp#L55)*
-
-
-
-**brief** Return the root this handle's path is relative to. 
+*Defined at [files/file_handle.cppm:53](../../../../files/file_handle.cppm#L53)*
 
 ### path
 
 *public const std::string & path()*
 
-*Defined at [files/file_handle.hpp:58](../../../../files/file_handle.hpp#L58)*
-
-
-
-**brief** Return the relative path, with '/' separators. 
+*Defined at [files/file_handle.cppm:56](../../../../files/file_handle.cppm#L56)*
 
 ### read_bytes
 

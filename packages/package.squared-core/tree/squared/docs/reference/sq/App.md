@@ -1,6 +1,6 @@
 # class App
 
-*Defined at [stage/app.hpp:111](../../../stage/app.hpp#L111)*
+*Defined at [stage/app.cppm:97](../../../stage/app.cppm#L97)*
 
 
 
@@ -34,7 +34,7 @@ public Stage stage
 
 *public void App(const App & )*
 
-*Defined at [stage/app.hpp:123](../../../stage/app.hpp#L123)*
+*Defined at [stage/app.cppm:109](../../../stage/app.cppm#L109)*
 
 ### dispose
 
@@ -44,13 +44,13 @@ public Stage stage
 
 *public App & operator=(const App & )*
 
-*Defined at [stage/app.hpp:124](../../../stage/app.hpp#L124)*
+*Defined at [stage/app.cppm:110](../../../stage/app.cppm#L110)*
 
 ### App
 
 *public void App(App && )*
 
-*Defined at [stage/app.hpp:125](../../../stage/app.hpp#L125)*
+*Defined at [stage/app.cppm:111](../../../stage/app.cppm#L111)*
 
 ### create
 
@@ -72,13 +72,13 @@ public Stage stage
 
 *public App & operator=(App && )*
 
-*Defined at [stage/app.hpp:126](../../../stage/app.hpp#L126)*
+*Defined at [stage/app.cppm:112](../../../stage/app.cppm#L112)*
 
 ### run
 
 *public bool run(Args &&... args)*
 
-*Defined at [stage/app.hpp:142](../../../stage/app.hpp#L142)*
+*Defined at [stage/app.cppm:128](../../../stage/app.cppm#L128)*
 
 
 
@@ -92,7 +92,7 @@ public Stage stage
 
 *public bool running()*
 
-*Defined at [stage/app.hpp:160](../../../stage/app.hpp#L160)*
+*Defined at [stage/app.cppm:146](../../../stage/app.cppm#L146)*
 
 
 
@@ -102,7 +102,7 @@ public Stage stage
 
 *public void quit()*
 
-*Defined at [stage/app.hpp:163](../../../stage/app.hpp#L163)*
+*Defined at [stage/app.cppm:149](../../../stage/app.cppm#L149)*
 
 
 
@@ -112,7 +112,7 @@ public Stage stage
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/app.hpp:166](../../../stage/app.hpp#L166)*
+*Defined at [stage/app.cppm:152](../../../stage/app.cppm#L152)*
 
 
 
@@ -122,7 +122,7 @@ public Stage stage
 
 *public bool hides_bars()*
 
-*Defined at [stage/app.hpp:186](../../../stage/app.hpp#L186)*
+*Defined at [stage/app.cppm:172](../../../stage/app.cppm#L172)*
 
 ### ~App
 

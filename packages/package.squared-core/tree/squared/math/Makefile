@@ -24,11 +24,15 @@ $(TARGET): $(OBJECTS)
 	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/math/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
+$(OBJ_DIR)/math/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/math $(TARGET)
 
 -include $(DEPENDS)
+
+# C++20 modules (build/modules.mk, 7b.4): this module's interface units, the
+# BMIs its code imports, and the order of both.
+include $(SQUARED_ROOT)/build/modules.mk

@@ -1,28 +1,7 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/app/src/key.hpp>
-#include <squared/app/src/key_modifiers.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/margin_container.hpp>
-#include <squared/gui/panel.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/src/input_event.hpp>
-#include <squared/gui/src/input_type.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/painter.hpp>
-#include <squared/gui/src/pointer_action.hpp>
-#include <squared/gui/src/pointer_event.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/src/size_hints.hpp>
-#include <squared/gui/stack.hpp>
-#include <squared/gui/widget.hpp>
-
-#include <cstddef>
-#include <limits>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <utility>
+import sq.app;
+import sq.std;
 
 namespace sq::gui
 {

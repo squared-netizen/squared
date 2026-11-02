@@ -1,28 +1,6 @@
-#include <squared/gui/button.hpp>
-#include <squared/gui/cell.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/image.hpp>
-#include <squared/gui/instantiate.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/list.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/scroll_pane.hpp>
-#include <squared/gui/separator.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/src/detail/build_row.hpp>
-#include <squared/gui/src/direction.hpp>
-#include <squared/gui/stack.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/text_field.hpp>
-#include <squared/gui/widget.hpp>
+module sq.gui;
 
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <utility>
+import sq.std;
 
 namespace sq::gui
 {

@@ -5,10 +5,10 @@ decision record: the refactor plan's 7.1 to 7.6 ("yes to all",
 2026-10-26; 7.6's four picks, 2026-10-27) and the app model's Ownership and
 Lifecycle sections.
 
-`stage/app.hpp` (`sq::App`, `squared_main`), `stage/stage.hpp`
-(`sq::Stage`), `stage/save.hpp` (`sq::Save`, `detail::Saving`), `src/app.cpp`,
+`stage/app.cppm` (`sq::App`, `squared_main`), `stage/module.cppm`
+(`sq::Stage`), `stage/save.cppm` (`sq::Save`, `detail::Saving`), `src/app.cpp`,
 `src/stage.cpp`, `src/save.cpp`, and `src/catalog.cpp` with
-`src/detail/catalog.hpp` (the layouts' default). `squared/squared.hpp` at the
+`src/detail/catalog.cppm` (the layouts' default). `squared/squared.cppm` at the
 tree's root includes it with gui and messaging. Sprint 7.1, 2026-10-26; 7.2's
 C++ screens, 7.3's panes, 7.4's compiled-in skin and 7.5's bound values and
 lists folded in.
@@ -157,7 +157,7 @@ replayed line are the same thing. Navigation finds its target with
 **`Stage::find` and the weak default.** The names a layout's taps navigate to
 are the app's layout files, which only sqgen's generated code knows. sqgen
 already writes `layouts::all()` (sorted); the Stage declares the same
-function (`src/detail/catalog.hpp`) and binary-searches it. An app with no
+function (`src/detail/catalog.cppm`) and binary-searches it. An app with no
 layout files has no definition, so `src/catalog.cpp` defines an empty one,
 `[[gnu::weak]]`, alone in its file: through the archive it is linked only
 when nothing else defines it, and linked as an object beside a strong

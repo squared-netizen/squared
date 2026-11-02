@@ -98,7 +98,7 @@
 
 *void write_crash_trace(int signal, const siginfo_t * info, void * ucontext, CrashSink sink, void * context)*
 
-*Defined at [dev/crash_trace.hpp:160](../../../../dev/crash_trace.hpp#L160)*
+*Defined at [dev/crash_trace.cppm:159](../../../../dev/crash_trace.cppm#L159)*
 
 
 
@@ -121,7 +121,7 @@
 | Error |
 
 
-*Defined at [dev/dev_log.hpp:18](../../../../dev/dev_log.hpp#L18)*
+*Defined at [dev/dev_log.cppm:17](../../../../dev/dev_log.cppm#L17)*
 
  How serious a line is. The UDP sink sends the text alone; a listener gets both.
 
@@ -134,7 +134,7 @@
 | SocketFailed |
 
 
-*Defined at [dev/dev_log.hpp:10](../../../../dev/dev_log.hpp#L10)*
+*Defined at [dev/dev_log.cppm:9](../../../../dev/dev_log.cppm#L9)*
 
  Outcome of open_log_sink().
 

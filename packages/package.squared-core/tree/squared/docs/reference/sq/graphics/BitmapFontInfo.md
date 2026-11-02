@@ -1,12 +1,6 @@
 # struct BitmapFontInfo
 
-*Defined at [graphics/src/bitmap_font_info.hpp:9](../../../../graphics/src/bitmap_font_info.hpp#L9)*
-
-
-
-**brief** Portable BMFont face metadata. 
-
-
+*Defined at [graphics/src/bitmap_font_info.cppm:9](../../../../graphics/src/bitmap_font_info.cppm#L9)*
 
 ## Members
 

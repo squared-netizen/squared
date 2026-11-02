@@ -1,12 +1,6 @@
 # class Button
 
-*Defined at [gui/button.hpp:21](../../../../gui/button.hpp#L21)*
-
-
-
-**brief** Clickable, focusable control with an optional label and icon. 
-
-
+*Defined at [gui/button.cppm:18](../../../../gui/button.cppm#L18)*
 
 Inherits from Widget
 
@@ -184,49 +178,25 @@ Inherits from Widget
 
 *public const std::string & text()*
 
-*Defined at [gui/button.hpp:44](../../../../gui/button.hpp#L44)*
-
-
-
-**brief** Read the label text.
-
-**return** Reference to the stored label.
+*Defined at [gui/button.cppm:41](../../../../gui/button.cppm#L41)*
 
 ### pressed
 
 *public bool pressed()*
 
-*Defined at [gui/button.hpp:133](../../../../gui/button.hpp#L133)*
-
-
-
-**brief** Read the pressed state: public, so a container that takes the pointer from it (a List scrolling) can be seen to have let it go.
-
-**return** true while the pointer presses the button.
+*Defined at [gui/button.cppm:130](../../../../gui/button.cppm#L130)*
 
 ### hovered
 
 *protected bool hovered()*
 
-*Defined at [gui/button.hpp:153](../../../../gui/button.hpp#L153)*
-
-
-
-**brief** Read the hovered state.
-
-**return** true while the pointer hovers the button.
+*Defined at [gui/button.cppm:150](../../../../gui/button.cppm#L150)*
 
 ### focused
 
 *protected bool focused()*
 
-*Defined at [gui/button.hpp:159](../../../../gui/button.hpp#L159)*
-
-
-
-**brief** Read the focused state.
-
-**return** true while the button owns keyboard focus.
+*Defined at [gui/button.cppm:156](../../../../gui/button.cppm#L156)*
 
 ### selected
 

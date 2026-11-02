@@ -1,12 +1,6 @@
 # struct GroupLine
 
-*Defined at [console/groups.hpp:16](../../../../console/groups.hpp#L16)*
-
-
-
-**brief** One command line of a group: which group, and the line. 
-
-
+*Defined at [console/groups.cppm:10](../../../../console/groups.cppm#L10)*
 
 ## Members
 

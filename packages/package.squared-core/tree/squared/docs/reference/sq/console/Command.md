@@ -1,12 +1,6 @@
 # struct Command
 
-*Defined at [console/src/command.hpp:19](../../../../console/src/command.hpp#L19)*
-
-
-
-**brief** One entry in the command table. 
-
-
+*Defined at [console/src/command.cppm:19](../../../../console/src/command.cppm#L19)*
 
 ## Members
 

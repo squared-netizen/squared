@@ -17,15 +17,12 @@
 
 #pragma once
 
-#include <squared/app/src/text_input_service.hpp>
+import sq.app;
+import sq.std;
 
 #include <android/native_activity.h>
 #include <jni.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <span>
-#include <string_view>
 
 namespace sq_android {
 

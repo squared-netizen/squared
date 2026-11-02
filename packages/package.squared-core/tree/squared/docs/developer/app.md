@@ -14,26 +14,29 @@ Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 
 ```
 app/
-  application.hpp event.hpp runtime.hpp safe_area.hpp
+  application.cppm event.cppm runtime.cppm safe_area.cppm
   src/   the nine supporting headers: key, modifiers, navigation, text input, and report
 ```
 
-No `Makefile`, because there is nothing to compile. The headers are still
-covered by `tools/check_headers.sh`, which finds every header at a module
-root and under `src/` rather than listing modules. See
-[file-layout.md](file-layout.md).
+Since 7b.4 app is a built module, `sq.app`, with a `Makefile` and
+`libsquared_app.a`: its interfaces have objects (the module's initializer,
+and member functions defined in a class, which are not implicitly inline in a
+module). It has no implementation units. `runtime.cppm` imports sq.graphics,
+sq.files and sq.assets for the references `Runtime` holds (a module cannot
+declare another's types ahead), so app is built after them. See
+[file-layout.md](file-layout.md) and [modules.md](modules.md).
 
 ## The one deliberate rule deviation
 
-`application.hpp` names `Event` and `TextInputService` only by reference, so
+`application.cppm` names `Event` and `TextInputService` only by reference, so
 the tree's forward-declare-or-include rule would make both forward
-declarations. It includes them instead, because `application.hpp` is also this
+declarations. It includes them instead, because `application.cppm` is also this
 module's aggregate header: `Application` cannot be implemented without both,
 and there is no free name left for a separate `<module>/<module>.hpp` umbrella
 with the class already holding it.
 
-`event.hpp` is likewise the `Event` struct rather than a group umbrella. It
-includes `key.hpp`, `key_modifiers.hpp` and `navigation.hpp`, because `Event`
+`event.cppm` is likewise the `Event` struct rather than a group umbrella. It
+includes `key.cppm`, `key_modifiers.cppm` and `navigation.cppm`, because `Event`
 holds all three by value.
 
 ## The report sink and the lifecycle calls (7.1)

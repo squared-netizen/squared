@@ -1,15 +1,11 @@
-#include <squared/gles/src/gles_error.hpp>
-#include <squared/gles/src/gles_error_code.hpp>
-#include <squared/gles/src/texture_format.hpp>
-#include <squared/gles/texture2d.hpp>
-#include <squared/graphics/src/texture_filter.hpp>
-#include <squared/graphics/src/texture_wrap.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <cstddef>
-#include <span>
-#include <utility>
+module sq.gles;
+
+import sq.graphics;
+import sq.std;
 
 namespace sq::gles
 {

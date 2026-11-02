@@ -16,12 +16,14 @@ Layouts (the node table, `check`, `LayoutWriter`, `instantiate`): [layouts.md](l
 
 ```
 gui/
-  *.hpp          31 headers: the widgets, Skin, the scene graph, layouts,
-                 and input.hpp (the input-routing types together); gui.hpp
-                 includes the whole module
-  src/           38 supporting headers, and the module's sources
-    detail/      private (7.7): ui.hpp, actor_root.hpp, pane_frame.hpp;
-                 gui_detail.hpp, build_row.hpp
+  module.cppm    sq.gui, re-exporting every partition (and sq.graphics,
+                 sq.app, sq.data, sq.files, sq.messaging, which they use)
+  *.cppm         30 partitions: the widgets, Skin, the scene graph, layouts,
+                 and input.cppm (the input-routing types together)
+  src/           38 supporting partitions, the internal ones in detail/, and
+                 the module's implementation units
+    detail/      private (7.7): ui.cppm, actor_root.cppm, pane_frame.cppm;
+                 gui_detail.cppm, build_row.cppm
   test/
   Makefile
 ```
@@ -41,7 +43,7 @@ standard-library-deviations.md).
 It is the only type that knows about `sq::app`, which keeps the widget set
 free of any platform dependency.
 
-`gui/src/detail/gui_detail.hpp` holds the helpers that used to sit in
+`gui/src/detail/gui_detail.cppm` holds the helpers that used to sit in
 `gui.cpp`'s anonymous namespace: colour multiplication, dimension clamping,
 UTF-8 cursor stepping, font-path validation, and the `style_or_default`
 template. They are `inline` in `sq::gui::detail` because several
@@ -55,7 +57,7 @@ actor trees this way; none of them uses RTTI. See
 `Widget::wants_text_input()` decides whether focusing a widget raises the
 platform soft keyboard. `TextField` returns true; everything else returns
 false. `Ui` reads it in three places and no longer names `TextField` at all,
-which is why `ui.cpp` does not include `text_field.hpp`. Any custom text-entry
+which is why `ui.cpp` does not include `text_field.cppm`. Any custom text-entry
 widget can opt in by overriding it.
 
 ## A text field's commit, and a slider held (7.5a)
@@ -79,10 +81,11 @@ Decided 2026-10-27, the user's picks: the `Ui` and the tree's root internal;
 `Dialog` removed; `Window` folded into a lean pane frame; the skin's own
 `pane` style for it; `Actor`, `Group` and `Widget` kept apart.
 
-**Internal** means `src/detail/`: not in `gui.hpp`, not checked by
-`make headers` for reachability, not listed in the programmer pages. The
+**Internal** means `src/detail/`: not listed in the programmer pages. The
 names stay in `sq::gui`, so the demo (on the `Ui` until Sprint 9) changes
-two include lines and nothing else. `sq::Stage::ui()` went private with it;
+two include lines and nothing else. Since 7b.4 they are partitions
+(`sq.gui:src.detail.ui`), re-exported by `module.cppm` like the rest: a
+partition is private to its module, and stage uses them. `sq::Stage::ui()` went private with it;
 the stage tests reach it through `detail::StageProbe`.
 
 **`gui::Stage` became `ActorRoot`**, so the one Stage an app sees is
@@ -145,7 +148,7 @@ free it; `kept_count()` is for the Console and the test.
 
 ## `List` (7.5b)
 
-`list.hpp`, `src/list.cpp`; built by `instantiate` for a `list` node, bound by
+`list.cppm`, `src/list.cpp`; built by `instantiate` for a `list` node, bound by
 the Stage. 384 bytes (libstdc++): the row's copy (a vector of nodes, the
 layout's words and numbers), the hooks, the row tables and the row each
 shows (two vectors), and a few floats.
@@ -230,7 +233,7 @@ graph needs to know your type exists.
 `Actor` and `Group` are mutually recursive: `Actor` forward
 declares `Group` for its parent pointer, `Group` includes `Actor` because it
 derives from it. `InputEvent` forward declares `Actor` for the same reason,
-which is what lets `input_listener.hpp` stay a two-line header.
+which is what lets `input_listener.cppm` stay a two-line header.
 
 ## Safe area
 
@@ -316,7 +319,7 @@ clip, so one frame cannot restrict the next.
 ## An ODR violation the first link exposed
 
 `detail::parse_record` and its siblings were defined in
-`graphics/src/detail/bitmap_font_detail.hpp` without `inline`, so
+`graphics/src/detail/bitmap_font_detail.cppm` without `inline`, so
 `bitmap_font.o` and `glyph_layout.o` both emitted them. Archiving never
 noticed; the first executable to link both objects failed.
 

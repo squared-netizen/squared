@@ -1,6 +1,6 @@
 # class Label
 
-*Defined at [gui/label.hpp:16](../../../../gui/label.hpp#L16)*
+*Defined at [gui/label.cppm:14](../../../../gui/label.cppm#L14)*
 
 
 
@@ -72,7 +72,7 @@ Inherits from Widget
 
 *public const std::string & text()*
 
-*Defined at [gui/label.hpp:36](../../../../gui/label.hpp#L36)*
+*Defined at [gui/label.cppm:34](../../../../gui/label.cppm#L34)*
 
 
 
@@ -84,7 +84,7 @@ Inherits from Widget
 
 *public const std::string & style()*
 
-*Defined at [gui/label.hpp:45](../../../../gui/label.hpp#L45)*
+*Defined at [gui/label.cppm:43](../../../../gui/label.cppm#L43)*
 
 
 
@@ -94,7 +94,7 @@ Inherits from Widget
 
 *public void set_muted(bool muted)*
 
-*Defined at [gui/label.hpp:51](../../../../gui/label.hpp#L51)*
+*Defined at [gui/label.cppm:49](../../../../gui/label.cppm#L49)*
 
 
 

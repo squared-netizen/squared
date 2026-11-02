@@ -22,6 +22,23 @@ void squared_main(sq::App& app)
 }
 ```
 
+## import squared;
+
+squared is C++20 modules: a file of yours writes
+
+```cpp
+#include <layouts.hpp>   // what the build makes of layouts/ (a header)
+
+import squared;          // the App, the Stage, widgets, the Telegraph, std
+```
+
+`import squared;` brings the standard library too (`std::string`,
+`std::vector`, ...). Two things still need an include: C macros (`assert`,
+`errno`, `va_start`, `UINT32_MAX`: `#include <assert.h>`, ...), and a standard
+name squared does not use (`#include <map>`), beside the import. Keep `CXXSTD`
+at `c++20`: a file compiled otherwise cannot read squared's modules. More:
+`squared/docs/programmer/include-layout.md`.
+
 ## Screens are layout files
 
 `layouts/landing.json` is the screen `layouts::landing`. The build compiles

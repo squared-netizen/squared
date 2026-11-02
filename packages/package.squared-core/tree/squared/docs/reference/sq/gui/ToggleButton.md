@@ -1,12 +1,6 @@
 # class ToggleButton
 
-*Defined at [gui/toggle_button.hpp:14](../../../../gui/toggle_button.hpp#L14)*
-
-
-
-**brief** Two-state button that reports changes through a callback. 
-
-
+*Defined at [gui/toggle_button.cppm:12](../../../../gui/toggle_button.cppm#L12)*
 
 Inherits from Button
 
@@ -30,39 +24,31 @@ Inherits from Button
 
 *public void ToggleButton(const ToggleButton & )*
 
-*Defined at [gui/toggle_button.hpp:29](../../../../gui/toggle_button.hpp#L29)*
-
- A ButtonGroup holds members by address, so a button is never copied or moved.
+*Defined at [gui/toggle_button.cppm:27](../../../../gui/toggle_button.cppm#L27)*
 
 ### operator=
 
 *public ToggleButton & operator=(const ToggleButton & )*
 
-*Defined at [gui/toggle_button.hpp:30](../../../../gui/toggle_button.hpp#L30)*
+*Defined at [gui/toggle_button.cppm:28](../../../../gui/toggle_button.cppm#L28)*
 
 ### ToggleButton
 
 *public void ToggleButton(ToggleButton && )*
 
-*Defined at [gui/toggle_button.hpp:31](../../../../gui/toggle_button.hpp#L31)*
+*Defined at [gui/toggle_button.cppm:29](../../../../gui/toggle_button.cppm#L29)*
 
 ### operator=
 
 *public ToggleButton & operator=(ToggleButton && )*
 
-*Defined at [gui/toggle_button.hpp:32](../../../../gui/toggle_button.hpp#L32)*
+*Defined at [gui/toggle_button.cppm:30](../../../../gui/toggle_button.cppm#L30)*
 
 ### checked
 
 *public bool checked()*
 
-*Defined at [gui/toggle_button.hpp:44](../../../../gui/toggle_button.hpp#L44)*
-
-
-
-**brief** Read the checked state.
-
-**return** Current boolean state.
+*Defined at [gui/toggle_button.cppm:42](../../../../gui/toggle_button.cppm#L42)*
 
 ### ~ToggleButton
 

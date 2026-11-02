@@ -1,12 +1,6 @@
 # struct GlyphLine
 
-*Defined at [graphics/src/glyph_line.hpp:9](../../../../graphics/src/glyph_line.hpp#L9)*
-
-
-
-**brief** One explicit line in a GlyphLayout. 
-
-
+*Defined at [graphics/src/glyph_line.cppm:9](../../../../graphics/src/glyph_line.cppm#L9)*
 
 ## Members
 

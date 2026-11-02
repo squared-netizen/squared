@@ -1,14 +1,6 @@
 # class AtlasRegion
 
-*Defined at [graphics/atlas_region.hpp:19](../../../../graphics/atlas_region.hpp#L19)*
-
-
-
-**brief** One named region and its libGDX-compatible atlas metadata.
-
- The TextureRegion and its Texture remain owned by the containing TextureAtlas. AtlasRegion pointers become invalid when that atlas is destroyed or successfully reloaded.
-
-
+*Defined at [graphics/atlas_region.cppm:16](../../../../graphics/atlas_region.cppm#L16)*
 
 ## Functions
 
@@ -56,13 +48,7 @@
 
 *public const TextureRegion & region()*
 
-*Defined at [graphics/atlas_region.hpp:38](../../../../graphics/atlas_region.hpp#L38)*
-
-
-
-**brief** Access the drawable texture view.
-
-**return** Reference to the region's texture view.
+*Defined at [graphics/atlas_region.cppm:35](../../../../graphics/atlas_region.cppm#L35)*
 
 ### rotated_clockwise
 
@@ -118,25 +104,13 @@
 
 *public const std::optional<std::array<int, 4>> & splits()*
 
-*Defined at [graphics/atlas_region.hpp:86](../../../../graphics/atlas_region.hpp#L86)*
-
-
-
-**brief** Read optional nine-patch splits.
-
-**return** Left, right, top, bottom splits when present, else empty.
+*Defined at [graphics/atlas_region.cppm:83](../../../../graphics/atlas_region.cppm#L83)*
 
 ### pads
 
 *public const std::optional<std::array<int, 4>> & pads()*
 
-*Defined at [graphics/atlas_region.hpp:95](../../../../graphics/atlas_region.hpp#L95)*
-
-
-
-**brief** Read optional nine-patch padding.
-
-**return** Left, right, top, bottom padding when present, else empty.
+*Defined at [graphics/atlas_region.cppm:92](../../../../graphics/atlas_region.cppm#L92)*
 
 
 

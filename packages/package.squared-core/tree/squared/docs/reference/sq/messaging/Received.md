@@ -1,12 +1,6 @@
 # struct Received
 
-*Defined at [messaging/telegram_ring.hpp:25](../../../../messaging/telegram_ring.hpp#L25)*
-
-
-
-**brief** A telegram at the front of a ring, with its text or uid list. 
-
-
+*Defined at [messaging/telegram_ring.cppm:20](../../../../messaging/telegram_ring.cppm#L20)*
 
 ## Members
 

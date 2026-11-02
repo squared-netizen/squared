@@ -8,17 +8,17 @@ Developer counterpart: [../developer/data.md](../developer/data.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `JsonValue` | `squared/data/json_value.hpp` | One owned JSON value independent of the parser backend |
-| `JsonErrorCode` | `squared/data/src/json_error_code.hpp` | Stable error categories produced by JSON parsing and writing |
-| `JsonError` | `squared/data/src/json_error.hpp` | Structured JSON failure information |
-| `JsonParseOptions` | `squared/data/src/json_parse_options.hpp` | Limits and strictness applied to one parse operation |
-| `JsonParseResult` | `squared/data/src/json_parse_result.hpp` | Result of parsing one complete RFC 8259 JSON document |
-| `JsonWriteOptions` | `squared/data/src/json_write_options.hpp` | Formatting controls for deterministic JSON serialization |
-| `JsonWriteResult` | `squared/data/src/json_write_result.hpp` | Result of serializing one owned JSON value |
+| `JsonValue` | `squared/data/json_value.cppm` | One owned JSON value independent of the parser backend |
+| `JsonErrorCode` | `squared/data/src/json_error_code.cppm` | Stable error categories produced by JSON parsing and writing |
+| `JsonError` | `squared/data/src/json_error.cppm` | Structured JSON failure information |
+| `JsonParseOptions` | `squared/data/src/json_parse_options.cppm` | Limits and strictness applied to one parse operation |
+| `JsonParseResult` | `squared/data/src/json_parse_result.cppm` | Result of parsing one complete RFC 8259 JSON document |
+| `JsonWriteOptions` | `squared/data/src/json_write_options.cppm` | Formatting controls for deterministic JSON serialization |
+| `JsonWriteResult` | `squared/data/src/json_write_result.cppm` | Result of serializing one owned JSON value |
 
 ## Free functions
 
-`squared/data/json.hpp` is the module's aggregate header and also declares:
+`squared/data/json.cppm` is the module's aggregate header and also declares:
 
 | Function | Purpose |
 |---|---|

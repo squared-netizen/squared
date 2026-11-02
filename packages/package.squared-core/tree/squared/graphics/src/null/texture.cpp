@@ -6,11 +6,9 @@
 // behave exactly as they do against a real driver - which is what makes a test
 // written here a test of the contract.
 
-#include <squared/graphics/src/texture_filter.hpp>
-#include <squared/graphics/src/texture_wrap.hpp>
-#include <squared/graphics/texture.hpp>
+module sq.graphics;
 
-#include <cstdint>
+import sq.std;
 
 namespace sq::graphics
 {

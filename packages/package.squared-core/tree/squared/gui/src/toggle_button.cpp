@@ -1,11 +1,10 @@
-#include "detail/gui_detail.hpp"
+module;
 
-#include <squared/gui/button.hpp>
-#include <squared/gui/button_group.hpp>
-#include <squared/gui/toggle_button.hpp>
+#include <stdio.h>
 
-#include <string>
-#include <utility>
+module sq.gui;
+
+import sq.std;
 
 namespace sq::gui
 {

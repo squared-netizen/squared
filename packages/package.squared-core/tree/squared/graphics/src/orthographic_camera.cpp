@@ -1,9 +1,7 @@
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/src/coordinate_origin.hpp>
-#include <squared/math/matrix4.hpp>
-#include <squared/math/vector2.hpp>
+module sq.graphics;
 
-#include <algorithm>
+import sq.math;
+import sq.std;
 
 namespace sq::graphics
 {

@@ -3,18 +3,11 @@
 // order, bound entries kept, full and too large, no allocation; and a long
 // random run against a model.
 
-#include <squared/messaging/value_cache.hpp>
+import sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <map>
-#include <random>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

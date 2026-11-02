@@ -4,8 +4,7 @@
 
 #include "android_text.hpp"
 
-#include <algorithm>
-#include <array>
+import sq.std;
 
 namespace sq_android {
 

@@ -1,14 +1,6 @@
 # class InputLine
 
-*Defined at [console/input_line.hpp:20](../../../../console/input_line.hpp#L20)*
-
-
-
-**brief** The line being typed: text, a cursor, and the history of earlier lines.
-
- Text is UTF-8; the cursor moves and deletes whole characters. Up to `input_bytes` (256) are held, and `history_bytes` (2 KB) of earlier lines, all inline: editing never allocates.
-
-
+*Defined at [console/input_line.cppm:17](../../../../console/input_line.cppm#L17)*
 
 ## Functions
 
@@ -20,27 +12,25 @@
 
 *public void ~InputLine()*
 
-*Defined at [console/input_line.hpp:24](../../../../console/input_line.hpp#L24)*
+*Defined at [console/input_line.cppm:21](../../../../console/input_line.cppm#L21)*
 
 ### InputLine
 
 *public void InputLine(const InputLine & )*
 
-*Defined at [console/input_line.hpp:26](../../../../console/input_line.hpp#L26)*
-
- The history views the line's own storage, so the line cannot move.
+*Defined at [console/input_line.cppm:23](../../../../console/input_line.cppm#L23)*
 
 ### operator=
 
 *public InputLine & operator=(const InputLine & )*
 
-*Defined at [console/input_line.hpp:27](../../../../console/input_line.hpp#L27)*
+*Defined at [console/input_line.cppm:24](../../../../console/input_line.cppm#L24)*
 
 ### InputLine
 
 *public void InputLine(InputLine && )*
 
-*Defined at [console/input_line.hpp:28](../../../../console/input_line.hpp#L28)*
+*Defined at [console/input_line.cppm:25](../../../../console/input_line.cppm#L25)*
 
 ### insert
 
@@ -74,19 +64,19 @@
 
 *public InputLine & operator=(InputLine && )*
 
-*Defined at [console/input_line.hpp:29](../../../../console/input_line.hpp#L29)*
+*Defined at [console/input_line.cppm:26](../../../../console/input_line.cppm#L26)*
 
 ### home
 
 *public void home()*
 
-*Defined at [console/input_line.hpp:39](../../../../console/input_line.hpp#L39)*
+*Defined at [console/input_line.cppm:36](../../../../console/input_line.cppm#L36)*
 
 ### end
 
 *public void end()*
 
-*Defined at [console/input_line.hpp:40](../../../../console/input_line.hpp#L40)*
+*Defined at [console/input_line.cppm:37](../../../../console/input_line.cppm#L37)*
 
 ### right
 
@@ -136,23 +126,19 @@
 
 *public std::string_view text()*
 
-*Defined at [console/input_line.hpp:53](../../../../console/input_line.hpp#L53)*
+*Defined at [console/input_line.cppm:50](../../../../console/input_line.cppm#L50)*
 
 ### cursor
 
 *public std::size_t cursor()*
 
-*Defined at [console/input_line.hpp:55](../../../../console/input_line.hpp#L55)*
-
-
-
-**brief** Cursor position in bytes, always at a character boundary. 
+*Defined at [console/input_line.cppm:52](../../../../console/input_line.cppm#L52)*
 
 ### history
 
 *public const Scrollback & history()*
 
-*Defined at [console/input_line.hpp:56](../../../../console/input_line.hpp#L56)*
+*Defined at [console/input_line.cppm:53](../../../../console/input_line.cppm#L53)*
 
 
 

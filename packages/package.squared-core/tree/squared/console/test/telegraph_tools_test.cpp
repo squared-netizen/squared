@@ -6,25 +6,16 @@
 // off); recording, and replaying at the recorded pace and fast, through a
 // full ring, past bad and overlong lines; refused files; no allocation.
 
-#include <squared/console/console.hpp>
-#include <squared/console/telegraph_tools.hpp>
-#include <squared/dev/frame_allocations.hpp>
-#include <squared/messaging/model_runner.hpp>
-#include <squared/messaging/telegram_data.hpp>
-#include <squared/messaging/telegram_text.hpp>
+import sq.console;
+import sq.dev;
+import sq.messaging;
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <array>
-#include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
+import sq.std;
 
 using namespace sq::console;
 using namespace sq::messaging;

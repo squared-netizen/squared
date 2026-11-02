@@ -5,24 +5,31 @@ for games, simulation software and tooling.
 
 ## Layout
 
+squared is C++20 named modules, one per directory, built with clang.
+
 ```
-<module>/<name>.hpp          workhorse headers: the ones users include
-<module>/src/<name>.hpp      supporting headers: includable, rarely needed
-<module>/src/<name>.cpp      implementation
-<module>/src/detail/         private headers
+<module>/module.cppm         the module, sq.<module>: re-exports its partitions
+<module>/<name>.cppm         a partition per everyday type
+<module>/src/<name>.cppm     a partition per supporting type
+<module>/src/<name>.cpp      implementation units
+<module>/src/detail/         the framework's own types
 <module>/test/
 <module>/Makefile
+squared.cppm                 `import squared;`: what an app is written against
+build/std.cppm               sq.std, the standard library as a module
 build/common.mk              shared build settings
+build/modules.mk             how a module is built
 third_party/                 vendored sources (yyjson, stb)
 tools/                       build, check, format, lint and docs scripts
 docs/programmer/             using squared
 docs/developer/              maintaining squared
 ```
 
-Modules: `app`, `assets`, `data`, `dev`, `files`, `gles`, `graphics`, `gui`,
-`math`, `messaging`, `time`. Headers are included as
-`<squared/<module>/<name>.hpp>` through one include path, the directory that
-holds `squared/` ([docs/developer/file-layout.md](docs/developer/file-layout.md)).
+Modules: `app`, `assets`, `console`, `data`, `dev`, `files`, `gles`,
+`graphics`, `gui`, `math`, `messaging`, `stage`, `time`. Code writes `import
+squared;` or `import sq.<module>;`
+([docs/programmer/include-layout.md](docs/programmer/include-layout.md),
+[docs/developer/modules.md](docs/developer/modules.md)).
 
 ## Build
 
@@ -37,7 +44,8 @@ Then:
 ```sh
 ./tools/build.sh                 # release
 ./tools/build.sh debug
-make headers                     # every header, compiled alone
+make test                        # every module's tests
+make headers                     # sq.std current, the modules' build order
 make lint                        # format, source-rule and clang-tidy checks
 ```
 
@@ -52,13 +60,8 @@ per-checkout, and picked up automatically by `build/common.mk`.
 - [docs/developer/README.md](docs/developer/README.md) — internals, memory
   profile, and the standing priority-order findings
 
-## One type, one header
+## One type, one file
 
-`sq::gui::ScrollPane` is in `squared/gui/scroll_pane.hpp`, and that
-header defines nothing else. Every header compiles on its own;
-`tools/check_headers.sh` enforces it.
-
-`squared/gui/gui.hpp`, `squared/gui/skin_loader.hpp` and
-`squared/<module>/<module>.hpp` are aggregate include lists kept for
-convenience and for source compatibility. Do not use them inside a header of
-your own.
+`sq::gui::ScrollPane` is in `squared/gui/scroll_pane.cppm`, the partition
+`sq.gui:scroll_pane`, and that file defines nothing else. `import sq.gui;`
+gives it, and every other type of the module.

@@ -1,9 +1,10 @@
-#include <squared/gles/src/gles_error.hpp>
-#include <squared/gles/src/gles_error_code.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <string>
+module sq.gles;
+
+import sq.std;
 
 namespace sq::gles
 {

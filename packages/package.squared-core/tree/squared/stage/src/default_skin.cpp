@@ -2,12 +2,10 @@
 // Written by tools/embed_files.sh from stage/skin/default/skin/: do not edit.
 // Change the files and run it again (its comment has the command line).
 
-#include "detail/default_skin.hpp"
+module sq.stage;
 
-#include <squared/files/embedded_file_system.hpp>
-
-#include <array>
-#include <span>
+import sq.files;
+import sq.std;
 
 namespace sq::detail
 {

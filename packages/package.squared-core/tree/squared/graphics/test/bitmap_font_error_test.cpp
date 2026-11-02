@@ -7,16 +7,12 @@
 // leaves the font or layout as it was, and that a failed layout of warm storage
 // allocates nothing, which an owned message could not promise.
 
-#include <squared/dev/frame_allocations.hpp>
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/glyph_layout.hpp>
+import sq.dev;
+import sq.graphics;
 
-#include <cassert>
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <string_view>
-#include <type_traits>
+#include <assert.h>
+
+import sq.std;
 
 using sq::graphics::BitmapFont;
 using sq::graphics::BitmapFontError;

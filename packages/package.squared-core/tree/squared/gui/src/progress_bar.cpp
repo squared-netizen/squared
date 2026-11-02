@@ -1,14 +1,6 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/src/painter.hpp>
-#include <squared/gui/src/rectangle.hpp>
-#include <squared/gui/src/size.hpp>
-
-#include <algorithm>
-#include <string>
-#include <utility>
+import sq.std;
 
 namespace sq::gui
 {

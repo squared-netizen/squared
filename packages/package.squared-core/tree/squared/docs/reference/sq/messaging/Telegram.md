@@ -1,16 +1,6 @@
 # class Telegram
 
-*Defined at [messaging/telegram.hpp:34](../../../../messaging/telegram.hpp#L34)*
-
-
-
-**brief** One message: 32 bytes, copied whole through the Telegraph's rings.
-
- | Bytes | Field | |---|---| | 8 | the name's id | | 4 | the uid (0: none) | | 2 | the correlation, which pairs a `do` with the `event` answering it (0: none) | | 2 | the verb (2 bits) and the value type (4 bits); the other 10 bits are 0 | | 16 | the value: a bool, an integer, a double, up to four floats, or where its text or uid list is in the data area |
-
- Made by the factories, one per value type, so a telegram is always valid: the bytes a value does not use are zero, which makes two equal telegrams equal byte for byte. Apps send through the Telegraph with typed keys; this is what travels underneath.
-
-
+*Defined at [messaging/telegram.cppm:29](../../../../messaging/telegram.cppm#L29)*
 
 ## Functions
 
@@ -18,7 +8,7 @@
 
 *public Address address()*
 
-*Defined at [messaging/telegram.hpp:58](../../../../messaging/telegram.hpp#L58)*
+*Defined at [messaging/telegram.cppm:53](../../../../messaging/telegram.cppm#L53)*
 
 ### empty
 
@@ -36,7 +26,7 @@
 
 *public std::uint16_t correlation()*
 
-*Defined at [messaging/telegram.hpp:59](../../../../messaging/telegram.hpp#L59)*
+*Defined at [messaging/telegram.cppm:54](../../../../messaging/telegram.cppm#L54)*
 
 ### integer
 

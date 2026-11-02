@@ -1,12 +1,11 @@
-#include "detail/image_decode.hpp"
+import sq.graphics;
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
 #include <stb_image_write.h>
 
-#include <cassert>
-#include <cstdio>
-#include <cstring>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 static std::vector<unsigned char> encoded;
 static void collect( void *, void *data, int size )

@@ -1,6 +1,5 @@
 // Backend-independent half of Texture.
 
-#include <squared/graphics/context.hpp>
 //
 // Everything here is policy, bookkeeping and validation - no graphics calls.
 // The backend half (src/<backend>/texture.cpp) supplies upload_rgba, bind,
@@ -11,20 +10,10 @@
 // interesting failure modes - is written once and tested once, rather than
 // once per backend.
 
-#include "detail/image_decode.hpp"
+module sq.graphics;
 
-#include <squared/files/file_handle.hpp>
-#include <squared/files/src/file_read_result.hpp>
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/src/texture_recovery_policy.hpp>
-#include <squared/graphics/src/texture_recovery_target.hpp>
-#include <squared/graphics/texture.hpp>
-
-#include <cstddef>
-#include <cstdint>
-#include <utility>
-#include <vector>
+import sq.files;
+import sq.std;
 
 namespace sq::graphics
 {

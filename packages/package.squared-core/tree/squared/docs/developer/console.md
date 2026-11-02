@@ -12,7 +12,7 @@ It was planned as its own package, `package.squared-console` (decided 2026-10-15
 
 ## Sizes
 
-`console/src/limits.hpp` reads `SQUARED_CONSOLE_SCROLLBACK` (default 65536) and `SQUARED_CONSOLE_COMMANDS` (default 64), checks them with `static_assert`, and exposes them as `scrollback_bytes` and `command_slots`; since 6.7a also `SQUARED_CONSOLE_GROUPS` (16, `group_slots`) and `SQUARED_CONSOLE_GROUP_LINES` (128, `group_line_slots`), which no make variable sets yet (priority 4: a knob when a project needs one). The template passes both, from `CONSOLE_SCROLLBACK` and `CONSOLE_COMMANDS`, to the framework's build (in `CXXFLAGS_EXTRA`) and to the application's (in `SQ_CPPFLAGS`) alike, and includes them in the framework's flags stamp, so archive and application cannot disagree about a size. The framework gets them in every build, `CONSOLE=0` included, so switching `CONSOLE` changes nothing it compiles (2026-10-19; [build-and-toolchain.md](build-and-toolchain.md#building-only-what-changed)).
+`console/src/limits.cppm` reads `SQUARED_CONSOLE_SCROLLBACK` (default 65536) and `SQUARED_CONSOLE_COMMANDS` (default 64), checks them with `static_assert`, and exposes them as `scrollback_bytes` and `command_slots`; since 6.7a also `SQUARED_CONSOLE_GROUPS` (16, `group_slots`) and `SQUARED_CONSOLE_GROUP_LINES` (128, `group_line_slots`), which no make variable sets yet (priority 4: a knob when a project needs one). The template passes both, from `CONSOLE_SCROLLBACK` and `CONSOLE_COMMANDS`, to the framework's build (in `CXXFLAGS_EXTRA`) and to the application's (in `SQ_CPPFLAGS`) alike, and includes them in the framework's flags stamp, so archive and application cannot disagree about a size. The framework gets them in every build, `CONSOLE=0` included, so switching `CONSOLE` changes nothing it compiles (2026-10-19; [build-and-toolchain.md](build-and-toolchain.md#building-only-what-changed)).
 
 ## The Console's layout
 
@@ -91,7 +91,7 @@ The native heap is still one figure for everyone who calls `malloc`: squared, th
 
 Asked for 2026-10-21 ("a dump command with a few switch combinations like dump state... dump sys that just runs all the system commands"); decided as recommended.
 
-- **A group is a name and command lines,** not command names, so a line carries its arguments (`logcat 100`, `telegraph state`). Two fixed tables in `Groups` (`groups.hpp`): names (pointers) and lines (`GroupLine`: the group's number, the line's pointer), lines in the order added. A group's lines are found by a scan, as commands are: a few dozen entries, looked up when a person types. Considered: tags on each command at `add`, which keeps a group with its commands but cannot pass arguments.
+- **A group is a name and command lines,** not command names, so a line carries its arguments (`logcat 100`, `telegraph state`). Two fixed tables in `Groups` (`groups.cppm`): names (pointers) and lines (`GroupLine`: the group's number, the line's pointer), lines in the order added. A group's lines are found by a scan, as commands are: a few dozen entries, looked up when a person types. Considered: tags on each command at `add`, which keeps a group with its commands but cannot pass arguments.
 - **Refused:** the names `all` and `stop` (dump's own words), names with a space or a quote, an empty line, and any line that is itself a `dump` (it could queue its own group again, for ever). A line already in the group is not added twice.
 - **The queue** is a ring of line pointers as long as the line table, in the Console. `queue_group` skips a line whose text is already waiting (so `dump sys memory` runs `mem` once). Distinct texts are at most the table's lines, so the queue cannot overflow from groups alone; the `full` count is there for code that queues more than once.
 - **One line a call of `update()`,** which the template makes once a loop turn, drawn or not. Considered: running a group at once. A group like `sys` prints tens of KB (`libs` alone can be 20 KB); at once, it would hold up the frame it ran in, and over the bridge, whose 16 KB buffer only drains between turns when Termux reads slowly, lines could be lost. One a turn keeps both bounded. With no surface the template's loop would sleep until an event (`-1`); while `dumping()` it wakes every 16 ms instead, so a dump typed into Termux runs with the app in the background, and the loop sleeps fully again when it is done.
@@ -101,7 +101,7 @@ Asked for 2026-10-21 ("a dump command with a few switch combinations like dump s
 
 ## Telegraph tools
 
-`TelegraphTools` (`telegraph_tools.hpp`, `src/telegraph_tools.cpp`; 6.7a's commands, and 6.7b's tap, names, record and replay). 6.7a shipped the commands as a free `add_telegraph_commands(console, ui)`; 6.7b folded them into the tools object, which owns what they need (the name table, the files, the replay's state), so there is one way to wire them (nothing outside the tests had used the function). The commands read only what the UI thread may read:
+`TelegraphTools` (`telegraph_tools.cppm`, `src/telegraph_tools.cpp`; 6.7a's commands, and 6.7b's tap, names, record and replay). 6.7a shipped the commands as a free `add_telegraph_commands(console, ui)`; 6.7b folded them into the tools object, which owns what they need (the name table, the files, the replay's state), so there is one way to wire them (nothing outside the tests had used the function). The commands read only what the UI thread may read:
 
 - the rings' `stats()` (their capacities, and highest fills kept by the producer in atomics);
 - the cache's `stats()` and its values, which belong to the UI thread;
@@ -127,7 +127,7 @@ Tested (`test/telegraph_tools_test.cpp`, a real `TelegraphLine`, the model inlin
 
 ## Crash file
 
-`console/crash_file.hpp`, `src/crash_file.cpp`; the trace itself is `sq::dev::write_crash_trace` (`dev/crash_trace.hpp`, header-only, so a Console build without `DEV_LOG` does not link `dev`, whose replacement `operator new` must stay out of release builds).
+`console/crash_file.cppm`, `src/crash_file.cpp`; the trace itself is `sq::dev::write_crash_trace` (`dev/crash_trace.cppm`, header-only, so a Console build without `DEV_LOG` does not link `dev`, whose replacement `operator new` must stay out of release builds).
 
 **In the handler**, in this order: `open` the file (`O_CREAT | O_TRUNC`, 0600; made at the crash, so an earlier report survives until the next one); the trace through a sink that `write`s each line; then "log: the last N lines" and the newest N lines of the scrollback, walked with the ordinary iterator. The log comes last on purpose: if the crash caught the scrollback mid-write, walking it may fault again, and then only that part is lost (the signal is blocked inside its handler, so a second fault kills the process instead of recursing). Everything it touches is static: the path (512 bytes), the Console pointer, the count, the six earlier `sigaction`s, a 16 KB alternate stack (installed for the calling thread only if it has none: `sigaltstack` is per thread).
 
@@ -137,11 +137,11 @@ Tested (`test/telegraph_tools_test.cpp`, a real `TelegraphLine`, the model inlin
 
 **Tested** (`test/crash_file_test.cpp`, `make -C console test`) with real crashes in child processes: a null write (SIGSEGV, code 1, address 0; frames #0 and #1, so the unwinder got past the handler; END; the log lines) with a handler installed before ours, which ran (a marker file); `abort()` (SIGABRT, raised again); shown once, moved, then `crash`; no report kept; empty and over-long paths refused; `remove_crash_file` puts the earlier handler back.
 
-**`line_reader.hpp`.** `for_each_line` reads a descriptor through a caller's buffer, a line at a time, the last line counting without a newline, a line longer than the buffer in pieces. `smaps` and the crash file use it; a template, so each caller's lambda inlines.
+**`line_reader.cppm`.** `for_each_line` reads a descriptor through a caller's buffer, a line at a time, the last line counting without a newline, a line longer than the buffer in pieces. `smaps` and the crash file use it; a template, so each caller's lambda inlines.
 
 ## Bridge
 
-`console/bridge.hpp`, `src/bridge.cpp`, the wire format in `src/bridge_protocol.hpp`; the Termux end in `client/sqconsole.cpp`; the template's wiring in `sq_android/entry.cpp` and the build's in `mk/pkg_squared_core.mk` (Sprint 4, 4.7t part 1, 2026-10-19). Decided with you that day: no adb on the phone (Wireless Debugging needs Wi-Fi it rarely has), Termux is the monitor first, the `:console` monitor app comes later for where Termux is not.
+`console/bridge.cppm`, `src/bridge.cpp`, the wire format in `src/bridge_protocol.cppm`; the Termux end in `client/sqconsole.cpp`; the template's wiring in `sq_android/entry.cpp` and the build's in `mk/pkg_squared_core.mk` (Sprint 4, 4.7t part 1, 2026-10-19). Decided with you that day: no adb on the phone (Wireless Debugging needs Wi-Fi it rarely has), Termux is the monitor first, the `:console` monitor app comes later for where Termux is not.
 
 **Why TCP on 127.0.0.1.** Two apps must talk: the dev app and Termux, each its own Linux user. A file-system socket needs a directory both can reach, and none exists (each app's private directory is its own; shared storage is any app's). An abstract-namespace Unix socket is subject to SELinux's per-app categories since Android 9, and the dev log already proved loopback inet sockets work between the two. Loopback cannot be reached from off the device. The cost is the `INTERNET` permission in CONSOLE builds, as in DEV_LOG builds; plain builds keep none.
 
@@ -200,11 +200,11 @@ make's `$(shell`.
 
 ## Log file
 
-`console/log_file.hpp`, `src/log_file.cpp`. `save_log` writes the newest N lines with `write(2)` straight from the scrollback to `path.tmp`, then `rename`s it over `path`: a reader (the next run) never sees half a file, and a crash mid-write leaves the last good one. No allocation (tested). The template saves 200 lines on `APP_CMD_STOP` (the app leaves the screen: before a swipe away or a kill for memory) and in the `Platform` destructor; at start, `keep_previous_log` renames `log.txt` to `log-previous.txt` before anything saves over it, and `log previous` shows it. Plain text: the levels are not kept (an error line is shown as info), which keeps the file readable when pulled off the device.
+`console/log_file.cppm`, `src/log_file.cpp`. `save_log` writes the newest N lines with `write(2)` straight from the scrollback to `path.tmp`, then `rename`s it over `path`: a reader (the next run) never sees half a file, and a crash mid-write leaves the last good one. No allocation (tested). The template saves 200 lines on `APP_CMD_STOP` (the app leaves the screen: before a swipe away or a kill for memory) and in the `Platform` destructor; at start, `keep_previous_log` renames `log.txt` to `log-previous.txt` before anything saves over it, and `log previous` shows it. Plain text: the levels are not kept (an error line is shown as info), which keeps the file readable when pulled off the device.
 
 ## Drawing
 
-Three parts, from data to pixels: the **font** and its atlas (`console/src/font8x8.*`), the **layout** (`console/layout.hpp`, headless), and the **renderer** (`console/renderer.hpp`, `console/src/gles/renderer.cpp`, gles backend only). The template's entry point puts them on screen (below).
+Three parts, from data to pixels: the **font** and its atlas (`console/src/font8x8.*`), the **layout** (`console/layout.cppm`, headless), and the **renderer** (`console/renderer.cppm`, `console/src/gles/renderer.cpp`, gles backend only). The template's entry point puts them on screen (below).
 
 ### The font
 

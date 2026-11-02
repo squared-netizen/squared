@@ -1,11 +1,11 @@
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/src/context_config.hpp>
+module;
 
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
 
-#include <cstdint>
+module sq.graphics;
+
+import sq.std;
 
 #if defined( __ANDROID__ )
 /*

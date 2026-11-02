@@ -1,0 +1,116 @@
+# C++20 modules: the rules every module Makefile shares (7b.4).
+#
+# Each module is one named module, sq.<module>:
+#
+#   <module>/module.cppm        the primary interface: `export module
+#                               sq.<module>;`, re-exporting every partition
+#   <module>/<type>.cppm        a partition per type: `export module
+#                               sq.<module>:<type>;` (in src/: `:src.<type>`,
+#                               the path with dots)
+#   <module>/src/*.cpp          implementation units: `module sq.<module>;`
+#
+# A module Makefile includes this file at its end, after OBJECTS (its
+# implementation units' objects) and TESTS. What it finds for itself:
+#
+#   INTERFACES    every .cppm in the module's directory (not test/)
+#   USES_MODULES  every other module its files import (`import sq.gui;`, in
+#                 any of them, tests included); sq.std is everyone's
+#
+# What it gives:
+#
+#   - an interface unit compiles once into its object (in the archive) and its
+#     BMI, build/<BUILD>/modules/sq.<module>[-<partition>].pcm, where
+#     -fprebuilt-module-path (SQUARED_MODULE_USE) finds it for every importer;
+#   - each object and test of the module waits for, and is rebuilt after, the
+#     BMIs it may import: sq.std's, its own module's, and those of
+#     USES_MODULES (a BMI changes only when an interface changes, and clang
+#     refuses an importer built against an older one);
+#   - the interfaces' order inside the module, from their import lines
+#     (tools/module_deps.sh, build/<BUILD>/modules/<module>.mk);
+#   - build/<BUILD>/modules/sq.<module>.inputs: the interface sources of this
+#     module and of every module it uses, for the build cache's key (an
+#     importer's object depends on them, and clang's dependency file does not
+#     say so).
+#
+# A BMI is not cached: it holds the paths of its workspace's sources and of the
+# BMIs it imports, so it is made in each workspace. The objects are cached.
+
+# A build/common.mk from before 7b.4 has no module directory: every BMI would
+# go to /. Said plainly, before anything is compiled.
+ifeq ($(strip $(SQUARED_MODULE_DIR)),)
+  $(error squared: build/common.mk is older than build/modules.mk (no SQUARED_MODULE_DIR); apply the package that brought modules again)
+endif
+
+INTERFACES ?= $(shell cd $(MODULE_DIR) && find . -name '*.cppm' -not -path './test/*' | \
+    sed 's|^\./||' | LC_ALL=C sort)
+USES_MODULES ?= $(filter-out std $(MODULE),$(shell cd $(MODULE_DIR) && \
+    grep -rhoE '^(export )?import sq\.[a-z_]+;' --include=*.cppm --include=*.cpp --include=*.hpp . | \
+    sed 's/.*import sq\.\([a-z_]*\);/\1/' | LC_ALL=C sort -u))
+
+squared_pcm_name = $(if $(filter module,$(1)),sq.$(MODULE),sq.$(MODULE)-$(subst /,.,$(1)))
+squared_pcm_of = $(SQUARED_MODULE_DIR)/$(call squared_pcm_name,$(1)).pcm
+
+INTERFACE_OBJECTS := $(patsubst %.cppm,$(OBJ_DIR)/$(MODULE)/%.cppm.o,$(INTERFACES))
+OBJECTS += $(INTERFACE_OBJECTS)
+# The archive holds them: an importer calls what they define (and each
+# module's initializer). Built with it: the list of the interfaces' sources,
+# which the modules after this one read.
+$(TARGET): $(INTERFACE_OBJECTS) $(if $(INTERFACES),$(SQUARED_MODULE_DIR)/sq.$(MODULE).inputs)
+
+# The BMIs this module's code may import: sq.std's, its own primary, the
+# primaries of the modules it uses; and the lists of their sources.
+SQUARED_MODULE_INPUTS_FILE := $(SQUARED_MODULE_DIR)/sq.$(MODULE).inputs
+SQUARED_USED_PCMS := $(SQUARED_STD_PCM) $(foreach m,$(USES_MODULES),$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
+SQUARED_USED_INPUTS := $(SQUARED_STD_INPUTS) $(foreach m,$(USES_MODULES),$(SQUARED_MODULE_DIR)/sq.$(m).inputs)
+SQUARED_IMPORT_PCMS := $(SQUARED_USED_PCMS) $(if $(INTERFACES),$(SQUARED_MODULE_DIR)/sq.$(MODULE).pcm)
+SQUARED_IMPORT_INPUTS := $(if $(INTERFACES),$(SQUARED_MODULE_INPUTS_FILE),$(SQUARED_USED_INPUTS))
+
+# What a test of this module links after its own inputs: this module's
+# archive and those of the modules it uses (their interfaces' objects define
+# what an importer calls). In one group, so their order does not matter.
+SQUARED_TEST_ARCHIVES = $(TARGET) $(foreach m,$(USES_MODULES),$(LIB_DIR)/libsquared_$(m).a)
+
+# Another module's BMI that is not there: that module is built first (the
+# top Makefile's order), so this is `make -C <this module>` alone.
+$(SQUARED_MODULE_DIR)/%.pcm $(SQUARED_MODULE_DIR)/%.inputs:
+	@echo "squared: $(notdir $@) is missing: build the module it belongs to first (make at the top builds them in order)" >&2
+	@false
+
+# The module's own objects (not its interfaces: their order is below) and its
+# tests wait for the BMIs.
+$(filter-out $(INTERFACE_OBJECTS),$(OBJECTS)): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
+ifneq ($(strip $(TESTS)),)
+$(TESTS): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
+endif
+
+ifneq ($(strip $(INTERFACES)),)
+# An interface unit: its object and, beside it, its BMI. -MD: the headers its
+# global module fragment includes (system ones too).
+$(OBJ_DIR)/$(MODULE)/%.cppm.o: $(MODULE_DIR)/%.cppm $(SQUARED_FLAGS_STAMP) $(SQUARED_USED_PCMS)
+	@mkdir -p $(dir $@) $(SQUARED_MODULE_DIR)
+	$(call say,mod,$(call squared_pcm_name,$*))
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_MODULE_USE) $(INCLUDES) \
+	    -MD -MP -MT $@ -MF $(@:.o=.d) -c $< -fmodule-output=$(call squared_pcm_of,$*) -o $@
+
+# Each BMI is made by its interface's compile.
+$(foreach i,$(INTERFACES:.cppm=),$(eval $(call squared_pcm_of,$(i)): $(OBJ_DIR)/$(MODULE)/$(i).cppm.o ;))
+
+# The interfaces' order, from their import lines.
+SQUARED_MODULE_ORDER := $(SQUARED_MODULE_DIR)/$(MODULE).mk
+$(SQUARED_MODULE_ORDER): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_ROOT)/tools/module_deps.sh
+	@mkdir -p $(dir $@)
+	bash $(SQUARED_ROOT)/tools/module_deps.sh $(MODULE) $(MODULE_DIR) $(OBJ_DIR)/$(MODULE) \
+	    $(SQUARED_MODULE_DIR) $(INTERFACES) > $@.new
+	mv -f $@.new $@
+-include $(SQUARED_MODULE_ORDER)
+-include $(INTERFACE_OBJECTS:.o=.d)
+
+# The interface sources whose BMIs an importer of this module reads: its own
+# and every used module's (sq.std's among them), one path a line.
+$(SQUARED_MODULE_INPUTS_FILE): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_USED_INPUTS) \
+                               $(MODULE_DIR)/Makefile
+	@mkdir -p $(dir $@)
+	{ printf '%s\n' $(addprefix $(MODULE_DIR)/,$(INTERFACES)); cat $(SQUARED_USED_INPUTS); } \
+	    | awk '!seen[$$0]++' > $@.new
+	mv -f $@.new $@
+endif

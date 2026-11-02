@@ -1,13 +1,6 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/gui/cell.hpp>
-#include <squared/gui/src/alignment.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/widget.hpp>
-
-#include <algorithm>
-#include <cstddef>
+import sq.std;
 
 namespace sq::gui
 {

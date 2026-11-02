@@ -2,24 +2,16 @@
 // framework's own, empty one links in its place. A C++ layout still shows, and
 // a tap naming another layout says there is none.
 
-#include <squared/app/event.hpp>
-#include <squared/app/runtime.hpp>
-#include <squared/assets/asset_manager.hpp>
-#include <squared/files/posix_file_system.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/src/context_config.hpp>
-#include <squared/gui/button.hpp>
-#include <squared/gui/layout.hpp>
-#include <squared/gui/layout_writer.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/widget.hpp>
-#include <squared/stage/app.hpp>
+import sq.app;
+import sq.assets;
+import sq.files;
+import sq.graphics;
+import sq.gui;
+import sq.stage;
 
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <string_view>
+#include <stdio.h>
+
+import sq.std;
 
 /// The Stage's widgets, which only a test reaches (internal since 7.7).
 struct sq::detail::StageProbe final

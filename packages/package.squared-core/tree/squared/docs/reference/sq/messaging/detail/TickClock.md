@@ -1,10 +1,6 @@
 # class TickClock
 
-*Defined at [messaging/model_runner.hpp:61](../../../../../messaging/model_runner.hpp#L61)*
-
- When a model's `tick` is due; its steps measured by a `time::Timepiece`.
-
-
+*Defined at [messaging/model_runner.cppm:57](../../../../../messaging/model_runner.cppm#L57)*
 
 ## Functions
 

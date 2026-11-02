@@ -154,7 +154,7 @@ input, verified by a round-trip check in the tooling.
 Item 2 only. Nine files: a new `ActorInterfaceId` header, the interface query
 on `Actor` and `Group`, the same on `Widget` plus `wants_text_input()`, the
 `TextField` override, and the 17 call sites in `ui.cpp`, `widget.cpp` and
-`stack.cpp`. `ui.cpp` also drops its `text_field.hpp` include, which is no
+`stack.cpp`. `ui.cpp` also drops its `text_field.cppm` include, which is no
 longer named there.
 
 Behaviour is unchanged. `actor_cast` was tested against the cases

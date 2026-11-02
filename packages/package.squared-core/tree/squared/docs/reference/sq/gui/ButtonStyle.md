@@ -1,12 +1,6 @@
 # struct ButtonStyle
 
-*Defined at [gui/src/button_style.hpp:11](../../../../gui/src/button_style.hpp#L11)*
-
-
-
-**brief** Style data for a Button widget. 
-
-
+*Defined at [gui/src/button_style.cppm:11](../../../../gui/src/button_style.cppm#L11)*
 
 ## Members
 

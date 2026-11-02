@@ -13,23 +13,23 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Key` | `squared/app/src/key.hpp` | Portable key names; the one key type in squared, shared with the GUI |
-| `KeyModifiers` | `squared/app/src/key_modifiers.hpp` | The modifier keys held: four `bool` fields in one byte |
-| `Navigation` | `squared/app/src/navigation.hpp` | Semantic focus and navigation action from any supported device |
-| `Event` | `squared/app/event.hpp` | Platform-neutral application event |
-| `TextInputPurpose` | `squared/app/src/text_input_purpose.hpp` | Desired soft-keyboard content mode |
-| `TextInputArea` | `squared/app/src/text_input_area.hpp` | Soft-keyboard target rectangle in stage/logical coordinates |
-| `TextInputRequest` | `squared/app/src/text_input_request.hpp` | Request sent when platform text input starts |
-| `TextInputService` | `squared/app/src/text_input_service.hpp` | Portable application-to-platform soft-keyboard boundary |
-| `Report` | `squared/app/src/report.hpp` | Where an application says what went wrong: a function pointer and its context, given by the platform |
-| `Application` | `squared/app/application.hpp` | The application behind a platform-neutral lifecycle; `sq::App` is the one an app uses |
+| `Key` | `squared/app/src/key.cppm` | Portable key names; the one key type in squared, shared with the GUI |
+| `KeyModifiers` | `squared/app/src/key_modifiers.cppm` | The modifier keys held: four `bool` fields in one byte |
+| `Navigation` | `squared/app/src/navigation.cppm` | Semantic focus and navigation action from any supported device |
+| `Event` | `squared/app/event.cppm` | Platform-neutral application event |
+| `TextInputPurpose` | `squared/app/src/text_input_purpose.cppm` | Desired soft-keyboard content mode |
+| `TextInputArea` | `squared/app/src/text_input_area.cppm` | Soft-keyboard target rectangle in stage/logical coordinates |
+| `TextInputRequest` | `squared/app/src/text_input_request.cppm` | Request sent when platform text input starts |
+| `TextInputService` | `squared/app/src/text_input_service.cppm` | Portable application-to-platform soft-keyboard boundary |
+| `Report` | `squared/app/src/report.cppm` | Where an application says what went wrong: a function pointer and its context, given by the platform |
+| `Application` | `squared/app/application.cppm` | The application behind a platform-neutral lifecycle; `sq::App` is the one an app uses |
 
 ## Aggregate headers
 
-`squared/app/application.hpp` is both the `Application` interface and
+`squared/app/application.cppm` is both the `Application` interface and
 the module's aggregate header: it pulls in `Event` and the text-input types,
 because implementing `Application` needs all of them.
-`squared/app/src/text_input.hpp` aggregates the four text-input types.
+`squared/app/src/text_input.cppm` aggregates the four text-input types.
 
 ## Keys, modifiers and navigation
 
@@ -37,7 +37,7 @@ There is one of each in squared, and the GUI uses the same ones: what the
 platform puts in an `Event` is exactly what a widget's `key_down` receives.
 
 ```cpp
-#include <squared/app/event.hpp>
+import sq.app;
 
 if (event.type == sq::app::Event::Type::KeyDown &&
     event.key == sq::app::Key::enter && event.modifiers.control) {
@@ -57,7 +57,7 @@ if (held.any()) { /* ... */ }
 ## Implementing an Application
 
 ```cpp
-#include <squared/app/application.hpp>
+import sq.app;
 
 class MyGame final : public sq::app::Application {
 public:
@@ -119,7 +119,7 @@ void MyGame::safe_area_changed(const sq::app::SafeArea& area)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `SafeArea` | `squared/app/safe_area.hpp` | Four 16-bit pixel counts: how far something covers each edge of the drawable |
+| `SafeArea` | `squared/app/safe_area.cppm` | Four 16-bit pixel counts: how far something covers each edge of the drawable |
 
 `safe_area_changed()` is optional (the default ignores it) and is called after
 `create()` once the bars are known, then whenever they change &mdash; rotation,

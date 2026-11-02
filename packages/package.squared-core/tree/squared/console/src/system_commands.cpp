@@ -4,32 +4,27 @@
 // mallinfo2), so that is what the two #if blocks test, not the platform:
 // Termux is the posix platform on bionic.
 
-#include <squared/console/line_reader.hpp>
-#include <squared/console/system_commands.hpp>
+module;
 
+#include <ctype.h>
 #include <dlfcn.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
+#include <stdio.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+// After the C library's headers: they define __BIONIC__.
 #if defined( __BIONIC__ )
 #include <sys/system_properties.h>
 #endif
 
-#include <algorithm>
-#include <array>
-#include <cctype>
-#include <cerrno>
-#include <charconv>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <span>
-#include <string_view>
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {
@@ -280,7 +275,7 @@ bool header_name( std::string_view line, std::string_view &name ) noexcept
     const std::size_t dash = line.find( '-' );
     const std::size_t space = line.find( ' ' );
     if( line.empty() || dash == std::string_view::npos || space == std::string_view::npos ||
-        dash > space || std::isxdigit( static_cast<unsigned char>( line[0] ) ) == 0 ) {
+        dash > space || isxdigit( static_cast<unsigned char>( line[0] ) ) == 0 ) {
         return false;
     }
     std::size_t at = 0;

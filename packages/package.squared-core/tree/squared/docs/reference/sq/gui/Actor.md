@@ -1,14 +1,6 @@
 # class Actor
 
-*Defined at [gui/actor.hpp:22](../../../../gui/actor.hpp#L22)*
-
-
-
-**brief** Base node with parent-relative bounds and frame traversal.
-
- Coordinates supplied to hit() are local to the actor. Position is expressed in the parent coordinate system. The first GUI slice intentionally has translation-only hierarchy semantics; transforms and rendering arrive in a later compatible layer.
-
-
+*Defined at [gui/actor.cppm:21](../../../../gui/actor.cppm#L21)*
 
 ## Functions
 
@@ -16,19 +8,19 @@
 
 *public void Actor()*
 
-*Defined at [gui/actor.hpp:25](../../../../gui/actor.hpp#L25)*
+*Defined at [gui/actor.cppm:24](../../../../gui/actor.cppm#L24)*
 
 ### Actor
 
 *public void Actor(const Actor & )*
 
-*Defined at [gui/actor.hpp:28](../../../../gui/actor.hpp#L28)*
+*Defined at [gui/actor.cppm:27](../../../../gui/actor.cppm#L27)*
 
 ### Actor
 
 *public void Actor(Actor && )*
 
-*Defined at [gui/actor.hpp:30](../../../../gui/actor.hpp#L30)*
+*Defined at [gui/actor.cppm:29](../../../../gui/actor.cppm#L29)*
 
 ### act
 
@@ -58,43 +50,19 @@
 
 *public float height()*
 
-*Defined at [gui/actor.hpp:93](../../../../gui/actor.hpp#L93)*
-
-
-
-**brief** Read the height.
-
-**return** Height in logical units.
+*Defined at [gui/actor.cppm:92](../../../../gui/actor.cppm#L92)*
 
 ### actor_interface
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/actor.hpp:157](../../../../gui/actor.hpp#L157)*
-
-
-
-**brief** Recover a derived interface published by this actor.
-
-**id** Identifier of the requested interface.
-
-**return** Pointer to the requested interface, or null when this actor does not publish it. The base implementation publishes nothing.
-
-**note** Prefer actor_cast(), which supplies the identifier and restores the pointer type. Overrides must answer their own identifier and otherwise delegate to their direct base, so an interface published anywhere in the chain stays reachable.
+*Defined at [gui/actor.cppm:156](../../../../gui/actor.cppm#L156)*
 
 ### actor_interface
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/actor.hpp:169](../../../../gui/actor.hpp#L169)*
-
-
-
-**brief** Recover a derived interface published by this actor, read-only.
-
-**id** Identifier of the requested interface.
-
-**return** Pointer to the requested interface, or null when this actor does not publish it.
+*Defined at [gui/actor.cppm:168](../../../../gui/actor.cppm#L168)*
 
 ### hit
 
@@ -192,127 +160,73 @@
 
 *public void ~Actor()*
 
-*Defined at [gui/actor.hpp:26](../../../../gui/actor.hpp#L26)*
+*Defined at [gui/actor.cppm:25](../../../../gui/actor.cppm#L25)*
 
 ### operator=
 
 *public Actor & operator=(const Actor & )*
 
-*Defined at [gui/actor.hpp:29](../../../../gui/actor.hpp#L29)*
+*Defined at [gui/actor.cppm:28](../../../../gui/actor.cppm#L28)*
 
 ### operator=
 
 *public Actor & operator=(Actor && )*
 
-*Defined at [gui/actor.hpp:31](../../../../gui/actor.hpp#L31)*
+*Defined at [gui/actor.cppm:30](../../../../gui/actor.cppm#L30)*
 
 ### x
 
 *public float x()*
 
-*Defined at [gui/actor.hpp:75](../../../../gui/actor.hpp#L75)*
-
-
-
-**brief** Read the horizontal position.
-
-**return** Horizontal position in parent-local units.
+*Defined at [gui/actor.cppm:74](../../../../gui/actor.cppm#L74)*
 
 ### y
 
 *public float y()*
 
-*Defined at [gui/actor.hpp:81](../../../../gui/actor.hpp#L81)*
-
-
-
-**brief** Read the vertical position.
-
-**return** Vertical position in parent-local units.
+*Defined at [gui/actor.cppm:80](../../../../gui/actor.cppm#L80)*
 
 ### width
 
 *public float width()*
 
-*Defined at [gui/actor.hpp:87](../../../../gui/actor.hpp#L87)*
-
-
-
-**brief** Read the width.
-
-**return** Width in logical units.
+*Defined at [gui/actor.cppm:86](../../../../gui/actor.cppm#L86)*
 
 ### set_visible
 
 *public void set_visible(bool visible)*
 
-*Defined at [gui/actor.hpp:99](../../../../gui/actor.hpp#L99)*
-
-
-
-**brief** Control whether the actor participates in frames and hit tests.
-
-**visible** `false` hides the actor and excludes it from hit tests.
+*Defined at [gui/actor.cppm:98](../../../../gui/actor.cppm#L98)*
 
 ### visible
 
 *public bool visible()*
 
-*Defined at [gui/actor.hpp:105](../../../../gui/actor.hpp#L105)*
-
-
-
-**brief** Read the visibility state.
-
-**return** true while the actor participates in frames and hit tests.
+*Defined at [gui/actor.cppm:104](../../../../gui/actor.cppm#L104)*
 
 ### set_touchable
 
 *public void set_touchable(bool touchable)*
 
-*Defined at [gui/actor.hpp:111](../../../../gui/actor.hpp#L111)*
-
-
-
-**brief** Control whether the actor can receive pointer hit tests.
-
-**touchable** `false` skips the actor during hit testing.
+*Defined at [gui/actor.cppm:110](../../../../gui/actor.cppm#L110)*
 
 ### touchable
 
 *public bool touchable()*
 
-*Defined at [gui/actor.hpp:117](../../../../gui/actor.hpp#L117)*
-
-
-
-**brief** Read the touchable state.
-
-**return** true while the actor participates in hit testing.
+*Defined at [gui/actor.cppm:116](../../../../gui/actor.cppm#L116)*
 
 ### parent
 
 *public Group * parent()*
 
-*Defined at [gui/actor.hpp:123](../../../../gui/actor.hpp#L123)*
-
-
-
-**brief** Access the owning group.
-
-**return** Owning group, or null for a root-owned actor.
+*Defined at [gui/actor.cppm:122](../../../../gui/actor.cppm#L122)*
 
 ### parent
 
 *public const Group * parent()*
 
-*Defined at [gui/actor.hpp:129](../../../../gui/actor.hpp#L129)*
-
-
-
-**brief** Access the owning group, read-only.
-
-**return** Owning group, or null for a root-owned actor.
+*Defined at [gui/actor.cppm:128](../../../../gui/actor.cppm#L128)*
 
 
 

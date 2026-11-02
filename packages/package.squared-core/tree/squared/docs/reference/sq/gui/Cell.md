@@ -1,12 +1,6 @@
 # class Cell
 
-*Defined at [gui/cell.hpp:15](../../../../gui/cell.hpp#L15)*
-
-
-
-**brief** Per-child constraints returned by Table::add for fluent configuration. 
-
-
+*Defined at [gui/cell.cppm:14](../../../../gui/cell.cppm#L14)*
 
 ## Functions
 
@@ -124,13 +118,7 @@
 
 *public Widget & widget()*
 
-*Defined at [gui/cell.hpp:88](../../../../gui/cell.hpp#L88)*
-
-
-
-**brief** Access the child widget placed in this cell.
-
-**return** Reference to the cell's child widget.
+*Defined at [gui/cell.cppm:87](../../../../gui/cell.cppm#L87)*
 
 
 

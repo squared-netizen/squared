@@ -10,10 +10,10 @@ the rest.
 
 | Header | Gives you |
 |---|---|
-| `squared/stage/app.hpp` | `sq::App`, `squared_main` |
-| `squared/stage/stage.hpp` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
-| `squared/stage/save.hpp` | `sq::Save`, `sq::SavingModel`: what a model keeps |
-| `squared/squared.hpp` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
+| `squared/stage/app.cppm` | `sq::App`, `squared_main` |
+| `squared/stage/module.cppm` | `sq::Stage`, `sq::ScreenType`, `sq::CustomMaker` |
+| `squared/stage/save.cppm` | `sq::Save`, `sq::SavingModel`: what a model keeps |
+| `squared/squared.cppm` | everything an app is written against: the App, the Stage, the widgets and layouts, the Telegraph |
 
 Sprint 7.1, 7.2's C++ screens and custom nodes, 7.3's panes, 7.4's
 compiled-in skin, 7.5's bound values and lists, 7.6's kept screens and the
@@ -24,7 +24,7 @@ widgets are the Stage's).
 
 ```cpp
 #include <layouts.hpp>
-#include <squared/squared.hpp>
+import squared;
 
 void squared_main( sq::App &app ) { app.stage.push( layouts::landing ); }
 ```

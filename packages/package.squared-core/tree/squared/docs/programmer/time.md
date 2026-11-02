@@ -6,17 +6,17 @@ once and passes the time in, so a test passes its own times and needs no
 clock at all.
 
 Every type below lives in its own header. Include exactly the ones a
-translation unit names; `squared/time/time.hpp` pulls in all of them
+translation unit names; `squared/time/module.cppm` pulls in all of them
 and exists for convenience, not for use inside headers of your own.
 
 Developer counterpart: [../developer/time.md](../developer/time.md)
 
 | Type or function | Header | Purpose |
 |---|---|---|
-| `Duration`, `TimePoint` | `squared/time/duration.hpp`, `squared/time/time_point.hpp` | `std::chrono::nanoseconds`: a span, and a time since a clock's start |
-| `now()`, `since_boot()` | `squared/time/now.hpp` | The monotonic clock; the time since boot, deep sleep included |
-| `Timepiece` | `squared/time/timepiece.hpp` | The step between ticks, clamped, and the tick count: 24 bytes |
-| `DeadlineQueue<Value, N>` | `squared/time/deadline_queue.hpp` | A model's timers, at most `N` waiting at once |
+| `Duration`, `TimePoint` | `squared/time/duration.cppm`, `squared/time/time_point.cppm` | `std::chrono::nanoseconds`: a span, and a time since a clock's start |
+| `now()`, `since_boot()` | `squared/time/now.cppm` | The monotonic clock; the time since boot, deep sleep included |
+| `Timepiece` | `squared/time/timepiece.cppm` | The step between ticks, clamped, and the tick count: 24 bytes |
+| `DeadlineQueue<Value, N>` | `squared/time/deadline_queue.cppm` | A model's timers, at most `N` waiting at once |
 
 ## Timepiece
 

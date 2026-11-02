@@ -3,9 +3,9 @@
 Programmer docs: [../programmer/layouts.md](../programmer/layouts.md). The
 decision record: the app model's "Screens as data (decided, 7.0)".
 
-Four files in `gui/`: `layout.hpp` (the table, `read_tap`, `check`),
-`layout_writer.hpp` (the C++ avenue), `instantiate.hpp` (widgets from
-nodes), `layout_file.hpp` (reading `names.json` and layout files), each with
+Four files in `gui/`: `layout.cppm` (the table, `read_tap`, `check`),
+`layout_writer.cppm` (the C++ avenue), `instantiate.cppm` (widgets from
+nodes), `layout_file.cppm` (reading `names.json` and layout files), each with
 its `src/` file; and the build-time compiler, `tools/sqgen/sqgen.cpp`.
 Sprint 7.0a (the table) and 7.0b (files and `sqgen`), 2026-10-21 and 22.
 
@@ -117,7 +117,7 @@ writes a 5-node layout 100 times under the frame-allocation counter).
   table of one entry on the stack (272 bytes) so the line names the key. A
   text value's `DataRef` is pointed at the whole data first, as the Telegraph
   does when it copies text into its ring: `detail::pack` leaves it empty.
-  `detail::pack` moved from `telegraph.hpp` to `messaging/src/pack.hpp` for
+  `detail::pack` moved from `telegraph.cppm` to `messaging/src/pack.cppm` for
   this, so the writer need not include the whole Telegraph.
 - **Lists** (7.5b): `add_list( rows )` (on the writer or a node) takes a
   list's key (`rows_key`: an integer `state` with a uid) and writes a list

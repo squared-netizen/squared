@@ -1,12 +1,6 @@
 # struct TelegramBytes
 
-*Defined at [messaging/telegram.hpp:99](../../../../messaging/telegram.hpp#L99)*
-
-
-
-**brief** A telegram's 32 bytes, both ways, for reading telegrams that were stored (`valid()` then says whether they are one).
-
-
+*Defined at [messaging/telegram.cppm:94](../../../../messaging/telegram.cppm#L94)*
 
 ## Functions
 

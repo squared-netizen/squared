@@ -1,12 +1,6 @@
 # struct SkinLoadLimits
 
-*Defined at [gui/src/skin_load_limits.hpp:11](../../../../gui/src/skin_load_limits.hpp#L11)*
-
-
-
-**brief** Explicit resource limits applied to one transactional skin load.
-
-
+*Defined at [gui/src/skin_load_limits.cppm:11](../../../../gui/src/skin_load_limits.cppm#L11)*
 
 ## Members
 

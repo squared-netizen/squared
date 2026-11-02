@@ -1,6 +1,6 @@
 # class Stack
 
-*Defined at [gui/stack.hpp:15](../../../../gui/stack.hpp#L15)*
+*Defined at [gui/stack.cppm:14](../../../../gui/stack.cppm#L14)*
 
 
 

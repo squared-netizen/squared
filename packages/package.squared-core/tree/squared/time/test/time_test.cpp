@@ -4,16 +4,11 @@
 // next_due, the ordered walk, no allocation, and 200,000 random steps
 // against a model.
 
-#include <squared/time/time.hpp>
+import sq.time;
 
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <map>
-#include <random>
-#include <string>
-#include <utility>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

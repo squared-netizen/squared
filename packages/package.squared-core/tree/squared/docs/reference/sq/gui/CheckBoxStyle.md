@@ -1,12 +1,6 @@
 # struct CheckBoxStyle
 
-*Defined at [gui/src/check_box_style.hpp:11](../../../../gui/src/check_box_style.hpp#L11)*
-
-
-
-**brief** Style data for a CheckBox widget. 
-
-
+*Defined at [gui/src/check_box_style.cppm:11](../../../../gui/src/check_box_style.cppm#L11)*
 
 ## Members
 

@@ -48,9 +48,5 @@
 | InvalidValue |
 
 
-*Defined at [data/src/json_error_code.hpp:9](../../../../data/src/json_error_code.hpp#L9)*
-
-
-
-**brief** Stable error categories produced by JSON parsing and writing. 
+*Defined at [data/src/json_error_code.cppm:9](../../../../data/src/json_error_code.cppm#L9)*
 

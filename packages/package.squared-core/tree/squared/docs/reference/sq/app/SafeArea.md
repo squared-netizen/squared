@@ -1,6 +1,6 @@
 # struct SafeArea
 
-*Defined at [app/safe_area.hpp:19](../../../../app/safe_area.hpp#L19)*
+*Defined at [app/safe_area.cppm:19](../../../../app/safe_area.cppm#L19)*
 
 
 

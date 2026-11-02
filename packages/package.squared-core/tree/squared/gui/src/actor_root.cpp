@@ -1,13 +1,6 @@
-#include <squared/gui/actor.hpp>
-#include <squared/gui/src/detail/actor_root.hpp>
-#include <squared/gui/src/input_event.hpp>
-#include <squared/gui/src/input_phase.hpp>
-#include <squared/gui/src/input_type.hpp>
+module sq.gui;
 
-#include <cstddef>
-#include <memory>
-#include <utility>
-#include <vector>
+import sq.std;
 
 namespace sq::gui
 {

@@ -1,12 +1,6 @@
 # struct FileError
 
-*Defined at [files/src/file_error.hpp:11](../../../../files/src/file_error.hpp#L11)*
-
-
-
-**brief** Structured file system failure information. 
-
-
+*Defined at [files/src/file_error.cppm:10](../../../../files/src/file_error.cppm#L10)*
 
 ## Members
 
@@ -24,11 +18,7 @@ public std::string path
 
 *public bool operator bool()*
 
-*Defined at [files/src/file_error.hpp:23](../../../../files/src/file_error.hpp#L23)*
-
-
-
-**brief** Return whether this structure represents a failure. 
+*Defined at [files/src/file_error.cppm:22](../../../../files/src/file_error.cppm#L22)*
 
 
 

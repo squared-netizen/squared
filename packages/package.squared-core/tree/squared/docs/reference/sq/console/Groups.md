@@ -1,14 +1,6 @@
 # class Groups
 
-*Defined at [console/groups.hpp:34](../../../../console/groups.hpp#L34)*
-
-
-
-**brief** Named groups of command lines, for `dump`: `sys` runs every system command, `memory` the memory ones, and so on.
-
- A fixed table, like the command table: `group_slots` names (`CONSOLE_GROUPS`, 16) and `group_line_slots` lines among them (`CONSOLE_GROUP_LINES`, 128), held inline; adding never allocates. A line is a whole command line (`logcat 100`), so a group can pass arguments. Names and lines are kept as pointers: string literals are what they are meant to be.
-
-
+*Defined at [console/groups.cppm:28](../../../../console/groups.cppm#L28)*
 
 ## Functions
 
@@ -32,21 +24,13 @@
 
 *public std::span<const char *const> names()*
 
-*Defined at [console/groups.hpp:61](../../../../console/groups.hpp#L61)*
-
-
-
-**brief** Every group's name, in the order made. 
+*Defined at [console/groups.cppm:55](../../../../console/groups.cppm#L55)*
 
 ### lines
 
 *public std::span<const GroupLine> lines()*
 
-*Defined at [console/groups.hpp:67](../../../../console/groups.hpp#L67)*
-
-
-
-**brief** Every line, in the order added; `group` says whose. 
+*Defined at [console/groups.cppm:61](../../../../console/groups.cppm#L61)*
 
 
 
@@ -62,11 +46,7 @@
 | invalid_name |
 
 
-*Defined at [console/groups.hpp:38](../../../../console/groups.hpp#L38)*
-
-
-
-**brief** Why add() refused. 
+*Defined at [console/groups.cppm:32](../../../../console/groups.cppm#L32)*
 
 
 

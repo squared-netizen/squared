@@ -1,6 +1,6 @@
 # class Image
 
-*Defined at [gui/image.hpp:14](../../../../gui/image.hpp#L14)*
+*Defined at [gui/image.cppm:14](../../../../gui/image.cppm#L14)*
 
 
 

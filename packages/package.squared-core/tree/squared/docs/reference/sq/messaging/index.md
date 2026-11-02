@@ -47,81 +47,67 @@
 
 *std::size_t float_count(ValueType type)*
 
-*Defined at [messaging/src/value_type.hpp:38](../../../../messaging/src/value_type.hpp#L38)*
-
-
-
-**brief** How many floats a `vec2`, `vec3` or `vec4` holds; 0 for any other type. 
+*Defined at [messaging/src/value_type.cppm:34](../../../../messaging/src/value_type.cppm#L34)*
 
 ### list_source
 
 *ListSource list_source(Source & source)*
 
-*Defined at [messaging/model_list.hpp:51](../../../../messaging/model_list.hpp#L51)*
-
-
-
-**brief** `source` as a `ListSource`, publishing through an `Out`. 
+*Defined at [messaging/model_list.cppm:47](../../../../messaging/model_list.cppm#L47)*
 
 ### name_hash
 
 *std::uint64_t name_hash(std::string_view text, std::uint64_t seed)*
 
-*Defined at [messaging/name.hpp:17](../../../../messaging/name.hpp#L17)*
-
-
-
-**brief** 64-bit FNV-1a of a name's text, continuing from `seed`.
-
- The id a Name carries. Continuing from a seed lets a name be hashed in pieces, as `item[17].name` is: "item", then ".name", with nothing copied.
+*Defined at [messaging/name.cppm:14](../../../../messaging/name.cppm#L14)*
 
 ### operator<=>
 
 *std::strong_ordering operator<=>(Name , Name )*
 
-*Defined at [messaging/name.hpp:101](../../../../messaging/name.hpp#L101)*
+*Defined at [messaging/name.cppm:98](../../../../messaging/name.cppm#L98)*
 
 ### operator==
 
 *bool operator==(DataRef , DataRef )*
 
-*Defined at [messaging/src/data_ref.hpp:18](../../../../messaging/src/data_ref.hpp#L18)*
+*Defined at [messaging/src/data_ref.cppm:18](../../../../messaging/src/data_ref.cppm#L18)*
 
 ### operator==
 
 *bool operator==(Name , Name )*
 
-*Defined at [messaging/name.hpp:100](../../../../messaging/name.hpp#L100)*
+*Defined at [messaging/name.cppm:97](../../../../messaging/name.cppm#L97)*
 
 ### operator==
 
 *bool operator==(RowSpan , RowSpan )*
 
-*Defined at [messaging/list_window.hpp:18](../../../../messaging/list_window.hpp#L18)*
+*Defined at [messaging/list_window.cppm:17](../../../../messaging/list_window.cppm#L17)*
 
 ### operator==
 
 *bool operator==(Verbs , Verbs )*
 
-*Defined at [messaging/src/verb.hpp:44](../../../../messaging/src/verb.hpp#L44)*
+*Defined at [messaging/src/verb.cppm:44](../../../../messaging/src/verb.cppm#L44)*
 
 ### operator==
 
 *bool operator==(const Address & , const Address & )*
 
-*Defined at [messaging/address.hpp:24](../../../../messaging/address.hpp#L24)*
+*Defined at [messaging/address.cppm:21](../../../../messaging/address.cppm#L21)*
 
 ### operator==
 
 *bool operator==(const Telegram & , const Telegram & )*
 
-*Defined at [messaging/telegram.hpp:77](../../../../messaging/telegram.hpp#L77)*
+*Defined at [messaging/telegram.cppm:72](../../../../messaging/telegram.cppm#L72)*
 
 ### operator|
 
 *Verbs operator|(Verbs a, Verbs b)*
 
-*Defined at [messaging/src/verb.hpp:40](../../../../messaging/src/verb.hpp#L40)*
+*Defined at [messaging/src/verb.cppm:40](../../../../messaging/src/verb.cppm#L40)*
 
 ### parse_address
 
@@ -151,23 +137,13 @@
 
 *bool valid_name(std::string_view text)*
 
-*Defined at [messaging/name.hpp:35](../../../../messaging/name.hpp#L35)*
-
-
-
-**brief** Whether `text` is a name: dot-separated segments of `a`-`z`, `0`-`9` and `_`, none empty, at most 255 bytes in all (`player.hp`, `item.name`).
-
- One spelling per name, so one id per name: no capitals, no spaces. Which object a telegram is about never goes in the name; that is the uid.
+*Defined at [messaging/name.cppm:32](../../../../messaging/name.cppm#L32)*
 
 ### value_type_of
 
 *ValueType value_type_of()*
 
-*Defined at [messaging/src/value_type.hpp:69](../../../../messaging/src/value_type.hpp#L69)*
-
-
-
-**brief** The value type a `Key`'s C++ type means. 
+*Defined at [messaging/src/value_type.cppm:65](../../../../messaging/src/value_type.cppm#L65)*
 
 ### verb_text
 
@@ -216,11 +192,7 @@
 | too_large |
 
 
-*Defined at [messaging/value_cache.hpp:15](../../../../messaging/value_cache.hpp#L15)*
-
-
-
-**brief** What `ValueCache::store` did. 
+*Defined at [messaging/value_cache.cppm:11](../../../../messaging/value_cache.cppm#L11)*
 
 | enum class RingResult |
 
@@ -231,11 +203,7 @@
 | too_large |
 
 
-*Defined at [messaging/telegram_ring.hpp:15](../../../../messaging/telegram_ring.hpp#L15)*
-
-
-
-**brief** What `TelegramRing::push` did. 
+*Defined at [messaging/telegram_ring.cppm:10](../../../../messaging/telegram_ring.cppm#L10)*
 
 | enum class SendResult |
 
@@ -247,11 +215,7 @@
 | too_large |
 
 
-*Defined at [messaging/telegraph.hpp:33](../../../../messaging/telegraph.hpp#L33)*
-
-
-
-**brief** What a send did. 
+*Defined at [messaging/telegraph.cppm:24](../../../../messaging/telegraph.cppm#L24)*
 
 | enum class TapDirection |
 
@@ -261,11 +225,7 @@
 | to_ui |
 
 
-*Defined at [messaging/telegraph.hpp:68](../../../../messaging/telegraph.hpp#L68)*
-
-
-
-**brief** Which way a telegram crossed, for a tap. 
+*Defined at [messaging/telegraph.cppm:59](../../../../messaging/telegraph.cppm#L59)*
 
 | enum class ValueType |
 
@@ -282,13 +242,7 @@
 | uids |
 
 
-*Defined at [messaging/src/value_type.hpp:25](../../../../messaging/src/value_type.hpp#L25)*
-
-
-
-**brief** What a telegram's value is, in four bits.
-
- | Type | Held | Written | |---|---|---| | `none` | nothing | (nothing) | | `boolean` | in the telegram | `true`, `false` | | `integer` | in the telegram, 64-bit signed | `42`, `-7` | | `number` | in the telegram, a double | `1.5`, `2.0`, `1e+21`, `inf` | | `vec2`, `vec3`, `vec4` | in the telegram, floats | `(1.5 2 0 1)` | | `text` | in the data area | `"notes.txt"` | | `uids` | in the data area, 32-bit each | `[17 4 22]` |
+*Defined at [messaging/src/value_type.cppm:21](../../../../messaging/src/value_type.cppm#L21)*
 
 | enum class Verb |
 
@@ -300,11 +254,5 @@
 | event |
 
 
-*Defined at [messaging/src/verb.hpp:18](../../../../messaging/src/verb.hpp#L18)*
-
-
-
-**brief** What a telegram does, in two bits.
-
- | Verb | Direction | Means | |---|---|---| | `set` | UI to model | the user changed a value | | `do_` | UI to model | an intent (`do file.open "notes.txt"`) | | `state` | model to UI | a value is now this | | `event` | model to UI | something happened |
+*Defined at [messaging/src/verb.cppm:18](../../../../messaging/src/verb.cppm#L18)*
 

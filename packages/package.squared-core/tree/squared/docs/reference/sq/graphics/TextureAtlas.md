@@ -1,14 +1,6 @@
 # class TextureAtlas
 
-*Defined at [graphics/texture_atlas.hpp:29](../../../../graphics/texture_atlas.hpp#L29)*
-
-
-
-**brief** Owning, transactionally loaded libGDX text texture atlas.
-
- Page image paths are resolved relative to the atlas asset. Multiple pages, duplicate indexed names, rotation, trimming, filtering, repeat modes, splits, and padding are supported. Packing source images is a separate future asset-tools concern.
-
-
+*Defined at [graphics/texture_atlas.cppm:25](../../../../graphics/texture_atlas.cppm#L25)*
 
 ## Functions
 
@@ -16,35 +8,31 @@
 
 *public void TextureAtlas()*
 
-*Defined at [graphics/texture_atlas.hpp:33](../../../../graphics/texture_atlas.hpp#L33)*
-
-
-
-**brief** Construct an empty atlas owning no pages or regions. 
+*Defined at [graphics/texture_atlas.cppm:29](../../../../graphics/texture_atlas.cppm#L29)*
 
 ### TextureAtlas
 
 *public void TextureAtlas(const TextureAtlas & )*
 
-*Defined at [graphics/texture_atlas.hpp:34](../../../../graphics/texture_atlas.hpp#L34)*
+*Defined at [graphics/texture_atlas.cppm:30](../../../../graphics/texture_atlas.cppm#L30)*
 
 ### operator=
 
 *public TextureAtlas & operator=(const TextureAtlas & )*
 
-*Defined at [graphics/texture_atlas.hpp:35](../../../../graphics/texture_atlas.hpp#L35)*
+*Defined at [graphics/texture_atlas.cppm:31](../../../../graphics/texture_atlas.cppm#L31)*
 
 ### TextureAtlas
 
 *public void TextureAtlas(TextureAtlas && )*
 
-*Defined at [graphics/texture_atlas.hpp:36](../../../../graphics/texture_atlas.hpp#L36)*
+*Defined at [graphics/texture_atlas.cppm:32](../../../../graphics/texture_atlas.cppm#L32)*
 
 ### operator=
 
 *public TextureAtlas & operator=(TextureAtlas && )*
 
-*Defined at [graphics/texture_atlas.hpp:37](../../../../graphics/texture_atlas.hpp#L37)*
+*Defined at [graphics/texture_atlas.cppm:33](../../../../graphics/texture_atlas.cppm#L33)*
 
 ### ~TextureAtlas
 

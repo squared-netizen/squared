@@ -1,12 +1,6 @@
 # struct AssetError
 
-*Defined at [assets/src/asset_error.hpp:11](../../../../assets/src/asset_error.hpp#L11)*
-
-
-
-**brief** Structured asset loading failure information. 
-
-
+*Defined at [assets/src/asset_error.cppm:10](../../../../assets/src/asset_error.cppm#L10)*
 
 ## Members
 
@@ -24,11 +18,7 @@ public std::string path
 
 *public bool operator bool()*
 
-*Defined at [assets/src/asset_error.hpp:23](../../../../assets/src/asset_error.hpp#L23)*
-
-
-
-**brief** Return whether this structure represents a failure. 
+*Defined at [assets/src/asset_error.cppm:22](../../../../assets/src/asset_error.cppm#L22)*
 
 
 

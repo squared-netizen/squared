@@ -1,17 +1,14 @@
-#include <squared/dev/dev_log.hpp>
+import sq.dev;
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <cassert>
-#include <chrono>
-#include <csignal>
-#include <cstdio>
-#include <string>
-#include <vector>
+import sq.std;
 
 namespace
 {

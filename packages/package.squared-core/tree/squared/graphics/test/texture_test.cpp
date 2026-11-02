@@ -5,24 +5,17 @@
 // it runs in microseconds and the assertions can see state a device cannot be
 // asked about.
 
-#include <squared/files/files.hpp>
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/src/context_config.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/src/texture_recovery_target.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_region.hpp>
+import sq.files;
+import sq.graphics;
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
 #include <stb_image_write.h>
 
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <vector>
+#include <assert.h>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq;
 

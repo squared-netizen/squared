@@ -1,16 +1,6 @@
 # class PosixFileSystem
 
-*Defined at [files/posix_file_system.hpp:42](../../../../files/posix_file_system.hpp#L42)*
-
-
-
-**brief** FileSystem over ordinary directories.
-
- This is the backend for Termux and desktop Linux, and it is the one used on Android for Local and External storage. Android Internal storage lives inside the APK and needs the asset backend instead.
-
- Internal is refused for writes on every platform, so a build that works against a directory in Termux behaves the same on a device where the same files are read-only inside an APK.
-
-
+*Defined at [files/posix_file_system.cppm:40](../../../../files/posix_file_system.cppm#L40)*
 
 Inherits from FileSystem
 

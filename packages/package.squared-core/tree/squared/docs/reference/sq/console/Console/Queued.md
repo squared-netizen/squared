@@ -1,12 +1,6 @@
 # struct Queued
 
-*Defined at [console/console.hpp:147](../../../../../console/console.hpp#L147)*
-
-
-
-**brief** What queue_group() did. 
-
-
+*Defined at [console/console.cppm:146](../../../../../console/console.cppm#L146)*
 
 ## Members
 

@@ -1,18 +1,19 @@
-#include "detail/image_decode.hpp"
-
-#include <cstddef>
-#include <cstdint>
-#include <span>
-#include <string>
-#include <utility>
-#include <vector>
-
 // Declarations only. The implementation is instantiated once in
 // third_party/stb/stb_image_impl.c, which is compiled with warnings off:
 // stb_image is not ours to keep clean, and squared's -Wconversion would bury
 // a real warning under hundreds from it.
-#define STBI_NO_STDIO
+
+module;
+
 #include <stb_image.h>
+
+#include <stdint.h>
+
+module sq.graphics;
+
+import sq.std;
+
+#define STBI_NO_STDIO
 
 namespace sq::graphics::detail
 {

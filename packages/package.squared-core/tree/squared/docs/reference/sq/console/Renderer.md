@@ -1,6 +1,6 @@
 # class Renderer
 
-*Defined at [console/renderer.hpp:32](../../../../console/renderer.hpp#L32)*
+*Defined at [console/renderer.cppm:29](../../../../console/renderer.cppm#L29)*
 
 
 
@@ -26,31 +26,31 @@ public static const std::size_t batch_quads
 
 *public void Renderer()*
 
-*Defined at [console/renderer.hpp:38](../../../../console/renderer.hpp#L38)*
+*Defined at [console/renderer.cppm:35](../../../../console/renderer.cppm#L35)*
 
 ### Renderer
 
 *public void Renderer(const Renderer & )*
 
-*Defined at [console/renderer.hpp:41](../../../../console/renderer.hpp#L41)*
+*Defined at [console/renderer.cppm:38](../../../../console/renderer.cppm#L38)*
 
 ### operator=
 
 *public Renderer & operator=(const Renderer & )*
 
-*Defined at [console/renderer.hpp:42](../../../../console/renderer.hpp#L42)*
+*Defined at [console/renderer.cppm:39](../../../../console/renderer.cppm#L39)*
 
 ### Renderer
 
 *public void Renderer(Renderer && )*
 
-*Defined at [console/renderer.hpp:43](../../../../console/renderer.hpp#L43)*
+*Defined at [console/renderer.cppm:40](../../../../console/renderer.cppm#L40)*
 
 ### operator=
 
 *public Renderer & operator=(Renderer && )*
 
-*Defined at [console/renderer.hpp:44](../../../../console/renderer.hpp#L44)*
+*Defined at [console/renderer.cppm:41](../../../../console/renderer.cppm#L41)*
 
 ### ~Renderer
 
@@ -92,7 +92,7 @@ public static const std::size_t batch_quads
 
 *public bool valid()*
 
-*Defined at [console/renderer.hpp:64](../../../../console/renderer.hpp#L64)*
+*Defined at [console/renderer.cppm:61](../../../../console/renderer.cppm#L61)*
 
 
 

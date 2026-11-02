@@ -1,5 +1,4 @@
-#include <squared/gui/actor.hpp>
-#include <squared/gui/src/input_event.hpp>
+module sq.gui;
 
 namespace sq::gui
 {

@@ -104,15 +104,11 @@
 
 *void build_atlas(std::span<std::uint8_t, atlas_bytes> out)*
 
-
-
-**brief** Expand the font into `out`, 255 where a glyph has a pixel and 0 elsewhere; glyph `g` at column `g % 16`, row `g / 16`; solid_glyph filled.
-
 ### for_each_line
 
 *void for_each_line(int fd, std::span<char> buffer, Line line)*
 
-*Defined at [console/line_reader.hpp:20](../../../../console/line_reader.hpp#L20)*
+*Defined at [console/line_reader.cppm:19](../../../../console/line_reader.cppm#L19)*
 
 
 
@@ -122,7 +118,7 @@
 
 *GridSize grid(const Frame & frame)*
 
-*Defined at [console/layout.hpp:43](../../../../console/layout.hpp#L43)*
+*Defined at [console/layout.cppm:39](../../../../console/layout.cppm#L39)*
 
 
 
@@ -160,7 +156,7 @@
 
 *void layout(const Console & console, const Frame & frame, Emit emit)*
 
-*Defined at [console/layout.hpp:131](../../../../console/layout.hpp#L131)*
+*Defined at [console/layout.cppm:127](../../../../console/layout.cppm#L127)*
 
 
 
@@ -176,7 +172,7 @@
 
 *bool operator==(const Iterator & a, const Iterator & b)*
 
-*Defined at [console/scrollback.hpp:86](../../../../console/scrollback.hpp#L86)*
+*Defined at [console/scrollback.cppm:81](../../../../console/scrollback.cppm#L81)*
 
 ### remove_crash_file
 
@@ -220,7 +216,7 @@
 
 *int scroll_limit(const Console & console, const Frame & frame)*
 
-*Defined at [console/layout.hpp:74](../../../../console/layout.hpp#L74)*
+*Defined at [console/layout.cppm:70](../../../../console/layout.cppm#L70)*
 
 
 
@@ -250,7 +246,7 @@
 
 *bool touches_close(const Frame & frame, int x, int y)*
 
-*Defined at [console/layout.hpp:52](../../../../console/layout.hpp#L52)*
+*Defined at [console/layout.cppm:48](../../../../console/layout.cppm#L48)*
 
 
 
@@ -268,11 +264,7 @@
 | refused |
 
 
-*Defined at [console/bridge.hpp:30](../../../../console/bridge.hpp#L30)*
-
-
-
-**brief** What open() did. 
+*Defined at [console/bridge.cppm:26](../../../../console/bridge.cppm#L26)*
 
 | enum class Colour |
 
@@ -287,11 +279,7 @@
 | title |
 
 
-*Defined at [console/src/colour.hpp:10](../../../../console/src/colour.hpp#L10)*
-
-
-
-**brief** What a console quad is drawn in: an index into the renderer's palette. 
+*Defined at [console/src/colour.cppm:9](../../../../console/src/colour.cppm#L9)*
 
 | enum class Level |
 
@@ -302,9 +290,5 @@
 | error |
 
 
-*Defined at [console/src/level.hpp:9](../../../../console/src/level.hpp#L9)*
-
-
-
-**brief** How a console line is shown and filtered: `copy errors` keeps only `error`. 
+*Defined at [console/src/level.cppm:9](../../../../console/src/level.cppm#L9)*
 

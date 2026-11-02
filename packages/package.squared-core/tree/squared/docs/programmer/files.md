@@ -7,17 +7,17 @@ Developer counterpart: [../developer/files.md](../developer/files.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `FileHandle` | `squared/files/file_handle.hpp` | A named location, modelled on libGDX's FileHandle |
-| `FileType` | `squared/files/src/file_type.hpp` | Where a path is rooted |
-| `FileSystem` | `squared/files/file_system.hpp` | The framework's porting layer for storage |
-| `PosixFileSystem` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
-| `PosixFileSystemRoots` | `squared/files/posix_file_system.hpp` | Directories each FileType resolves to under a POSIX file system |
-| `EmbeddedFileSystem` | `squared/files/embedded_file_system.hpp` | A read-only `Internal` over files compiled into the program |
-| `EmbeddedFile` | `squared/files/embedded_file_system.hpp` | One compiled-in file: its path and its bytes |
-| `FileReadResult` | `squared/files/src/file_read_result.hpp` | Bytes read from one file, or the failure that prevented it |
-| `FileTextResult` | `squared/files/src/file_text_result.hpp` | Text read from one file, or the failure that prevented it |
-| `FileError` | `squared/files/src/file_error.hpp` | Structured file system failure information |
-| `FileErrorCode` | `squared/files/src/file_error_code.hpp` | Stable error categories produced by file system operations |
+| `FileHandle` | `squared/files/file_handle.cppm` | A named location, modelled on libGDX's FileHandle |
+| `FileType` | `squared/files/src/file_type.cppm` | Where a path is rooted |
+| `FileSystem` | `squared/files/file_system.cppm` | The framework's porting layer for storage |
+| `PosixFileSystem` | `squared/files/posix_file_system.cppm` | Directories each FileType resolves to under a POSIX file system |
+| `PosixFileSystemRoots` | `squared/files/posix_file_system.cppm` | Directories each FileType resolves to under a POSIX file system |
+| `EmbeddedFileSystem` | `squared/files/embedded_file_system.cppm` | A read-only `Internal` over files compiled into the program |
+| `EmbeddedFile` | `squared/files/embedded_file_system.cppm` | One compiled-in file: its path and its bytes |
+| `FileReadResult` | `squared/files/src/file_read_result.cppm` | Bytes read from one file, or the failure that prevented it |
+| `FileTextResult` | `squared/files/src/file_text_result.cppm` | Text read from one file, or the failure that prevented it |
+| `FileError` | `squared/files/src/file_error.cppm` | Structured file system failure information |
+| `FileErrorCode` | `squared/files/src/file_error_code.cppm` | Stable error categories produced by file system operations |
 
 ## The shortest call site
 

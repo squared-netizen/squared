@@ -1,64 +1,16 @@
-#include "detail/catalog.hpp"
-#include "detail/default_skin.hpp"
+module;
 
-#include <squared/app/runtime.hpp>
-#include <squared/files/embedded_file_system.hpp>
-#include <squared/files/file_handle.hpp>
-#include <squared/files/file_system.hpp>
-#include <squared/files/src/file_text_result.hpp>
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/bitmap_font_page.hpp>
-#include <squared/graphics/texture_atlas.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/batch_painter.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/instantiate.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/list.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/scroll_pane.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/skin_loader.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/src/detail/pane_frame.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/src/font_ptr.hpp>
-#include <squared/gui/src/font_resource.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/src/size_hints.hpp>
-#include <squared/gui/src/skin_load_issue.hpp>
-#include <squared/gui/src/skin_load_report.hpp>
-#include <squared/gui/src/skin_load_severity.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/text_field.hpp>
-#include <squared/messaging/address.hpp>
-#include <squared/messaging/list_window.hpp>
-#include <squared/messaging/name.hpp>
-#include <squared/messaging/telegram.hpp>
-#include <squared/messaging/telegram_data.hpp>
-#include <squared/messaging/telegram_ring.hpp>
-#include <squared/messaging/telegram_text.hpp>
-#include <squared/stage/stage.hpp>
+#include <stdarg.h>
+#include <stdint.h>
 
-#include <algorithm>
-#include <charconv>
-#include <cmath>
-#include <cstdarg>
-#include <cstdint>
-#include <cstdio>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+module sq.stage;
+
+import sq.app;
+import sq.files;
+import sq.graphics;
+import sq.gui;
+import sq.messaging;
+import sq.std;
 
 namespace sq
 {

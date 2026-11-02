@@ -1,12 +1,6 @@
 # class TelegramData
 
-*Defined at [messaging/telegram_data.hpp:19](../../../../messaging/telegram_data.hpp#L19)*
-
-
-
-**brief** A data area for telegrams' text and uid lists, filled from the front: where `read_telegram` puts what it reads, and what a test or a replay file hands `write_telegram`. Over storage its owner gives it; it allocates nothing. (The Telegraph's rings keep their own.)
-
-
+*Defined at [messaging/telegram_data.cppm:15](../../../../messaging/telegram_data.cppm#L15)*
 
 ## Functions
 
@@ -14,7 +8,7 @@
 
 *public void TelegramData(std::span<std::byte> storage)*
 
-*Defined at [messaging/telegram_data.hpp:22](../../../../messaging/telegram_data.hpp#L22)*
+*Defined at [messaging/telegram_data.cppm:18](../../../../messaging/telegram_data.cppm#L18)*
 
 ### append
 
@@ -36,11 +30,7 @@
 
 *public std::span<const std::byte> bytes()*
 
-*Defined at [messaging/telegram_data.hpp:33](../../../../messaging/telegram_data.hpp#L33)*
-
-
-
-**brief** Everything appended, for `write_telegram`. 
+*Defined at [messaging/telegram_data.cppm:29](../../../../messaging/telegram_data.cppm#L29)*
 
 ### reserve
 
@@ -54,33 +44,25 @@
 
 *public void rewind(std::size_t used)*
 
-*Defined at [messaging/telegram_data.hpp:49](../../../../messaging/telegram_data.hpp#L49)*
-
-
-
-**brief** Forget what was appended after the first `used` bytes. 
+*Defined at [messaging/telegram_data.cppm:45](../../../../messaging/telegram_data.cppm#L45)*
 
 ### clear
 
 *public void clear()*
 
-*Defined at [messaging/telegram_data.hpp:52](../../../../messaging/telegram_data.hpp#L52)*
-
-
-
-**brief** Forget everything appended. 
+*Defined at [messaging/telegram_data.cppm:48](../../../../messaging/telegram_data.cppm#L48)*
 
 ### used
 
 *public std::size_t used()*
 
-*Defined at [messaging/telegram_data.hpp:54](../../../../messaging/telegram_data.hpp#L54)*
+*Defined at [messaging/telegram_data.cppm:50](../../../../messaging/telegram_data.cppm#L50)*
 
 ### capacity
 
 *public std::size_t capacity()*
 
-*Defined at [messaging/telegram_data.hpp:55](../../../../messaging/telegram_data.hpp#L55)*
+*Defined at [messaging/telegram_data.cppm:51](../../../../messaging/telegram_data.cppm#L51)*
 
 ### writable
 

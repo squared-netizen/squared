@@ -1,6 +1,6 @@
 # class TextField
 
-*Defined at [gui/text_field.hpp:22](../../../../gui/text_field.hpp#L22)*
+*Defined at [gui/text_field.cppm:18](../../../../gui/text_field.cppm#L18)*
 
 
 
@@ -34,13 +34,13 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/text_field.hpp:27](../../../../gui/text_field.hpp#L27)*
+*Defined at [gui/text_field.cppm:23](../../../../gui/text_field.cppm#L23)*
 
 ### actor_interface
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/text_field.hpp:32](../../../../gui/text_field.hpp#L32)*
+*Defined at [gui/text_field.cppm:28](../../../../gui/text_field.cppm#L28)*
 
 ### set_text
 
@@ -56,7 +56,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public const std::string & text()*
 
-*Defined at [gui/text_field.hpp:54](../../../../gui/text_field.hpp#L54)*
+*Defined at [gui/text_field.cppm:50](../../../../gui/text_field.cppm#L50)*
 
 
 
@@ -68,7 +68,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public std::size_t cursor()*
 
-*Defined at [gui/text_field.hpp:60](../../../../gui/text_field.hpp#L60)*
+*Defined at [gui/text_field.cppm:56](../../../../gui/text_field.cppm#L56)*
 
 
 
@@ -80,7 +80,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool focused()*
 
-*Defined at [gui/text_field.hpp:77](../../../../gui/text_field.hpp#L77)*
+*Defined at [gui/text_field.cppm:73](../../../../gui/text_field.cppm#L73)*
 
 
 
@@ -92,7 +92,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool edited()*
 
-*Defined at [gui/text_field.hpp:83](../../../../gui/text_field.hpp#L83)*
+*Defined at [gui/text_field.cppm:79](../../../../gui/text_field.cppm#L79)*
 
 
 
@@ -236,7 +236,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool wants_text_input()*
 
-*Defined at [gui/text_field.hpp:169](../../../../gui/text_field.hpp#L169)*
+*Defined at [gui/text_field.cppm:165](../../../../gui/text_field.cppm#L165)*
 
 
 

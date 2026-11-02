@@ -1,16 +1,6 @@
 # class NameTable
 
-*Defined at [messaging/name_table.hpp:25](../../../../messaging/name_table.hpp#L25)*
-
-
-
-**brief** The text of every registered name, for writing telegrams as text.
-
- Telegrams carry only a name's id; the dev log, replay files and saves write the text. The table lives in storage its owner gives it (the Telegraph's, sized by `TELEGRAPH_NAMES`), and allocates nothing: 16 bytes per name plus its text, so the default 8 KB holds about 250 names.
-
- Registration catches the one thing a 64-bit id can get wrong: two names with one id. Not thread-safe; register before the threads start.
-
-
+*Defined at [messaging/name_table.cppm:30](../../../../messaging/name_table.cppm#L30)*
 
 ## Functions
 
@@ -52,21 +42,13 @@
 
 *public std::size_t size()*
 
-*Defined at [messaging/name_table.hpp:57](../../../../messaging/name_table.hpp#L57)*
-
-
-
-**brief** How many names are registered. 
+*Defined at [messaging/name_table.cppm:62](../../../../messaging/name_table.cppm#L62)*
 
 ### capacity
 
 *public std::size_t capacity()*
 
-*Defined at [messaging/name_table.hpp:63](../../../../messaging/name_table.hpp#L63)*
-
-
-
-**brief** The storage's size. 
+*Defined at [messaging/name_table.cppm:68](../../../../messaging/name_table.cppm#L68)*
 
 ### used
 
@@ -91,11 +73,7 @@
 | full |
 
 
-*Defined at [messaging/name_table.hpp:29](../../../../messaging/name_table.hpp#L29)*
-
-
-
-**brief** What `add` did. 
+*Defined at [messaging/name_table.cppm:34](../../../../messaging/name_table.cppm#L34)*
 
 
 

@@ -1,12 +1,6 @@
 # class Panel
 
-*Defined at [gui/panel.hpp:14](../../../../gui/panel.hpp#L14)*
-
-
-
-**brief** Container painting a single style background. 
-
-
+*Defined at [gui/panel.cppm:13](../../../../gui/panel.cppm#L13)*
 
 Inherits from Widget
 

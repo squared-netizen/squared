@@ -6,25 +6,12 @@
 // The cases are in layout_file_cases.txt, one per line: a kind, the JSON, and
 // the problem expected. Every case runs; each one that fails is printed.
 
-#include <squared/gui/button.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/layout.hpp>
-#include <squared/gui/layout_file.hpp>
-#include <squared/gui/layout_writer.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/messaging/key.hpp>
+import sq.gui;
+import sq.messaging;
 
-#include <array>
-#include <charconv>
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq::gui;
 namespace data = sq::data;

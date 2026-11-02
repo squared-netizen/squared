@@ -20,7 +20,7 @@ Runs the `android_native_app_glue` event loop, translates lifecycle and input
 events into calls on your `App`, and brings up a rendering surface if a
 rendering kit was applied.
 
-The renderer include is guarded, so this file compiles with no kit at all.
+The renderer import is guarded, so this file compiles with no kit at all.
 That guard is what makes `kit.opengl` and a future `kit.sfml` alternatives
 rather than one of them being baked in.
 

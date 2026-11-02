@@ -2,24 +2,11 @@
 // compiler refuses, the exact lines, what is read and refused, a fuzz test
 // both ways, and no allocation.
 
-#include <squared/messaging/key.hpp>
-#include <squared/messaging/name_table.hpp>
-#include <squared/messaging/telegram.hpp>
-#include <squared/messaging/telegram_data.hpp>
-#include <squared/messaging/telegram_text.hpp>
+import sq.messaging;
 
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <limits>
-#include <new>
-#include <random>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 namespace
 {
@@ -187,7 +174,8 @@ int main()
           "state counter.ticks -0.0" },
         { Telegram::number( Verb::state, { "counter.ticks", 0 }, 1e21 ),
           "state counter.ticks 1e+21" },
-        { Telegram::number( Verb::state, { "counter.ticks", 0 }, -INFINITY ),
+        { Telegram::number( Verb::state, { "counter.ticks", 0 },
+                            -std::numeric_limits<double>::infinity() ),
           "state counter.ticks -inf" },
         { Telegram::data( Verb::state, { "inventory", 0 }, ValueType::uids, uid_ref ),
           "state inventory [17 4 22]" },

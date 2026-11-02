@@ -1,12 +1,6 @@
 # struct OnUiThread
 
-*Defined at [messaging/model_runner.hpp:19](../../../../messaging/model_runner.hpp#L19)*
-
-
-
-**brief** Asks a `ModelRunner` for no thread: the UI calls `turn()` once a frame. 
-
-
+*Defined at [messaging/model_runner.cppm:15](../../../../messaging/model_runner.cppm#L15)*
 
 ## Functions
 
@@ -14,7 +8,7 @@
 
 *public void OnUiThread()*
 
-*Defined at [messaging/model_runner.hpp:21](../../../../messaging/model_runner.hpp#L21)*
+*Defined at [messaging/model_runner.cppm:17](../../../../messaging/model_runner.cppm#L17)*
 
 
 

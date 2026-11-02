@@ -1,8 +1,10 @@
-#include <squared/messaging/telegram_ring.hpp>
+module;
 
-#include <array>
-#include <cassert>
-#include <cstring>
+#include <assert.h>
+
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

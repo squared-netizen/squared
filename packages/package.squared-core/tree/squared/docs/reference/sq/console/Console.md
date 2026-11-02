@@ -1,16 +1,6 @@
 # class Console
 
-*Defined at [console/console.hpp:45](../../../../console/console.hpp#L45)*
-
-
-
-**brief** Text in, text out: the escape hatch for when the rest is broken.
-
- This is the Console's state and behaviour, with no drawing: the scrollback, the input line, the command table. The view that draws it comes separately. Everything is inline and sized at compile time (about 68 KB by default, nearly all of it the scrollback), so hold it in something long-lived, never on the stack. Nothing it does allocates. One thread uses it.
-
- ```cpp console.add( "spawn", "spawn <monster> <count>",              []( sq::console::Console &c, const sq::console::Args &a, void * ) {                  c.printf( sq::console::Level::info, "spawned %lld %.*s",                            static_cast<long long>( a.integer( 2, 1 ) ),                            static_cast<int>( a.text( 1 ).size() ), a.text( 1 ).data() );              } ); console.run( "spawn goblin 3" ); ```
-
-
+*Defined at [console/console.cppm:44](../../../../console/console.cppm#L44)*
 
 ## Records
 
@@ -24,19 +14,19 @@ Queued
 
 *public void Console(const Console & )*
 
-*Defined at [console/console.hpp:51](../../../../console/console.hpp#L51)*
+*Defined at [console/console.cppm:50](../../../../console/console.cppm#L50)*
 
 ### operator=
 
 *public Console & operator=(const Console & )*
 
-*Defined at [console/console.hpp:52](../../../../console/console.hpp#L52)*
+*Defined at [console/console.cppm:51](../../../../console/console.cppm#L51)*
 
 ### Console
 
 *public void Console(Console && )*
 
-*Defined at [console/console.hpp:53](../../../../console/console.hpp#L53)*
+*Defined at [console/console.cppm:52](../../../../console/console.cppm#L52)*
 
 ### Console
 
@@ -50,17 +40,13 @@ Queued
 
 *public Console & operator=(Console && )*
 
-*Defined at [console/console.hpp:54](../../../../console/console.hpp#L54)*
+*Defined at [console/console.cppm:53](../../../../console/console.cppm#L53)*
 
 ### add
 
 *public Commands::AddResult add(const char * name, const char * help, Handler handler, void * context)*
 
-*Defined at [console/console.hpp:57](../../../../console/console.hpp#L57)*
-
-
-
-**brief** Register a command. See Commands::add for what can refuse. 
+*Defined at [console/console.cppm:56](../../../../console/console.cppm#L56)*
 
 ### add_group
 
@@ -74,61 +60,49 @@ Queued
 
 *public Groups::AddResult add_to_group(const char * group, const char * line)*
 
-*Defined at [console/console.hpp:67](../../../../console/console.hpp#L67)*
-
-
-
-**brief** Add `line` (a whole command line, `logcat 100`) to the group `group` for `dump`, making the group if it is new. See Groups::add.
+*Defined at [console/console.cppm:66](../../../../console/console.cppm#L66)*
 
 ### dumping
 
 *public bool dumping()*
 
-*Defined at [console/console.hpp:83](../../../../console/console.hpp#L83)*
-
-
-
-**brief** Whether `dump` has lines still to run: the loop should not sleep long. 
+*Defined at [console/console.cppm:82](../../../../console/console.cppm#L82)*
 
 ### set_mirror
 
 *public void set_mirror(Mirror mirror, void * context)*
 
-*Defined at [console/console.hpp:89](../../../../console/console.hpp#L89)*
-
-
-
-**brief** Hand every printed line to `mirror` as well, the echo of a command and its output included; nullptr stops it. One at a time.
+*Defined at [console/console.cppm:88](../../../../console/console.cppm#L88)*
 
 ### lines
 
 *public Scrollback & lines()*
 
-*Defined at [console/console.hpp:140](../../../../console/console.hpp#L140)*
+*Defined at [console/console.cppm:139](../../../../console/console.cppm#L139)*
 
 ### input
 
 *public const InputLine & input()*
 
-*Defined at [console/console.hpp:141](../../../../console/console.hpp#L141)*
+*Defined at [console/console.cppm:140](../../../../console/console.cppm#L140)*
 
 ### input
 
 *public InputLine & input()*
 
-*Defined at [console/console.hpp:142](../../../../console/console.hpp#L142)*
+*Defined at [console/console.cppm:141](../../../../console/console.cppm#L141)*
 
 ### commands
 
 *public const Commands & commands()*
 
-*Defined at [console/console.hpp:143](../../../../console/console.hpp#L143)*
+*Defined at [console/console.cppm:142](../../../../console/console.cppm#L142)*
 
 ### groups
 
 *public const Groups & groups()*
 
-*Defined at [console/console.hpp:144](../../../../console/console.hpp#L144)*
+*Defined at [console/console.cppm:143](../../../../console/console.cppm#L143)*
 
 ### update
 
@@ -168,29 +142,25 @@ Queued
 
 *public bool shown()*
 
-*Defined at [console/console.hpp:135](../../../../console/console.hpp#L135)*
-
-
-
-**brief** Whether it should be drawn. The Console only keeps the flag: whoever draws it reads it. Hidden at first; `close` and the close button hide it.
+*Defined at [console/console.cppm:134](../../../../console/console.cppm#L134)*
 
 ### show
 
 *public void show()*
 
-*Defined at [console/console.hpp:136](../../../../console/console.hpp#L136)*
+*Defined at [console/console.cppm:135](../../../../console/console.cppm#L135)*
 
 ### hide
 
 *public void hide()*
 
-*Defined at [console/console.hpp:137](../../../../console/console.hpp#L137)*
+*Defined at [console/console.cppm:136](../../../../console/console.cppm#L136)*
 
 ### lines
 
 *public const Scrollback & lines()*
 
-*Defined at [console/console.hpp:139](../../../../console/console.hpp#L139)*
+*Defined at [console/console.cppm:138](../../../../console/console.cppm#L138)*
 
 ### submit
 
@@ -240,17 +210,13 @@ Queued
 
 *public void ~Console()*
 
-*Defined at [console/console.hpp:50](../../../../console/console.hpp#L50)*
+*Defined at [console/console.cppm:49](../../../../console/console.cppm#L49)*
 
 ### text
 
 *public void text(std::string_view utf8)*
 
-*Defined at [console/console.hpp:128](../../../../console/console.hpp#L128)*
-
-
-
-**brief** Typed text, from a keyboard or the soft keyboard. 
+*Defined at [console/console.cppm:127](../../../../console/console.cppm#L127)*
 
 
 

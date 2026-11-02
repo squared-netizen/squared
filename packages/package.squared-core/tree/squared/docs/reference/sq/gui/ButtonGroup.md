@@ -1,6 +1,6 @@
 # class ButtonGroup
 
-*Defined at [gui/button_group.hpp:19](../../../../gui/button_group.hpp#L19)*
+*Defined at [gui/button_group.cppm:21](../../../../gui/button_group.cppm#L21)*
 
 
 
@@ -30,25 +30,25 @@
 
 *public void ButtonGroup(const ButtonGroup & )*
 
-*Defined at [gui/button_group.hpp:34](../../../../gui/button_group.hpp#L34)*
+*Defined at [gui/button_group.cppm:36](../../../../gui/button_group.cppm#L36)*
 
 ### operator=
 
 *public ButtonGroup & operator=(const ButtonGroup & )*
 
-*Defined at [gui/button_group.hpp:35](../../../../gui/button_group.hpp#L35)*
+*Defined at [gui/button_group.cppm:37](../../../../gui/button_group.cppm#L37)*
 
 ### ButtonGroup
 
 *public void ButtonGroup(ButtonGroup && )*
 
-*Defined at [gui/button_group.hpp:36](../../../../gui/button_group.hpp#L36)*
+*Defined at [gui/button_group.cppm:38](../../../../gui/button_group.cppm#L38)*
 
 ### operator=
 
 *public ButtonGroup & operator=(ButtonGroup && )*
 
-*Defined at [gui/button_group.hpp:37](../../../../gui/button_group.hpp#L37)*
+*Defined at [gui/button_group.cppm:39](../../../../gui/button_group.cppm#L39)*
 
 ### ~ButtonGroup
 
@@ -120,7 +120,7 @@
 
 *public std::size_t size()*
 
-*Defined at [gui/button_group.hpp:66](../../../../gui/button_group.hpp#L66)*
+*Defined at [gui/button_group.cppm:68](../../../../gui/button_group.cppm#L68)*
 
 
 

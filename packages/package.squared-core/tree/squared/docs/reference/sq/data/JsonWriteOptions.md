@@ -1,12 +1,6 @@
 # struct JsonWriteOptions
 
-*Defined at [data/src/json_write_options.hpp:7](../../../../data/src/json_write_options.hpp#L7)*
-
-
-
-**brief** Formatting controls for deterministic JSON serialization. 
-
-
+*Defined at [data/src/json_write_options.cppm:7](../../../../data/src/json_write_options.cppm#L7)*
 
 ## Members
 

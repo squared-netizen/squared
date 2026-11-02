@@ -15,10 +15,11 @@ Programmer counterpart: [../programmer/graphics.md](../programmer/graphics.md)
 
 ```
 graphics/
-  *.hpp          the 11 workhorse headers, and graphics.hpp, which includes them all
-  src/           19 supporting headers, and the module's sources
+  module.cppm    sq.graphics, re-exporting every partition
+  *.cppm         the 11 workhorse partitions
+  src/           19 supporting partitions, and the module's implementation units
     common/      backend-independent halves of Texture and SpriteBatch
-    detail/      private: bitmap_font_detail.hpp, image_decode.hpp
+    detail/      private: bitmap_font_detail.cppm, image_decode.cppm
     null/        the headless backend
     gles/        the EGL and GLES 3.0 backend
   test/
@@ -431,11 +432,11 @@ out-parameter, and the error owned its message as a `std::string`.
 | `sizeof` (64-bit) | 48 (libstdc++), 40 (libc++) | 32 (20 on 32-bit) |
 | Owns | a `std::string` message | nothing; trivially copyable |
 | Allocates | on four messages, which glued a value onto the text | never |
-| A caller of `set_text` includes | `glyph_layout.hpp` and `src/bitmap_font_error.hpp` | `glyph_layout.hpp` |
+| A caller of `set_text` includes | `glyph_layout.cppm` and `src/bitmap_font_error.cppm` | `glyph_layout.cppm` |
 
 **Why.** Both callers in `gui` (`BatchPainter`'s text path, run for every
 label every frame, and `Painter::measure_text`) built an error, ignored it and
-threw it away; `glyph_layout.hpp` only forward-declared it, so each also
+threw it away; `glyph_layout.cppm` only forward-declared it, so each also
 included a `src/` header to do so. And because `reject_invalid_utf8` is on by
 default, a label holding one bad byte failed on every frame and built
 `"invalid UTF-8 at byte N"` into the string each time, past libc++'s inline
@@ -477,7 +478,7 @@ text: it is the driver's compile log, which squared cannot know in advance.
 
 ## Notes
 
-`graphics/src/detail/bitmap_font_detail.hpp` holds the
+`graphics/src/detail/bitmap_font_detail.cppm` holds the
 BMFont parsing helpers shared by `bitmap_font.cpp` and `glyph_layout.cpp`.
 
 `BitmapFont` and `GlyphLayout` both name their options struct only by

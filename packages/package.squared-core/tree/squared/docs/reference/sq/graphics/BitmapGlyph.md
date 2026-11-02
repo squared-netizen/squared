@@ -1,12 +1,6 @@
 # struct BitmapGlyph
 
-*Defined at [graphics/src/bitmap_glyph.hpp:9](../../../../graphics/src/bitmap_glyph.hpp#L9)*
-
-
-
-**brief** One Unicode scalar's source rectangle and layout metrics. 
-
-
+*Defined at [graphics/src/bitmap_glyph.cppm:9](../../../../graphics/src/bitmap_glyph.cppm#L9)*
 
 ## Members
 

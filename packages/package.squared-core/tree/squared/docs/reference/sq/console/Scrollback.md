@@ -1,18 +1,6 @@
 # class Scrollback
 
-*Defined at [console/scrollback.hpp:33](../../../../console/scrollback.hpp#L33)*
-
-
-
-**brief** The console's history: a ring of text lines, each with a level.
-
- It owns no memory. It is a view over storage its owner provides (the Console holds `std::array<char, scrollback_bytes>`), so its size is fixed at compile time and nothing is allocated, ever. When a new line does not fit, the oldest lines are dropped until it does.
-
- ```cpp std::array<char, sq::console::scrollback_bytes> storage; sq::console::Scrollback lines( storage ); lines.push( sq::console::Level::error, "shader did not link" ); for( const auto line : lines ) { draw( line.text, line.level ); } ```
-
- Not thread-safe: one thread pushes and reads.
-
-
+*Defined at [console/scrollback.cppm:28](../../../../console/scrollback.cppm#L28)*
 
 ## Records
 
@@ -54,31 +42,19 @@ Iterator
 
 *public std::size_t size()*
 
-*Defined at [console/scrollback.hpp:56](../../../../console/scrollback.hpp#L56)*
-
-
-
-**brief** Lines held now. 
+*Defined at [console/scrollback.cppm:51](../../../../console/scrollback.cppm#L51)*
 
 ### empty
 
 *public bool empty()*
 
-*Defined at [console/scrollback.hpp:59](../../../../console/scrollback.hpp#L59)*
-
-
-
-**brief** True when no line is held. 
+*Defined at [console/scrollback.cppm:54](../../../../console/scrollback.cppm#L54)*
 
 ### dropped
 
 *public std::uint64_t dropped()*
 
-*Defined at [console/scrollback.hpp:62](../../../../console/scrollback.hpp#L62)*
-
-
-
-**brief** Lines dropped to make room, since construction. 
+*Defined at [console/scrollback.cppm:57](../../../../console/scrollback.cppm#L57)*
 
 ### longest_line
 
@@ -100,11 +76,7 @@ Iterator
 
 *public Iterator end()*
 
-*Defined at [console/scrollback.hpp:109](../../../../console/scrollback.hpp#L109)*
-
-
-
-**brief** Past the newest line. 
+*Defined at [console/scrollback.cppm:104](../../../../console/scrollback.cppm#L104)*
 
 ### last
 

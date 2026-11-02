@@ -1,6 +1,6 @@
 # class Slider
 
-*Defined at [gui/slider.hpp:21](../../../../gui/slider.hpp#L21)*
+*Defined at [gui/slider.cppm:16](../../../../gui/slider.cppm#L16)*
 
 
 
@@ -144,7 +144,7 @@ Inherits from Widget
 
 *public float value()*
 
-*Defined at [gui/slider.hpp:52](../../../../gui/slider.hpp#L52)*
+*Defined at [gui/slider.cppm:47](../../../../gui/slider.cppm#L47)*
 
 
 
@@ -156,7 +156,7 @@ Inherits from Widget
 
 *public bool dragging()*
 
-*Defined at [gui/slider.hpp:116](../../../../gui/slider.hpp#L116)*
+*Defined at [gui/slider.cppm:111](../../../../gui/slider.cppm#L111)*
 
 
 

@@ -11,7 +11,7 @@ Programmer counterpart: [../programmer/math.md](../programmer/math.md)
 
 ```
 math/
-  math.hpp matrix4.hpp vector2.hpp
+  module.cppm matrix4.cppm vector2.cppm
   src/   one translation unit per type with definitions
   Makefile
 ```

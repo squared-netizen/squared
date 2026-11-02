@@ -1,9 +1,11 @@
-#include <squared/console/console.hpp>
+module;
 
-#include <algorithm>
-#include <cstdarg>
-#include <cstdio>
-#include <cstring>
+#include <stdarg.h>
+#include <stdio.h>
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

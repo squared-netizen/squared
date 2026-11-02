@@ -1,14 +1,10 @@
-#include <squared/data/json.hpp>
+module;
 
 #include <yyjson.h>
 
-#include <cmath>
-#include <cstdlib>
-#include <memory>
-#include <new>
-#include <string>
-#include <unordered_set>
-#include <utility>
+module sq.data;
+
+import sq.std;
 
 namespace sq::data
 {

@@ -1,32 +1,7 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/src/button_style.hpp>
-#include <squared/gui/src/check_box_style.hpp>
-#include <squared/gui/src/color_drawable.hpp>
-#include <squared/gui/src/drawable_ptr.hpp>
-#include <squared/gui/src/font_ptr.hpp>
-#include <squared/gui/src/insets.hpp>
-#include <squared/gui/src/label_style.hpp>
-#include <squared/gui/src/nine_patch_drawable.hpp>
-#include <squared/gui/src/nine_patch_splits.hpp>
-#include <squared/gui/src/panel_style.hpp>
-#include <squared/gui/src/progress_bar_style.hpp>
-#include <squared/gui/src/region_drawable.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/src/slider_style.hpp>
-#include <squared/gui/src/text_field_style.hpp>
-#include <squared/gui/src/window_style.hpp>
-
-#include <memory>
-#include <optional>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <utility>
+import sq.graphics;
+import sq.std;
 
 namespace sq::gui
 {

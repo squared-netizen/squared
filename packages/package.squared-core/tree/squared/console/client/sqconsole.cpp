@@ -28,29 +28,19 @@
 // A tool, not part of an app: built for the host (Termux, or a desktop) by
 // `make console` in a project, and by the console module's tests.
 
-#include <squared/console/line_reader.hpp>
-#include <squared/console/src/bridge_protocol.hpp>
+import sq.console;
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <array>
-#include <cerrno>
-#include <charconv>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+import sq.std;
 
 namespace
 {

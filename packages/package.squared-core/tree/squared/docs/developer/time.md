@@ -10,7 +10,7 @@ Programmer counterpart: [../programmer/time.md](../programmer/time.md)
 
 ```
 time/
-  duration.hpp time_point.hpp now.hpp timepiece.hpp deadline_queue.hpp time.hpp
+  duration.cppm time_point.cppm now.cppm timepiece.cppm deadline_queue.cppm module.cppm
   src/   now.cpp, timepiece.cpp
   test/  time_test.cpp
   Makefile

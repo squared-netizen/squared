@@ -5,10 +5,9 @@
 // a declaration - every consumer of a TextureAtlas includes it, and it sits
 // underneath the whole skin system.
 
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/texture_region.hpp>
+module sq.graphics;
 
-#include <string>
+import sq.std;
 
 namespace sq::graphics
 {

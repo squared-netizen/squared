@@ -1,7 +1,6 @@
-#include <squared/console/input_line.hpp>
+module sq.console;
 
-#include <algorithm>
-#include <cstring>
+import sq.std;
 
 namespace sq::console
 {

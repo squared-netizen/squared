@@ -1,6 +1,6 @@
 # class Table
 
-*Defined at [gui/table.hpp:20](../../../../gui/table.hpp#L20)*
+*Defined at [gui/table.cppm:17](../../../../gui/table.cppm#L17)*
 
 
 

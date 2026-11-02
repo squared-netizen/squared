@@ -6,18 +6,15 @@
 // live on the default vertex array as the sprite batch's do, and a failure
 // here is a bool rather than a GlesError, which owns a std::string.
 
-#include <squared/console/layout.hpp>
-#include <squared/console/renderer.hpp>
-#include <squared/console/src/colour.hpp>
-#include <squared/console/src/font8x8.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <algorithm>
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <limits>
+#include <stddef.h>
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

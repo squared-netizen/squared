@@ -1,25 +1,13 @@
-#include <squared/app/event.hpp>
-#include <squared/app/runtime.hpp>
-#include <squared/files/file_handle.hpp>
-#include <squared/files/file_system.hpp>
-#include <squared/files/posix_file_system.hpp>
-#include <squared/files/src/file_error.hpp>
-#include <squared/files/src/file_error_code.hpp>
-#include <squared/files/src/file_read_result.hpp>
-#include <squared/files/src/file_type.hpp>
-#include <squared/stage/app.hpp>
-#include <squared/time/now.hpp>
+module;
 
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <span>
-#include <string>
-#include <string_view>
-#include <utility>
+#include <stdio.h>
+
+module sq.stage;
+
+import sq.app;
+import sq.files;
+import sq.time;
+import sq.std;
 
 namespace sq
 {

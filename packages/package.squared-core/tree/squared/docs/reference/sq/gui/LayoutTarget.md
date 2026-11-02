@@ -1,6 +1,6 @@
 # struct LayoutTarget
 
-*Defined at [gui/layout_file.hpp:62](../../../../gui/layout_file.hpp#L62)*
+*Defined at [gui/layout_file.cppm:56](../../../../gui/layout_file.cppm#L56)*
 
 
 

@@ -6,9 +6,7 @@
 // was deleted after invalidate()".
 #include <GLES3/gl3.h>
 
-#include <cstring>
-#include <string>
-#include <vector>
+import sq.std;
 
 namespace glstub
 {

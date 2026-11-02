@@ -1,20 +1,7 @@
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/glyph_layout.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/glyph_placement.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/batch_painter.hpp>
-#include <squared/gui/src/font_resource.hpp>
-#include <squared/gui/src/rectangle.hpp>
-#include <squared/gui/src/size.hpp>
+module sq.gui;
 
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <string_view>
+import sq.graphics;
+import sq.std;
 
 namespace sq::gui
 {

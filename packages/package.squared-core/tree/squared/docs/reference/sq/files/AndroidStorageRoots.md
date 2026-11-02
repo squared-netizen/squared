@@ -1,12 +1,6 @@
 # struct AndroidStorageRoots
 
-*Defined at [files/android_asset_file_system.hpp:22](../../../../files/android_asset_file_system.hpp#L22)*
-
-
-
-**brief** Directories the writable file types resolve to on Android. 
-
-
+*Defined at [files/android_asset_file_system.cppm:23](../../../../files/android_asset_file_system.cppm#L23)*
 
 ## Members
 

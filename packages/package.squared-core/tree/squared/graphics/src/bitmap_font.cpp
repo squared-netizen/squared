@@ -1,19 +1,6 @@
-#include "detail/bitmap_font_detail.hpp"
+module sq.graphics;
 
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/src/bitmap_font_error.hpp>
-#include <squared/graphics/src/bitmap_font_error_code.hpp>
-#include <squared/graphics/src/bitmap_font_page.hpp>
-#include <squared/graphics/src/bitmap_font_parse_limits.hpp>
-#include <squared/graphics/src/bitmap_glyph.hpp>
-#include <squared/graphics/src/bitmap_kerning.hpp>
-
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <string>
-#include <string_view>
-#include <utility>
+import sq.std;
 
 namespace sq::graphics
 {

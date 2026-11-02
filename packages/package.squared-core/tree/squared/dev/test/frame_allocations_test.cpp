@@ -1,22 +1,12 @@
-#include <squared/dev/dev_log.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.dev;
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <atomic>
-#include <cassert>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <memory>
-#include <new>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <vector>
+import sq.std;
 
 namespace
 {

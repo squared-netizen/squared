@@ -37,6 +37,11 @@
 #                        nothing printed (make V=1 prints the command)
 #   SQUARED_HITS         a file that gets a line for each object from the
 #                        cache (the archive's line counts them); may be empty
+#   SQUARED_CACHE_INPUTS files (build/modules.mk's .inputs) naming the module
+#                        interfaces whose BMIs this compile may import: they
+#                        join what it read, as clang's dependency file does
+#                        not name them (a BMI itself is never part of a key:
+#                        it holds its workspace's paths)
 
 set -euo pipefail
 
@@ -104,7 +109,13 @@ md5() { md5sum | cut -d' ' -f1; }
 # The files a dependency file names, one a line: not the target, the line
 # breaks or -MP's empty rules, each once.
 files_of() {
-    tr -d '\\' <"$1" | tr ' \t' '\n\n' | grep -v -e ':$' -e '^$' | awk '!seen[$0]++'
+    {
+        tr -d '\\' <"$1" | tr ' \t' '\n\n'
+        local inputs
+        for inputs in ${SQUARED_CACHE_INPUTS:-}; do
+            [ ! -f "$inputs" ] || cat "$inputs"
+        done
+    } | grep -v -e ':$' -e '^$' -e '\.pcm$' | awk '!seen[$0]++'
 }
 
 # What the files of a list hold now: squared's own by content, the rest by

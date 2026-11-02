@@ -1,18 +1,6 @@
 # class ModelList
 
-*Defined at [messaging/model_list.hpp:96](../../../../messaging/model_list.hpp#L96)*
-
-
-
-**brief** The model's end of one virtualized list. It answers the list widget's `view` with the rows in it, and after a change sends only what changed on screen: a row whose item changed, and the fields of items new to the view.
-
- Telegrams, for a list named `inventory`:
-
- | Telegram | Sent | |---|---| | `state inventory.count 300` | at start, and when the count changes | | `state inventory[20] 17` | row 20 shows the item with uid 17 (row 0 is written `inventory`) | | the item's fields (`state item[17].name ...`) | by the source's `publish`, for items new to the view |
-
- Over storage its owner gives it: 4 bytes a row the view may hold, and a scratch area as large, which every list on one thread may share. The model's thread only.
-
-
+*Defined at [messaging/model_list.cppm:92](../../../../messaging/model_list.cppm#L92)*
 
 ## Functions
 
@@ -60,29 +48,25 @@
 
 *public Name name()*
 
-*Defined at [messaging/model_list.hpp:125](../../../../messaging/model_list.hpp#L125)*
+*Defined at [messaging/model_list.cppm:121](../../../../messaging/model_list.cppm#L121)*
 
 ### count
 
 *public std::uint32_t count()*
 
-*Defined at [messaging/model_list.hpp:126](../../../../messaging/model_list.hpp#L126)*
+*Defined at [messaging/model_list.cppm:122](../../../../messaging/model_list.cppm#L122)*
 
 ### first
 
 *public std::uint32_t first()*
 
-*Defined at [messaging/model_list.hpp:128](../../../../messaging/model_list.hpp#L128)*
-
-
-
-**brief** The rows in the view: from `first()`, `rows()` of them. 
+*Defined at [messaging/model_list.cppm:124](../../../../messaging/model_list.cppm#L124)*
 
 ### rows
 
 *public std::uint32_t rows()*
 
-*Defined at [messaging/model_list.hpp:129](../../../../messaging/model_list.hpp#L129)*
+*Defined at [messaging/model_list.cppm:125](../../../../messaging/model_list.cppm#L125)*
 
 
 

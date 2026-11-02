@@ -5,36 +5,16 @@
 // test/sqgen/bad/ and keyword/ it prints what each expected.txt holds, writes
 // nothing, and fails.
 
-#include <squared/gui/button.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/image.hpp>
-#include <squared/gui/instantiate.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/layout.hpp>
-#include <squared/gui/layout_writer.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/scroll_pane.hpp>
-#include <squared/gui/separator.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/stack.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/text_field.hpp>
-#include <squared/messaging/key.hpp>
+import sq.gui;
+import sq.messaging;
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/wait.h>
 
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
+import sq.std;
 #include <layouts.hpp>
 #include <names.hpp>
-#include <string>
-#include <string_view>
-#include <type_traits>
 
 using namespace sq::gui;
 namespace fs = std::filesystem;

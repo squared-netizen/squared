@@ -1,12 +1,6 @@
 # struct SkinLoadIssue
 
-*Defined at [gui/src/skin_load_issue.hpp:13](../../../../gui/src/skin_load_issue.hpp#L13)*
-
-
-
-**brief** One path-tagged diagnostics entry produced by skin loading.
-
-
+*Defined at [gui/src/skin_load_issue.cppm:12](../../../../gui/src/skin_load_issue.cppm#L12)*
 
 ## Members
 

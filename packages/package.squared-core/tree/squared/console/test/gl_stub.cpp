@@ -7,8 +7,7 @@
 
 #include <GLES3/gl3.h>
 
-#include <algorithm>
-#include <cstring>
+import sq.std;
 
 namespace glstub
 {

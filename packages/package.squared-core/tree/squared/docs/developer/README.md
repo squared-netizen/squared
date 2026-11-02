@@ -5,8 +5,8 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 
 ## Cross-cutting
 
-- [File layout](file-layout.md) &mdash; where files go in a module, the
-  one-type-per-file rule and the self-containment invariant
+- [File layout](file-layout.md) &mdash; where files go in a module, a
+  partition per type, and what a partition may declare
 - [Memory profile](memory-profile.md) &mdash; measured `sizeof` of every core
   type, and what allocates
 - [Priority audit](priority-audit.md) &mdash; where the tree contradicts the
@@ -15,6 +15,9 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [Extension policy](extension-policy.md) &mdash; why squared adds fewer
   extension points than a linked library would, and what that obliges
 - [Design patterns](design-patterns.md)
+- [Modules](modules.md) &mdash; squared as C++20 modules (7b.4): what the
+  build makes and in what order, `sq.std`, what an importer must share, the
+  measured cost of a partition per type
 - [Build and toolchain](build-and-toolchain.md)
 - [Code style](code-style.md) &mdash; CDDA's formatting rules, as
   `squared/.clang-format`, and where squared differs

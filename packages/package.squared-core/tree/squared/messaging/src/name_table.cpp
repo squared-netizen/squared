@@ -1,9 +1,6 @@
-#include <squared/messaging/name_table.hpp>
+module sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <charconv>
-#include <cstring>
+import sq.std;
 
 namespace sq::messaging
 {

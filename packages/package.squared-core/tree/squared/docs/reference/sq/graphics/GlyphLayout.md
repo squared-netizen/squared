@@ -1,12 +1,6 @@
 # class GlyphLayout
 
-*Defined at [graphics/glyph_layout.hpp:19](../../../../graphics/glyph_layout.hpp#L19)*
-
-
-
-**brief** Reusable value-semantic layout of UTF-8 text into glyph quads. 
-
-
+*Defined at [graphics/glyph_layout.cppm:15](../../../../graphics/glyph_layout.cppm#L15)*
 
 ## Functions
 
@@ -48,31 +42,31 @@
 
 *public float width()*
 
-*Defined at [graphics/glyph_layout.hpp:47](../../../../graphics/glyph_layout.hpp#L47)*
+*Defined at [graphics/glyph_layout.cppm:43](../../../../graphics/glyph_layout.cppm#L43)*
 
 ### height
 
 *public float height()*
 
-*Defined at [graphics/glyph_layout.hpp:48](../../../../graphics/glyph_layout.hpp#L48)*
+*Defined at [graphics/glyph_layout.cppm:44](../../../../graphics/glyph_layout.cppm#L44)*
 
 ### line_height
 
 *public float line_height()*
 
-*Defined at [graphics/glyph_layout.hpp:49](../../../../graphics/glyph_layout.hpp#L49)*
+*Defined at [graphics/glyph_layout.cppm:45](../../../../graphics/glyph_layout.cppm#L45)*
 
 ### glyphs
 
 *public std::span<const GlyphPlacement> glyphs()*
 
-*Defined at [graphics/glyph_layout.hpp:50](../../../../graphics/glyph_layout.hpp#L50)*
+*Defined at [graphics/glyph_layout.cppm:46](../../../../graphics/glyph_layout.cppm#L46)*
 
 ### lines
 
 *public std::span<const GlyphLine> lines()*
 
-*Defined at [graphics/glyph_layout.hpp:51](../../../../graphics/glyph_layout.hpp#L51)*
+*Defined at [graphics/glyph_layout.cppm:47](../../../../graphics/glyph_layout.cppm#L47)*
 
 
 

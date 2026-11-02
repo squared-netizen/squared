@@ -1,12 +1,6 @@
 # struct JsonWriteResult
 
-*Defined at [data/src/json_write_result.hpp:11](../../../../data/src/json_write_result.hpp#L11)*
-
-
-
-**brief** Result of serializing one owned JSON value. 
-
-
+*Defined at [data/src/json_write_result.cppm:10](../../../../data/src/json_write_result.cppm#L10)*
 
 ## Members
 
@@ -22,11 +16,7 @@ public JsonError error
 
 *public bool operator bool()*
 
-*Defined at [data/src/json_write_result.hpp:20](../../../../data/src/json_write_result.hpp#L20)*
-
-
-
-**brief** Return whether serialization succeeded. 
+*Defined at [data/src/json_write_result.cppm:19](../../../../data/src/json_write_result.cppm#L19)*
 
 
 

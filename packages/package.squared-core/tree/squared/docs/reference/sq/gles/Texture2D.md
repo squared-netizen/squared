@@ -1,6 +1,6 @@
 # class Texture2D
 
-*Defined at [gles/texture2d.hpp:27](../../../../gles/texture2d.hpp#L27)*
+*Defined at [gles/texture2d.cppm:23](../../../../gles/texture2d.cppm#L23)*
 
 
 
@@ -18,19 +18,19 @@
 
 *public void Texture2D()*
 
-*Defined at [gles/texture2d.hpp:30](../../../../gles/texture2d.hpp#L30)*
+*Defined at [gles/texture2d.cppm:26](../../../../gles/texture2d.cppm#L26)*
 
 ### Texture2D
 
 *public void Texture2D(const Texture2D & )*
 
-*Defined at [gles/texture2d.hpp:33](../../../../gles/texture2d.hpp#L33)*
+*Defined at [gles/texture2d.cppm:29](../../../../gles/texture2d.cppm#L29)*
 
 ### operator=
 
 *public Texture2D & operator=(const Texture2D & )*
 
-*Defined at [gles/texture2d.hpp:34](../../../../gles/texture2d.hpp#L34)*
+*Defined at [gles/texture2d.cppm:30](../../../../gles/texture2d.cppm#L30)*
 
 ### ~Texture2D
 
@@ -150,7 +150,7 @@
 
 *public bool valid()*
 
-*Defined at [gles/texture2d.hpp:97](../../../../gles/texture2d.hpp#L97)*
+*Defined at [gles/texture2d.cppm:93](../../../../gles/texture2d.cppm#L93)*
 
 
 
@@ -160,7 +160,7 @@
 
 *public std::uint32_t name()*
 
-*Defined at [gles/texture2d.hpp:100](../../../../gles/texture2d.hpp#L100)*
+*Defined at [gles/texture2d.cppm:96](../../../../gles/texture2d.cppm#L96)*
 
 
 
@@ -170,7 +170,7 @@
 
 *public int width()*
 
-*Defined at [gles/texture2d.hpp:103](../../../../gles/texture2d.hpp#L103)*
+*Defined at [gles/texture2d.cppm:99](../../../../gles/texture2d.cppm#L99)*
 
 
 
@@ -180,7 +180,7 @@
 
 *public int height()*
 
-*Defined at [gles/texture2d.hpp:106](../../../../gles/texture2d.hpp#L106)*
+*Defined at [gles/texture2d.cppm:102](../../../../gles/texture2d.cppm#L102)*
 
 
 
@@ -190,7 +190,7 @@
 
 *public TextureFormat format()*
 
-*Defined at [gles/texture2d.hpp:109](../../../../gles/texture2d.hpp#L109)*
+*Defined at [gles/texture2d.cppm:105](../../../../gles/texture2d.cppm#L105)*
 
 
 

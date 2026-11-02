@@ -1,14 +1,6 @@
 # class JsonValue
 
-*Defined at [data/json_value.hpp:21](../../../../data/json_value.hpp#L21)*
-
-
-
-**brief** One owned JSON value independent of the parser backend.
-
- Objects use bytewise UTF-8 key ordering. This makes serialization stable across runs while retaining distinct signed integers, unsigned integers, and floating-point numbers.
-
-
+*Defined at [data/json_value.cppm:15](../../../../data/json_value.cppm#L15)*
 
 ## Functions
 
@@ -16,11 +8,7 @@
 
 *public void JsonValue()*
 
-*Defined at [data/json_value.hpp:43](../../../../data/json_value.hpp#L43)*
-
-
-
-**brief** Default-construct a JSON null value. 
+*Defined at [data/json_value.cppm:37](../../../../data/json_value.cppm#L37)*
 
 ### JsonValue
 
@@ -272,11 +260,7 @@
 | Object |
 
 
-*Defined at [data/json_value.hpp:31](../../../../data/json_value.hpp#L31)*
-
-
-
-**brief** Exact stored JSON type. 
+*Defined at [data/json_value.cppm:25](../../../../data/json_value.cppm#L25)*
 
 
 

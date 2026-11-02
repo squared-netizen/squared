@@ -8,15 +8,16 @@
 // It also counts what it would have drawn. A draw call count is the thing a
 // batching bug shows up in, and it is invisible in a real driver.
 
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/texture.hpp>
+module sq.graphics;
 
-#include <cstddef>
+import sq.std;
 
 namespace sq::graphics
 {
 
+// extern "C++": a test declares these itself (`extern std::size_t
+// g_null_draw_calls;`), outside the module, so they belong to the global module.
+extern "C++" {
 namespace detail
 {
 
@@ -38,6 +39,7 @@ int g_null_clip_height = -1;
 float g_null_first_quad_uv[8] = {};
 
 } // namespace detail
+} // extern "C++"
 
 namespace
 {

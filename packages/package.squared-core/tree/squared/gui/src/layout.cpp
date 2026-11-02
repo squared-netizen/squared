@@ -1,13 +1,11 @@
-#include <squared/gui/layout.hpp>
-#include <squared/messaging/src/verb.hpp>
-#include <squared/messaging/telegram_text.hpp>
+module;
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string_view>
+#include <stdint.h>
+
+module sq.gui;
+
+import sq.messaging;
+import sq.std;
 
 namespace sq::gui
 {

@@ -1,12 +1,6 @@
 # struct Scheduled
 
-*Defined at [time/deadline_queue.hpp:62](../../../../../time/deadline_queue.hpp#L62)*
-
-
-
-**brief** The result, and the ticket when scheduled. 
-
-
+*Defined at [time/deadline_queue.cppm:53](../../../../../time/deadline_queue.cppm#L53)*
 
 ## Members
 
@@ -22,7 +16,7 @@ public Ticket ticket
 
 *public bool operator bool()*
 
-*Defined at [time/deadline_queue.hpp:67](../../../../../time/deadline_queue.hpp#L67)*
+*Defined at [time/deadline_queue.cppm:58](../../../../../time/deadline_queue.cppm#L58)*
 
 
 

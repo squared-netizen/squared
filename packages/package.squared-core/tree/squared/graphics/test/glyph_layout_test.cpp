@@ -1,11 +1,9 @@
-#include <squared/dev/frame_allocations.hpp>
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/glyph_layout.hpp>
-#include <squared/graphics/src/glyph_layout_options.hpp>
+import sq.dev;
+import sq.graphics;
 
-#include <cassert>
-#include <cstdio>
-#include <string_view>
+#include <assert.h>
+
+import sq.std;
 
 namespace
 {

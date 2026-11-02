@@ -3,17 +3,11 @@
 // allocation), the widget's window (when it asks), and the two together
 // through a stand-in, a fling and a sort with every row on screen checked.
 
-#include <squared/messaging/list_window.hpp>
-#include <squared/messaging/model_list.hpp>
+import sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <map>
-#include <numeric>
-#include <random>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

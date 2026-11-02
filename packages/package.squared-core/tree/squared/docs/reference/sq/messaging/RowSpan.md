@@ -1,6 +1,6 @@
 # struct RowSpan
 
-*Defined at [messaging/list_window.hpp:10](../../../../messaging/list_window.hpp#L10)*
+*Defined at [messaging/list_window.cppm:9](../../../../messaging/list_window.cppm#L9)*
 
 
 
@@ -22,7 +22,7 @@ public std::uint32_t rows
 
 *public std::uint32_t last()*
 
-*Defined at [messaging/list_window.hpp:16](../../../../messaging/list_window.hpp#L16)*
+*Defined at [messaging/list_window.cppm:15](../../../../messaging/list_window.cppm#L15)*
 
 
 

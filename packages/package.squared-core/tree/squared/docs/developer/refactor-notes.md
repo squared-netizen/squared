@@ -14,10 +14,10 @@
 - Headers were moved to the module matching their namespace. `gui/include/`
   had been holding headers for four namespaces: `graphics`, `graphics2d`,
   `scene2d` and `gui`.
-- `gui.hpp` (2,719 lines, 55 types) and `gui.cpp` (3,281 lines) were split
-  into one file per type, along with `bitmap_font.hpp` (13 types),
-  `texture.hpp` (7), `input.hpp` (9), `skin_loader.hpp` (6) and
-  `timepiece.hpp` (3).
+- `gui/module.cppm` (2,719 lines, 55 types) and `gui.cpp` (3,281 lines) were split
+  into one file per type, along with `bitmap_font.cppm` (13 types),
+  `texture.cppm` (7), `input.cppm` (9), `skin_loader.cppm` (6) and
+  `timepiece.cppm` (3).
 - Include sets were recomputed per file, forward declaring where the rule in
   [file-layout.md](file-layout.md) allows it.
 - Anonymous-namespace helpers shared by several now-separate translation units
@@ -76,7 +76,7 @@ A separate pass after the split, touching nine files:
 - `Widget` gains `wants_text_input()`; `TextField` overrides it
 - 17 `dynamic_cast` call sites replaced across `ui.cpp`, `widget.cpp` and
   `stack.cpp`
-- `ui.cpp` drops `#include <squared/gui/text_field.hpp>`, now unused
+- `ui.cpp` drops `import sq.gui;`, now unused
 
 Verified: `make SQUARED_ABI=-fno-rtti` builds all five archives with zero
 warnings, 114 headers remain self-contained, and a behavioural test links

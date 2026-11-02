@@ -1,11 +1,10 @@
-#include <squared/files/file_handle.hpp>
-#include <squared/files/file_system.hpp>
-#include <squared/files/src/file_error_code.hpp>
+module;
 
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <stdio.h>
+
+module sq.files;
+
+import sq.std;
 
 namespace sq::files
 {

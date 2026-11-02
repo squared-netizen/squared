@@ -5,16 +5,12 @@
 // many random pushes into several storage sizes, so wrapping, dropping and
 // cutting long lines are all exercised, not only the cases written out here.
 
-#include <squared/console/scrollback.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.console;
+import sq.dev;
 
-#include <array>
-#include <cassert>
-#include <cstdio>
-#include <deque>
-#include <random>
-#include <string>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 using sq::console::Level;
 using sq::console::Line;

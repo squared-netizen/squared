@@ -1,6 +1,6 @@
 # struct LogSinkOptions
 
-*Defined at [dev/dev_log.hpp:33](../../../../dev/dev_log.hpp#L33)*
+*Defined at [dev/dev_log.cppm:32](../../../../dev/dev_log.cppm#L32)*
 
  Where the sink sends and what it watches.
 

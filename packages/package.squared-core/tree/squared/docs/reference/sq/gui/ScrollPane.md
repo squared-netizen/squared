@@ -1,12 +1,6 @@
 # class ScrollPane
 
-*Defined at [gui/scroll_pane.hpp:18](../../../../gui/scroll_pane.hpp#L18)*
-
-
-
-**brief** Container clipping and vertically scrolling a larger child. 
-
-
+*Defined at [gui/scroll_pane.cppm:15](../../../../gui/scroll_pane.cppm#L15)*
 
 Inherits from Widget
 
@@ -24,25 +18,19 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/scroll_pane.hpp:23](../../../../gui/scroll_pane.hpp#L23)*
+*Defined at [gui/scroll_pane.cppm:20](../../../../gui/scroll_pane.cppm#L20)*
 
 ### actor_interface
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/scroll_pane.hpp:28](../../../../gui/scroll_pane.hpp#L28)*
+*Defined at [gui/scroll_pane.cppm:25](../../../../gui/scroll_pane.cppm#L25)*
 
 ### scroll_y
 
 *public float scroll_y()*
 
-*Defined at [gui/scroll_pane.hpp:50](../../../../gui/scroll_pane.hpp#L50)*
-
-
-
-**brief** Read the vertical scroll offset.
-
-**return** Current offset in logical units.
+*Defined at [gui/scroll_pane.cppm:47](../../../../gui/scroll_pane.cppm#L47)*
 
 ### set_content
 

@@ -1,12 +1,6 @@
 # struct BridgeHandlers
 
-*Defined at [console/bridge.hpp:47](../../../../console/bridge.hpp#L47)*
-
-
-
-**brief** How the bridge reaches its owner: the event loop, and the Console. 
-
-
+*Defined at [console/bridge.cppm:43](../../../../console/bridge.cppm#L43)*
 
 ## Members
 

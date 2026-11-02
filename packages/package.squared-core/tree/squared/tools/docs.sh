@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # docs.sh: the API reference, docs/reference/, made by clang-doc from the
-# comments in the public headers. Committed, so it reads on GitHub without a
+# comments in the public interfaces. Committed, so it reads on GitHub without a
 # build; made again by this script, never edited by hand.
 #
 #   squared/tools/docs.sh            write docs/reference/
@@ -9,11 +9,11 @@
 #   squared/tools/docs.sh --missing  also list the public functions and types
 #                                    that have no comment
 #
-# Every public header (the workhorse headers at each module's root) becomes a
-# one-line translation unit that includes it, so the reference covers what a
-# user can include and nothing else; the headers are self-contained, which
-# `make headers` checks. clang-doc's pages are then tidied: "Defined at"
-# becomes a link to the header and line, `_Bool` reads `bool`, and the pages
+# Every public interface (the partitions at each module's root, 7b.4: what were
+# the workhorse headers) is a translation unit of its own, so the reference
+# covers what a user imports and nothing else. A unit reads the BMIs of what
+# it imports: build first (make). clang-doc's pages are then tidied: "Defined
+# at" becomes a link to the file and line, `_Bool` reads `bool`, and the pages
 # for anonymous types and the global namespace are dropped.
 #
 # The pages depend on clang-doc's version, so README.md records the one that
@@ -108,26 +108,41 @@ if ! "$clang_doc" --format=md --output="$work/probe/out" --executor=all-TUs --ex
     exit 2
 fi
 
-# ---- one translation unit per public header ----------------------------------
+# ---- one translation unit per public interface ------------------------------
+# The partitions at a module's root, not its primary (module.cppm re-exports,
+# and declares nothing), nor what is under src/.
+bmis="$root/build/release/modules"
+if [ ! -f "$bmis/sq.std.pcm" ]; then
+    echo "docs: no BMIs in ${bmis#"$root/"}: build first (make); clang-doc reads what each unit imports" >&2
+    exit 2
+fi
+# gles is built only for the gles backend; its BMIs are made here when the
+# GLES headers are there (Termux has them), and its pages left out otherwise.
+if [ ! -f "$bmis/sq.gles.pcm" ] && [ -f "$root/gles/Makefile" ]; then
+    make -s --no-print-directory -C "$root/gles" > "$work/gles-build.log" 2>&1 ||
+        echo "docs: gles did not build here (no GLES headers?): its pages are left out" >&2
+fi
 headers=()
-while IFS= read -r header; do headers+=("$header"); done < <(
-    cd "$root" && find . -mindepth 2 -maxdepth 2 -name '*.hpp' \
+while IFS= read -r header; do
+    [ -f "$bmis/sq.${header%%/*}.pcm" ] || continue
+    headers+=("$header")
+done < <(
+    cd "$root" && find . -mindepth 2 -maxdepth 2 -name '*.cppm' -not -name module.cppm \
         -not -path './build/*' -not -path './third_party/*' -not -path './docs/*' |
         sed 's|^\./||' | LC_ALL=C sort)
 {
     printf '['
     first=1
     for header in "${headers[@]}"; do
-        unit="$work/tu/$(printf '%s' "$header" | tr '/.' '__').cpp"
-        printf '#include <squared/%s>\n' "$header" > "$unit"
+        unit="$root/$header"
         [ "$first" = 1 ] || printf ','
         first=0
-        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-I%s","-c","%s"]}' \
-            "$work" "$unit" "$cxx" "$tree" "$unit"
+        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-pthread","-I%s","-fprebuilt-module-path=%s","-c","%s"]}' \
+            "$root" "$unit" "$cxx" "$tree" "$bmis" "$unit"
     done
     printf '\n]\n'
 } > "$work/compile_commands.json"
-echo "docs: clang-doc $version over ${#headers[@]} public headers"
+echo "docs: clang-doc $version over ${#headers[@]} public interfaces"
 
 # clang-doc exits 0 after errors and writes what it could: pages with types
 # missing. So an error in its log fails the run too, and nothing is written.
@@ -259,8 +274,8 @@ dots_end "$pages" "$page_total"
 {
     echo "# API reference"
     echo
-    echo "Made by \`tools/docs.sh\` from the comments in the public headers; made by clang-doc $version."
-    echo "Do not edit these pages: change the header's comment and run \`squared/tools/docs.sh\`."
+    echo "Made by \`tools/docs.sh\` from the comments in the public interfaces; made by clang-doc $version."
+    echo "Do not edit these pages: change the interface's comment and run \`squared/tools/docs.sh\`."
     echo
     echo "The guides are [../programmer/README.md](../programmer/README.md) (using squared) and"
     echo "[../developer/README.md](../developer/README.md) (how it works). This is the list of"

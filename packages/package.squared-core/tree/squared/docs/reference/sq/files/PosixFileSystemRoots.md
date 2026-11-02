@@ -1,12 +1,6 @@
 # struct PosixFileSystemRoots
 
-*Defined at [files/posix_file_system.hpp:19](../../../../files/posix_file_system.hpp#L19)*
-
-
-
-**brief** Directories each FileType resolves to under a POSIX file system. 
-
-
+*Defined at [files/posix_file_system.cppm:17](../../../../files/posix_file_system.cppm#L17)*
 
 ## Members
 

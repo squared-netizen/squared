@@ -1,12 +1,6 @@
 # struct WindowStyle
 
-*Defined at [gui/src/window_style.hpp:12](../../../../gui/src/window_style.hpp#L12)*
-
-
-
-**brief** Style data for a Window widget. 
-
-
+*Defined at [gui/src/window_style.cppm:12](../../../../gui/src/window_style.cppm#L12)*
 
 ## Members
 

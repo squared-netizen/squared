@@ -1,11 +1,6 @@
-#include <squared/gui/actor.hpp>
-#include <squared/gui/group.hpp>
+module sq.gui;
 
-#include <algorithm>
-#include <cstddef>
-#include <memory>
-#include <stdexcept>
-#include <utility>
+import sq.std;
 
 namespace sq::gui
 {

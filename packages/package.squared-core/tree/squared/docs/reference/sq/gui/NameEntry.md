@@ -1,6 +1,6 @@
 # struct NameEntry
 
-*Defined at [gui/layout_file.hpp:22](../../../../gui/layout_file.hpp#L22)*
+*Defined at [gui/layout_file.cppm:16](../../../../gui/layout_file.cppm#L16)*
 
 
 

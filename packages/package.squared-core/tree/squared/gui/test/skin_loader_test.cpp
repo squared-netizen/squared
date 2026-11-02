@@ -9,18 +9,9 @@
 // lost their colour and nothing showed text. The tests that existed built
 // their skins in code and could not see it.
 
-#include <squared/gui/skin.hpp>
-#include <squared/gui/skin_loader.hpp>
-#include <squared/gui/src/color_drawable.hpp>
-#include <squared/gui/src/font_resource.hpp>
-#include <squared/gui/src/skin_load_issue.hpp>
-#include <squared/gui/src/skin_load_report.hpp>
-#include <squared/gui/src/skin_load_severity.hpp>
+import sq.gui;
 
-#include <cstdio>
-#include <memory>
-#include <string>
-#include <string_view>
+import sq.std;
 
 using namespace sq::gui;
 

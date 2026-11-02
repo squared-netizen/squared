@@ -91,35 +91,13 @@
 
 *Interface * actor_cast(Actor * actor)*
 
-*Defined at [gui/actor.hpp:224](../../../../gui/actor.hpp#L224)*
-
-
-
-**brief** Downcast an actor to a derived interface without RTTI.
-
-**Interface** Type publishing a static `actor_interface_id` constant and overriding Actor::actor_interface().
-
-**actor** Actor to inspect; null is accepted and yields null.
-
-**return** Pointer to the interface, or null when the actor does not publish it.
-
-**note** One virtual call. This replaces dynamic_cast on every actor and GUI traversal, so the framework builds with `-fno-rtti`.
+*Defined at [gui/actor.cppm:223](../../../../gui/actor.cppm#L223)*
 
 ### actor_cast
 
 *const Interface * actor_cast(const Actor * actor)*
 
-*Defined at [gui/actor.hpp:239](../../../../gui/actor.hpp#L239)*
-
-
-
-**brief** Downcast a read-only actor to a derived interface without RTTI.
-
-**Interface** Type publishing a static `actor_interface_id` constant.
-
-**actor** Actor to inspect; null is accepted and yields null.
-
-**return** Pointer to the interface, or null when the actor does not publish it.
+*Defined at [gui/actor.cppm:238](../../../../gui/actor.cppm#L238)*
 
 ### check
 
@@ -133,21 +111,13 @@
 
 *bool edits_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:166](../../../../gui/layout.hpp#L166)*
-
-
-
-**brief** Whether a node of this type edits the value it shows: a check box, slider or text field. 
+*Defined at [gui/layout.cppm:160](../../../../gui/layout.cppm#L160)*
 
 ### holds_nodes
 
 *bool holds_nodes(NodeType type)*
 
-*Defined at [gui/layout.hpp:137](../../../../gui/layout.hpp#L137)*
-
-
-
-**brief** Whether nodes go inside a node of this type: a table, a scroll (one), a stack, or a list (one: its row).
+*Defined at [gui/layout.cppm:131](../../../../gui/layout.cppm#L131)*
 
 ### instantiate
 
@@ -213,11 +183,7 @@
 
 *std::size_t node_numbers(NodeType type)*
 
-*Defined at [gui/layout.hpp:195](../../../../gui/layout.hpp#L195)*
-
-
-
-**brief** How many numbers a node of this type takes: a slider 3, a progress bar 2. 
+*Defined at [gui/layout.cppm:189](../../../../gui/layout.cppm#L189)*
 
 ### node_type_name
 
@@ -239,19 +205,19 @@
 
 *bool operator==(const LayoutCheck & , const LayoutCheck & )*
 
-*Defined at [gui/layout.hpp:344](../../../../gui/layout.hpp#L344)*
+*Defined at [gui/layout.cppm:338](../../../../gui/layout.cppm#L338)*
 
 ### operator==
 
 *bool operator==(const LayoutNode & , const LayoutNode & )*
 
-*Defined at [gui/layout.hpp:128](../../../../gui/layout.hpp#L128)*
+*Defined at [gui/layout.cppm:122](../../../../gui/layout.cppm#L122)*
 
 ### operator==
 
 *bool operator==(const PaneShape & , const PaneShape & )*
 
-*Defined at [gui/layout.hpp:73](../../../../gui/layout.hpp#L73)*
+*Defined at [gui/layout.cppm:67](../../../../gui/layout.cppm#L67)*
 
 ### pane_place_name
 
@@ -335,21 +301,13 @@
 
 *bool shows_type(NodeType type, messaging::ValueType value)*
 
-*Defined at [gui/layout.hpp:176](../../../../gui/layout.hpp#L176)*
-
-
-
-**brief** Whether a node of this type can show a value of this type: a label any but uids, a check box a bool, a text field text, a slider or progress bar a number or an integer.
+*Defined at [gui/layout.cppm:170](../../../../gui/layout.cppm#L170)*
 
 ### shows_value
 
 *bool shows_value(NodeType type)*
 
-*Defined at [gui/layout.hpp:151](../../../../gui/layout.hpp#L151)*
-
-
-
-**brief** Whether a node of this type shows a value an address gives it (`bind`). 
+*Defined at [gui/layout.cppm:145](../../../../gui/layout.cppm#L145)*
 
 ### tap_word
 
@@ -370,11 +328,7 @@
 | end |
 
 
-*Defined at [gui/src/alignment.hpp:9](../../../../gui/src/alignment.hpp#L9)*
-
-
-
-**brief** Per-cell alignment relative to the cell box. 
+*Defined at [gui/src/alignment.cppm:9](../../../../gui/src/alignment.cppm#L9)*
 
 | enum class Direction |
 
@@ -384,11 +338,7 @@
 | vertical |
 
 
-*Defined at [gui/src/direction.hpp:9](../../../../gui/src/direction.hpp#L9)*
-
-
-
-**brief** Main stacking axis of a linear layout. 
+*Defined at [gui/src/direction.cppm:9](../../../../gui/src/direction.cppm#L9)*
 
 | enum class InputPhase |
 
@@ -399,11 +349,7 @@
 | bubble |
 
 
-*Defined at [gui/src/input_phase.hpp:9](../../../../gui/src/input_phase.hpp#L9)*
-
-
-
-**brief** Dispatch phase of an event inside a Stage. 
+*Defined at [gui/src/input_phase.cppm:9](../../../../gui/src/input_phase.cppm#L9)*
 
 | enum class InputType |
 
@@ -418,11 +364,7 @@
 | navigation |
 
 
-*Defined at [gui/src/input_type.hpp:9](../../../../gui/src/input_type.hpp#L9)*
-
-
-
-**brief** Event kind carried by one InputEvent. 
+*Defined at [gui/src/input_type.cppm:9](../../../../gui/src/input_type.cppm#L9)*
 
 | enum class LayoutKind |
 
@@ -432,11 +374,7 @@
 | pane |
 
 
-*Defined at [gui/layout.hpp:46](../../../../gui/layout.hpp#L46)*
-
-
-
-**brief** What a layout is pushed as: a whole screen, or a pane over one. 
+*Defined at [gui/layout.cppm:40](../../../../gui/layout.cppm#L40)*
 
 | enum class LayoutProblem |
 
@@ -459,11 +397,7 @@
 | unknown_drawable |
 
 
-*Defined at [gui/layout.hpp:298](../../../../gui/layout.hpp#L298)*
-
-
-
-**brief** What is wrong with a layout, if anything. 
+*Defined at [gui/layout.cppm:292](../../../../gui/layout.cppm#L292)*
 
 | enum class Navigate |
 
@@ -477,11 +411,7 @@
 | quit |
 
 
-*Defined at [gui/layout_writer.hpp:144](../../../../gui/layout_writer.hpp#L144)*
-
-
-
-**brief** Where a tap goes, when it navigates rather than sends. 
+*Defined at [gui/layout_writer.cppm:138](../../../../gui/layout_writer.cppm#L138)*
 
 | enum class NodeType |
 
@@ -502,11 +432,7 @@
 | custom |
 
 
-*Defined at [gui/layout.hpp:20](../../../../gui/layout.hpp#L20)*
-
-
-
-**brief** What a layout node builds. A layout file names it as `type` (`"check_box"`); C++ names it through the widget (`add<CheckBox>`).
+*Defined at [gui/layout.cppm:14](../../../../gui/layout.cppm#L14)*
 
 | enum class PanePlace |
 
@@ -519,11 +445,7 @@
 | bottom |
 
 
-*Defined at [gui/layout.hpp:53](../../../../gui/layout.hpp#L53)*
-
-
-
-**brief** Where a pane sits on its screen. `center` at the size it asks for; `left` and `right` the screen's height, `top` and `bottom` its width. Always inside the safe area.
+*Defined at [gui/layout.cppm:47](../../../../gui/layout.cppm#L47)*
 
 | enum class PointerAction |
 
@@ -535,11 +457,7 @@
 | cancel |
 
 
-*Defined at [gui/src/pointer_action.hpp:9](../../../../gui/src/pointer_action.hpp#L9)*
-
-
-
-**brief** Pointer action delivered to widgets. 
+*Defined at [gui/src/pointer_action.cppm:9](../../../../gui/src/pointer_action.cppm#L9)*
 
 | enum class SkinLoadSeverity |
 
@@ -549,11 +467,7 @@
 | error |
 
 
-*Defined at [gui/src/skin_load_severity.hpp:11](../../../../gui/src/skin_load_severity.hpp#L11)*
-
-
-
-**brief** Severity of one skin-loading diagnostics entry.
+*Defined at [gui/src/skin_load_severity.cppm:11](../../../../gui/src/skin_load_severity.cppm#L11)*
 
 | enum class TapKind |
 
@@ -570,9 +484,5 @@
 | invalid |
 
 
-*Defined at [gui/layout.hpp:264](../../../../gui/layout.hpp#L264)*
-
-
-
-**brief** What a tap's line does. 
+*Defined at [gui/layout.cppm:258](../../../../gui/layout.cppm#L258)*
 

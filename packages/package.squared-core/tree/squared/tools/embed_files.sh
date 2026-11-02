@@ -2,17 +2,18 @@
 # Compile a directory's files into a C++ source: constant bytes, and a table
 # of sq::files::EmbeddedFile that an sq::files::EmbeddedFileSystem reads.
 #
-#   tools/embed_files.sh SOURCE_DIR PREFIX FUNCTION HEADER OUT.cpp
+#   tools/embed_files.sh SOURCE_DIR PREFIX FUNCTION MODULE OUT.cpp
 #
 #   SOURCE_DIR  the files to embed (not its subdirectories), from the tree root
 #   PREFIX      the directory they appear under, inside the file system
 #   FUNCTION    the function OUT.cpp defines in sq::detail, which returns the table
-#   HEADER      the header that declares it, as OUT.cpp includes it
+#   MODULE      the module OUT.cpp is an implementation unit of, whose
+#               interface declares FUNCTION (7b.4: sq.stage)
 #
 # The Stage's default skin is made with
 #
 #   tools/embed_files.sh stage/skin/default/skin skins/default/skin \
-#       default_skin detail/default_skin.hpp stage/src/default_skin.cpp
+#       default_skin sq.stage stage/src/default_skin.cpp
 #
 # The output is committed, so a build needs no host tool and no build step;
 # a test compares it with the files, so it cannot drift. Files go in by name
@@ -27,7 +28,7 @@ fi
 source_dir=$1
 prefix=$2
 function_name=$3
-header=$4
+module=$4
 out=$5
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,9 +51,8 @@ fi
   printf '// %s\n' "$out"
   printf '// Written by tools/embed_files.sh from %s/: do not edit.\n' "$source_dir"
   printf '// Change the files and run it again (its comment has the command line).\n\n'
-  printf '#include "%s"\n\n' "$header"
-  printf '#include <squared/files/embedded_file_system.hpp>\n\n'
-  printf '#include <array>\n#include <span>\n\n'
+  printf 'module %s;\n\n' "$module"
+  printf 'import sq.files;\nimport sq.std;\n\n'
   printf 'namespace sq::detail\n{\n\nnamespace\n{\n\n// clang-format off\n'
   index=0
   printf '%s\n' "$files" | while IFS= read -r name; do

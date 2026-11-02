@@ -1,6 +1,6 @@
-#include <squared/console/commands.hpp>
+module sq.console;
 
-#include <cstring>
+import sq.std;
 
 namespace sq::console
 {

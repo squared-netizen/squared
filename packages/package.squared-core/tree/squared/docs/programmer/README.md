@@ -4,10 +4,10 @@ For people building something with squared. Nothing here describes an
 internal: for that, see [../developer/README.md](../developer/README.md).
 
 - [Getting started](getting-started.md) &mdash; a window, a skin and a widget
-- [Include layout](include-layout.md) &mdash; which header to reach for
+- [Imports and file layout](include-layout.md) &mdash; `import squared;`, the modules, and where each type is written
 - [Building](building.md) &mdash; g++ and make, on desktop Linux and Termux
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/`, and the workspace wrappers that run them
-- [API reference](../reference/README.md) &mdash; every public type and function with its comment, made from the headers by `make docs`
+- [API reference](../reference/README.md) &mdash; every public type and function with its comment, made from the module interfaces by `make docs`
 
 ## Modules
 
@@ -26,35 +26,33 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [math](math.md) &mdash; small value types used across the framework
 - [time](time.md) &mdash; the time between ticks (`Timepiece`), the clocks, and a model's timers (`DeadlineQueue`)
 
-| Module | Headers at the root | Headers in `src/` | Aggregate header |
+| Module | Partitions at the root | Partitions in `src/` | Import |
 |---|---:|---:|---|
-| `app` | 4 | 8 | `squared/app/application.hpp` |
-| `assets` | 1 | 8 | `squared/assets/assets.hpp` |
-| `console` | 11 | 9 | `squared/console/console.hpp`; built-ins: `system_commands.hpp`, `copy_command.hpp`, `crash_file.hpp`; drawing: `layout.hpp`, `renderer.hpp` |
-| `data` | 2 | 6 | `squared/data/json.hpp` |
-| `dev` | 3 | 1 | none: `dev_log.hpp`, `frame_allocations.hpp` and `crash_trace.hpp` (header-only) are independent |
-| `files` | 4 | 5 | `squared/files/files.hpp` |
-| `gles` | 5 | 11 | `squared/gles/gles.hpp` |
-| `graphics` | 11 | 19 | `squared/graphics/graphics.hpp` |
-| `gui` | 33 | 43 | `squared/gui/gui.hpp` (not `layout_file.hpp`, which is for tools) |
-| `messaging` | 13 | 6 | `squared/messaging/messaging.hpp` |
-| `math` | 2 | 0 | `squared/math/math.hpp` |
-| `stage` | 2 | 0 | `squared/squared.hpp`, which is everything an app is written against |
-| `time` | 5 | 0 | `squared/time/time.hpp` |
+| `app` | 4 | 9 | `import sq.app;` |
+| `assets` | 1 | 8 | `import sq.assets;` |
+| `console` | 16 | 10 | `import sq.console;` |
+| `data` | 2 | 6 | `import sq.data;` |
+| `dev` | 3 | 1 | `import sq.dev;` |
+| `files` | 5 | 5 | `import sq.files;` |
+| `gles` | 5 | 9 | `import sq.gles;` |
+| `graphics` | 11 | 19 | `import sq.graphics;` |
+| `gui` | 30 | 38 | `import sq.gui;` |
+| `messaging` | 13 | 6 | `import sq.messaging;` |
+| `math` | 2 | 0 | `import sq.math;` |
+| `stage` | 3 | 0 | `import sq.stage;` |
+| `time` | 5 | 0 | `import sq.time;` |
 
-The root counts leave out the aggregate header itself, where a module has a
-separate one. Private headers under `src/detail/` are not counted: they are
-not for you to include.
+`import squared;` is everything an app is written against: the standard
+library (`sq.std`), app, gui, messaging and stage. Private partitions under
+`src/detail/` are not counted: they are the framework's own.
 
 ## Reading the tables
 
-Each module page lists every public type, the header that defines it, and
-what it is for. One type, one header: `squared/gui/button.hpp` defines
+Each module page lists every public type, the file that defines it, and
+what it is for. One type, one file: `squared/gui/button.cppm` defines
 `sq::gui::Button` and nothing else.
 
-A header at the module root is one you will reach for. A header under
-`src/` is a supporting type &mdash; a style, an error code, an options
-struct &mdash; that the root headers already include. Both are written the
-same way: `#include <squared/gui/button.hpp>`,
-`#include <squared/gui/src/button_style.hpp>`. See
+A type at the module root is one you will reach for. A type under `src/` is
+a supporting type &mdash; a style, an error code, an options struct &mdash;
+that comes with it. One import gives both: `import sq.gui;`. See
 [include-layout.md](include-layout.md).

@@ -1,12 +1,6 @@
 # struct BitmapFontParseLimits
 
-*Defined at [graphics/src/bitmap_font_parse_limits.hpp:9](../../../../graphics/src/bitmap_font_parse_limits.hpp#L9)*
-
-
-
-**brief** Explicit resource limits for one text BMFont descriptor. 
-
-
+*Defined at [graphics/src/bitmap_font_parse_limits.cppm:9](../../../../graphics/src/bitmap_font_parse_limits.cppm#L9)*
 
 ## Members
 

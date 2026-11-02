@@ -1,18 +1,6 @@
 # class AssetManager
 
-*Defined at [assets/asset_manager.hpp:43](../../../../assets/asset_manager.hpp#L43)*
-
-
-
-**brief** Typed asset cache over one file system.
-
- One place to ask for an asset: the manager loads it once, hands out shared immutable references, records what each asset pulled in, and drops the lot on unload. It knows nothing about graphics, GUI, or any other subsystem; consumers register a loader per type.
-
- It is a cache, not an allocator. Subsystems still own their own memory; this owns loaded asset bytes and the handles to them, bounded by AssetManagerOptions.
-
- Not thread-safe. The file system is referenced, not owned, and must outlive the manager.
-
-
+*Defined at [assets/asset_manager.cppm:32](../../../../assets/asset_manager.cppm#L32)*
 
 ## Functions
 
@@ -32,25 +20,25 @@
 
 *public void AssetManager(const AssetManager & )*
 
-*Defined at [assets/asset_manager.hpp:54](../../../../assets/asset_manager.hpp#L54)*
+*Defined at [assets/asset_manager.cppm:43](../../../../assets/asset_manager.cppm#L43)*
 
 ### operator=
 
 *public AssetManager & operator=(const AssetManager & )*
 
-*Defined at [assets/asset_manager.hpp:55](../../../../assets/asset_manager.hpp#L55)*
+*Defined at [assets/asset_manager.cppm:44](../../../../assets/asset_manager.cppm#L44)*
 
 ### AssetManager
 
 *public void AssetManager(AssetManager && )*
 
-*Defined at [assets/asset_manager.hpp:56](../../../../assets/asset_manager.hpp#L56)*
+*Defined at [assets/asset_manager.cppm:45](../../../../assets/asset_manager.cppm#L45)*
 
 ### operator=
 
 *public AssetManager & operator=(AssetManager && )*
 
-*Defined at [assets/asset_manager.hpp:57](../../../../assets/asset_manager.hpp#L57)*
+*Defined at [assets/asset_manager.cppm:46](../../../../assets/asset_manager.cppm#L46)*
 
 ### ~AssetManager
 
@@ -60,79 +48,31 @@
 
 *public AssetError register_loader(AssetLoader<T> loader)*
 
-*Defined at [assets/asset_manager.hpp:140](../../../../assets/asset_manager.hpp#L140)*
-
-
-
-**brief** Register the loader for one asset type.
-
-**T** Asset value type; each type accepts one loader.
-
-**loader** Non-empty callback, invoked on the calling thread.
-
-**return** A no-error AssetError, LoaderAlreadyRegistered, or InvalidArgument for an empty callback.
+*Defined at [assets/asset_manager.cppm:129](../../../../assets/asset_manager.cppm#L129)*
 
 ### load
 
 *public AssetLoadResult<T> load(std::string_view path)*
 
-*Defined at [assets/asset_manager.hpp:167](../../../../assets/asset_manager.hpp#L167)*
-
-
-
-**brief** Load one asset, or return the cached copy.
-
-**T** Asset value type with a registered loader.
-
-**path** Path relative to the file system's root.
-
-**return** The asset, or the failure that prevented it.
+*Defined at [assets/asset_manager.cppm:156](../../../../assets/asset_manager.cppm#L156)*
 
 ### reload
 
 *public AssetLoadResult<T> reload(std::string_view path)*
 
-*Defined at [assets/asset_manager.hpp:179](../../../../assets/asset_manager.hpp#L179)*
-
-
-
-**brief** Reload one asset from its source, replacing the cached copy.
-
-**T** Asset value type with a registered loader.
-
-**path** Path relative to the file system's root.
-
-**return** The reloaded asset, or the failure that prevented it.
-
-**note** References already handed out keep pointing at the old asset. That is what makes reload safe to call while a frame is in flight.
+*Defined at [assets/asset_manager.cppm:168](../../../../assets/asset_manager.cppm#L168)*
 
 ### unload
 
 *public AssetError unload(std::string_view path)*
 
-*Defined at [assets/asset_manager.hpp:191](../../../../assets/asset_manager.hpp#L191)*
-
-
-
-**brief** Drop one cached asset and the dependency edges it recorded.
-
-**T** Asset value type.
-
-**path** Path relative to the file system's root.
-
-**return** A no-error AssetError, or NotLoaded when nothing was cached.
-
-**note** Dependencies are dropped from the cache too, but any still held by another asset or by the caller stay alive through their handles.
+*Defined at [assets/asset_manager.cppm:180](../../../../assets/asset_manager.cppm#L180)*
 
 ### contains
 
 *public bool contains(std::string_view path)*
 
-*Defined at [assets/asset_manager.hpp:197](../../../../assets/asset_manager.hpp#L197)*
-
-
-
-**brief** Report whether one asset is currently cached. 
+*Defined at [assets/asset_manager.cppm:186](../../../../assets/asset_manager.cppm#L186)*
 
 ### clear
 

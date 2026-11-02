@@ -13,57 +13,19 @@
 // quit; the model's own save given back; the Console's `screens` lines; and
 // a new activity that forgets the old one's keyboard.
 
-#include "detail/default_skin.hpp"
+import sq.stage;
 
-#include <squared/app/event.hpp>
-#include <squared/app/runtime.hpp>
-#include <squared/assets/asset_manager.hpp>
-#include <squared/dev/frame_allocations.hpp>
-#include <squared/files/embedded_file_system.hpp>
-#include <squared/files/posix_file_system.hpp>
-#include <squared/graphics/context.hpp>
-#include <squared/graphics/src/context_config.hpp>
-#include <squared/gui/button.hpp>
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/layout.hpp>
-#include <squared/gui/layout_writer.hpp>
-#include <squared/gui/list.hpp>
-#include <squared/gui/progress_bar.hpp>
-#include <squared/gui/scroll_pane.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/slider.hpp>
-#include <squared/gui/src/detail/pane_frame.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/src/pointer_action.hpp>
-#include <squared/gui/src/pointer_event.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/src/window_style.hpp>
-#include <squared/gui/table.hpp>
-#include <squared/gui/text_field.hpp>
-#include <squared/gui/widget.hpp>
-#include <squared/messaging/key.hpp>
-#include <squared/messaging/model_runner.hpp>
-#include <squared/messaging/telegraph.hpp>
-#include <squared/stage/app.hpp>
+import sq.app;
+import sq.assets;
+import sq.dev;
+import sq.files;
+import sq.graphics;
+import sq.gui;
+import sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <chrono>
-#include <cmath>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <memory>
-#include <span>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 /// What lets a test point the Stage at another skin.
 struct sq::detail::StageProbe final

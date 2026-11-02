@@ -1,9 +1,10 @@
-#include <squared/messaging/model_runner.hpp>
+module;
 
 #include <pthread.h>
 
-#include <chrono>
-#include <limits>
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging::detail
 {

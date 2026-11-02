@@ -1,19 +1,12 @@
-#include <squared/files/android_asset_file_system.hpp>
-#include <squared/files/posix_file_system.hpp>
-#include <squared/files/src/file_error.hpp>
-#include <squared/files/src/file_error_code.hpp>
-#include <squared/files/src/file_read_result.hpp>
-#include <squared/files/src/file_type.hpp>
+module;
 
 #include <android/asset_manager.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <span>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <stdio.h>
+
+module sq.files;
+
+import sq.std;
 
 namespace sq::files
 {

@@ -1,23 +1,17 @@
 // SpriteBatch: everything that is not a graphics call.
 
-#include <squared/graphics/context.hpp>
 //
 // Vertex building, the flush decisions, and the begin/draw/end state machine.
 // The GPU half - buffers, the shader, the draw call - is in
 // src/<backend>/sprite_batch.cpp, the same split Texture uses.
 
-#include <squared/graphics/color.hpp>
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/coordinate_origin.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_region.hpp>
+module;
 
-#include <cassert>
-#include <cmath>
-#include <cstddef>
-#include <vector>
+#include <assert.h>
+
+module sq.graphics;
+
+import sq.std;
 
 namespace sq::graphics
 {

@@ -4,8 +4,8 @@ Not part of a release build. Linked only when a project asks for it.
 
 Developer counterpart: [../developer/dev.md](../developer/dev.md)
 
-Headers: `squared/dev/dev_log.hpp` (the log sink),
-`squared/dev/frame_allocations.hpp` (the frame-allocation counter)
+Headers: `squared/dev/dev_log.cppm` (the log sink),
+`squared/dev/frame_allocations.cppm` (the frame-allocation counter)
 
 ## Why it exists
 
@@ -111,7 +111,7 @@ dev log shows in the in-app Console ([console.md](console.md)).
 
 ## write_crash_trace
 
-`#include <squared/dev/crash_trace.hpp>`, header-only: usable without linking this module.
+`import sq.dev;`. Defined in its interface (`dev/crash_trace.cppm`), whose object is in `libsquared_dev.a`: link it (until 7b.4 it was header-only).
 
 ```cpp
 using CrashSink = void (*)(void* context, const char* text, std::size_t length) noexcept;

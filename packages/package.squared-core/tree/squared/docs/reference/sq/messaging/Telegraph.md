@@ -1,14 +1,6 @@
 # class Telegraph
 
-*Defined at [messaging/telegraph.hpp:112](../../../../messaging/telegraph.hpp#L112)*
-
-
-
-**brief** The model's end of the Telegraph: what a model sees, on its thread.
-
- It sends `state` and `event` by key, declares virtualized lists, and runs the model's side of a turn (`deliver`): lifecycle signals, held-back states, then every telegram from the UI. A sending mistake (a wrong type, a verb the key does not carry, a missing or extra uid) does not compile.
-
-
+*Defined at [messaging/telegraph.cppm:103](../../../../messaging/telegraph.cppm#L103)*
 
 ## Functions
 
@@ -16,131 +8,91 @@
 
 *public void Telegraph(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:115](../../../../messaging/telegraph.hpp#L115)*
+*Defined at [messaging/telegraph.cppm:106](../../../../messaging/telegraph.cppm#L106)*
 
 ### operator=
 
 *public Telegraph & operator=(const Telegraph & )*
 
-*Defined at [messaging/telegraph.hpp:116](../../../../messaging/telegraph.hpp#L116)*
+*Defined at [messaging/telegraph.cppm:107](../../../../messaging/telegraph.cppm#L107)*
 
 ### Telegraph
 
 *public void Telegraph(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:117](../../../../messaging/telegraph.hpp#L117)*
+*Defined at [messaging/telegraph.cppm:108](../../../../messaging/telegraph.cppm#L108)*
 
 ### operator=
 
 *public Telegraph & operator=(Telegraph && )*
 
-*Defined at [messaging/telegraph.hpp:118](../../../../messaging/telegraph.hpp#L118)*
+*Defined at [messaging/telegraph.cppm:109](../../../../messaging/telegraph.cppm#L109)*
 
 ### ~Telegraph
 
 *public void ~Telegraph()*
 
-*Defined at [messaging/telegraph.hpp:119](../../../../messaging/telegraph.hpp#L119)*
+*Defined at [messaging/telegraph.cppm:110](../../../../messaging/telegraph.cppm#L110)*
 
 ### state
 
 *public SendResult state(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:129](../../../../messaging/telegraph.hpp#L129)*
-
-
-
-**brief** `state <key> <value>`. When the ring is full it is held back, coalesced: `pending`. When the held-back table is full too, the model's thread waits up to `TELEGRAPH_WAIT_MS` for the UI to drain, then `full`.
+*Defined at [messaging/telegraph.cppm:120](../../../../messaging/telegraph.cppm#L120)*
 
 ### state
 
 *public SendResult state(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:139](../../../../messaging/telegraph.hpp#L139)*
-
-
-
-**brief** `state <key>[uid] <value>`, for a key that takes a uid. 
+*Defined at [messaging/telegraph.cppm:130](../../../../messaging/telegraph.cppm#L130)*
 
 ### event
 
 *public SendResult event(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:153](../../../../messaging/telegraph.hpp#L153)*
-
-
-
-**brief** `event <key>`, for a key with no value. Never held back: with no room, the model's thread waits up to `TELEGRAPH_WAIT_MS`, then `full`.
+*Defined at [messaging/telegraph.cppm:144](../../../../messaging/telegraph.cppm#L144)*
 
 ### event
 
 *public SendResult event(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:161](../../../../messaging/telegraph.hpp#L161)*
-
-
-
-**brief** `event <key> <value>`. 
+*Defined at [messaging/telegraph.cppm:152](../../../../messaging/telegraph.cppm#L152)*
 
 ### event
 
 *public SendResult event(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:171](../../../../messaging/telegraph.hpp#L171)*
-
-
-
-**brief** `event <key>[uid] <value>`, for a key that takes a uid. 
+*Defined at [messaging/telegraph.cppm:162](../../../../messaging/telegraph.cppm#L162)*
 
 ### answer
 
 *public SendResult answer(const Received & request, const K & key)*
 
-*Defined at [messaging/telegraph.hpp:181](../../../../messaging/telegraph.hpp#L181)*
-
-
-
-**brief** `event <key>` answering `request` (a `do`): it carries the request's correlation. 
+*Defined at [messaging/telegraph.cppm:172](../../../../messaging/telegraph.cppm#L172)*
 
 ### answer
 
 *public SendResult answer(const Received & request, const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:190](../../../../messaging/telegraph.hpp#L190)*
-
-
-
-**brief** `event <key> <value>` answering `request`. 
+*Defined at [messaging/telegraph.cppm:181](../../../../messaging/telegraph.cppm#L181)*
 
 ### list
 
 *public bool list(const K & rows, S & source)*
 
-*Defined at [messaging/telegraph.hpp:206](../../../../messaging/telegraph.hpp#L206)*
-
-
-
-**brief** A virtualized list: `rows` (a key taking a uid: the row) and where its rows come from. Its count is sent at once. False when `TELEGRAPH_LISTS` lists exist already, or this one does.
+*Defined at [messaging/telegraph.cppm:197](../../../../messaging/telegraph.cppm#L197)*
 
 ### changed
 
 *public void changed(const K & rows)*
 
-*Defined at [messaging/telegraph.hpp:214](../../../../messaging/telegraph.hpp#L214)*
-
-
-
-**brief** The list's rows changed (a sort, an insert, a removal): what changed on screen is sent. 
+*Defined at [messaging/telegraph.cppm:205](../../../../messaging/telegraph.cppm#L205)*
 
 ### changed
 
 *public void changed(const K & rows, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:222](../../../../messaging/telegraph.hpp#L222)*
-
-
-
-**brief** One item's fields changed: published again if it is on screen. 
+*Defined at [messaging/telegraph.cppm:213](../../../../messaging/telegraph.cppm#L213)*
 
 ### tick_every
 
@@ -158,23 +110,13 @@
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.hpp:619](../../../../messaging/telegraph.hpp#L619)*
-
-
-
-**brief** Calls `model.start(*this)`, if it has one. Once, before `deliver`. 
-
- ---- the templates, now that the line is complete --------------------------------------------
+*Defined at [messaging/telegraph.cppm:610](../../../../messaging/telegraph.cppm#L610)*
 
 ### deliver
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.hpp:627](../../../../messaging/telegraph.hpp#L627)*
-
-
-
-**brief** One turn of the model's side: the lifecycle signals (low memory first; background and foreground in the order that ends where the app is now; quit last, after a save), then the held-back states, then each telegram from the UI: a list's `view` to its list, everything else to `model.receive(*this, telegram)`. The telegrams handled.
+*Defined at [messaging/telegraph.cppm:618](../../../../messaging/telegraph.cppm#L618)*
 
 ### pending
 

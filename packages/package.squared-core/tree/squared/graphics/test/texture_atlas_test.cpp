@@ -4,21 +4,17 @@
 // skin, verbatim - including a rotated region and a nine-patch with splits and
 // pads, which are the two cases a hand-written fixture usually omits.
 
-#include <squared/files/files.hpp>
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/src/texture_filter.hpp>
-#include <squared/graphics/texture_atlas.hpp>
+import sq.files;
+import sq.graphics;
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
 #include <stb_image_write.h>
 
-#include <cassert>
-#include <cstdio>
-#include <cstdlib>
-#include <span>
-#include <string>
-#include <vector>
+#include <assert.h>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq;
 

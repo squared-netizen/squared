@@ -1,9 +1,6 @@
-#include <squared/console/args.hpp>
+module sq.console;
 
-#include <algorithm>
-#include <charconv>
-#include <cstdlib>
-#include <system_error>
+import sq.std;
 
 namespace sq::console
 {

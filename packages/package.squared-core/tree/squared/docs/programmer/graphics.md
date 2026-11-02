@@ -2,7 +2,7 @@
 
 The rendering context and colour, then everything you draw with it: textures, atlases, regions, sprites, the sprite batch, the 2D camera, bitmap fonts and glyph layout.
 
-Each type lives in its own header. The headers at the module root (`squared/graphics/*.hpp`) are the everyday ones. Those under `squared/graphics/src/` are supporting types: you can include them directly, but the root headers that use them already include them. `squared/graphics/graphics.hpp` pulls in the whole module. It's there for convenience; don't include it from a header of your own.
+`import sq.graphics;` gives every type here. Each type is written in a file of its own, a partition of the module: the ones at the module root (`squared/graphics/*.cppm`) are the everyday ones, those under `squared/graphics/src/` the supporting types they are made of. See [include-layout.md](include-layout.md).
 
 Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 
@@ -10,56 +10,56 @@ Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Context` | `squared/graphics/context.hpp` | Own the native window and rendering context selected at link time |
-| `ContextConfig` | `squared/graphics/src/context_config.hpp` | What `Context::create` needs: the native window, a title and the logical size |
-| `Color` | `squared/graphics/color.hpp` | Normalized four-component color used by Squared graphics APIs |
+| `Context` | `squared/graphics/context.cppm` | Own the native window and rendering context selected at link time |
+| `ContextConfig` | `squared/graphics/src/context_config.cppm` | What `Context::create` needs: the native window, a title and the logical size |
+| `Color` | `squared/graphics/color.cppm` | Normalized four-component color used by Squared graphics APIs |
 
 ## Textures and atlases
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Texture` | `squared/graphics/texture.hpp` | Move-only texture owned by the selected graphics backend |
-| `TextureRegion` | `squared/graphics/texture_region.hpp` | Non-owning rectangular view into a Texture |
-| `TextureAtlas` | `squared/graphics/texture_atlas.hpp` | Owning, transactionally loaded libGDX text texture atlas |
-| `AtlasRegion` | `squared/graphics/atlas_region.hpp` | One named region and its libGDX-compatible atlas metadata |
-| `TextureFilter` | `squared/graphics/src/texture_filter.hpp` | Nearest or linear sampling; also what `gles::Texture2D` takes |
-| `TextureWrap` | `squared/graphics/src/texture_wrap.hpp` | Clamp, repeat or mirrored outside zero to one; also what `gles::Texture2D` takes |
+| `Texture` | `squared/graphics/texture.cppm` | Move-only texture owned by the selected graphics backend |
+| `TextureRegion` | `squared/graphics/texture_region.cppm` | Non-owning rectangular view into a Texture |
+| `TextureAtlas` | `squared/graphics/texture_atlas.cppm` | Owning, transactionally loaded libGDX text texture atlas |
+| `AtlasRegion` | `squared/graphics/atlas_region.cppm` | One named region and its libGDX-compatible atlas metadata |
+| `TextureFilter` | `squared/graphics/src/texture_filter.cppm` | Nearest or linear sampling; also what `gles::Texture2D` takes |
+| `TextureWrap` | `squared/graphics/src/texture_wrap.cppm` | Clamp, repeat or mirrored outside zero to one; also what `gles::Texture2D` takes |
 
 ## Recovering textures after context loss
 
 | Type | Header | Purpose |
 |---|---|---|
-| `TextureRecoveryPolicy` | `squared/graphics/src/texture_recovery_policy.hpp` | CPU-side recipe used to recover a texture after context loss |
-| `TextureRecoveryOptions` | `squared/graphics/src/texture_recovery_options.hpp` | Recovery selection supplied when a texture is created |
-| `TextureRecoveryCallback` | `squared/graphics/src/texture_recovery_callback.hpp` | Callback that regenerates a texture's pixels under the `Regenerate` policy |
-| `TextureRecoveryTarget` | `squared/graphics/src/texture_recovery_target.hpp` | Synchronous destination supplied to a regeneration callback |
+| `TextureRecoveryPolicy` | `squared/graphics/src/texture_recovery_policy.cppm` | CPU-side recipe used to recover a texture after context loss |
+| `TextureRecoveryOptions` | `squared/graphics/src/texture_recovery_options.cppm` | Recovery selection supplied when a texture is created |
+| `TextureRecoveryCallback` | `squared/graphics/src/texture_recovery_callback.cppm` | Callback that regenerates a texture's pixels under the `Regenerate` policy |
+| `TextureRecoveryTarget` | `squared/graphics/src/texture_recovery_target.cppm` | Synchronous destination supplied to a regeneration callback |
 
 ## Sprites, batching and the camera
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Sprite` | `squared/graphics/sprite.hpp` | Lightweight mutable state for drawing one TextureRegion |
-| `SpriteBatch` | `squared/graphics/sprite_batch.hpp` | Efficiently draw ordered textured quads with the selected backend |
-| `OrthographicCamera` | `squared/graphics/orthographic_camera.hpp` | Two-dimensional orthographic camera with pan and zoom |
-| `CoordinateOrigin` | `squared/graphics/src/coordinate_origin.hpp` | Coordinate orientation used by an orthographic camera |
+| `Sprite` | `squared/graphics/sprite.cppm` | Lightweight mutable state for drawing one TextureRegion |
+| `SpriteBatch` | `squared/graphics/sprite_batch.cppm` | Efficiently draw ordered textured quads with the selected backend |
+| `OrthographicCamera` | `squared/graphics/orthographic_camera.cppm` | Two-dimensional orthographic camera with pan and zoom |
+| `CoordinateOrigin` | `squared/graphics/src/coordinate_origin.cppm` | Coordinate orientation used by an orthographic camera |
 
 ## Bitmap fonts and text layout
 
 | Type | Header | Purpose |
 |---|---|---|
-| `BitmapFont` | `squared/graphics/bitmap_font.hpp` | Transactionally parsed text BMFont resource |
-| `BitmapFontInfo` | `squared/graphics/src/bitmap_font_info.hpp` | Portable BMFont face metadata |
-| `BitmapFontPage` | `squared/graphics/src/bitmap_font_page.hpp` | One texture-page dependency declared by a BMFont |
-| `BitmapFontParseLimits` | `squared/graphics/src/bitmap_font_parse_limits.hpp` | Explicit resource limits for one text BMFont descriptor |
-| `BitmapFontError` | `squared/graphics/src/bitmap_font_error.hpp` | What `BitmapFont::load` or `GlyphLayout::set_text` returns: true when something failed |
-| `BitmapFontErrorCode` | `squared/graphics/src/bitmap_font_error_code.hpp` | Stable failure categories for BMFont parsing and glyph layout |
-| `BitmapGlyph` | `squared/graphics/src/bitmap_glyph.hpp` | One Unicode scalar's source rectangle and layout metrics |
-| `BitmapKerning` | `squared/graphics/src/bitmap_kerning.hpp` | Pair-specific horizontal advance adjustment in source pixels |
-| `GlyphLayout` | `squared/graphics/glyph_layout.hpp` | Reusable value-semantic layout of UTF-8 text into glyph quads |
-| `GlyphLayoutOptions` | `squared/graphics/src/glyph_layout_options.hpp` | Controls for one UTF-8 glyph layout operation |
-| `GlyphAlignment` | `squared/graphics/src/glyph_alignment.hpp` | Horizontal placement within an optional target width |
-| `GlyphLine` | `squared/graphics/src/glyph_line.hpp` | One explicit line in a GlyphLayout |
-| `GlyphPlacement` | `squared/graphics/src/glyph_placement.hpp` | One SpriteBatch-ready glyph quad in top-left logical coordinates |
+| `BitmapFont` | `squared/graphics/bitmap_font.cppm` | Transactionally parsed text BMFont resource |
+| `BitmapFontInfo` | `squared/graphics/src/bitmap_font_info.cppm` | Portable BMFont face metadata |
+| `BitmapFontPage` | `squared/graphics/src/bitmap_font_page.cppm` | One texture-page dependency declared by a BMFont |
+| `BitmapFontParseLimits` | `squared/graphics/src/bitmap_font_parse_limits.cppm` | Explicit resource limits for one text BMFont descriptor |
+| `BitmapFontError` | `squared/graphics/src/bitmap_font_error.cppm` | What `BitmapFont::load` or `GlyphLayout::set_text` returns: true when something failed |
+| `BitmapFontErrorCode` | `squared/graphics/src/bitmap_font_error_code.cppm` | Stable failure categories for BMFont parsing and glyph layout |
+| `BitmapGlyph` | `squared/graphics/src/bitmap_glyph.cppm` | One Unicode scalar's source rectangle and layout metrics |
+| `BitmapKerning` | `squared/graphics/src/bitmap_kerning.cppm` | Pair-specific horizontal advance adjustment in source pixels |
+| `GlyphLayout` | `squared/graphics/glyph_layout.cppm` | Reusable value-semantic layout of UTF-8 text into glyph quads |
+| `GlyphLayoutOptions` | `squared/graphics/src/glyph_layout_options.cppm` | Controls for one UTF-8 glyph layout operation |
+| `GlyphAlignment` | `squared/graphics/src/glyph_alignment.cppm` | Horizontal placement within an optional target width |
+| `GlyphLine` | `squared/graphics/src/glyph_line.cppm` | One explicit line in a GlyphLayout |
+| `GlyphPlacement` | `squared/graphics/src/glyph_placement.cppm` | One SpriteBatch-ready glyph quad in top-left logical coordinates |
 
 **Keep one `GlyphLayout` and lay text out again into it.** `set_text()` reuses
 the layout's storage, and allocates only when the text needs more glyphs or

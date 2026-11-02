@@ -1,11 +1,6 @@
-#include <squared/data/json_value.hpp>
+module sq.data;
 
-#include <cstddef>
-#include <cstdint>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <variant>
+import sq.std;
 
 namespace sq::data
 {

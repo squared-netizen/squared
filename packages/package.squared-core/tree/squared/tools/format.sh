@@ -7,7 +7,7 @@
 #   squared/tools/format.sh --force    format even with uncommitted changes
 #
 # Uses squared/.clang-format (CDDA's style; docs/developer/code-style.md).
-# Formats every .hpp and .cpp under squared/ except third_party/, build/ and
+# Formats every .hpp, .cpp and .cppm under squared/ except third_party/, build/ and
 # docs/. Refuses to run on a git tree with uncommitted changes under squared/
 # unless --force, so a formatting commit holds formatting and nothing else.
 #
@@ -59,7 +59,7 @@ files=()
 while IFS= read -r -d '' f; do
     files+=("$f")
 done < <(cd "$root" && find . \( -path ./third_party -o -path ./build -o -path ./docs \) -prune \
-             -o -type f \( -name '*.hpp' -o -name '*.cpp' \) -print0 | sort -z)
+             -o -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.cppm' \) -print0 | sort -z)
 
 total=${#files[@]}
 [ "$total" -gt 0 ] || { echo "format: no C++ files under $root" >&2; exit 2; }

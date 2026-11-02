@@ -1,11 +1,13 @@
-#include <squared/messaging/src/wake.hpp>
+module;
 
+#include <errno.h>
 #include <poll.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
 
-#include <cerrno>
-#include <cstdint>
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

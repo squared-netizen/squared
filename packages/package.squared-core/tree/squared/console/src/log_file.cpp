@@ -1,13 +1,13 @@
-#include <squared/console/line_reader.hpp>
-#include <squared/console/log_file.hpp>
+module;
 
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <unistd.h>
 
-#include <array>
-#include <cerrno>
-#include <cstdio>
-#include <cstring>
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

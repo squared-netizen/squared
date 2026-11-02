@@ -1,12 +1,6 @@
 # struct Insets
 
-*Defined at [gui/src/insets.hpp:7](../../../../gui/src/insets.hpp#L7)*
-
-
-
-**brief** Insets from the edges of a rectangle, in logical units. 
-
-
+*Defined at [gui/src/insets.cppm:7](../../../../gui/src/insets.cppm#L7)*
 
 ## Members
 

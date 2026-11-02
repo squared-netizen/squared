@@ -1,11 +1,15 @@
 // The Console's `gl` command: what the driver says about itself. Raw GL, as
 // the renderer is; compiled with the gles backend only.
 
-#include <squared/console/renderer.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <array>
+#include <stdio.h>
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

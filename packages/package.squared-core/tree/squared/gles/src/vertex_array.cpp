@@ -1,15 +1,10 @@
-#include <squared/gles/buffer.hpp>
-#include <squared/gles/src/buffer_target.hpp>
-#include <squared/gles/src/gles_error.hpp>
-#include <squared/gles/src/gles_error_code.hpp>
-#include <squared/gles/src/vertex_attribute.hpp>
-#include <squared/gles/vertex_array.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <cstddef>
-#include <span>
-#include <utility>
+module sq.gles;
+
+import sq.std;
 
 namespace sq::gles
 {

@@ -1,12 +1,6 @@
 # struct BitmapKerning
 
-*Defined at [graphics/src/bitmap_kerning.hpp:7](../../../../graphics/src/bitmap_kerning.hpp#L7)*
-
-
-
-**brief** Pair-specific horizontal advance adjustment in source pixels. 
-
-
+*Defined at [graphics/src/bitmap_kerning.cppm:7](../../../../graphics/src/bitmap_kerning.cppm#L7)*
 
 ## Members
 

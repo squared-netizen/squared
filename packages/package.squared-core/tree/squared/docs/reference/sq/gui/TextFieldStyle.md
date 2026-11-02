@@ -1,12 +1,6 @@
 # struct TextFieldStyle
 
-*Defined at [gui/src/text_field_style.hpp:11](../../../../gui/src/text_field_style.hpp#L11)*
-
-
-
-**brief** Style data for a TextField widget. 
-
-
+*Defined at [gui/src/text_field_style.cppm:11](../../../../gui/src/text_field_style.cppm#L11)*
 
 ## Members
 

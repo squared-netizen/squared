@@ -1,7 +1,10 @@
-#include <squared/messaging/list_window.hpp>
+module;
 
-#include <algorithm>
-#include <cassert>
+#include <assert.h>
+
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

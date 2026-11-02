@@ -1,14 +1,6 @@
 # class Context
 
-*Defined at [graphics/context.hpp:18](../../../../graphics/context.hpp#L18)*
-
-
-
-**brief** Own the native window and rendering context selected at link time.
-
- The generated platform layer owns this object. Application rendering code receives higher-level graphics objects and does not present the window directly.
-
-
+*Defined at [graphics/context.cppm:17](../../../../graphics/context.cppm#L17)*
 
 ## Functions
 
@@ -16,31 +8,31 @@
 
 *public void Context()*
 
-*Defined at [graphics/context.hpp:21](../../../../graphics/context.hpp#L21)*
+*Defined at [graphics/context.cppm:20](../../../../graphics/context.cppm#L20)*
 
 ### Context
 
 *public void Context(const Context & )*
 
-*Defined at [graphics/context.hpp:22](../../../../graphics/context.hpp#L22)*
+*Defined at [graphics/context.cppm:21](../../../../graphics/context.cppm#L21)*
 
 ### operator=
 
 *public Context & operator=(const Context & )*
 
-*Defined at [graphics/context.hpp:23](../../../../graphics/context.hpp#L23)*
+*Defined at [graphics/context.cppm:22](../../../../graphics/context.cppm#L22)*
 
 ### Context
 
 *public void Context(Context && )*
 
-*Defined at [graphics/context.hpp:24](../../../../graphics/context.hpp#L24)*
+*Defined at [graphics/context.cppm:23](../../../../graphics/context.cppm#L23)*
 
 ### operator=
 
 *public Context & operator=(Context && )*
 
-*Defined at [graphics/context.hpp:25](../../../../graphics/context.hpp#L25)*
+*Defined at [graphics/context.cppm:24](../../../../graphics/context.cppm#L24)*
 
 ### ~Context
 

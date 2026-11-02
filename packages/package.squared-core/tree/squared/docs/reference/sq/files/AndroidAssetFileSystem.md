@@ -1,20 +1,6 @@
 # class AndroidAssetFileSystem
 
-*Defined at [files/android_asset_file_system.hpp:58](../../../../files/android_asset_file_system.hpp#L58)*
-
-
-
-**brief** FileSystem over an APK's assets and the app's private storage.
-
- The second implementation the porting layer was shaped for. `Internal` reads through AAssetManager, because assets inside an APK are zip entries rather than files and no POSIX call can reach them. Everything writable is an ordinary directory and is delegated to PosixFileSystem.
-
- The asset manager is referenced, not owned, and comes from `ANativeActivity::assetManager`. It must outlive this file system.
-
-
-
-**note** Names on Android are confusing and worth stating once. Android's "internal storage" is this class's Local; this class's Internal is the read only asset bundle, which Android does not call storage at all.
-
-
+*Defined at [files/android_asset_file_system.cppm:59](../../../../files/android_asset_file_system.cppm#L59)*
 
 Inherits from FileSystem
 

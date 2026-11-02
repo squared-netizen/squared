@@ -1,12 +1,6 @@
 # struct GlesError
 
-*Defined at [gles/src/gles_error.hpp:11](../../../../gles/src/gles_error.hpp#L11)*
-
-
-
-**brief** Structured GL failure information. 
-
-
+*Defined at [gles/src/gles_error.cppm:10](../../../../gles/src/gles_error.cppm#L10)*
 
 ## Members
 
@@ -22,11 +16,7 @@ public std::string message
 
 *public bool operator bool()*
 
-*Defined at [gles/src/gles_error.hpp:26](../../../../gles/src/gles_error.hpp#L26)*
-
-
-
-**brief** Return whether this structure represents a failure. 
+*Defined at [gles/src/gles_error.cppm:25](../../../../gles/src/gles_error.cppm#L25)*
 
 
 

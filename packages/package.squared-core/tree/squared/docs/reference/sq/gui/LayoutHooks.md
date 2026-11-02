@@ -1,12 +1,6 @@
 # struct LayoutHooks
 
-*Defined at [gui/instantiate.hpp:21](../../../../gui/instantiate.hpp#L21)*
-
-
-
-**brief** What `instantiate` hands back to its caller (the Stage): taps, bound nodes and custom types. Function pointers and one context, so nothing is allocated to call them. Any can be left out.
-
-
+*Defined at [gui/instantiate.cppm:19](../../../../gui/instantiate.cppm#L19)*
 
 ## Members
 

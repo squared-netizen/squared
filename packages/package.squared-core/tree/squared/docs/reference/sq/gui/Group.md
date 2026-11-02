@@ -1,12 +1,6 @@
 # class Group
 
-*Defined at [gui/group.hpp:13](../../../../gui/group.hpp#L13)*
-
-
-
-**brief** Actor that owns children in deterministic insertion order. 
-
-
+*Defined at [gui/group.cppm:10](../../../../gui/group.cppm#L10)*
 
 Inherits from Actor
 
@@ -24,61 +18,43 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void Group()*
 
-*Defined at [gui/group.hpp:19](../../../../gui/group.hpp#L19)*
+*Defined at [gui/group.cppm:16](../../../../gui/group.cppm#L16)*
 
 ### Group
 
 *public void Group(const Group & )*
 
-*Defined at [gui/group.hpp:23](../../../../gui/group.hpp#L23)*
-
- Children point back at their parent, so a group is never copied or moved.
+*Defined at [gui/group.cppm:20](../../../../gui/group.cppm#L20)*
 
 ### operator=
 
 *public Group & operator=(const Group & )*
 
-*Defined at [gui/group.hpp:24](../../../../gui/group.hpp#L24)*
+*Defined at [gui/group.cppm:21](../../../../gui/group.cppm#L21)*
 
 ### Group
 
 *public void Group(Group && )*
 
-*Defined at [gui/group.hpp:25](../../../../gui/group.hpp#L25)*
+*Defined at [gui/group.cppm:22](../../../../gui/group.cppm#L22)*
 
 ### operator=
 
 *public Group & operator=(Group && )*
 
-*Defined at [gui/group.hpp:26](../../../../gui/group.hpp#L26)*
+*Defined at [gui/group.cppm:23](../../../../gui/group.cppm#L23)*
 
 ### actor_interface
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/group.hpp:33](../../../../gui/group.hpp#L33)*
-
-
-
-**brief** Publish the Group interface to actor_cast().
-
-**id** Identifier of the requested interface.
-
-**return** This group for the Group identifier, otherwise the base answer.
+*Defined at [gui/group.cppm:30](../../../../gui/group.cppm#L30)*
 
 ### actor_interface
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/group.hpp:43](../../../../gui/group.hpp#L43)*
-
-
-
-**brief** Publish the Group interface to actor_cast(), read-only.
-
-**id** Identifier of the requested interface.
-
-**return** This group for the Group identifier, otherwise the base answer.
+*Defined at [gui/group.cppm:40](../../../../gui/group.cppm#L40)*
 
 ### ~Group
 

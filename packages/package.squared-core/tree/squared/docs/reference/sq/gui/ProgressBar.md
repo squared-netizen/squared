@@ -1,6 +1,6 @@
 # class ProgressBar
 
-*Defined at [gui/progress_bar.hpp:15](../../../../gui/progress_bar.hpp#L15)*
+*Defined at [gui/progress_bar.cppm:14](../../../../gui/progress_bar.cppm#L14)*
 
 
 
@@ -94,7 +94,7 @@ Inherits from Widget
 
 *public float value()*
 
-*Defined at [gui/progress_bar.hpp:38](../../../../gui/progress_bar.hpp#L38)*
+*Defined at [gui/progress_bar.cppm:37](../../../../gui/progress_bar.cppm#L37)*
 
 
 

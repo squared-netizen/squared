@@ -21,13 +21,13 @@ exceptions gui/src/toggle_button.cpp 2
 exceptions gui/src/ui.cpp 10
 raw-delete dev/src/frame_allocations.cpp 12  # the replacement operator delete definitions (dev builds only)
 raw-new dev/src/frame_allocations.cpp 4  # the replacement operator new definitions (dev builds only)
-std-function assets/asset_manager.hpp 1
-std-function assets/src/asset_loader.hpp 1
-std-function gui/button.hpp 1
-std-function gui/slider.hpp 1
-std-function gui/src/input_listener.hpp 1
-std-function gui/src/skin_drawable_resolver.hpp 1
-std-function gui/src/skin_font_resolver.hpp 1
+std-function assets/asset_manager.cppm 1
+std-function assets/src/asset_loader.cppm 1
+std-function gui/button.cppm 1
+std-function gui/slider.cppm 1
+std-function gui/src/input_listener.cppm 1
+std-function gui/src/skin_drawable_resolver.cppm 1
+std-function gui/src/skin_font_resolver.cppm 1
 std-function gui/src/skin_loader.cpp 1
-std-function gui/toggle_button.hpp 1
-std-function gui/widget.hpp 1
+std-function gui/toggle_button.cppm 1
+std-function gui/widget.cppm 1

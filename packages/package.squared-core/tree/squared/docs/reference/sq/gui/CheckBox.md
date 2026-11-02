@@ -1,12 +1,6 @@
 # class CheckBox
 
-*Defined at [gui/check_box.hpp:15](../../../../gui/check_box.hpp#L15)*
-
-
-
-**brief** Toggle button rendering a checkbox glyph and label. 
-
-
+*Defined at [gui/check_box.cppm:14](../../../../gui/check_box.cppm#L14)*
 
 Inherits from ToggleButton
 

@@ -5,18 +5,15 @@
 
 #include "gl_stub.hpp"
 
-#include <squared/console/layout.hpp>
-#include <squared/console/renderer.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.console;
+import sq.dev;
 
 #include <GLES3/gl3.h>
 
-#include <cassert>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <memory>
-#include <string>
+#include <assert.h>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq::console;
 

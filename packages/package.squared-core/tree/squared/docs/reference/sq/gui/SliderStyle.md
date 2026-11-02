@@ -1,12 +1,6 @@
 # struct SliderStyle
 
-*Defined at [gui/src/slider_style.hpp:9](../../../../gui/src/slider_style.hpp#L9)*
-
-
-
-**brief** Style data for a Slider widget. 
-
-
+*Defined at [gui/src/slider_style.cppm:9](../../../../gui/src/slider_style.cppm#L9)*
 
 ## Members
 

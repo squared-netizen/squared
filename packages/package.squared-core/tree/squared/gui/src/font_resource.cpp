@@ -1,17 +1,7 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/src/bitmap_glyph.hpp>
-#include <squared/graphics/src/glyph_placement.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/src/font_resource.hpp>
-
-#include <algorithm>
-#include <cmath>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <vector>
+import sq.graphics;
+import sq.std;
 
 namespace sq::gui
 {

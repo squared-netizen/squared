@@ -1,16 +1,6 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/gui/skin.hpp>
-#include <squared/gui/src/painter.hpp>
-#include <squared/gui/src/size.hpp>
-#include <squared/gui/stack.hpp>
-#include <squared/gui/widget.hpp>
-
-#include <algorithm>
-#include <cstddef>
-#include <memory>
-#include <stdexcept>
-#include <utility>
+import sq.std;
 
 namespace sq::gui
 {

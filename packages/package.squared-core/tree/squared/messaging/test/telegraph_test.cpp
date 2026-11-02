@@ -3,18 +3,12 @@
 // coalesced, the order kept, lists wired in, the lifecycle in order, and no
 // allocation. The model runs inline: `deliver` called where its thread will.
 
-#include <squared/messaging/telegraph.hpp>
+import sq.messaging;
 
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-#include <numeric>
-#include <random>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
+
+import sq.std;
 
 namespace
 {

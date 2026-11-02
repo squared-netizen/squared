@@ -42,9 +42,9 @@ $(TARGET): $(OBJECTS)
 	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/data/%.o: $(MODULE_DIR)/%.cpp $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
+$(OBJ_DIR)/data/%.o: $(MODULE_DIR)/%.cpp $(YYJSON_DIR)/yyjson.h $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Third-party code is compiled as C with squared's warning set switched off.
 # It is not ours to keep clean, and -Wconversion on a JSON parser is noise that
@@ -59,3 +59,7 @@ clean:
 
 -include $(DEPENDS)
 -include $(YYJSON_OBJECT:.o=.d)
+
+# C++20 modules (build/modules.mk, 7b.4): this module's interface units, the
+# BMIs its code imports, and the order of both.
+include $(SQUARED_ROOT)/build/modules.mk

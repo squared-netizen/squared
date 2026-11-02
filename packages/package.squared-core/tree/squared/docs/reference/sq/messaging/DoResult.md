@@ -1,12 +1,6 @@
 # struct DoResult
 
-*Defined at [messaging/telegraph.hpp:86](../../../../messaging/telegraph.hpp#L86)*
-
-
-
-**brief** What `TelegraphUi::do_` did, and the correlation the answering `event` will carry. 
-
-
+*Defined at [messaging/telegraph.cppm:77](../../../../messaging/telegraph.cppm#L77)*
 
 ## Members
 

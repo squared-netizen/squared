@@ -1,18 +1,11 @@
 // The embedded backend: files compiled into the program, read through the
 // FileSystem interface and a handle, as the Stage reads its default skin.
 
-#include <squared/files/embedded_file_system.hpp>
-#include <squared/files/file_handle.hpp>
-#include <squared/files/src/file_error_code.hpp>
-#include <squared/files/src/file_text_result.hpp>
-#include <squared/files/src/file_type.hpp>
+import sq.files;
 
-#include <array>
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

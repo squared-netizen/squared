@@ -1,12 +1,6 @@
 # class OrthographicCamera
 
-*Defined at [graphics/orthographic_camera.hpp:13](../../../../graphics/orthographic_camera.hpp#L13)*
-
-
-
-**brief** Two-dimensional orthographic camera with pan and zoom.
-
-
+*Defined at [graphics/orthographic_camera.cppm:12](../../../../graphics/orthographic_camera.cppm#L12)*
 
 ## Functions
 
@@ -82,15 +76,7 @@
 
 *public CoordinateOrigin origin()*
 
-*Defined at [graphics/orthographic_camera.hpp:78](../../../../graphics/orthographic_camera.hpp#L78)*
-
-
-
-**brief** Read which way y points in this camera's logical space.
-
-**return** TopLeft when y grows downwards, BottomLeft when it grows upwards.
-
- SpriteBatch reads this in begin() so an image's top edge lands at the top of its quad under either orientation.
+*Defined at [graphics/orthographic_camera.cppm:77](../../../../graphics/orthographic_camera.cppm#L77)*
 
 ### position
 

@@ -1,12 +1,6 @@
 # struct ProgressBarStyle
 
-*Defined at [gui/src/progress_bar_style.hpp:9](../../../../gui/src/progress_bar_style.hpp#L9)*
-
-
-
-**brief** Style data for a non-interactive ProgressBar widget. 
-
-
+*Defined at [gui/src/progress_bar_style.cppm:9](../../../../gui/src/progress_bar_style.cppm#L9)*
 
 ## Members
 

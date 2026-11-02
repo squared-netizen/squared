@@ -1,12 +1,6 @@
 # struct TooltipConfig
 
-*Defined at [gui/src/tooltip_config.hpp:7](../../../../gui/src/tooltip_config.hpp#L7)*
-
-
-
-**brief** Timing and placement policy for transient Ui tooltips. 
-
-
+*Defined at [gui/src/tooltip_config.cppm:7](../../../../gui/src/tooltip_config.cppm#L7)*
 
 ## Members
 

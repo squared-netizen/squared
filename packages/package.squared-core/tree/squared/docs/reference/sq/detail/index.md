@@ -24,7 +24,7 @@
 
 *HeldModel saving_model(messaging::TelegraphLine & line, ModelFile file, Args &&... args)*
 
-*Defined at [stage/app.hpp:75](../../../../stage/app.hpp#L75)*
+*Defined at [stage/app.cppm:61](../../../../stage/app.cppm#L61)*
 
 
 
@@ -34,7 +34,7 @@
 
 *HeldModel saving_on_ui_thread(messaging::TelegraphLine & line, ModelFile file, messaging::OnUiThread tag, Rest &&... rest)*
 
-*Defined at [stage/app.hpp:66](../../../../stage/app.hpp#L66)*
+*Defined at [stage/app.cppm:52](../../../../stage/app.cppm#L52)*
 
 
 
@@ -44,7 +44,7 @@
 
 *gui::PaneShape shape_of()*
 
-*Defined at [stage/stage.hpp:100](../../../../stage/stage.hpp#L100)*
+*Defined at [stage/stage.cppm:59](../../../../stage/stage.cppm#L59)*
 
 
 

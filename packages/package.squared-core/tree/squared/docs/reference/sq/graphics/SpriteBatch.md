@@ -1,12 +1,6 @@
 # class SpriteBatch
 
-*Defined at [graphics/sprite_batch.hpp:24](../../../../graphics/sprite_batch.hpp#L24)*
-
-
-
-**brief** Efficiently draw ordered textured quads with the selected backend.
-
-
+*Defined at [graphics/sprite_batch.cppm:22](../../../../graphics/sprite_batch.cppm#L22)*
 
 ## Functions
 
@@ -14,23 +8,19 @@
 
 *public void SpriteBatch()*
 
-*Defined at [graphics/sprite_batch.hpp:28](../../../../graphics/sprite_batch.hpp#L28)*
-
-
-
-**brief** Construct a batch owning no backend objects. 
+*Defined at [graphics/sprite_batch.cppm:26](../../../../graphics/sprite_batch.cppm#L26)*
 
 ### SpriteBatch
 
 *public void SpriteBatch(const SpriteBatch & )*
 
-*Defined at [graphics/sprite_batch.hpp:29](../../../../graphics/sprite_batch.hpp#L29)*
+*Defined at [graphics/sprite_batch.cppm:27](../../../../graphics/sprite_batch.cppm#L27)*
 
 ### SpriteBatch
 
 *public void SpriteBatch(SpriteBatch && )*
 
-*Defined at [graphics/sprite_batch.hpp:31](../../../../graphics/sprite_batch.hpp#L31)*
+*Defined at [graphics/sprite_batch.cppm:29](../../../../graphics/sprite_batch.cppm#L29)*
 
 ### ~SpriteBatch
 
@@ -170,13 +160,13 @@
 
 *public SpriteBatch & operator=(const SpriteBatch & )*
 
-*Defined at [graphics/sprite_batch.hpp:30](../../../../graphics/sprite_batch.hpp#L30)*
+*Defined at [graphics/sprite_batch.cppm:28](../../../../graphics/sprite_batch.cppm#L28)*
 
 ### operator=
 
 *public SpriteBatch & operator=(SpriteBatch && )*
 
-*Defined at [graphics/sprite_batch.hpp:32](../../../../graphics/sprite_batch.hpp#L32)*
+*Defined at [graphics/sprite_batch.cppm:30](../../../../graphics/sprite_batch.cppm#L30)*
 
 ### set_clip
 

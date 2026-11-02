@@ -1,10 +1,6 @@
-#include "detail/gui_detail.hpp"
+module sq.gui;
 
-#include <squared/gui/check_box.hpp>
-#include <squared/gui/radio_button.hpp>
-
-#include <string>
-#include <utility>
+import sq.std;
 
 namespace sq::gui
 {

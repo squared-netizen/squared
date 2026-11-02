@@ -1,17 +1,11 @@
-#include <squared/data/json.hpp>
-#include <squared/gui/skin_loader.hpp>
+module;
 
-#include <algorithm>
-#include <cerrno>
-#include <cmath>
-#include <cstdint>
-#include <cstdlib>
-#include <exception>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
+#include <errno.h>
+
+module sq.gui;
+
+import sq.data;
+import sq.std;
 
 namespace sq::gui
 {

@@ -4,17 +4,12 @@
 // an interface costs, and whether a clip rectangle was converted into the
 // right scissor. The null backend records both.
 
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/batch_painter.hpp>
-#include <squared/gui/src/rectangle.hpp>
+import sq.graphics;
+import sq.gui;
 
-#include <cassert>
-#include <cstddef>
-#include <cstdio>
+#include <assert.h>
+
+import sq.std;
 
 namespace sq::graphics::detail
 {

@@ -1,14 +1,6 @@
 # class BitmapFont
 
-*Defined at [graphics/bitmap_font.hpp:27](../../../../graphics/bitmap_font.hpp#L27)*
-
-
-
-**brief** Transactionally parsed text BMFont resource.
-
- The resource owns only portable metadata and relative texture-page paths. Applications resolve those pages through their selected asset and graphics systems. The class is value-semantic and not thread-safe during mutation.
-
-
+*Defined at [graphics/bitmap_font.cppm:21](../../../../graphics/bitmap_font.cppm#L21)*
 
 ## Functions
 
@@ -40,49 +32,49 @@
 
 *public const BitmapFontInfo & info()*
 
-*Defined at [graphics/bitmap_font.hpp:47](../../../../graphics/bitmap_font.hpp#L47)*
+*Defined at [graphics/bitmap_font.cppm:41](../../../../graphics/bitmap_font.cppm#L41)*
 
 ### line_height
 
 *public int line_height()*
 
-*Defined at [graphics/bitmap_font.hpp:48](../../../../graphics/bitmap_font.hpp#L48)*
+*Defined at [graphics/bitmap_font.cppm:42](../../../../graphics/bitmap_font.cppm#L42)*
 
 ### baseline
 
 *public int baseline()*
 
-*Defined at [graphics/bitmap_font.hpp:49](../../../../graphics/bitmap_font.hpp#L49)*
+*Defined at [graphics/bitmap_font.cppm:43](../../../../graphics/bitmap_font.cppm#L43)*
 
 ### page_width
 
 *public int page_width()*
 
-*Defined at [graphics/bitmap_font.hpp:50](../../../../graphics/bitmap_font.hpp#L50)*
+*Defined at [graphics/bitmap_font.cppm:44](../../../../graphics/bitmap_font.cppm#L44)*
 
 ### page_height
 
 *public int page_height()*
 
-*Defined at [graphics/bitmap_font.hpp:51](../../../../graphics/bitmap_font.hpp#L51)*
+*Defined at [graphics/bitmap_font.cppm:45](../../../../graphics/bitmap_font.cppm#L45)*
 
 ### pages
 
 *public std::span<const BitmapFontPage> pages()*
 
-*Defined at [graphics/bitmap_font.hpp:52](../../../../graphics/bitmap_font.hpp#L52)*
+*Defined at [graphics/bitmap_font.cppm:46](../../../../graphics/bitmap_font.cppm#L46)*
 
 ### glyphs
 
 *public std::span<const BitmapGlyph> glyphs()*
 
-*Defined at [graphics/bitmap_font.hpp:53](../../../../graphics/bitmap_font.hpp#L53)*
+*Defined at [graphics/bitmap_font.cppm:47](../../../../graphics/bitmap_font.cppm#L47)*
 
 ### kernings
 
 *public std::span<const BitmapKerning> kernings()*
 
-*Defined at [graphics/bitmap_font.hpp:54](../../../../graphics/bitmap_font.hpp#L54)*
+*Defined at [graphics/bitmap_font.cppm:48](../../../../graphics/bitmap_font.cppm#L48)*
 
 ### valid
 

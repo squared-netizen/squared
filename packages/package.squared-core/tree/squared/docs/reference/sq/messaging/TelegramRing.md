@@ -1,16 +1,6 @@
 # class TelegramRing
 
-*Defined at [messaging/telegram_ring.hpp:56](../../../../messaging/telegram_ring.hpp#L56)*
-
-
-
-**brief** One direction of the Telegraph: telegrams from one thread to one other, in order, with no lock and no allocation.
-
- Exactly one thread pushes and exactly one thread reads. A text or uid list is copied into the ring's data ring by `push`, and the telegram that arrives says where; it stays there until the telegram is popped. Over storage its owner gives it, sized at init.
-
- Neither side ever waits: a full ring says so (`RingResult::full`), and an empty one has no `front()`. Waking a consumer that sleeps is its owner's business.
-
-
+*Defined at [messaging/telegram_ring.cppm:51](../../../../messaging/telegram_ring.cppm#L51)*
 
 ## Functions
 
@@ -26,25 +16,25 @@
 
 *public void TelegramRing(const TelegramRing & )*
 
-*Defined at [messaging/telegram_ring.hpp:67](../../../../messaging/telegram_ring.hpp#L67)*
+*Defined at [messaging/telegram_ring.cppm:62](../../../../messaging/telegram_ring.cppm#L62)*
 
 ### operator=
 
 *public TelegramRing & operator=(const TelegramRing & )*
 
-*Defined at [messaging/telegram_ring.hpp:68](../../../../messaging/telegram_ring.hpp#L68)*
+*Defined at [messaging/telegram_ring.cppm:63](../../../../messaging/telegram_ring.cppm#L63)*
 
 ### TelegramRing
 
 *public void TelegramRing(TelegramRing && )*
 
-*Defined at [messaging/telegram_ring.hpp:69](../../../../messaging/telegram_ring.hpp#L69)*
+*Defined at [messaging/telegram_ring.cppm:64](../../../../messaging/telegram_ring.cppm#L64)*
 
 ### operator=
 
 *public TelegramRing & operator=(TelegramRing && )*
 
-*Defined at [messaging/telegram_ring.hpp:70](../../../../messaging/telegram_ring.hpp#L70)*
+*Defined at [messaging/telegram_ring.cppm:65](../../../../messaging/telegram_ring.cppm#L65)*
 
 ### push
 
@@ -82,7 +72,7 @@
 
 *public void ~TelegramRing()*
 
-*Defined at [messaging/telegram_ring.hpp:71](../../../../messaging/telegram_ring.hpp#L71)*
+*Defined at [messaging/telegram_ring.cppm:66](../../../../messaging/telegram_ring.cppm#L66)*
 
 
 

@@ -142,7 +142,9 @@ SQ_CPPFLAGS += $(SQ_TELEGRAPH_SIZES)
 # clean` makes a new one. The app's APK holds it, so it keeps out other apps
 # that are not looking for it, not one that reads this app's APK: dev builds
 # only. sqconsole, the client, is built for this machine (HOST_CXX) from
-# squared/console/client/.
+# squared/console/client/, against the framework built for this machine
+# (squared/build/host/: it imports sq.console, and the BMIs of the Android
+# build are for the device; the build cache keeps that build quick).
 #
 # Where the bridge's port and secret are is the same in every build, so `make
 # console` finds them without being told which kind of build is installed.
@@ -169,11 +171,14 @@ SQ_BRIDGE_STATUS = 127.0.0.1:$(SQ_BRIDGE_PORT) (secret in $(SQ_BRIDGE_CONF)); ma
 HOST_CXX ?= c++
 SQ_SQCONSOLE := $(BUILD)/host/sqconsole
 
-$(SQ_SQCONSOLE): $(SQ_SQUARED_DIR)/console/client/sqconsole.cpp \
-                 $(wildcard $(SQ_SQUARED_DIR)/console/line_reader.hpp $(SQ_SQUARED_DIR)/console/src/bridge_protocol.hpp)
-	@mkdir -p $(dir $@)
-	@echo "  host c++       sqconsole, for this machine"
-	@$(HOST_CXX) -std=c++20 -O2 -I$(SQ_SQUARED_DIR)/.. $< -o $@
+# The framework for this machine, and a host tool from it: $(call
+# sq_host_tool,<tool>), sqgen or sqconsole (squared's root Makefile).
+sq_host_tool = @mkdir -p $(dir $@) && echo "  host c++       $(1), for this machine (squared/build/host)" && \
+    $(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) BUILD=host CXX="$(HOST_CXX)" $(1) && \
+    cp -f $(SQ_SQUARED_DIR)/build/host/$(1) $@
+
+$(SQ_SQCONSOLE): $(SQ_SQUARED_DIR)/console/client/sqconsole.cpp $(SQ_SQUARED_LIBS)
+	$(call sq_host_tool,sqconsole)
 
 # `make console` needs no CONSOLE=: it reads the bridge's file, and the build's
 # flags stamp says whether the last build was a CONSOLE build. A CONSOLE build
@@ -230,13 +235,6 @@ SQ_LAYOUT_FILES := $(sort $(wildcard sq_app/layouts/*.json))
 ifneq ($(strip $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES)),)
   SQ_GEN_DIR := $(BUILD)/gen
   SQ_SQGEN := $(BUILD)/host/sqgen
-  HOST_CC ?= cc
-  SQ_YYJSON := $(SQ_SQUARED_DIR)/third_party/yyjson
-  SQ_SQGEN_SRC := $(addprefix $(SQ_SQUARED_DIR)/,tools/sqgen/sqgen.cpp \
-      gui/src/layout.cpp gui/src/layout_writer.cpp gui/src/layout_file.cpp \
-      data/src/json.cpp data/src/json_value.cpp \
-      messaging/src/telegram_text.cpp messaging/src/telegram.cpp messaging/src/telegram_data.cpp \
-      messaging/src/name_table.cpp messaging/src/address.cpp)
   # Which files there are, so adding or removing one regenerates too.
   $(shell mkdir -p '$(SQ_GEN_DIR)'; \
     printf '%s\n' $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) | cmp -s - '$(SQ_GEN_DIR)/inputs' || \
@@ -249,14 +247,10 @@ ifneq ($(strip $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES)),)
 endif
 
 ifneq ($(SQ_SQGEN),)
-$(SQ_SQGEN): $(SQ_SQGEN_SRC) $(SQ_YYJSON)/yyjson.c \
-             $(wildcard $(SQ_SQUARED_DIR)/gui/layout*.hpp $(SQ_SQUARED_DIR)/messaging/*.hpp \
-                        $(SQ_SQUARED_DIR)/messaging/src/*.hpp $(SQ_SQUARED_DIR)/data/*.hpp)
-	@mkdir -p $(dir $@)
-	@echo "  host c++       sqgen, for this machine"
-	@$(HOST_CC) -O2 -c $(SQ_YYJSON)/yyjson.c -o $(BUILD)/host/yyjson.o
-	@$(HOST_CXX) -std=c++20 -O2 -I$(SQ_SQUARED_DIR)/.. -I$(SQ_YYJSON) $(SQ_SQGEN_SRC) \
-	    $(BUILD)/host/yyjson.o -o $@
+# Built from the framework for this machine, as sqconsole is (a change to
+# the framework reaches it through the archives the device build makes).
+$(SQ_SQGEN): $(SQ_SQUARED_DIR)/tools/sqgen/sqgen.cpp $(SQ_SQUARED_LIBS)
+	$(call sq_host_tool,sqgen)
 
 $(SQ_GEN_DIR)/layouts.cpp: $(SQ_SQGEN) $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) $(SQ_GEN_DIR)/inputs
 	@$(SQ_SQGEN) $(if $(SQ_NAMES_FILE),--names $(SQ_NAMES_FILE),) \
@@ -271,22 +265,45 @@ endif
 SQ_SQUARED_MODULES := app assets console data dev files gles graphics gui \
                       math messaging stage time
 
-# One include root for every header, workhorse or supporting: the directory
-# that holds squared/. Headers are written <squared/<module>/...>.
+# One include root, the directory that holds squared/: the few headers that
+# are still headers (and squared's third_party/).
 SQ_SQUARED_INC := -I$(SQ_SQUARED_DIR)/..
+
+# squared is C++20 modules (7b.4): your code writes `import squared;` (or
+# `import sq.gui;`, ...), and the compiler reads the framework's BMIs from
+# its build. Your C++ is compiled with what every importer of a squared module
+# must share with it: -pthread (clang refuses a BMI made with threads when
+# the importer has none, and the same for the C++ standard, RTTI and
+# exceptions: keep CXXSTD at c++20). CPPFLAGS, not SQ_CPPFLAGS: the NDK's
+# native-app-glue is C, and imports nothing.
+SQ_SQUARED_BMI_DIR := $(SQ_SQUARED_DIR)/build/release/modules
+CPPFLAGS += -pthread -fprebuilt-module-path=$(SQ_SQUARED_BMI_DIR)
+
+# Your objects are compiled after the framework's BMIs, and again when one
+# changes (clang refuses an importer built against an older BMI): the flags
+# stamp, which every object depends on, waits for them. squared.pcm is made
+# last, after every module it re-exports.
+SQ_SQUARED_BMIS := $(SQ_SQUARED_BMI_DIR)/squared.pcm $(SQ_SQUARED_BMI_DIR)/sq.std.pcm
+$(BUILD)/.flags: $(SQ_SQUARED_BMIS)
+$(SQ_SQUARED_BMIS): squared-core ;
 
 # Link order matters for static archives: a dependent must precede what it
 # depends on, because the linker resolves left to right and does not go back.
-# stage (the App and the Stage) needs gui, assets, messaging and time; gui
-# needs graphics; graphics needs math and files; assets needs files;
-# everything that parses needs data. gles stands alone. An app that has no
-# sq::App (the demo, still on its own) links nothing of stage: an archive's
-# member comes in only when something refers to it.
+# squared (the one import) first; stage (the App and the Stage) needs gui,
+# assets, messaging and time; gui and stage need app; gui needs graphics;
+# graphics needs math and files; assets needs files; everything that parses
+# needs data; every module, and your code, needs sq.std, last. gles stands
+# alone. An app that has no sq::App (the demo, still on its own) links
+# nothing of stage: an archive's member comes in only when something refers to
+# it. (Since 7b.4 each archive also holds its module's interfaces: what an
+# importer calls, and each module's initializer.)
 SQ_SQUARED_LIB_DIR := $(SQ_SQUARED_DIR)/build/release/lib
 SQ_SQUARED_LIBS := \
+  $(SQ_SQUARED_LIB_DIR)/libsquared.a \
   $(if $(filter-out 0,$(CONSOLE)),$(SQ_SQUARED_LIB_DIR)/libsquared_console.a,) \
   $(SQ_SQUARED_LIB_DIR)/libsquared_stage.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_gui.a \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_app.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_graphics.a \
   $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),\
      $(SQ_SQUARED_LIB_DIR)/libsquared_gles.a,) \
@@ -296,7 +313,8 @@ SQ_SQUARED_LIBS := \
   $(SQ_SQUARED_LIB_DIR)/libsquared_data.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_time.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_math.a \
-  $(if $(DEV_LOG),$(SQ_SQUARED_LIB_DIR)/libsquared_dev.a,)
+  $(if $(DEV_LOG),$(SQ_SQUARED_LIB_DIR)/libsquared_dev.a,) \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_std.a
 
 SQ_CPPFLAGS += $(SQ_SQUARED_INC)
 SQ_LDLIBS   += $(SQ_SQUARED_LIBS)

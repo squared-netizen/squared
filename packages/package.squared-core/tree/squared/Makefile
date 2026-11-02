@@ -2,7 +2,9 @@
 #
 #   make                 build every module (release)
 #   make BUILD=debug     unoptimised with symbols
-#   make headers         compile every public header on its own
+#   make headers         check sq.std and the modules' build order
+#                        (tools/check_modules.sh; until 7b.4, every header
+#                        compiled on its own)
 #   make lint            format, source-rule and clang-tidy checks
 #   make docs            write the API reference, docs/reference/ (clang-doc)
 #   make docs-check      say whether docs/reference/ is current
@@ -11,11 +13,11 @@
 #   make retest          every test again, changed or not
 #   make lint LINT_ARGS=--changed   options for tools/lint.sh (also --only tidy)
 #   make <module>        build one module
+#   make sqgen           sqgen (and sqconsole), the host tools, in build/<BUILD>/
 #   make V=1             every command, and every test's output, in full
 #   make SQUARED_CACHE=off   no build cache (build/common.mk, "the build cache")
 #   make clean
 #
-# Header-only modules are built too, so their headers stay compilable.
 #
 # A build prints one short line per step (build/common.mk, "what a build
 # prints"); errors and warnings in full.
@@ -30,35 +32,69 @@ include build/common.mk
 # backend is gles. A null-backend build works on a machine with neither.
 SQUARED_GRAPHICS_BACKEND ?= null
 
-MODULES := math data files assets graphics \
+MODULES := app math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
            gui messaging time dev console stage
 
-.PHONY: all clean docs docs-check headers lint test retest $(MODULES)
+.PHONY: all clean docs docs-check headers lint test retest umbrella sqgen sqconsole $(MODULES)
 
 # The modules with tests, in the order they are run.
 TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage
 
 # Then the build cache, back under its size (build/common.mk, "the build
 # cache"). Quick when it is under: one du.
-all: $(MODULES)
+all: $(MODULES) umbrella
 	@if [ "$(SQUARED_CACHE)" != off ] && [ -n "$(SQUARED_CACHE)" ]; then \
 	  bash tools/cache_prune.sh '$(SQUARED_CACHE)' '$(SQUARED_CACHE_SIZE)'; fi
 
-graphics: math files
-gui: graphics math data files messaging
+# The order the modules import each other in (7b.4): a module's BMIs are made
+# before any module that imports it is compiled. tools/module_order.sh checks
+# this list against the import lines (tools/check_modules.sh; make headers
+# runs it).
+graphics: dev math files
+app: graphics files assets
+gui: app graphics math data dev files messaging
 assets: files
 gles: graphics
 messaging: time
-stage: gui graphics assets files messaging data time math
+console: app dev messaging time
+stage: app gui graphics assets dev files messaging data time math
 
-# The standard headers' precompiled header first, here, once: the modules
-# build at the same time under -j, and would each make it (build/common.mk).
-$(MODULES): $(SQUARED_PCH_FILE)
+# sq.std first, here, once: every module imports it, and they build at the
+# same time under -j (build/common.mk, "the standard library, as a module").
+$(MODULES): $(SQUARED_STD_PCM)
 	$(MAKE) -C $@ -f Makefile
 
+# squared, the one import for an app (squared.cppm: the standard library, the
+# App and its Stage, the widgets, the Telegraph), after the modules it
+# re-exports; its object in lib/libsquared.a, which an app links first.
+SQUARED_UMBRELLA_PCM := $(SQUARED_MODULE_DIR)/squared.pcm
+SQUARED_UMBRELLA_LIB := $(LIB_DIR)/libsquared.a
+# Its own make, after the modules: so it is made again only when one of their
+# BMIs changed, not on every build (an app's objects wait for squared.pcm, and
+# would all compile again).
+umbrella: app gui messaging stage
+	$(MAKE) --no-print-directory $(SQUARED_UMBRELLA_LIB)
+$(SQUARED_UMBRELLA_LIB): squared.cppm $(SQUARED_STD_PCM) $(SQUARED_FLAGS_STAMP) \
+                         $(foreach m,app gui messaging stage,$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
+	@mkdir -p $(OBJ_DIR)/squared
+	$(call say,mod,squared)
+	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_MODULE_USE) -c $< -fmodule-output=$(SQUARED_UMBRELLA_PCM) \
+	    -o $(OBJ_DIR)/squared/squared.o
+	rm -f $@
+	$(AR) rcs $@ $(OBJ_DIR)/squared/squared.o
+
 headers:
-	./tools/check_headers.sh
+	bash tools/check_modules.sh
+
+# The host tools a project builds for the machine it is built on
+# (mk/pkg_squared_core.mk: `make BUILD=host CXX=<host compiler> sqgen`), from
+# the framework built for that machine.
+sqgen: all
+	$(MAKE) -C gui $(BUILD_DIR)/sqgen
+
+sqconsole: all
+	$(MAKE) -C console $(BUILD_DIR)/sqconsole
 
 # After `all`: graphics and gui tests link the archives.
 test: all

@@ -1,6 +1,6 @@
 # class Buffer
 
-*Defined at [gles/buffer.hpp:20](../../../../gles/buffer.hpp#L20)*
+*Defined at [gles/buffer.cppm:17](../../../../gles/buffer.cppm#L17)*
 
 
 
@@ -16,19 +16,19 @@
 
 *public void Buffer()*
 
-*Defined at [gles/buffer.hpp:23](../../../../gles/buffer.hpp#L23)*
+*Defined at [gles/buffer.cppm:20](../../../../gles/buffer.cppm#L20)*
 
 ### Buffer
 
 *public void Buffer(const Buffer & )*
 
-*Defined at [gles/buffer.hpp:26](../../../../gles/buffer.hpp#L26)*
+*Defined at [gles/buffer.cppm:23](../../../../gles/buffer.cppm#L23)*
 
 ### operator=
 
 *public Buffer & operator=(const Buffer & )*
 
-*Defined at [gles/buffer.hpp:27](../../../../gles/buffer.hpp#L27)*
+*Defined at [gles/buffer.cppm:24](../../../../gles/buffer.cppm#L24)*
 
 ### ~Buffer
 
@@ -112,7 +112,7 @@
 
 *public bool valid()*
 
-*Defined at [gles/buffer.hpp:74](../../../../gles/buffer.hpp#L74)*
+*Defined at [gles/buffer.cppm:71](../../../../gles/buffer.cppm#L71)*
 
 
 
@@ -122,7 +122,7 @@
 
 *public std::uint32_t name()*
 
-*Defined at [gles/buffer.hpp:77](../../../../gles/buffer.hpp#L77)*
+*Defined at [gles/buffer.cppm:74](../../../../gles/buffer.cppm#L74)*
 
 
 
@@ -132,7 +132,7 @@
 
 *public BufferTarget target()*
 
-*Defined at [gles/buffer.hpp:80](../../../../gles/buffer.hpp#L80)*
+*Defined at [gles/buffer.cppm:77](../../../../gles/buffer.cppm#L77)*
 
 
 
@@ -142,7 +142,7 @@
 
 *public std::size_t size_bytes()*
 
-*Defined at [gles/buffer.hpp:83](../../../../gles/buffer.hpp#L83)*
+*Defined at [gles/buffer.cppm:80](../../../../gles/buffer.cppm#L80)*
 
 
 

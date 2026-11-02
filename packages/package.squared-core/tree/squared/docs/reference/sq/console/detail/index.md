@@ -16,19 +16,19 @@
 
 *std::size_t characters(std::string_view text)*
 
-*Defined at [console/layout.hpp:106](../../../../../console/layout.hpp#L106)*
+*Defined at [console/layout.cppm:102](../../../../../console/layout.cppm#L102)*
 
 ### colour_of
 
 *Colour colour_of(Level level)*
 
-*Defined at [console/layout.hpp:115](../../../../../console/layout.hpp#L115)*
+*Defined at [console/layout.cppm:111](../../../../../console/layout.cppm#L111)*
 
 ### glyph_at
 
 *std::uint8_t glyph_at(std::string_view text, std::size_t & at)*
 
-*Defined at [console/layout.hpp:94](../../../../../console/layout.hpp#L94)*
+*Defined at [console/layout.cppm:90](../../../../../console/layout.cppm#L90)*
 
  The glyph for the character starting at text[at], and the start of the next.
 

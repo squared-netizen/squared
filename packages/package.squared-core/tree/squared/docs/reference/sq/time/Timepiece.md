@@ -1,14 +1,6 @@
 # class Timepiece
 
-*Defined at [time/timepiece.hpp:21](../../../../time/timepiece.hpp#L21)*
-
-
-
-**brief** The time between ticks, as a value: the last time it was given, the step since the one before (clamped), and how many ticks there have been. 24 bytes, no base class, nothing virtual, no clock of its own: the loop reads the clock once (`now()`) and passes the time in.
-
- One per loop: the UI's frames, the model's ticks. Not shared between threads.
-
-
+*Defined at [time/timepiece.cppm:19](../../../../time/timepiece.cppm#L19)*
 
 ## Members
 
@@ -46,41 +38,25 @@ public static duration longest_step
 
 *public Duration step()*
 
-*Defined at [time/timepiece.hpp:38](../../../../time/timepiece.hpp#L38)*
-
-
-
-**brief** The step the last tick reported, in nanoseconds. 
+*Defined at [time/timepiece.cppm:36](../../../../time/timepiece.cppm#L36)*
 
 ### last
 
 *public TimePoint last()*
 
-*Defined at [time/timepiece.hpp:44](../../../../time/timepiece.hpp#L44)*
-
-
-
-**brief** The time the last tick (or `start`) was given. 
+*Defined at [time/timepiece.cppm:42](../../../../time/timepiece.cppm#L42)*
 
 ### ticks
 
 *public std::uint64_t ticks()*
 
-*Defined at [time/timepiece.hpp:47](../../../../time/timepiece.hpp#L47)*
-
-
-
-**brief** Ticks since `start`, or since it was made. 
+*Defined at [time/timepiece.cppm:45](../../../../time/timepiece.cppm#L45)*
 
 ### started
 
 *public bool started()*
 
-*Defined at [time/timepiece.hpp:50](../../../../time/timepiece.hpp#L50)*
-
-
-
-**brief** Whether it has a time to measure from: a tick or `start` happened. 
+*Defined at [time/timepiece.cppm:48](../../../../time/timepiece.cppm#L48)*
 
 
 

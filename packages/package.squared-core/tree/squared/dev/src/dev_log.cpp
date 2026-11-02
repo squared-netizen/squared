@@ -1,17 +1,15 @@
-#include <squared/dev/crash_trace.hpp>
-#include <squared/dev/dev_log.hpp>
+module;
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <atomic>
-#include <csignal>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
+module sq.dev;
+
+import sq.std;
 
 namespace sq::dev
 {

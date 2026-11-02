@@ -21,17 +21,9 @@
 // host; the standard library's containers are used freely, as the framework
 // rules allow outside resident code.
 
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <map>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 namespace
 {

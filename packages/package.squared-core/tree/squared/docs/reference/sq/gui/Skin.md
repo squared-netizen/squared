@@ -1,6 +1,6 @@
 # class Skin
 
-*Defined at [gui/skin.hpp:37](../../../../gui/skin.hpp#L37)*
+*Defined at [gui/skin.cppm:27](../../../../gui/skin.cppm#L27)*
 
 
 

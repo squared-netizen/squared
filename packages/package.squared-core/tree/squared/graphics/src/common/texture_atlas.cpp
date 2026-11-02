@@ -1,30 +1,13 @@
 // TextureAtlas: the libGDX .atlas format, and the pages it names.
 
-#include <squared/graphics/context.hpp>
 //
 // Backend-independent: every graphics call it makes goes through Texture,
 // which has its own per-backend half. This file is parsing and bookkeeping.
 
-#include <squared/files/file_handle.hpp>
-#include <squared/files/src/file_text_result.hpp>
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/src/texture_filter.hpp>
-#include <squared/graphics/src/texture_recovery_options.hpp>
-#include <squared/graphics/src/texture_recovery_policy.hpp>
-#include <squared/graphics/src/texture_wrap.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_atlas.hpp>
-#include <squared/graphics/texture_region.hpp>
+module sq.graphics;
 
-#include <array>
-#include <charconv>
-#include <cstddef>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+import sq.files;
+import sq.std;
 
 namespace sq::graphics
 {

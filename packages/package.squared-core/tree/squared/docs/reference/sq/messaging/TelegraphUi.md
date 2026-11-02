@@ -1,14 +1,6 @@
 # class TelegraphUi
 
-*Defined at [messaging/telegraph.hpp:313](../../../../messaging/telegraph.hpp#L313)*
-
-
-
-**brief** The UI's end of the Telegraph: the Stage's, on the UI thread. An app reaches it through its screens, not directly.
-
- It sends `set` and `do`, asks lists for rows, takes what the model sent into the latest-value cache (`drain`), reads values back, binds the ones on screen, and passes Android's lifecycle to the model. It never waits: a full ring is `full`. Each send wakes the model's thread if it sleeps; when the UI sleeps itself, `wake_fd` wakes it for what the model sends.
-
-
+*Defined at [messaging/telegraph.cppm:304](../../../../messaging/telegraph.cppm#L304)*
 
 ## Functions
 
@@ -16,95 +8,67 @@
 
 *public void TelegraphUi(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.hpp:316](../../../../messaging/telegraph.hpp#L316)*
+*Defined at [messaging/telegraph.cppm:307](../../../../messaging/telegraph.cppm#L307)*
 
 ### operator=
 
 *public TelegraphUi & operator=(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.hpp:317](../../../../messaging/telegraph.hpp#L317)*
+*Defined at [messaging/telegraph.cppm:308](../../../../messaging/telegraph.cppm#L308)*
 
 ### TelegraphUi
 
 *public void TelegraphUi(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.hpp:318](../../../../messaging/telegraph.hpp#L318)*
+*Defined at [messaging/telegraph.cppm:309](../../../../messaging/telegraph.cppm#L309)*
 
 ### operator=
 
 *public TelegraphUi & operator=(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.hpp:319](../../../../messaging/telegraph.hpp#L319)*
+*Defined at [messaging/telegraph.cppm:310](../../../../messaging/telegraph.cppm#L310)*
 
 ### set
 
 *public SendResult set(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:325](../../../../messaging/telegraph.hpp#L325)*
-
-
-
-**brief** `set <key> <value>`: the user changed a value. 
+*Defined at [messaging/telegraph.cppm:316](../../../../messaging/telegraph.cppm#L316)*
 
 ### set
 
 *public SendResult set(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:336](../../../../messaging/telegraph.hpp#L336)*
-
-
-
-**brief** `set <key>[uid] <value>`. 
+*Defined at [messaging/telegraph.cppm:327](../../../../messaging/telegraph.cppm#L327)*
 
 ### do_
 
 *public DoResult do_(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:347](../../../../messaging/telegraph.hpp#L347)*
-
-
-
-**brief** `do <key>`: an intent, with no value. 
+*Defined at [messaging/telegraph.cppm:338](../../../../messaging/telegraph.cppm#L338)*
 
 ### do_
 
 *public DoResult do_(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.hpp:356](../../../../messaging/telegraph.hpp#L356)*
-
-
-
-**brief** `do <key> <value>`. 
+*Defined at [messaging/telegraph.cppm:347](../../../../messaging/telegraph.cppm#L347)*
 
 ### do_
 
 *public DoResult do_(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:366](../../../../messaging/telegraph.hpp#L366)*
-
-
-
-**brief** `do <key>[uid]`, for a key with no value that takes a uid (a row's button). 
+*Defined at [messaging/telegraph.cppm:357](../../../../messaging/telegraph.cppm#L357)*
 
 ### register_names
 
 *public void register_names(const K &... keys)*
 
-*Defined at [messaging/telegraph.hpp:443](../../../../messaging/telegraph.hpp#L443)*
-
-
-
-**brief** Add each key's name, for names only the model sends. Nothing without a table. 
+*Defined at [messaging/telegraph.cppm:434](../../../../messaging/telegraph.cppm#L434)*
 
 ### view
 
 *public SendResult view(const K & rows, RowSpan span)*
 
-*Defined at [messaging/telegraph.hpp:684](../../../../messaging/telegraph.hpp#L684)*
-
-
-
-**brief** `do <list>.view (first last)`: the rows a list widget shows (`ListWindow`). 
+*Defined at [messaging/telegraph.cppm:675](../../../../messaging/telegraph.cppm#L675)*
 
 ### view
 
@@ -134,11 +98,7 @@
 
 *public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.hpp:701](../../../../messaging/telegraph.hpp#L701)*
-
-
-
-**brief** Take what the model sent: each `state` into the cache, then to `handler.state(received)` if it has one (what shows it is told it changed); each `event` to `handler.event(received)` if it has one. At most a ring's worth, so one frame never takes more. The telegrams taken.
+*Defined at [messaging/telegraph.cppm:692](../../../../messaging/telegraph.cppm#L692)*
 
 ### drain
 
@@ -212,27 +172,19 @@
 
 *public void ~TelegraphUi()*
 
-*Defined at [messaging/telegraph.hpp:320](../../../../messaging/telegraph.hpp#L320)*
+*Defined at [messaging/telegraph.cppm:311](../../../../messaging/telegraph.cppm#L311)*
 
 ### value
 
 *public detail::value_of<K> value(const K & key)*
 
-*Defined at [messaging/telegraph.hpp:416](../../../../messaging/telegraph.hpp#L416)*
-
-
-
-**brief** The latest value of `key`, as its type (text: valid until the next `drain`). 
+*Defined at [messaging/telegraph.cppm:407](../../../../messaging/telegraph.cppm#L407)*
 
 ### value
 
 *public detail::value_of<K> value(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.hpp:425](../../../../messaging/telegraph.hpp#L425)*
-
-
-
-**brief** The latest value of `key` at `uid`, as its type. 
+*Defined at [messaging/telegraph.cppm:416](../../../../messaging/telegraph.cppm#L416)*
 
 ### wake_fd
 

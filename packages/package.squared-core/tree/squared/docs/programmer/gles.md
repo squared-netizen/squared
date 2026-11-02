@@ -7,22 +7,22 @@ Developer counterpart: [../developer/gles.md](../developer/gles.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Buffer` | `squared/gles/buffer.hpp` | one GL buffer object, owned |
-| `BufferTarget` | `squared/gles/src/buffer_target.hpp` | vertex, index or uniform |
-| `BufferUsage` | `squared/gles/src/buffer_usage.hpp` | static, dynamic or stream hint |
-| `Shader` | `squared/gles/shader.hpp` | one compiled stage, owned |
-| `ShaderStage` | `squared/gles/src/shader_stage.hpp` | vertex or fragment |
-| `Program` | `squared/gles/program.hpp` | one linked program, owned |
-| `AttributeInfo` | `squared/gles/src/attribute_info.hpp` | an attribute the linker kept |
-| `UniformInfo` | `squared/gles/src/uniform_info.hpp` | a uniform the linker kept |
-| `VertexArray` | `squared/gles/vertex_array.hpp` | one VAO, owned |
-| `VertexAttribute` | `squared/gles/src/vertex_attribute.hpp` | one attribute's layout |
-| `Texture2D` | `squared/gles/texture2d.hpp` | one 2D texture, owned |
-| `TextureFormat` | `squared/gles/src/texture_format.hpp` | Rgba8, Rgb8 or R8 |
-| `graphics::TextureFilter` | `squared/graphics/src/texture_filter.hpp` | nearest or linear; shared with `graphics::Texture` |
-| `graphics::TextureWrap` | `squared/graphics/src/texture_wrap.hpp` | clamp, repeat or mirrored; shared with `graphics::Texture` |
-| `GlesError` | `squared/gles/src/gles_error.hpp` | structured failure, with driver logs |
-| `GlesErrorCode` | `squared/gles/src/gles_error_code.hpp` | stable error categories |
+| `Buffer` | `squared/gles/buffer.cppm` | one GL buffer object, owned |
+| `BufferTarget` | `squared/gles/src/buffer_target.cppm` | vertex, index or uniform |
+| `BufferUsage` | `squared/gles/src/buffer_usage.cppm` | static, dynamic or stream hint |
+| `Shader` | `squared/gles/shader.cppm` | one compiled stage, owned |
+| `ShaderStage` | `squared/gles/src/shader_stage.cppm` | vertex or fragment |
+| `Program` | `squared/gles/program.cppm` | one linked program, owned |
+| `AttributeInfo` | `squared/gles/src/attribute_info.cppm` | an attribute the linker kept |
+| `UniformInfo` | `squared/gles/src/uniform_info.cppm` | a uniform the linker kept |
+| `VertexArray` | `squared/gles/vertex_array.cppm` | one VAO, owned |
+| `VertexAttribute` | `squared/gles/src/vertex_attribute.cppm` | one attribute's layout |
+| `Texture2D` | `squared/gles/texture2d.cppm` | one 2D texture, owned |
+| `TextureFormat` | `squared/gles/src/texture_format.cppm` | Rgba8, Rgb8 or R8 |
+| `graphics::TextureFilter` | `squared/graphics/src/texture_filter.cppm` | nearest or linear; shared with `graphics::Texture` |
+| `graphics::TextureWrap` | `squared/graphics/src/texture_wrap.cppm` | clamp, repeat or mirrored; shared with `graphics::Texture` |
+| `GlesError` | `squared/gles/src/gles_error.cppm` | structured failure, with driver logs |
+| `GlesErrorCode` | `squared/gles/src/gles_error_code.cppm` | stable error categories |
 
 ## A triangle
 

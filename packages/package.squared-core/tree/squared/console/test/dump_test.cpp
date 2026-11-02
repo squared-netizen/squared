@@ -3,15 +3,12 @@
 // once each, `all`, `stop`, unknown groups, the system groups, the table's
 // limits, and no allocation.
 
-#include <squared/console/console.hpp>
-#include <squared/console/system_commands.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.console;
+import sq.dev;
 
-#include <cstdio>
-#include <cstdlib>
-#include <memory>
-#include <string>
-#include <vector>
+#include <stdio.h>
+
+import sq.std;
 
 using namespace sq::console;
 

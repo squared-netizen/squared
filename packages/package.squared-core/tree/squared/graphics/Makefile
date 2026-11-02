@@ -96,7 +96,7 @@ TESTS := $(TEST_BINARY) $(TEXTURE_TEST) $(ATLAS_TEST) $(BATCH_TEST) $(GLYPH_TEST
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+$(TESTS): $(SQUARED_FLAGS_STAMP)
 
 # What each test includes, from its last build (tools/test_cc.sh).
 -include $(TESTS:=.d)
@@ -166,9 +166,9 @@ $(TARGET): $(OBJECTS)
 	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/graphics/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
+$(OBJ_DIR)/graphics/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 $(STB_DIR)/stb_image.h:
 	@echo "graphics: third_party/stb/stb_image.h is missing."
@@ -185,3 +185,7 @@ clean:
 
 -include $(DEPENDS)
 -include $(STB_OBJECT:.o=.d)
+
+# C++20 modules (build/modules.mk, 7b.4): this module's interface units, the
+# BMIs its code imports, and the order of both.
+include $(SQUARED_ROOT)/build/modules.mk

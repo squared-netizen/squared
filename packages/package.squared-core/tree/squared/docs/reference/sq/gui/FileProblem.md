@@ -1,6 +1,6 @@
 # struct FileProblem
 
-*Defined at [gui/layout_file.hpp:53](../../../../gui/layout_file.hpp#L53)*
+*Defined at [gui/layout_file.cppm:47](../../../../gui/layout_file.cppm#L47)*
 
 
 

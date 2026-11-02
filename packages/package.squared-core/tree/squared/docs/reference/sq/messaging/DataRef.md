@@ -1,12 +1,6 @@
 # struct DataRef
 
-*Defined at [messaging/src/data_ref.hpp:13](../../../../messaging/src/data_ref.hpp#L13)*
-
-
-
-**brief** Where a telegram's text or uid list is: `length` bytes from `offset` in the data area that travels with it (the Telegraph's data ring, or a `TelegramData`). A uid list is 4 bytes per uid.
-
-
+*Defined at [messaging/src/data_ref.cppm:13](../../../../messaging/src/data_ref.cppm#L13)*
 
 ## Members
 

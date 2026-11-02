@@ -1,20 +1,12 @@
-#include <squared/data/json.hpp>
-#include <squared/gui/layout_file.hpp>
-#include <squared/messaging/telegram.hpp>
-#include <squared/messaging/telegram_data.hpp>
-#include <squared/messaging/telegram_text.hpp>
+module;
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <stdint.h>
+
+module sq.gui;
+
+import sq.data;
+import sq.messaging;
+import sq.std;
 
 namespace sq::gui
 {

@@ -1,19 +1,15 @@
-#include <squared/dev/dev_log.hpp>
-#include <squared/dev/frame_allocations.hpp>
+module;
 
 #include <dlfcn.h>
 #include <malloc.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <unwind.h>
 
-#include <array>
-#include <atomic>
-#include <charconv>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
-#include <new>
-#include <string_view>
+module sq.dev;
+
+import sq.std;
 
 namespace sq::dev
 {
@@ -463,6 +459,9 @@ void report_allocations() noexcept
 // Replacement allocation functions ([new.delete]). Default visibility, because
 // the build hides symbols by default and these have to reach the whole
 // process: a shared libc++ resolves its own calls to operator new to these.
+// extern "C++": they replace the global ones, so they belong to the global
+// module, not to sq.dev, in whose unit they are written.
+extern "C++" {
 
 [[gnu::visibility( "default" )]] void *operator new( std::size_t bytes )
 {
@@ -558,3 +557,5 @@ operator new[]( std::size_t bytes, std::align_val_t alignment, const std::nothro
 }
 
 #undef SQ_DEV_CALLER
+
+} // extern "C++"

@@ -4,22 +4,16 @@
 // then the system's), the report is shown once and kept for `crash`, and the
 // handlers come back off.
 
-#include <squared/console/crash_file.hpp>
+import sq.console;
 
+#include <assert.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <cassert>
-#include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
+import sq.std;
 
 using namespace sq::console;
 

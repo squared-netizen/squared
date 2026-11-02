@@ -7,14 +7,14 @@ Programmer counterpart: [../programmer/dev.md](../programmer/dev.md)
 - Public types: 3 (`LogSinkOptions`, `LogSinkStatus`, `FrameAllocations`) and
   five functions
 - Translation units: 2
-- Headers: `dev_log.hpp` and `frame_allocations.hpp` at the module root
+- Headers: `dev_log.cppm` and `frame_allocations.cppm` at the module root
 
 ## Layout
 
 ```
 dev/
-  dev_log.hpp
-  frame_allocations.hpp
+  dev_log.cppm
+  frame_allocations.cppm
   src/dev_log.cpp
   src/frame_allocations.cpp
   test/dev_log_test.cpp
@@ -41,7 +41,7 @@ handler builds its packets with `send_line` and never calls it: the Console
 is not async-signal-safe. `LogLevel` travels with the line to the listener;
 the UDP packet stays the bare text, so `nc` shows what it always did.
 
-The trace itself is `write_crash_trace` in `crash_trace.hpp`, header-only since 4.6 so the Console's crash file shares it without linking `dev`. Its unwind callback is deliberately not `noexcept`: with it, `_Unwind_Backtrace` stopped at the first frame, with g++ and clang alike, and the trace lost every frame but #0 (found 2026-10-19 moving the code; `dev_log_test` now requires frame #1).
+The trace itself is `write_crash_trace` in `crash_trace.cppm`, header-only since 4.6 so the Console's crash file shares it without linking `dev`. Its unwind callback is deliberately not `noexcept`: with it, `_Unwind_Backtrace` stopped at the first frame, with g++ and clang alike, and the trace lost every frame but #0 (found 2026-10-19 moving the code; `dev_log_test` now requires frame #1).
 
 The crash handler runs on an alternate signal stack (so a stack overflow can be
 reported) and builds its packets with fixed-size character appends. It sends:

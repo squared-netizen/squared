@@ -135,12 +135,13 @@ A selected `.cpp` that neither configuration compiles is named as skipped,
 never analysed with guessed flags. Each progress line says which configuration
 a file was analysed in.
 
-Headers are analysed through the `.cpp` files that include them, so a header
-included by ten files would be reported ten times; findings are deduplicated
-by place and check. Naming a header, or changing one under `--changed`,
-analyses the sources that include it directly. A header that no `.cpp`
-includes is not analysed by clang-tidy at all; `make headers` still compiles
-every one of them.
+Since 7b.4 every module interface (`.cppm`) is a unit of its own, analysed
+as the implementation units are; clang-tidy reads the BMIs of what a unit
+imports, so `tools/lint.sh` builds first (`make`: quick when the build is
+current), and for the Android units a build of its own in
+`build/lint-android/`, its objects from the build cache when the same were
+built before. The few headers left (a test's stub) are analysed through the
+files that include them; findings are deduplicated by place and check.
 
 A tree without Makefiles (a test fixture) falls back to every
 `<module>/src/**.cpp` with `-std=c++20` and the layout's include paths.
@@ -160,10 +161,10 @@ cases.
 rule  raw-new
 why   no hand-written new: use std::make_unique, a container, or the owning pool (priority 1). ...
 match (^|[^_[:alnum:]])new\b[[:space:]]*[(_[:alpha:]:]
-files gui/*.hpp gui/src/*      (optional; default: every .hpp and .cpp)
+files gui/*.cppm gui/src/*     (optional; default: every .hpp, .cpp and .cppm)
 ```
 
-The default file set is every `.hpp` and `.cpp` outside `third_party/`,
+The default file set is every `.hpp`, `.cpp` and `.cppm` outside `third_party/`,
 `build/`, `docs/` and any `test/` directory. Tests may do what the framework
 may not: `files/test/asset_stub.cpp` stands in for the NDK's C API, which hands
 out raw pointers.
@@ -189,7 +190,7 @@ records, per rule and file, how many matches are accepted:
 
 ```
 exceptions gui/src/ui.cpp 11
-std-function gui/widget.hpp 1  # TooltipFactory: side table planned (priority-audit.md item 5)
+std-function gui/widget.cppm 1  # TooltipFactory: side table planned (priority-audit.md item 5)
 ```
 
 A file may match a rule as many times as its entry says; a file without an
@@ -315,7 +316,7 @@ configured away:
 | 1 | `performance-inefficient-string-concatenation` | **fixed** (an error path in `skin_loader.cpp`) |
 | 1 | `bugprone-optional-value-conversion` | **fixed**: `queue_receipt` passes the sender's optional through |
 | 1 | `bugprone-incorrect-roundings` | **suppressed**: the value is in (0, 1) there, so `+ 0.5` then truncation rounds half up exactly |
-| 1 | `misc-header-include-cycle` | **suppressed, deferred**: `gui.hpp` and the `skin_loader.hpp` aggregate include each other; harmless under `#pragma once`, and Sprint 3 decides the aggregates |
+| 1 | `misc-header-include-cycle` | **suppressed, deferred**: `gui/module.cppm` and the `skin_loader.cppm` aggregate include each other; harmless under `#pragma once`, and Sprint 3 decides the aggregates |
 | 1 | `bugprone-empty-catch` | **suppressed, deferred**: `~ToggleButton` swallows what a change callback throws during rebalance; it goes with `-fno-exceptions` ([priority-audit.md](priority-audit.md) item 3) |
 
 clang-tidy 18 also reports 7 `bugprone-unchecked-optional-access` that 21 does

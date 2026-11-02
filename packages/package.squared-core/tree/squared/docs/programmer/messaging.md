@@ -7,7 +7,7 @@ Telegraph that joins them, with the runner that gives the model its own
 thread. This page grows with the Telegraph.
 
 Every type below lives in its own header. Include exactly the ones a
-translation unit names; `squared/messaging/messaging.hpp` pulls in all of them
+translation unit names; `squared/messaging/module.cppm` pulls in all of them
 and exists for convenience, not for use inside headers of your own.
 
 Developer counterpart: [../developer/messaging.md](../developer/messaging.md)
@@ -25,7 +25,7 @@ A telegram goes to an **address**: a **name**, which is the schema
 code; uids come from the data.
 
 ```cpp
-#include <squared/messaging/address.hpp>
+import sq.messaging;
 
 using sq::messaging::Address;
 Address hp{ "player.hp" };              // no uid
@@ -34,9 +34,9 @@ Address coat{ "item.name", 17 };        // item[17].name
 
 | Type | Header | Is |
 |---|---|---|
-| `Name` | `squared/messaging/name.hpp` | 8 bytes: the 64-bit FNV-1a hash of the name's text |
-| `Address` | `squared/messaging/address.hpp` | a `Name` and a 32-bit `uid` (0: none); 16 bytes |
-| `NameTable` | `squared/messaging/name_table.hpp` | the registered names' text, for writing telegrams as text |
+| `Name` | `squared/messaging/name.cppm` | 8 bytes: the 64-bit FNV-1a hash of the name's text |
+| `Address` | `squared/messaging/address.cppm` | a `Name` and a 32-bit `uid` (0: none); 16 bytes |
+| `NameTable` | `squared/messaging/name_table.cppm` | the registered names' text, for writing telegrams as text |
 
 **A name literal costs nothing at run time.** `Name n = "player.hp";` is
 hashed by the compiler, and checked there: a name is dot-separated segments of
@@ -96,7 +96,7 @@ table. Register names before the threads start.
 verbs it carries, and whether it takes a uid.
 
 ```cpp
-#include <squared/messaging/key.hpp>
+import sq.messaging;
 
 namespace names {
 using namespace sq::messaging;
@@ -147,7 +147,7 @@ table. Keys are constants; a telegram carries only the 8-byte name.
 
 ## The telegram
 
-`sq::messaging::Telegram` (`squared/messaging/telegram.hpp`) is one message,
+`sq::messaging::Telegram` (`squared/messaging/telegram.cppm`) is one message,
 32 bytes: the name, the uid, a correlation (which pairs a `do` with the `event`
 that answers it, 0 for none), the verb and value type, and 16 bytes of value.
 Apps send through the Telegraph with keys; this is what travels underneath,
@@ -229,7 +229,7 @@ allocates.
 
 ## The ring
 
-`sq::messaging::TelegramRing` (`squared/messaging/telegram_ring.hpp`) carries
+`sq::messaging::TelegramRing` (`squared/messaging/telegram_ring.cppm`) carries
 telegrams from one thread to one other, in order, with no lock and no
 allocation. The Telegraph runs one each way; an app sends through the
 Telegraph, not through a ring. A tool or a test that moves telegrams between
@@ -266,7 +266,7 @@ ring says so, an empty one has no `front()`. A uid list is 4 bytes a uid.
 
 ## The latest-value cache
 
-`sq::messaging::ValueCache` (`squared/messaging/value_cache.hpp`) keeps the
+`sq::messaging::ValueCache` (`squared/messaging/value_cache.cppm`) keeps the
 last value of each address, so a screen built later shows current values at
 once. The Telegraph keeps one on the UI side and fills it from the model's
 `state` telegrams; an app reads it through its screens, not directly. A tool
@@ -308,7 +308,7 @@ cache.unbind( name );                                 // the label is gone: may 
 
 ## The Telegraph
 
-What a model sees: `sq::messaging::Telegraph` (`squared/messaging/telegraph.hpp`),
+What a model sees: `sq::messaging::Telegraph` (`squared/messaging/telegraph.cppm`),
 its end of the line to the UI. It sends `state` and `event` by key, declares
 lists, and runs the model's side of a turn. The UI's end, `TelegraphUi`, is
 the Stage's; both live in one `TelegraphLine`, which the App owns
@@ -439,7 +439,7 @@ framework compiles. `make status` shows the ones set.
 
 ## The model's thread
 
-`sq::messaging::ModelRunner<M>` (`squared/messaging/model_runner.hpp`) runs a
+`sq::messaging::ModelRunner<M>` (`squared/messaging/model_runner.cppm`) runs a
 model at the model's end of a line.
 
 ```cpp
@@ -531,8 +531,8 @@ A type missing one of them does not compile. The Telegraph takes it as
 screen is ever sent: after a sort, the rows whose item changed, and the
 fields of items new to the screen; nothing for the rest of the list.
 
-`sq::messaging::ModelList` (`squared/messaging/model_list.hpp`) is the
-model's end, `sq::messaging::ListWindow` (`squared/messaging/list_window.hpp`)
+`sq::messaging::ModelList` (`squared/messaging/model_list.cppm`) is the
+model's end, `sq::messaging::ListWindow` (`squared/messaging/list_window.cppm`)
 the widget's. The Telegraph and the list widget use them; an app does not.
 
 | Call | Does |

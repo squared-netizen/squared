@@ -10,7 +10,7 @@
 // such as `set settings.sound false`, which goes to your model.
 
 #include <layouts.hpp>
-#include <squared/squared.hpp>
+import squared;
 
 void squared_main(sq::App& app)
 {

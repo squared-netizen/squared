@@ -4,9 +4,7 @@
 // recording a call allocates nothing and the renderer's own allocations can be
 // counted around a draw.
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
+import sq.std;
 
 namespace glstub
 {

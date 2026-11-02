@@ -1,18 +1,15 @@
-#include <squared/console/telegraph_tools.hpp>
-#include <squared/messaging/telegram_text.hpp>
-#include <squared/time/now.hpp>
+module;
 
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <unistd.h>
 
-#include <array>
-#include <cerrno>
-#include <charconv>
-#include <chrono>
-#include <cstdint>
-#include <cstring>
-#include <optional>
-#include <span>
+module sq.console;
+
+import sq.messaging;
+import sq.time;
+import sq.std;
 
 namespace sq::console
 {

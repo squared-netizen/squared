@@ -1,19 +1,11 @@
 // Names, addresses and the name table (Telegraph v2, 6.1): the hash, the text
 // form both ways, registration and its failures, and no allocation anywhere.
 
-#include <squared/messaging/address.hpp>
-#include <squared/messaging/name.hpp>
-#include <squared/messaging/name_table.hpp>
+import sq.messaging;
 
-#include <array>
-#include <cassert>
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
-#include <new>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 namespace
 {

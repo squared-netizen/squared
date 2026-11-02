@@ -1,16 +1,8 @@
-#include <squared/files/posix_file_system.hpp>
-#include <squared/files/src/file_type.hpp>
-#include <squared/messaging/name_table.hpp>
-#include <squared/messaging/telegram.hpp>
-#include <squared/messaging/telegram_data.hpp>
-#include <squared/messaging/telegram_text.hpp>
-#include <squared/stage/save.hpp>
+module sq.stage;
 
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <string_view>
+import sq.files;
+import sq.messaging;
+import sq.std;
 
 namespace sq
 {

@@ -1,12 +1,6 @@
 # struct GlyphLayoutOptions
 
-*Defined at [graphics/src/glyph_layout_options.hpp:11](../../../../graphics/src/glyph_layout_options.hpp#L11)*
-
-
-
-**brief** Controls for one UTF-8 glyph layout operation. 
-
-
+*Defined at [graphics/src/glyph_layout_options.cppm:10](../../../../graphics/src/glyph_layout_options.cppm#L10)*
 
 ## Members
 

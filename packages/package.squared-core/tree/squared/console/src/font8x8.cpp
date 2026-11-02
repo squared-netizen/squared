@@ -1,9 +1,11 @@
-#include <squared/console/src/font8x8.hpp>
-
 // The glyphs are font8x8_basic.h, U+0000 to U+007F, by Daniel Hepper,
 // https://github.com/dhepper/font8x8, released into the public domain (it
 // derives from Marcel Sondaar's and the IBM public-domain VGA fonts). Copied
 // unchanged: row by row, the low bit the leftmost pixel.
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

@@ -1,23 +1,15 @@
-#include <squared/files/posix_file_system.hpp>
-#include <squared/files/src/file_error.hpp>
-#include <squared/files/src/file_error_code.hpp>
-#include <squared/files/src/file_read_result.hpp>
-#include <squared/files/src/file_type.hpp>
+module;
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <array>
-#include <cerrno>
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+module sq.files;
+
+import sq.std;
 
 namespace sq::files
 {

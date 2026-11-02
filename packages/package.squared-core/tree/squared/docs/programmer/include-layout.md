@@ -1,49 +1,101 @@
-# Include layout
+# Imports and file layout
 
-Which header to reach for, and how to write the include line.
+How your code reaches squared's types, and where each one is written.
 
 Developer counterpart: [../developer/file-layout.md](../developer/file-layout.md)
 
-## One type, one header
+## One import
 
-`sq::gui::ScrollPane` is in `squared/gui/scroll_pane.hpp`. The file name is
-the type name in `snake_case`, in the directory of its module, which is also
-its namespace. There are no exceptions, so you never have to search for where
-something is declared.
-
-## The root, and `src/`
-
-Each module keeps the headers you will use at its root, and the rest one
-level down in `src/`:
-
-```
-squared/gui/button.hpp             sq::gui::Button: you include this
-squared/gui/src/button_style.hpp   sq::gui::ButtonStyle: button.hpp already does
-```
-
-Everything in `src/` is still yours to include &mdash; it is out of the way,
-not hidden. Every type there is reached through some root header, so in
-practice you include the root one and get the rest. Write both the same way:
+Since 7b.4 squared is C++20 modules. An app writes one line:
 
 ```cpp
-#include <squared/gui/button.hpp>
-#include <squared/gui/src/button_style.hpp>   // only if you name ButtonStyle on its own
+import squared;
 ```
 
-The module pages list every type with its header, root or `src/`. Anything
-under `src/detail/` is private to the framework and not listed.
+and has the App and its Stage, the widgets and layouts, the Telegraph with
+its keys, the application model, and the standard library. That last is
+`sq.std`, squared's own module of the standard library: `std::string`,
+`std::vector`, `std::span` and the rest that squared uses.
 
-## One include root
+A narrower import names one module, `sq.<module>`, its namespace's name:
 
-Every include line starts with `squared/`, so the compiler needs one `-I`: the
-directory that contains `squared/`. A generated project's build already passes
-it (`mk/pkg_squared_core.mk`). If you build by hand:
-
-```sh
-g++ -std=c++20 -I path/to/dir-containing-squared main.cpp ...
+```cpp
+import sq.gui;      // sq::gui: the widgets, Skin, layouts, the scene graph
+import sq.files;    // sq::files: FileHandle, the file systems
+import sq.std;      // the standard library
 ```
 
-Keep the directory named `squared`.
+| Module | Namespace | What |
+|---|---|---|
+| `sq.app` | `sq::app` | the application model: Application, Event, the keys, text input |
+| `sq.assets` | `sq::assets` | the asset manager |
+| `sq.console` | `sq::console` | the developer Console |
+| `sq.data` | `sq::data` | JSON |
+| `sq.dev` | `sq::dev` | the dev log, frame allocations, crash traces |
+| `sq.files` | `sq::files` | files and file systems |
+| `sq.gles` | `sq::gles` | the GLES wrappers (gles backend) |
+| `sq.graphics` | `sq::graphics` | textures, sprites, fonts, the camera |
+| `sq.gui` | `sq::gui` | widgets, Skin, layouts, the scene graph |
+| `sq.math` | `sq::math` | vectors and matrices |
+| `sq.messaging` | `sq::messaging` | the Telegraph, names, keys |
+| `sq.stage` | `sq` | the App and its Stage |
+| `sq.time` | `sq::time` | clocks, timers, deadline queues |
+| `sq.std` | `std` | the standard library, as squared uses it |
+| `squared` | | all of the above an app needs: std, app, gui, messaging, stage |
+
+A module also gives you what its types are made of: `import sq.gui;` brings
+the `sq::graphics` types a widget's interface names, as an include of a
+widget header did.
+
+An import is not text: the module was compiled once, when squared was built,
+and your file reads from it only what it uses. That is why it is quicker than
+the headers were.
+
+### What still needs an include
+
+**C macros.** A module carries no macros. `assert`, `errno` and its codes,
+`va_start`, `UINT32_MAX`, `SIGSEGV`, `offsetof`, `stdout`: include the C
+header that defines them, beside the import:
+
+```cpp
+#include <assert.h>
+
+import squared;
+```
+
+**The `<cctype>` functions** (`isdigit`, `isxdigit`, ...): Android's C library
+gives them internal linkage, which a module cannot export. `#include
+<ctype.h>` and call them unqualified.
+
+**A standard name squared does not use** is not in `sq.std`: include its
+header as usual (`#include <map>`). Mixing an include with the import works.
+
+### Your flags
+
+The build compiles your code the way the framework was compiled where it
+matters: C++20 and `-pthread`. A file compiled with another standard, or
+without RTTI or exceptions when squared has them, cannot read squared's
+modules ("configuration mismatch"): keep `CXXSTD` at `c++20`. A generated
+project's build does all of this (`mk/pkg_squared_core.mk`), and builds the
+framework first: the modules are read from `squared/build/release/modules/`.
+
+## One type, one file
+
+`sq::gui::ScrollPane` is written in `squared/gui/scroll_pane.cppm`. The file
+name is the type name in `snake_case`, in the directory of its module, which
+is also its namespace. There are no exceptions, so you never have to search
+for where something is declared.
+
+Each module keeps the types you will use at its root, and the rest one level
+down in `src/`:
+
+```
+squared/gui/button.cppm             sq::gui::Button
+squared/gui/src/button_style.cppm   sq::gui::ButtonStyle: comes with Button
+```
+
+Both come with the module's import. The module pages list every type with its
+file. Anything under `src/detail/` is the framework's own.
 
 ## Modules that merged
 
@@ -52,47 +104,9 @@ Sprint 1. Code written before then needs two renames:
 
 | Was | Now |
 |---|---|
-| `<squared/graphics2d/texture.hpp>`, `sq::graphics2d::Texture` | `<squared/graphics/texture.hpp>`, `sq::graphics::Texture` |
-| `<squared/scene2d/actor.hpp>`, `sq::scene2d::Actor` | `<squared/gui/actor.hpp>`, `sq::gui::Actor` |
+| `<squared/graphics2d/texture.hpp>`, `sq::graphics2d::Texture` | `import sq.graphics;`, `sq::graphics::Texture` |
+| `<squared/scene2d/actor.hpp>`, `sq::scene2d::Actor` | `import sq.gui;`, `sq::gui::Actor` |
 
-Only identifiers and paths change. A string that happens to contain one of
-those names &mdash; a libGDX class key in a skin file, say &mdash; does not.
-
-## Aggregate headers
-
-Some headers pull in more than one type. All of them are pure `#include`
-lists:
-
-| Header | Contains |
-|---|---|
-| `squared/<module>/<module>.hpp` | everything in the module (`assets`, `files`, `gles`, `graphics`, `gui`, `math`, `messaging`, `time`) |
-| `squared/gui/input.hpp` | the input-routing types: events, listeners, keys, modifiers |
-| `squared/app/application.hpp` | `Application`, with the event and text-input types it uses |
-| `squared/data/json.hpp` | parsing and writing, with the value and result types |
-
-## Which one to use
-
-In a **source file**, use whatever is convenient. Aggregate headers cost
-compile time, not runtime.
-
-In a **header of your own**, include the narrow ones. A header that pulls in
-`gui.hpp` to name a `Widget*` forces every consumer to parse the whole widget
-set. Android is the constraining target and peak compiler memory is a real
-constraint on device, so this matters more here than it would on a desktop.
-
-Better still, forward declare. Every squared header does this where it can:
-
-```cpp
-namespace sq::gui {
-class Painter;
-class Skin;
-}
-```
-
-## Self-containment
-
-Every header compiles on its own, with no prerequisite include. `make headers`
-(or `tools/check_headers.sh`) proves it by compiling each one in isolation.
-It also checks that every header under `src/` is reached through one at a
-module root, which is what lets you include the root header and get the rest.
-Run it before you commit a new header.
+Code written before 7b.4 writes includes: each `#include <squared/<module>/...>`
+becomes `import sq.<module>;`, and `#include <squared/squared.hpp>` becomes
+`import squared;`. Standard includes may stay, or become `import sq.std;`.

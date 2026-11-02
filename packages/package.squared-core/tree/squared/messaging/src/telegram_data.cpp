@@ -1,6 +1,10 @@
-#include <squared/messaging/telegram_data.hpp>
+module;
 
-#include <cstring>
+#include <stdint.h>
+
+module sq.messaging;
+
+import sq.std;
 
 namespace sq::messaging
 {

@@ -1,12 +1,6 @@
 # struct CacheStats
 
-*Defined at [messaging/value_cache.hpp:43](../../../../messaging/value_cache.hpp#L43)*
-
-
-
-**brief** How full a cache is and has been (the Console's `telegraph` command). 
-
-
+*Defined at [messaging/value_cache.cppm:39](../../../../messaging/value_cache.cppm#L39)*
 
 ## Members
 

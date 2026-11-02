@@ -1,6 +1,6 @@
 # class BatchPainter
 
-*Defined at [gui/batch_painter.hpp:35](../../../../gui/batch_painter.hpp#L35)*
+*Defined at [gui/batch_painter.cppm:24](../../../../gui/batch_painter.cppm#L24)*
 
 
 
@@ -34,19 +34,19 @@ Inherits from Painter
 
 *public void BatchPainter(const BatchPainter & )*
 
-*Defined at [gui/batch_painter.hpp:48](../../../../gui/batch_painter.hpp#L48)*
+*Defined at [gui/batch_painter.cppm:37](../../../../gui/batch_painter.cppm#L37)*
 
 ### operator=
 
 *public BatchPainter & operator=(const BatchPainter & )*
 
-*Defined at [gui/batch_painter.hpp:49](../../../../gui/batch_painter.hpp#L49)*
+*Defined at [gui/batch_painter.cppm:38](../../../../gui/batch_painter.cppm#L38)*
 
 ### clip_depth
 
 *public std::size_t clip_depth()*
 
-*Defined at [gui/batch_painter.hpp:108](../../../../gui/batch_painter.hpp#L108)*
+*Defined at [gui/batch_painter.cppm:97](../../../../gui/batch_painter.cppm#L97)*
 
 
 

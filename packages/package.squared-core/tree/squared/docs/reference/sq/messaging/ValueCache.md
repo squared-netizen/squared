@@ -1,14 +1,6 @@
 # class ValueCache
 
-*Defined at [messaging/value_cache.hpp:67](../../../../messaging/value_cache.hpp#L67)*
-
-
-
-**brief** The latest value of each address, on the UI side: a screen built later shows current values at once.
-
- An address an actor is bound to (`bind`) keeps its entry; the others are evicted when room is needed, roughly oldest first. Text and uid lists up to 16 bytes are held in the entry; longer ones in a text area, which is compacted when it fills. Over storage its owner gives it, sized at init; nothing allocates. One thread only.
-
-
+*Defined at [messaging/value_cache.cppm:63](../../../../messaging/value_cache.cppm#L63)*
 
 ## Functions
 
@@ -24,35 +16,31 @@
 
 *public static std::size_t index_bytes(std::size_t entries)*
 
-*Defined at [messaging/value_cache.hpp:71](../../../../messaging/value_cache.hpp#L71)*
-
-
-
-**brief** Index bytes a cache of `entries` entries needs: 4 an entry. 
+*Defined at [messaging/value_cache.cppm:67](../../../../messaging/value_cache.cppm#L67)*
 
 ### ValueCache
 
 *public void ValueCache(const ValueCache & )*
 
-*Defined at [messaging/value_cache.hpp:85](../../../../messaging/value_cache.hpp#L85)*
+*Defined at [messaging/value_cache.cppm:81](../../../../messaging/value_cache.cppm#L81)*
 
 ### operator=
 
 *public ValueCache & operator=(const ValueCache & )*
 
-*Defined at [messaging/value_cache.hpp:86](../../../../messaging/value_cache.hpp#L86)*
+*Defined at [messaging/value_cache.cppm:82](../../../../messaging/value_cache.cppm#L82)*
 
 ### ValueCache
 
 *public void ValueCache(ValueCache && )*
 
-*Defined at [messaging/value_cache.hpp:87](../../../../messaging/value_cache.hpp#L87)*
+*Defined at [messaging/value_cache.cppm:83](../../../../messaging/value_cache.cppm#L83)*
 
 ### operator=
 
 *public ValueCache & operator=(ValueCache && )*
 
-*Defined at [messaging/value_cache.hpp:88](../../../../messaging/value_cache.hpp#L88)*
+*Defined at [messaging/value_cache.cppm:84](../../../../messaging/value_cache.cppm#L84)*
 
 ### store
 
@@ -118,7 +106,7 @@
 
 *public void ~ValueCache()*
 
-*Defined at [messaging/value_cache.hpp:89](../../../../messaging/value_cache.hpp#L89)*
+*Defined at [messaging/value_cache.cppm:85](../../../../messaging/value_cache.cppm#L85)*
 
 
 

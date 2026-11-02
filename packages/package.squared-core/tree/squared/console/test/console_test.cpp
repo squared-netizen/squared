@@ -2,22 +2,15 @@
 // its history, completion, keys, and running commands. Nothing it does may
 // allocate, which the frame-allocation counter checks at the end.
 
-#include <squared/console/console.hpp>
-#include <squared/console/copy_command.hpp>
-#include <squared/console/file_commands.hpp>
-#include <squared/console/system_commands.hpp>
-#include <squared/dev/frame_allocations.hpp>
+import sq.console;
+import sq.dev;
 
+#include <assert.h>
+#include <stdio.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include <array>
-#include <cassert>
-#include <cstdio>
-#include <cstring>
-#include <memory>
-#include <string>
-#include <vector>
+import sq.std;
 
 using namespace sq::console;
 using sq::app::Key;

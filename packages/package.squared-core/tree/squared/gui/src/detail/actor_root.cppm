@@ -1,0 +1,86 @@
+export module sq.gui:src.detail.actor_root;
+
+export import :actor;
+export import :group;
+import sq.std;
+
+export namespace sq::gui
+{
+
+class InputEvent;
+
+/**
+ * @brief The root of the widget tree the Ui holds: its group, hit testing,
+ * and input's capture, target and bubble phases. Internal: an app reaches
+ * widgets through `sq::Stage` (was `gui::Stage` until 7.7, renamed so the one
+ * Stage is the app's).
+ */
+class ActorRoot
+{
+    public:
+        /**
+     * @brief Construct a root with a logical viewport.
+     * @param width Initial logical width.
+     * @param height Initial logical height.
+     */
+        ActorRoot( float width, float height ) noexcept;
+
+        /**
+     * @brief Update the logical viewport dimensions.
+     * @param width New logical width.
+     * @param height New logical height.
+     */
+        void resize( float width, float height ) noexcept;
+
+        /**
+     * @brief Advance the entire hierarchy by one frame.
+     * @param delta_seconds Elapsed domain time in seconds.
+     */
+        void act( double delta_seconds );
+
+        /**
+     * @brief Adopt an actor into the root group.
+     * @param actor The unparented actor to own.
+     * @return Reference to the adopted actor.
+     */
+        [[nodiscard]] Actor &add_actor( std::unique_ptr<Actor> actor );
+
+        /**
+     * @brief Hit-test the hierarchy in root coordinates.
+     * @param stage_x Horizontal position in stage logical units.
+     * @param stage_y Vertical position in stage logical units.
+     * @param require_touchable Ignore actors whose touchable flag is false.
+     * @return The deepest qualifying actor, or null.
+     */
+        [[nodiscard]] Actor *hit( float stage_x, float stage_y,
+                                  bool require_touchable = true ) noexcept;
+
+        /**
+     * @brief Route input through capture, target, and bubble phases.
+     *
+     * When target is null, pointer events use root hit testing. Other event
+     * types require an explicit target.
+     *
+     * @param event The event to dispatch.
+     * @param target Explicit dispatch target, or null for pointer hit testing.
+     * @return `true` when the event was handled.
+     */
+        [[nodiscard]] bool dispatch_input( InputEvent &event, Actor *target = nullptr );
+
+        /**
+     * @brief Access the root group.
+     * @return Reference to the root group owning every top-level actor.
+     */
+        [[nodiscard]] Group &root() noexcept { return root_; }
+
+        /**
+     * @brief Access the root group, read-only.
+     * @return Reference to the root group owning every top-level actor.
+     */
+        [[nodiscard]] const Group &root() const noexcept { return root_; }
+
+    private:
+        Group root_;
+};
+
+} // namespace sq::gui

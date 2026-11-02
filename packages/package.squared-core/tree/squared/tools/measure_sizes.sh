@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Print sizeof/alignof for the core types, for docs/developer/memory-profile.md.
+# Imports the modules: build first (make), with the same CXX.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-: "${CXX:=g++}"
+: "${CXX:=clang++}"
+: "${BUILD:=release}"
 : "${SQUARED_EXTERNAL_INCLUDES:=}"
 
 # Pick up local.mk the way build/common.mk does, so this script and the build
@@ -26,21 +28,15 @@ fi
 includes="-I$(dirname "$root")"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 cat > "$work/sizes.cpp" <<'EOF'
-#include <squared/app/event.hpp>
-#include <squared/assets/assets.hpp>
-#include <squared/console/console.hpp>
-#include <squared/console/layout.hpp>
-#include <squared/console/renderer.hpp>
-#include <squared/data/json.hpp>
-#include <squared/files/files.hpp>
-#include <squared/graphics/graphics.hpp>
-#include <squared/gui/gui.hpp>
-#include <squared/gui/src/detail/pane_frame.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/messaging/messaging.hpp>
-#include <cstdio>
-#include <functional>
-#include <string>
+import sq.app;
+import sq.assets;
+import sq.console;
+import sq.data;
+import sq.files;
+import sq.graphics;
+import sq.gui;
+import sq.messaging;
+import sq.std;
 using namespace sq;
 #define P(T) std::printf("%-26s %4zu %4zu\n", #T, sizeof(T), alignof(T));
 int main() {
@@ -65,7 +61,10 @@ int main() {
   return 0;
 }
 EOF
+lib="$root/build/$BUILD/lib"
+[ -f "$lib/libsquared_std.a" ] || { echo "measure_sizes: build first (make), the modules' BMIs are read" >&2; exit 2; }
 # shellcheck disable=SC2086
-"$CXX" -std=c++20 -O2 $includes $SQUARED_EXTERNAL_INCLUDES \
-  "$work/sizes.cpp" -o "$work/sizes"
+"$CXX" -std=c++20 -pthread -O2 $includes $SQUARED_EXTERNAL_INCLUDES \
+  -fprebuilt-module-path="$root/build/$BUILD/modules" "$work/sizes.cpp" \
+  -Wl,--start-group "$lib"/libsquared_*.a -Wl,--end-group -o "$work/sizes"
 "$work/sizes"

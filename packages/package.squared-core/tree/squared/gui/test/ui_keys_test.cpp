@@ -5,17 +5,12 @@
 // a widget receives is exactly what the event carried, for every named key,
 // and that focus moves and unknown input behave as before the merge.
 
-#include <squared/app/event.hpp>
-#include <squared/app/src/key.hpp>
-#include <squared/app/src/key_modifiers.hpp>
-#include <squared/app/src/navigation.hpp>
-#include <squared/gui/linear_layout.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/widget.hpp>
+import sq.app;
+import sq.gui;
 
-#include <cassert>
-#include <cstdio>
-#include <memory>
+#include <assert.h>
+
+import sq.std;
 
 using namespace sq;
 

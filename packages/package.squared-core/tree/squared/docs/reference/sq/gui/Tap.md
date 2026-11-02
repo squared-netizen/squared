@@ -1,12 +1,6 @@
 # struct Tap
 
-*Defined at [gui/layout.hpp:277](../../../../gui/layout.hpp#L277)*
-
-
-
-**brief** A tap's line, read: what it does, and to what. 
-
-
+*Defined at [gui/layout.cppm:271](../../../../gui/layout.cppm#L271)*
 
 ## Members
 

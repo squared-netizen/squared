@@ -1,12 +1,6 @@
 # class Separator
 
-*Defined at [gui/separator.hpp:14](../../../../gui/separator.hpp#L14)*
-
-
-
-**brief** Thin vertical or horizontal divider line. 
-
-
+*Defined at [gui/separator.cppm:14](../../../../gui/separator.cppm#L14)*
 
 Inherits from Widget
 

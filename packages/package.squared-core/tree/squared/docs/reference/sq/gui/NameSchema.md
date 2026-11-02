@@ -1,6 +1,6 @@
 # struct NameSchema
 
-*Defined at [gui/layout_file.hpp:37](../../../../gui/layout_file.hpp#L37)*
+*Defined at [gui/layout_file.cppm:31](../../../../gui/layout_file.cppm#L31)*
 
 
 

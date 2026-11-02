@@ -1,16 +1,6 @@
 # class Args
 
-*Defined at [console/args.hpp:26](../../../../console/args.hpp#L26)*
-
-
-
-**brief** The words of a command line, as a command receives them.
-
- Word 0 is the command's name. Words are separated by spaces; a word in double quotes may hold spaces (`say "two words"`). Every word is a view into the input line, valid while the command runs: copy what you keep.
-
- ```cpp // spawn goblin 3 const std::string_view monster = args.text( 1 ); const std::int64_t count = args.integer( 2, 1 ); ```
-
-
+*Defined at [console/args.cppm:22](../../../../console/args.cppm#L22)*
 
 ## Functions
 
@@ -26,11 +16,7 @@
 
 *public std::size_t size()*
 
-*Defined at [console/args.hpp:33](../../../../console/args.hpp#L33)*
-
-
-
-**brief** Words, the name included; 0 for an empty line. 
+*Defined at [console/args.cppm:29](../../../../console/args.cppm#L29)*
 
 ### text
 

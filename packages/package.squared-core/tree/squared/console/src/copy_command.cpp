@@ -1,7 +1,10 @@
-#include <squared/console/copy_command.hpp>
+module;
 
-#include <cstddef>
-#include <string_view>
+#include <stdio.h>
+
+module sq.console;
+
+import sq.std;
 
 namespace sq::console
 {

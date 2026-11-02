@@ -63,9 +63,9 @@ $(TARGET): $(OBJECTS)
 	$(call say_archive,$@)
 	$(AR) rcs $@ $(OBJECTS)
 
-$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP) $(SQUARED_PCH_FILE)
+$(OBJ_DIR)/gui/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
-	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_PCH_USE) $(INCLUDES) -c $< -o $@
+	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/gui $(TARGET)
@@ -126,7 +126,7 @@ TESTS := $(PAINTER_TEST) $(SAFE_AREA_TEST) $(SKIN_LOADER_TEST) $(KEYS_TEST) $(PA
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
 
-$(TESTS): $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+$(TESTS): $(SQUARED_FLAGS_STAMP)
 
 # What each test includes, from its last build (tools/test_cc.sh).
 -include $(TESTS:=.d) $(SQGEN).d
@@ -150,7 +150,7 @@ $(LAYOUT_FILE_TEST): $(MODULE_DIR)/test/layout_file_test.cpp $(LAYOUT_LIBS) $(LA
 	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) -DLAYOUT_FILE_CASES='"$(LAYOUT_FILE_CASES)"' \
 	    $< $(LAYOUT_LIBS) -o $@
 
-$(SQGEN): $(SQUARED_ROOT)/tools/sqgen/sqgen.cpp $(LAYOUT_LIBS) $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+$(SQGEN): $(SQUARED_ROOT)/tools/sqgen/sqgen.cpp $(LAYOUT_LIBS) $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
 	$(call say,bin,sqgen)
 	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< $(LAYOUT_LIBS) -o $@
@@ -233,7 +233,7 @@ spike: $(SKIN_SPIKE)
 $(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
                $(LIB_DIR)/libsquared_gui.a $(LIB_DIR)/libsquared_graphics.a $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
               $(LIB_DIR)/libsquared_time.a \
-              $(LIB_DIR)/libsquared_math.a $(SQUARED_FLAGS_STAMP) $(SQUARED_TEST_PCH_FILE)
+              $(LIB_DIR)/libsquared_math.a $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(INCLUDES) $< \
@@ -241,3 +241,7 @@ $(SKIN_SPIKE): $(MODULE_DIR)/test/skin_spike.cpp \
 	    $(LIB_DIR)/libsquared_graphics.a \
 	    $(LIB_DIR)/libsquared_files.a $(LIB_DIR)/libsquared_data.a \
 	    $(LIB_DIR)/libsquared_time.a $(LIB_DIR)/libsquared_math.a -o $@
+
+# C++20 modules (build/modules.mk, 7b.4): this module's interface units, the
+# BMIs its code imports, and the order of both.
+include $(SQUARED_ROOT)/build/modules.mk

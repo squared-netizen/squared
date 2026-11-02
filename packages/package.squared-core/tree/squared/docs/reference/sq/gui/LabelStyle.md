@@ -1,12 +1,6 @@
 # struct LabelStyle
 
-*Defined at [gui/src/label_style.hpp:12](../../../../gui/src/label_style.hpp#L12)*
-
-
-
-**brief** Style data for a Label widget. 
-
-
+*Defined at [gui/src/label_style.cppm:11](../../../../gui/src/label_style.cppm#L11)*
 
 ## Members
 

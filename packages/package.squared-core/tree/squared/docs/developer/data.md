@@ -11,7 +11,7 @@ Programmer counterpart: [../programmer/data.md](../programmer/data.md)
 
 ```
 data/
-  json.hpp json_value.hpp   the workhorse headers
+  json.cppm json_value.cppm   the workhorse headers
   src/                      the six supporting headers: errors, options, results
   src/json_value.cpp        JsonValue's own members - no yyjson
   src/json.cpp              parse_json, write_json, and the conversion helpers

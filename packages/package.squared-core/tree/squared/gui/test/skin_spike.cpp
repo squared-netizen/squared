@@ -6,33 +6,11 @@
 // have never met a real file. This is the shortest program that exercises all
 // of them plus the painter, and it says which of them is wrong.
 
-#include <squared/files/files.hpp>
-#include <squared/graphics/atlas_region.hpp>
-#include <squared/graphics/bitmap_font.hpp>
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/src/bitmap_font_page.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/graphics/texture_atlas.hpp>
-#include <squared/graphics/texture_region.hpp>
-#include <squared/gui/batch_painter.hpp>
-#include <squared/gui/button.hpp>
-#include <squared/gui/label.hpp>
-#include <squared/gui/linear_layout.hpp>
-#include <squared/gui/skin.hpp>
-#include <squared/gui/skin_loader.hpp>
-#include <squared/gui/src/detail/ui.hpp>
-#include <squared/gui/src/font_resource.hpp>
-#include <squared/gui/src/skin_load_issue.hpp>
-#include <squared/gui/src/skin_load_report.hpp>
-#include <squared/gui/src/skin_load_severity.hpp>
+import sq.files;
+import sq.graphics;
+import sq.gui;
 
-#include <cstddef>
-#include <cstdio>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <vector>
+import sq.std;
 
 namespace sq::graphics::detail
 {

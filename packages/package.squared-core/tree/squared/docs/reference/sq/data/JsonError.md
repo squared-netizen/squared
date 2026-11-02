@@ -1,12 +1,6 @@
 # struct JsonError
 
-*Defined at [data/src/json_error.hpp:12](../../../../data/src/json_error.hpp#L12)*
-
-
-
-**brief** Structured JSON failure information. 
-
-
+*Defined at [data/src/json_error.cppm:10](../../../../data/src/json_error.cppm#L10)*
 
 ## Members
 
@@ -28,11 +22,7 @@ public std::size_t column
 
 *public bool operator bool()*
 
-*Defined at [data/src/json_error.hpp:30](../../../../data/src/json_error.hpp#L30)*
-
-
-
-**brief** Return whether this structure represents a failure. 
+*Defined at [data/src/json_error.cppm:28](../../../../data/src/json_error.cppm#L28)*
 
 
 

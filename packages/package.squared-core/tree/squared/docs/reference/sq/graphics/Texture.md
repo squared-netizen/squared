@@ -1,14 +1,6 @@
 # class Texture
 
-*Defined at [graphics/texture.hpp:30](../../../../graphics/texture.hpp#L30)*
-
-
-
-**brief** Move-only texture owned by the selected graphics backend.
-
- A valid graphics context must be current whenever a texture is created, released, restored, or destroyed. Asset paths and RGBA source data are retained according to the selected portable recovery policy.
-
-
+*Defined at [graphics/texture.cppm:27](../../../../graphics/texture.cppm#L27)*
 
 ## Functions
 
@@ -16,17 +8,13 @@
 
 *public void Texture()*
 
-*Defined at [graphics/texture.hpp:34](../../../../graphics/texture.hpp#L34)*
-
-
-
-**brief** Construct an empty texture owning no backend object. 
+*Defined at [graphics/texture.cppm:31](../../../../graphics/texture.cppm#L31)*
 
 ### Texture
 
 *public void Texture(const Texture & )*
 
-*Defined at [graphics/texture.hpp:35](../../../../graphics/texture.hpp#L35)*
+*Defined at [graphics/texture.cppm:32](../../../../graphics/texture.cppm#L32)*
 
 ### Texture
 
@@ -176,7 +164,7 @@
 
 *public Texture & operator=(const Texture & )*
 
-*Defined at [graphics/texture.hpp:36](../../../../graphics/texture.hpp#L36)*
+*Defined at [graphics/texture.cppm:33](../../../../graphics/texture.cppm#L33)*
 
 ### restore
 

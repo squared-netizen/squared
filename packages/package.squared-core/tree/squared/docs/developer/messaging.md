@@ -13,10 +13,10 @@ Programmer counterpart: [../programmer/messaging.md](../programmer/messaging.md)
 
 ```
 messaging/
-  name.hpp address.hpp name_table.hpp key.hpp telegram.hpp telegram_data.hpp
-  telegram_ring.hpp telegram_text.hpp value_cache.hpp model_list.hpp
-  list_window.hpp telegraph.hpp model_runner.hpp messaging.hpp
-  src/   verb.hpp value_type.hpp data_ref.hpp telegraph_config.hpp wake.hpp
+  name.cppm address.cppm name_table.cppm key.cppm telegram.cppm telegram_data.cppm
+  telegram_ring.cppm telegram_text.cppm value_cache.cppm model_list.cppm
+  list_window.cppm telegraph.cppm model_runner.cppm module.cppm
+  src/   verb.cppm value_type.cppm data_ref.cppm telegraph_config.cppm wake.cppm
          (supporting); address.cpp, name_table.cpp, telegram.cpp,
          telegram_data.cpp, telegram_ring.cpp, telegram_text.cpp,
          value_cache.cpp, model_list.cpp, list_window.cpp, telegraph.cpp,
@@ -28,7 +28,7 @@ messaging/
 
 **The old dispatcher was removed (2026-10-20),** 34 files: `MessageDispatcher`,
 `Subscription`, `EndpointId`, `MessageId`, the receipts, the providers (the
-module's extension surface, so `tools/check_headers.sh` lists none now) and a
+module's extension surface, which the old header check listed) and a
 208-byte `Telegram` carrying a `JsonValue` and two `std::string` ids. Nothing
 outside the module used it, it had no tests, and the new `Telegram` needed its
 name. Its fates, as the app model decided: scheduled delivery is the model's
@@ -181,7 +181,7 @@ ring returns `full`).
 
 - **Header placement:** at the module root, beside `TelegramData`, though
   apps will reach it only through the Telegraph. A header in `src/` must be
-  reachable from a workhorse header (`make headers`), and nothing reaches it
+  reachable from a workhorse header (`make headers`, until 7b.4), and nothing reaches it
   until the Telegraph exists (6.6); listing it as extension surface would be
   wrong. When the Telegraph includes it, it can move to `src/` or stay; to be
   settled then.
@@ -407,13 +407,13 @@ hot path"): the four suggestions below.
 
 ## The Telegraph, single-threaded (6.6a)
 
-`TelegraphLine`, `Telegraph` and `TelegraphUi`, in `telegraph.hpp` and
+`TelegraphLine`, `Telegraph` and `TelegraphUi`, in `telegraph.cppm` and
 `telegraph.cpp`. Decided 2026-10-20 ("no change. implement as two
 packages"); the thread, its wakes and the bounded waits are 6.6c.
 
 - **One object, two ends.** `TelegraphLine` holds every array (rings,
   cache, pending table, list windows) as members sized by the knobs in
-  `src/telegraph_config.hpp` (`SQUARED_TELEGRAPH_*`, with defaults and
+  `src/telegraph_config.cppm` (`SQUARED_TELEGRAPH_*`, with defaults and
   `static_assert`s), and the two ends as members. The model is handed
   `model()` (a `Telegraph&`), the Stage `ui()`: each end holds only the line,
   and neither exposes the other, so nothing points across (the app model's
@@ -423,7 +423,7 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
   the rings' counters). Priority 1: known before `main` runs, nothing after.
 - **Sending by key.** Every send is a template constrained by `sendable`
   (6.1b) and the key's uid flag, so a mistake is a compile error, then
-  `detail::pack` (in `src/pack.hpp` since 7.0, so the gui's `LayoutWriter`
+  `detail::pack` (in `src/pack.cppm` since 7.0, so the gui's `LayoutWriter`
   writes a typed tap's line without including the Telegraph) makes the
   telegram and its bytes; the rest is not a template
   (`send_state`, `send_event`, `push`). `answer` copies a `do`'s correlation
@@ -508,8 +508,8 @@ packages"); the thread, its wakes and the bounded waits are 6.6c.
 
 ## The model's thread (6.6c)
 
-`ModelRunner<M>` (`model_runner.hpp`, `src/model_runner.cpp`), the wakes
-(`src/wake.hpp`, `src/wake.cpp`) and the bounded waits (`telegraph.cpp`).
+`ModelRunner<M>` (`model_runner.cppm`, `src/model_runner.cpp`), the wakes
+(`src/wake.cppm`, `src/wake.cpp`) and the bounded waits (`telegraph.cpp`).
 Decided 2026-10-21 ("we go with these changes"): the model waits 100 ms for
 room, then `full`, counted; a `std::thread` named `model`, default stack; the
 eventfd logic tested with plain `poll` on two threads under ThreadSanitizer,

@@ -1,6 +1,6 @@
 # struct GridSize
 
-*Defined at [console/layout.hpp:36](../../../../console/layout.hpp#L36)*
+*Defined at [console/layout.cppm:32](../../../../console/layout.cppm#L32)*
 
 
 

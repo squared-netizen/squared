@@ -4,16 +4,14 @@
 // the flush decisions, the begin/draw/end state - is in
 // src/common/sprite_batch_common.cpp and is shared by every backend.
 
-#include <squared/graphics/orthographic_camera.hpp>
-#include <squared/graphics/sprite_batch.hpp>
-#include <squared/graphics/texture.hpp>
-#include <squared/math/matrix4.hpp>
+module;
 
 #include <GLES3/gl3.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <vector>
+module sq.graphics;
+
+import sq.math;
+import sq.std;
 
 namespace sq::graphics
 {

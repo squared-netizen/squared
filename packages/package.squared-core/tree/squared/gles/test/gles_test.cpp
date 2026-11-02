@@ -1,9 +1,8 @@
-#include <squared/gles/gles.hpp>
+import sq.gles;
 
-#include <cassert>
-#include <cstdio>
-#include <string>
-#include <vector>
+#include <assert.h>
+
+import sq.std;
 
 namespace glstub
 {
