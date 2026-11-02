@@ -11,6 +11,28 @@
 
 *DecodedImage decode_image(std::span<const std::byte> bytes, std::size_t maximum_pixels)*
 
+
+
+**brief** Decode an encoded image to RGBA8888.
+
+**bytes** Encoded file contents; PNG today.
+
+**maximum_pixels** Reject an image with more pixels than this, before allocating for it. Zero disables the check.
+
+**return** The decoded image, or a DecodedImage carrying the decoder's message.
+
+
+
+**note** Always produces four channels, whatever the source had, because every path above this wants RGBA8888 and converting once here is cheaper than every caller handling three formats.
+
+
+
+**note** The dimension check happens before the decode allocates. A malicious or corrupt PNG header can claim 65535x65535, which is 17 GB of RGBA; finding that out after the allocation is too late on a phone.
+
+
+
+**note** Internal to the squared build. Not installed, not public API: there is one consumer today, and the extension policy says a second concrete use comes before a public interface.
+
 ### decode_utf8
 
 *std::optional<char32_t> decode_utf8(std::string_view text, std::size_t & cursor)*
@@ -22,6 +44,8 @@
 *void fail(BitmapFontError & error, BitmapFontErrorCode code, std::size_t line, const char * message, const char * field)*
 
 *Defined at [graphics/src/detail/bitmap_font_detail.cppm:29](../../../../../graphics/src/detail/bitmap_font_detail.cppm#L29)*
+
+ Record a failure. `message` and `field` must be string literals: the error keeps the pointers, not copies.
 
 ### integer_field
 

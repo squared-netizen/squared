@@ -2,6 +2,12 @@
 
 *Defined at [console/scrollback.cppm:63](../../../../../console/scrollback.cppm#L63)*
 
+
+
+**brief** Walks the lines, oldest first. 
+
+
+
 ## Functions
 
 ### Iterator
@@ -23,6 +29,4 @@
 *public Iterator operator++(int )*
 
 *Defined at [console/scrollback.cppm:75](../../../../../console/scrollback.cppm#L75)*
-
-
 

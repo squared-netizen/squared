@@ -2,6 +2,12 @@
 
 *Defined at [gui/linear_layout.cppm:17](../../../../gui/linear_layout.cppm#L17)*
 
+
+
+**brief** Container stacking children along one axis with optional growth.
+
+
+
 Inherits from Widget
 
 
@@ -32,25 +38,15 @@ Inherits from Widget
 
 **return** Reference to the added child.
 
-### set_padding
+### layout
 
-*public void set_padding(float padding)*
-
-
-
-**brief** Set layout padding.
-
-**padding** Padding in logical units; non-negative.
-
-### set_spacing
-
-*public void set_spacing(float spacing)*
+*public void layout(Painter & , const Skin & )*
 
 
 
-**brief** Set spacing between children.
+**brief** Position children along the layout axis.
 
-**spacing** Gap in logical units; non-negative.
+**note** Parameters match Widget::layout: an active painter and the skin providing style values.
 
 ### minimum_size
 
@@ -78,15 +74,23 @@ Inherits from Widget
 
 **return** Preferred extent in logical units.
 
-### layout
+### set_padding
 
-*public void layout(Painter & , const Skin & )*
-
-
-
-**brief** Position children along the layout axis.
-
-**note** Parameters match Widget::layout: an active painter and the skin providing style values.
+*public void set_padding(float padding)*
 
 
+
+**brief** Set layout padding.
+
+**padding** Padding in logical units; non-negative.
+
+### set_spacing
+
+*public void set_spacing(float spacing)*
+
+
+
+**brief** Set spacing between children.
+
+**spacing** Gap in logical units; non-negative.
 

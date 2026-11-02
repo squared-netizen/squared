@@ -2,6 +2,12 @@
 
 *Defined at [graphics/src/glyph_layout_options.cppm:10](../../../../graphics/src/glyph_layout_options.cppm#L10)*
 
+
+
+**brief** Controls for one UTF-8 glyph layout operation. 
+
+
+
 ## Members
 
 public float scale

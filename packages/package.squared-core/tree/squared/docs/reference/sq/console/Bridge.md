@@ -2,6 +2,22 @@
 
 *Defined at [console/bridge.cppm:85](../../../../console/bridge.cppm#L85)*
 
+
+
+**brief** The Console, reachable from Termux on the same device: every line it prints goes out, and every line that comes in is run as a command.
+
+ A TCP port on 127.0.0.1, so nothing off the device can reach it, and a secret, so another app on it cannot either without reading this app's APK, which holds the secret. Dev builds only (the Android template opens it in CONSOLE builds). One client at a time: a newer one that gives the secret takes over.
+
+ It waits on events, never on a timer: open() asks the owner, through `watch`, to tell it when a socket is ready, and ready() is how the owner does (the template uses Android's looper). Nothing allocates. Output waits in a fixed 16 KB buffer; when the client reads slower than lines arrive, lines are dropped and counted, and the client is told how many once there is room.
+
+ Files travel both ways, one at a time each way, in 4 KB chunks read and written as the socket is ready, so a large one neither fills memory nor stalls the frame: send_file() sends one (the `pull` command, file_commands.hpp), and a client's `push` is written into BridgeConfig::push_directory.
+
+ ```cpp sq::console::Bridge bridge; bridge.open( { .port = 30123, .secret = secret }, { .watch = watch,              .command = run_command, .connected = replay, .context = this } ); console.set_mirror( []( void *b, sq::console::Level level, std::string_view line ) noexcept {     static_cast<sq::console::Bridge *>( b )->send( level, line ); }, &bridge ); ```
+
+ Wire format: console/src/bridge_protocol.hpp. Not thread-safe: one thread.
+
+
+
 ## Members
 
 public static const std::size_t output_bytes
@@ -22,37 +38,17 @@ public static const std::uint64_t unknown_size
 
 *Defined at [console/bridge.cppm:98](../../../../console/bridge.cppm#L98)*
 
-### ~Bridge
-
-*public void ~Bridge()*
-
-*Defined at [console/bridge.cppm:99](../../../../console/bridge.cppm#L99)*
-
-### Bridge
-
-*public void Bridge(const Bridge & )*
-
-*Defined at [console/bridge.cppm:100](../../../../console/bridge.cppm#L100)*
-
-### operator=
-
-*public Bridge & operator=(const Bridge & )*
-
-*Defined at [console/bridge.cppm:101](../../../../console/bridge.cppm#L101)*
-
 ### Bridge
 
 *public void Bridge(Bridge && )*
 
 *Defined at [console/bridge.cppm:102](../../../../console/bridge.cppm#L102)*
 
-### open
+### Bridge
 
-*public BridgeStatus open(const BridgeConfig & config, const BridgeHandlers & handlers)*
+*public void Bridge(const Bridge & )*
 
-
-
-**brief** Listen, and announce it. The secret is copied. 
+*Defined at [console/bridge.cppm:100](../../../../console/bridge.cppm#L100)*
 
 ### close
 
@@ -62,11 +58,53 @@ public static const std::uint64_t unknown_size
 
 **brief** Close every socket, telling `watch` to stop watching each. 
 
+### connected
+
+*public bool connected()*
+
+*Defined at [console/bridge.cppm:145](../../../../console/bridge.cppm#L145)*
+
+### dropped
+
+*public std::uint64_t dropped()*
+
+*Defined at [console/bridge.cppm:148](../../../../console/bridge.cppm#L148)*
+
+
+
+**brief** Lines dropped because the client read too slowly, since open(). 
+
+### listening
+
+*public bool listening()*
+
+*Defined at [console/bridge.cppm:144](../../../../console/bridge.cppm#L144)*
+
+### open
+
+*public BridgeStatus open(const BridgeConfig & config, const BridgeHandlers & handlers)*
+
+
+
+**brief** Listen, and announce it. The secret is copied. 
+
 ### operator=
 
 *public Bridge & operator=(Bridge && )*
 
 *Defined at [console/bridge.cppm:103](../../../../console/bridge.cppm#L103)*
+
+### operator=
+
+*public Bridge & operator=(const Bridge & )*
+
+*Defined at [console/bridge.cppm:101](../../../../console/bridge.cppm#L101)*
+
+### port
+
+*public std::uint16_t port()*
+
+*Defined at [console/bridge.cppm:146](../../../../console/bridge.cppm#L146)*
 
 ### ready
 
@@ -110,29 +148,13 @@ public static const std::uint64_t unknown_size
 
 *Defined at [console/bridge.cppm:142](../../../../console/bridge.cppm#L142)*
 
-### listening
-
-*public bool listening()*
-
-*Defined at [console/bridge.cppm:144](../../../../console/bridge.cppm#L144)*
-
-### connected
-
-*public bool connected()*
-
-*Defined at [console/bridge.cppm:145](../../../../console/bridge.cppm#L145)*
-
-### port
-
-*public std::uint16_t port()*
-
-*Defined at [console/bridge.cppm:146](../../../../console/bridge.cppm#L146)*
-
-### dropped
-
-*public std::uint64_t dropped()*
-
-*Defined at [console/bridge.cppm:148](../../../../console/bridge.cppm#L148)*
 
 
+**brief** A file is being sent (send_file) or received (a push). 
+
+### ~Bridge
+
+*public void ~Bridge()*
+
+*Defined at [console/bridge.cppm:99](../../../../console/bridge.cppm#L99)*
 

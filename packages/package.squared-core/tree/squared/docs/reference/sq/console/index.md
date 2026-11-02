@@ -104,6 +104,10 @@
 
 *void build_atlas(std::span<std::uint8_t, atlas_bytes> out)*
 
+
+
+**brief** Expand the font into `out`, 255 where a glyph has a pixel and 0 elsewhere; glyph `g` at column `g % 16`, row `g / 16`; solid_glyph filled.
+
 ### for_each_line
 
 *void for_each_line(int fd, std::span<char> buffer, Line line)*
@@ -266,6 +270,10 @@
 
 *Defined at [console/bridge.cppm:26](../../../../console/bridge.cppm#L26)*
 
+
+
+**brief** What open() did. 
+
 | enum class Colour |
 
 --
@@ -281,6 +289,10 @@
 
 *Defined at [console/src/colour.cppm:9](../../../../console/src/colour.cppm#L9)*
 
+
+
+**brief** What a console quad is drawn in: an index into the renderer's palette. 
+
 | enum class Level |
 
 --
@@ -291,4 +303,8 @@
 
 
 *Defined at [console/src/level.cppm:9](../../../../console/src/level.cppm#L9)*
+
+
+
+**brief** How a console line is shown and filtered: `copy errors` keeps only `error`. 
 

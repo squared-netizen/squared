@@ -2,6 +2,12 @@
 
 *Defined at [messaging/model_list.cppm:35](../../../../messaging/model_list.cppm#L35)*
 
+
+
+**brief** A model's list as three plain functions over it: what `ModelList` calls. Made by `list_source`; no virtual call, nothing allocated.
+
+
+
 ## Members
 
 public void * source

@@ -34,5 +34,3 @@ public vector screens
 
 *public bool has_screen(std::string_view name)*
 
-
-

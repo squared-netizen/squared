@@ -26,5 +26,3 @@ Inherits from CheckBox
 
 **checked** Initial checked state before group registration.
 
-
-

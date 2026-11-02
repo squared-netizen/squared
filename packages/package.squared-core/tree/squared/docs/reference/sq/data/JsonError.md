@@ -2,6 +2,12 @@
 
 *Defined at [data/src/json_error.cppm:10](../../../../data/src/json_error.cppm#L10)*
 
+
+
+**brief** Structured JSON failure information. 
+
+
+
 ## Members
 
 public JsonErrorCode code
@@ -25,4 +31,6 @@ public std::size_t column
 *Defined at [data/src/json_error.cppm:28](../../../../data/src/json_error.cppm#L28)*
 
 
+
+**brief** Return whether this structure represents a failure. 
 

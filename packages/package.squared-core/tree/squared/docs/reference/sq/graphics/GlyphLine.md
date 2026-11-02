@@ -2,6 +2,12 @@
 
 *Defined at [graphics/src/glyph_line.cppm:9](../../../../graphics/src/glyph_line.cppm#L9)*
 
+
+
+**brief** One explicit line in a GlyphLayout. 
+
+
+
 ## Members
 
 public std::size_t first_glyph

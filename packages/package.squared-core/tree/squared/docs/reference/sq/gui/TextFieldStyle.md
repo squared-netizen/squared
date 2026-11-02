@@ -2,6 +2,12 @@
 
 *Defined at [gui/src/text_field_style.cppm:11](../../../../gui/src/text_field_style.cppm#L11)*
 
+
+
+**brief** Style data for a TextField widget. 
+
+
+
 ## Members
 
 public shared_ptr normal

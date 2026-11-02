@@ -2,6 +2,16 @@
 
 *Defined at [messaging/name_table.cppm:30](../../../../messaging/name_table.cppm#L30)*
 
+
+
+**brief** The text of every registered name, for writing telegrams as text.
+
+ Telegrams carry only a name's id; the dev log, replay files and saves write the text. The table lives in storage its owner gives it (the Telegraph's, sized by `TELEGRAPH_NAMES`), and allocates nothing: 16 bytes per name plus its text, so the default 8 KB holds about 250 names.
+
+ Registration catches the one thing a 64-bit id can get wrong: two names with one id. Not thread-safe; register before the threads start.
+
+
+
 ## Functions
 
 ### NameTable
@@ -20,13 +30,15 @@
 
 **brief** Register a name. 
 
-### text
+### capacity
 
-*public std::string_view text(Name name)*
+*public std::size_t capacity()*
+
+*Defined at [messaging/name_table.cppm:68](../../../../messaging/name_table.cppm#L68)*
 
 
 
-**brief** A registered name's text; empty when it is not registered. 
+**brief** The storage's size. 
 
 ### format
 
@@ -44,11 +56,17 @@
 
 *Defined at [messaging/name_table.cppm:62](../../../../messaging/name_table.cppm#L62)*
 
-### capacity
 
-*public std::size_t capacity()*
 
-*Defined at [messaging/name_table.cppm:68](../../../../messaging/name_table.cppm#L68)*
+**brief** How many names are registered. 
+
+### text
+
+*public std::string_view text(Name name)*
+
+
+
+**brief** A registered name's text; empty when it is not registered. 
 
 ### used
 
@@ -57,8 +75,6 @@
 
 
 **brief** Bytes in use, entries and text, of `capacity()`. 
-
-
 
 ## Enums
 
@@ -76,4 +92,6 @@
 *Defined at [messaging/name_table.cppm:34](../../../../messaging/name_table.cppm#L34)*
 
 
+
+**brief** What `add` did. 
 

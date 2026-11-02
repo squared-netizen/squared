@@ -2,6 +2,14 @@
 
 *Defined at [gui/layout.cppm:78](../../../../gui/layout.cppm#L78)*
 
+
+
+**brief** One node of a layout: the widget it builds, where that sits in its cell, what it shows and what a tap sends. 32 bytes, read-only once made.
+
+ Nodes are in document order: a table's, scroll's, stack's or list's nodes follow it, and `inside` counts them, theirs included. Words are offsets into the layout's text (`Layout::text`), 0 for none.
+
+
+
 ## Members
 
 public Name bind

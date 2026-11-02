@@ -50,6 +50,10 @@
 
 *Defined at [graphics/src/bitmap_font_error_code.cppm:9](../../../../graphics/src/bitmap_font_error_code.cppm#L9)*
 
+
+
+**brief** Stable failure categories for BMFont parsing and glyph layout. 
+
 | enum class CoordinateOrigin |
 
 --
@@ -59,6 +63,10 @@
 
 
 *Defined at [graphics/src/coordinate_origin.cppm:11](../../../../graphics/src/coordinate_origin.cppm#L11)*
+
+
+
+**brief** Coordinate orientation used by an orthographic camera.
 
 | enum class GlyphAlignment |
 
@@ -71,6 +79,10 @@
 
 *Defined at [graphics/src/glyph_alignment.cppm:9](../../../../graphics/src/glyph_alignment.cppm#L9)*
 
+
+
+**brief** Horizontal placement within an optional target width. 
+
 | enum class TextureFilter |
 
 --
@@ -80,6 +92,12 @@
 
 
 *Defined at [graphics/src/texture_filter.cppm:14](../../../../graphics/src/texture_filter.cppm#L14)*
+
+
+
+**brief** How a texture is sampled between texels.
+
+ The one filter vocabulary in squared: `graphics::Texture` and the lower-level `gles::Texture2D` both take it.
 
 | enum class TextureRecoveryPolicy |
 
@@ -93,6 +111,12 @@
 
 *Defined at [graphics/src/texture_recovery_policy.cppm:15](../../../../graphics/src/texture_recovery_policy.cppm#L15)*
 
+
+
+**brief** CPU-side recipe used to recover a texture after context loss.
+
+ Policies are backend-neutral. They describe what source data Squared keeps or asks the application to regenerate; they do not expose the selected windowing or graphics API.
+
 | enum class TextureWrap |
 
 --
@@ -103,4 +127,10 @@
 
 
 *Defined at [graphics/src/texture_wrap.cppm:14](../../../../graphics/src/texture_wrap.cppm#L14)*
+
+
+
+**brief** How sampling outside the zero-to-one range behaves.
+
+ The one wrap vocabulary in squared: `graphics::Texture` and the lower-level `gles::Texture2D` both take it.
 

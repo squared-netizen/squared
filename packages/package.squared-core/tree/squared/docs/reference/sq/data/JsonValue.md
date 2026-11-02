@@ -2,6 +2,14 @@
 
 *Defined at [data/json_value.cppm:15](../../../../data/json_value.cppm#L15)*
 
+
+
+**brief** One owned JSON value independent of the parser backend.
+
+ Objects use bytewise UTF-8 key ordering. This makes serialization stable across runs while retaining distinct signed integers, unsigned integers, and floating-point numbers.
+
+
+
 ## Functions
 
 ### JsonValue
@@ -10,13 +18,29 @@
 
 *Defined at [data/json_value.cppm:37](../../../../data/json_value.cppm#L37)*
 
+
+
+**brief** Default-construct a JSON null value. 
+
 ### JsonValue
 
-*public void JsonValue(std::nullptr_t )*
+*public void JsonValue(Array value)*
 
 
 
-**brief** Construct a JSON null value. 
+**brief** Construct a JSON array by moving the vector.
+
+**value** Array whose storage is moved into the value.
+
+### JsonValue
+
+*public void JsonValue(Object value)*
+
+
+
+**brief** Construct a JSON object by moving the map.
+
+**value** Object whose storage is moved into the value.
 
 ### JsonValue
 
@@ -30,23 +54,13 @@
 
 ### JsonValue
 
-*public void JsonValue(std::int64_t value)*
+*public void JsonValue(const char * value)*
 
 
 
-**brief** Construct a JSON signed integer.
+**brief** Construct a JSON string from a null-terminated value.
 
-**value** Signed 64-bit integer to store.
-
-### JsonValue
-
-*public void JsonValue(std::uint64_t value)*
-
-
-
-**brief** Construct a JSON unsigned integer.
-
-**value** Unsigned 64-bit integer to store.
+**value** Null-terminated UTF-8 text to copy.
 
 ### JsonValue
 
@@ -57,6 +71,24 @@
 **brief** Construct a JSON real number.
 
 **value** Finite or non-finite double to store; writing a non-finite value yields a JsonError.
+
+### JsonValue
+
+*public void JsonValue(std::int64_t value)*
+
+
+
+**brief** Construct a JSON signed integer.
+
+**value** Signed 64-bit integer to store.
+
+### JsonValue
+
+*public void JsonValue(std::nullptr_t )*
+
+
+
+**brief** Construct a JSON null value. 
 
 ### JsonValue
 
@@ -80,103 +112,13 @@
 
 ### JsonValue
 
-*public void JsonValue(const char * value)*
+*public void JsonValue(std::uint64_t value)*
 
 
 
-**brief** Construct a JSON string from a null-terminated value.
+**brief** Construct a JSON unsigned integer.
 
-**value** Null-terminated UTF-8 text to copy.
-
-### JsonValue
-
-*public void JsonValue(Array value)*
-
-
-
-**brief** Construct a JSON array by moving the vector.
-
-**value** Array whose storage is moved into the value.
-
-### JsonValue
-
-*public void JsonValue(Object value)*
-
-
-
-**brief** Construct a JSON object by moving the map.
-
-**value** Object whose storage is moved into the value.
-
-### type
-
-*public Type type()*
-
-
-
-**brief** Return the exact stored JSON type.
-
-**return** The Type of the stored value or Type::Null.
-
-### is_null
-
-*public bool is_null()*
-
-
-
-**brief** Return whether this value stores JSON null.
-
-**return** `true` when type() is Type::Null.
-
-### boolean_if
-
-*public const bool * boolean_if()*
-
-
-
-**brief** Return the stored boolean, or null when the type differs.
-
-**return** Pointer to the stored bool, or null.
-
-### signed_integer_if
-
-*public const std::int64_t * signed_integer_if()*
-
-
-
-**brief** Return the stored signed integer, or null when it differs.
-
-**return** Pointer to the stored std::int64_t, or null.
-
-### unsigned_integer_if
-
-*public const std::uint64_t * unsigned_integer_if()*
-
-
-
-**brief** Return the stored unsigned integer, or null when it differs.
-
-**return** Pointer to the stored std::uint64_t, or null.
-
-### real_if
-
-*public const double * real_if()*
-
-
-
-**brief** Return the stored real number, or null when the type differs.
-
-**return** Pointer to the stored double, or null.
-
-### string_if
-
-*public const std::string * string_if()*
-
-
-
-**brief** Return the stored UTF-8 string, or null when it differs.
-
-**return** Pointer to the stored std::string, or null.
+**value** Unsigned 64-bit integer to store.
 
 ### array_if
 
@@ -198,25 +140,15 @@
 
 **return** Pointer to the stored array, or null when the type differs.
 
-### object_if
+### boolean_if
 
-*public Object * object_if()*
-
-
-
-**brief** Return the stored object, or null when the type differs.
-
-**return** Pointer to the stored object, or null.
-
-### object_if
-
-*public const Object * object_if()*
+*public const bool * boolean_if()*
 
 
 
-**brief** Return the stored object, read-only.
+**brief** Return the stored boolean, or null when the type differs.
 
-**return** Pointer to the stored object, or null when the type differs.
+**return** Pointer to the stored bool, or null.
 
 ### find
 
@@ -242,7 +174,85 @@
 
 **return** Pointer to the member value, or null when the value is not an object or the key is absent.
 
+### is_null
 
+*public bool is_null()*
+
+
+
+**brief** Return whether this value stores JSON null.
+
+**return** `true` when type() is Type::Null.
+
+### object_if
+
+*public Object * object_if()*
+
+
+
+**brief** Return the stored object, or null when the type differs.
+
+**return** Pointer to the stored object, or null.
+
+### object_if
+
+*public const Object * object_if()*
+
+
+
+**brief** Return the stored object, read-only.
+
+**return** Pointer to the stored object, or null when the type differs.
+
+### real_if
+
+*public const double * real_if()*
+
+
+
+**brief** Return the stored real number, or null when the type differs.
+
+**return** Pointer to the stored double, or null.
+
+### signed_integer_if
+
+*public const std::int64_t * signed_integer_if()*
+
+
+
+**brief** Return the stored signed integer, or null when it differs.
+
+**return** Pointer to the stored std::int64_t, or null.
+
+### string_if
+
+*public const std::string * string_if()*
+
+
+
+**brief** Return the stored UTF-8 string, or null when it differs.
+
+**return** Pointer to the stored std::string, or null.
+
+### type
+
+*public Type type()*
+
+
+
+**brief** Return the exact stored JSON type.
+
+**return** The Type of the stored value or Type::Null.
+
+### unsigned_integer_if
+
+*public const std::uint64_t * unsigned_integer_if()*
+
+
+
+**brief** Return the stored unsigned integer, or null when it differs.
+
+**return** Pointer to the stored std::uint64_t, or null.
 
 ## Enums
 
@@ -263,4 +273,6 @@
 *Defined at [data/json_value.cppm:25](../../../../data/json_value.cppm#L25)*
 
 
+
+**brief** Exact stored JSON type. 
 

@@ -2,6 +2,12 @@
 
 *Defined at [gui/src/window_style.cppm:12](../../../../gui/src/window_style.cppm#L12)*
 
+
+
+**brief** Style data for a Window widget. 
+
+
+
 ## Members
 
 public shared_ptr background

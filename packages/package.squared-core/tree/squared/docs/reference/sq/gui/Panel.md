@@ -2,6 +2,12 @@
 
 *Defined at [gui/panel.cppm:13](../../../../gui/panel.cppm#L13)*
 
+
+
+**brief** Container painting a single style background. 
+
+
+
 Inherits from Widget
 
 
@@ -18,16 +24,6 @@ Inherits from Widget
 
 **style** Named panel style to apply.
 
-### set_style
-
-*public void set_style(std::string style)*
-
-
-
-**brief** Change the applied panel style.
-
-**style** Named panel style to apply.
-
 ### paint
 
 *public void paint(Painter & , const Skin & , float , float )*
@@ -38,5 +34,13 @@ Inherits from Widget
 
 **note** Parameters match the Widget::paint signature: the active painter, the skin providing the panel style, and the stage-space origin.
 
+### set_style
 
+*public void set_style(std::string style)*
+
+
+
+**brief** Change the applied panel style.
+
+**style** Named panel style to apply.
 

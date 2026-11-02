@@ -32,37 +32,15 @@ public static const ActorInterfaceId actor_interface_id
 
 ### actor_interface
 
-*public void * actor_interface(ActorInterfaceId id)*
-
-*Defined at [gui/text_field.cppm:23](../../../../gui/text_field.cppm#L23)*
-
-### actor_interface
-
 *public const void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/text_field.cppm:28](../../../../gui/text_field.cppm#L28)*
 
-### set_text
+### actor_interface
 
-*public void set_text(std::string_view text)*
+*public void * actor_interface(ActorInterfaceId id)*
 
-
-
-**brief** Replace the field text and reset the cursor; copied into the field's own, with no allocation when it is no longer than a text it held.
-
-**text** New text content.
-
-### text
-
-*public const std::string & text()*
-
-*Defined at [gui/text_field.cppm:50](../../../../gui/text_field.cppm#L50)*
-
-
-
-**brief** Read the current text.
-
-**return** Reference to the stored text.
+*Defined at [gui/text_field.cppm:23](../../../../gui/text_field.cppm#L23)*
 
 ### cursor
 
@@ -76,6 +54,36 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** Byte offset into the UTF-8 text, or text length at the end.
 
+### edited
+
+*public bool edited()*
+
+*Defined at [gui/text_field.cppm:79](../../../../gui/text_field.cppm#L79)*
+
+
+
+**brief** Whether the text was changed and the change not finished yet (no Enter, no leaving): the edit `set_on_commit` has still to be told.
+
+### focus_changed
+
+*public void focus_changed(bool )*
+
+
+
+**brief** Track focus to drive the focused style and underline state.
+
+**note** The parameter matches Widget::focus_changed: true when the widget gained focus.
+
+### focusable
+
+*public bool focusable()*
+
+
+
+**brief** Report focusability.
+
+**return** true; text fields take keyboard focus.
+
 ### focused
 
 *public bool focused()*
@@ -88,45 +96,17 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** true while focused.
 
-### edited
+### key_down
 
-*public bool edited()*
-
-*Defined at [gui/text_field.cppm:79](../../../../gui/text_field.cppm#L79)*
+*public bool key_down(app::Key , app::KeyModifiers )*
 
 
 
-**brief** Whether the text was changed and the change not finished yet (no Enter, no leaving): the edit `set_on_commit` has still to be told.
+**brief** Move the cursor and edit the text with keys.
 
-### set_on_commit
+**note** Parameters match the Widget::key_down signature: a portable key name and the modifier state at the time of the event.
 
-*public void set_on_commit(CommitCallback callback, void * context)*
-
-
-
-**brief** What is told when an edit is finished: Enter (the keyboard's Done), or the field losing focus after its text changed.
-
-**callback** Called with `context` and this field; nullptr for none.
-
-**context** Passed back as it is.
-
-### restore_edit
-
-*public void restore_edit(std::string_view text)*
-
-
-
-**brief** Put back an edit that was not finished, as `set_text` and `edited()` true: the Stage's, when a screen comes back. Told to `set_on_commit` once it is finished.
-
-### set_style
-
-*public void set_style(std::string style)*
-
-
-
-**brief** Change the applied text-field style.
-
-**style** Named text-field style to apply.
+**return** true when the key was handled.
 
 ### minimum_size
 
@@ -139,20 +119,6 @@ public static const ActorInterfaceId actor_interface_id
 **note** Parameters match Widget::minimum_size: an active painter and the skin providing the text-field style.
 
 **return** Minimum extent in logical units.
-
-### preferred_size
-
-*public Size preferred_size(Painter & painter, const Skin & skin)*
-
-
-
-**brief** Report the text-plus-padding size.
-
-**painter** Active painter used for measurement.
-
-**skin** Skin providing the selected text-field style and font.
-
-**return** Preferred extent in logical units.
 
 ### paint
 
@@ -176,29 +142,71 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** true when the field handled the event.
 
-### key_down
+### preferred_size
 
-*public bool key_down(app::Key , app::KeyModifiers )*
-
-
-
-**brief** Move the cursor and edit the text with keys.
-
-**note** Parameters match the Widget::key_down signature: a portable key name and the modifier state at the time of the event.
-
-**return** true when the key was handled.
-
-### text_input
-
-*public bool text_input(std::string_view )*
+*public Size preferred_size(Painter & painter, const Skin & skin)*
 
 
 
-**brief** Insert committed UTF-8 text at the cursor.
+**brief** Report the text-plus-padding size.
 
-**note** The parameter matches Widget::text_input: committed text to insert.
+**painter** Active painter used for measurement.
 
-**return** true when the text was inserted.
+**skin** Skin providing the selected text-field style and font.
+
+**return** Preferred extent in logical units.
+
+### restore_edit
+
+*public void restore_edit(std::string_view text)*
+
+
+
+**brief** Put back an edit that was not finished, as `set_text` and `edited()` true: the Stage's, when a screen comes back. Told to `set_on_commit` once it is finished.
+
+### set_on_commit
+
+*public void set_on_commit(CommitCallback callback, void * context)*
+
+
+
+**brief** What is told when an edit is finished: Enter (the keyboard's Done), or the field losing focus after its text changed.
+
+**callback** Called with `context` and this field; nullptr for none.
+
+**context** Passed back as it is.
+
+### set_style
+
+*public void set_style(std::string style)*
+
+
+
+**brief** Change the applied text-field style.
+
+**style** Named text-field style to apply.
+
+### set_text
+
+*public void set_text(std::string_view text)*
+
+
+
+**brief** Replace the field text and reset the cursor; copied into the field's own, with no allocation when it is no longer than a text it held.
+
+**text** New text content.
+
+### text
+
+*public const std::string & text()*
+
+*Defined at [gui/text_field.cppm:50](../../../../gui/text_field.cppm#L50)*
+
+
+
+**brief** Read the current text.
+
+**return** Reference to the stored text.
 
 ### text_editing
 
@@ -212,25 +220,17 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** true when the composition was handled.
 
-### focus_changed
+### text_input
 
-*public void focus_changed(bool )*
-
-
-
-**brief** Track focus to drive the focused style and underline state.
-
-**note** The parameter matches Widget::focus_changed: true when the widget gained focus.
-
-### focusable
-
-*public bool focusable()*
+*public bool text_input(std::string_view )*
 
 
 
-**brief** Report focusability.
+**brief** Insert committed UTF-8 text at the cursor.
 
-**return** true; text fields take keyboard focus.
+**note** The parameter matches Widget::text_input: committed text to insert.
+
+**return** true when the text was inserted.
 
 ### wants_text_input
 
@@ -243,6 +243,4 @@ public static const ActorInterfaceId actor_interface_id
 **brief** Request the platform text-input service while focused.
 
 **return** true; a focused text field always wants text input.
-
-
 

@@ -2,6 +2,12 @@
 
 *Defined at [messaging/value_cache.cppm:39](../../../../messaging/value_cache.cppm#L39)*
 
+
+
+**brief** How full a cache is and has been (the Console's `telegraph` command). 
+
+
+
 ## Members
 
 public std::uint32_t entries

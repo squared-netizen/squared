@@ -259,6 +259,14 @@ $(SQUARED_STD_PCM) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB): $(SQUARED_STD_SOURC
 	$(AR) rcs $(SQUARED_STD_LIB) $(OBJ_DIR)/std/std.o
 -include $(OBJ_DIR)/std/std.d
 
+# An object compiled before 7b.4 names the precompiled header in its
+# dependency file, without -MP's empty rule for it (clang lists it first, as
+# it would the source). The header is gone, and make would stop at "No rule
+# to make target build/std_pch.hpp" before it got to rebuild that object (the
+# flags changed, so every object is). These rules let it get there. They can
+# go once no workspace has objects from before 7b.4.
+$(SQUARED_ROOT)/build/std_pch.hpp $(BUILD_DIR)/pch/std.pch $(BUILD_DIR)/pch/std-test.pch: ;
+
 # A test, or a host tool built beside the tests, through tools/test_cc.sh:
 # each source compiled on its own, so the binary's .d lists what it really
 # includes, then linked. The objects are kept in build/<BUILD>/test-objects/

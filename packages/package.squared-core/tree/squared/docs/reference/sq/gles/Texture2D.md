@@ -22,27 +22,31 @@
 
 ### Texture2D
 
+*public void Texture2D(Texture2D && other)*
+
+### Texture2D
+
 *public void Texture2D(const Texture2D & )*
 
 *Defined at [gles/texture2d.cppm:29](../../../../gles/texture2d.cppm#L29)*
 
-### operator=
+### bind
 
-*public Texture2D & operator=(const Texture2D & )*
+*public void bind(int unit)*
 
-*Defined at [gles/texture2d.cppm:30](../../../../gles/texture2d.cppm#L30)*
 
-### ~Texture2D
 
-*public void ~Texture2D()*
+**brief** Bind to a texture unit.
 
-### Texture2D
+**unit** Unit index; the value a sampler uniform is set to.
 
-*public void Texture2D(Texture2D && other)*
+### bytes_per_pixel
 
-### operator=
+*public static int bytes_per_pixel(TextureFormat format)*
 
-*public Texture2D & operator=(Texture2D && other)*
+
+
+**brief** Return the bytes one pixel of a format occupies. 
 
 ### create
 
@@ -63,6 +67,78 @@
 **return** A no-error GlesError on success.
 
 **note** Row alignment is set to 1 before upload. GL defaults to 4, which corrupts any R8 texture whose width is not a multiple of four — the classic skewed-font-atlas bug.
+
+### destroy
+
+*public void destroy()*
+
+
+
+**brief** Release the GL object. Safe to call more than once. 
+
+### format
+
+*public TextureFormat format()*
+
+*Defined at [gles/texture2d.cppm:105](../../../../gles/texture2d.cppm#L105)*
+
+
+
+**brief** Return the storage format. 
+
+### height
+
+*public int height()*
+
+*Defined at [gles/texture2d.cppm:102](../../../../gles/texture2d.cppm#L102)*
+
+
+
+**brief** Return the height in pixels. 
+
+### invalidate
+
+*public void invalidate()*
+
+
+
+**brief** Forget the GL name without deleting it, after context loss. 
+
+### name
+
+*public std::uint32_t name()*
+
+*Defined at [gles/texture2d.cppm:96](../../../../gles/texture2d.cppm#L96)*
+
+
+
+**brief** Return the raw GL name, or zero. 
+
+### operator=
+
+*public Texture2D & operator=(Texture2D && other)*
+
+### operator=
+
+*public Texture2D & operator=(const Texture2D & )*
+
+*Defined at [gles/texture2d.cppm:30](../../../../gles/texture2d.cppm#L30)*
+
+### set_sampling
+
+*public GlesError set_sampling(graphics::TextureFilter minify, graphics::TextureFilter magnify, graphics::TextureWrap wrap)*
+
+
+
+**brief** Set minification, magnification and wrapping.
+
+**minify** Filter used when the texture is drawn smaller.
+
+**magnify** Filter used when it is drawn larger.
+
+**wrap** Behaviour outside the zero-to-one range.
+
+**return** A no-error GlesError on success.
 
 ### upload
 
@@ -96,56 +172,6 @@
 
 **return** A no-error GlesError on success.
 
-### set_sampling
-
-*public GlesError set_sampling(graphics::TextureFilter minify, graphics::TextureFilter magnify, graphics::TextureWrap wrap)*
-
-
-
-**brief** Set minification, magnification and wrapping.
-
-**minify** Filter used when the texture is drawn smaller.
-
-**magnify** Filter used when it is drawn larger.
-
-**wrap** Behaviour outside the zero-to-one range.
-
-**return** A no-error GlesError on success.
-
-### bind
-
-*public void bind(int unit)*
-
-
-
-**brief** Bind to a texture unit.
-
-**unit** Unit index; the value a sampler uniform is set to.
-
-### destroy
-
-*public void destroy()*
-
-
-
-**brief** Release the GL object. Safe to call more than once. 
-
-### invalidate
-
-*public void invalidate()*
-
-
-
-**brief** Forget the GL name without deleting it, after context loss. 
-
-### bytes_per_pixel
-
-*public static int bytes_per_pixel(TextureFormat format)*
-
-
-
-**brief** Return the bytes one pixel of a format occupies. 
-
 ### valid
 
 *public bool valid()*
@@ -155,16 +181,6 @@
 
 
 **brief** Report whether this holds a GL object. 
-
-### name
-
-*public std::uint32_t name()*
-
-*Defined at [gles/texture2d.cppm:96](../../../../gles/texture2d.cppm#L96)*
-
-
-
-**brief** Return the raw GL name, or zero. 
 
 ### width
 
@@ -176,25 +192,7 @@
 
 **brief** Return the width in pixels. 
 
-### height
+### ~Texture2D
 
-*public int height()*
-
-*Defined at [gles/texture2d.cppm:102](../../../../gles/texture2d.cppm#L102)*
-
-
-
-**brief** Return the height in pixels. 
-
-### format
-
-*public TextureFormat format()*
-
-*Defined at [gles/texture2d.cppm:105](../../../../gles/texture2d.cppm#L105)*
-
-
-
-**brief** Return the storage format. 
-
-
+*public void ~Texture2D()*
 

@@ -2,6 +2,12 @@
 
 *Defined at [gui/check_box.cppm:14](../../../../gui/check_box.cppm#L14)*
 
+
+
+**brief** Toggle button rendering a checkbox glyph and label. 
+
+
+
 Inherits from ToggleButton
 
 
@@ -20,16 +26,6 @@ Inherits from ToggleButton
 
 **checked** Initial checked state.
 
-### set_check_style
-
-*public void set_check_style(std::string style)*
-
-
-
-**brief** Change the applied check-box style.
-
-**style** Named check-box style to apply.
-
 ### minimum_size
 
 *public Size minimum_size(Painter & , const Skin & )*
@@ -41,6 +37,16 @@ Inherits from ToggleButton
 **note** Parameters match Widget::minimum_size: an active painter and the skin providing the check-box style.
 
 **return** Minimum extent in logical units.
+
+### paint
+
+*public void paint(Painter & , const Skin & , float , float )*
+
+
+
+**brief** Paint the checkbox glyph and label.
+
+**note** Parameters match the Widget::paint signature: the active painter, the skin providing the check-box style, and the stage-space origin.
 
 ### preferred_size
 
@@ -56,15 +62,13 @@ Inherits from ToggleButton
 
 **return** Preferred extent in logical units.
 
-### paint
+### set_check_style
 
-*public void paint(Painter & , const Skin & , float , float )*
-
-
-
-**brief** Paint the checkbox glyph and label.
-
-**note** Parameters match the Widget::paint signature: the active painter, the skin providing the check-box style, and the stage-space origin.
+*public void set_check_style(std::string style)*
 
 
+
+**brief** Change the applied check-box style.
+
+**style** Named check-box style to apply.
 

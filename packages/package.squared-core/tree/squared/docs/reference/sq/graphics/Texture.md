@@ -2,6 +2,14 @@
 
 *Defined at [graphics/texture.cppm:27](../../../../graphics/texture.cppm#L27)*
 
+
+
+**brief** Move-only texture owned by the selected graphics backend.
+
+ A valid graphics context must be current whenever a texture is created, released, restored, or destroyed. Asset paths and RGBA source data are retained according to the selected portable recovery policy.
+
+
+
 ## Functions
 
 ### Texture
@@ -10,11 +18,9 @@
 
 *Defined at [graphics/texture.cppm:31](../../../../graphics/texture.cppm#L31)*
 
-### Texture
 
-*public void Texture(const Texture & )*
 
-*Defined at [graphics/texture.cppm:32](../../../../graphics/texture.cppm#L32)*
+**brief** Construct an empty texture owning no backend object. 
 
 ### Texture
 
@@ -26,55 +32,33 @@
 
 **other** Texture to assume; left empty afterward.
 
-### operator=
+### Texture
 
-*public Texture & operator=(Texture && other)*
+*public void Texture(const Texture & )*
 
+*Defined at [graphics/texture.cppm:32](../../../../graphics/texture.cppm#L32)*
 
+### bind
 
-**brief** Move-assign from another texture.
-
-**other** Texture to assume; left empty afterward.
-
-**return** Reference to this texture.
-
-**note** Releases this texture's backend object first, if any.
-
-### ~Texture
-
-*public void ~Texture()*
+*public void bind(unsigned int unit)*
 
 
 
-**brief** Destroy the backend object, if any. 
+**brief** Bind the texture to a zero-based texture unit.
 
-### load
+**unit** Zero-based texture unit to bind into.
 
-*public bool load(const files::FileHandle & source)*
+### content_generation
 
-
-
-**brief** Load an image asset through the selected backend.
-
-**source** Handle naming the encoded image. The handle is retained, so the file system it came from must outlive this texture.
-
-**return** true when the texture loaded successfully.
-
-**note** A handle rather than a path because a path alone cannot be read back: the handle carries its file system with it, which is what lets restore() refill this texture after context loss without reaching into the asset manager that created it.
-
-### load
-
-*public bool load(const files::FileHandle & source, TextureRecoveryOptions recovery)*
+*public std::uint32_t content_generation()*
 
 
 
-**brief** Load an asset with an explicit recovery policy.
+**brief** Read the counter that changes whenever the content does.
 
-**source** Handle naming the encoded image.
+**return** A value that increments on every upload, restore, release and invalidate.
 
-**recovery** Policy controlling post-context-loss recovery.
-
-**return** true when the texture loaded successfully.
+**note** This is what makes a stale TextureRegion detectable. A region records the generation it was built against; when the two differ, the region's coordinates no longer describe the pixels that are there, and after a Discard there are no pixels at all. Without it, a region outliving its texture's content is a crash after a phone call.
 
 ### create_rgba
 
@@ -144,13 +128,25 @@
 
 **brief** Destroy the backend texture. 
 
-### release
+### has_content
 
-*public void release()*
+*public bool has_content()*
 
 
 
-**brief** Release only the GPU object while retaining its restoration recipe.
+**brief** Check whether the texture currently holds usable content.
+
+**return** true when a backend object exists and has not been released, invalidated or discarded.
+
+### height
+
+*public int height()*
+
+
+
+**brief** Read the texture height.
+
+**return** Height in pixels; zero when no backend object exists.
 
 ### invalidate
 
@@ -160,23 +156,81 @@
 
 **brief** Mark the GPU object stale without issuing graphics calls.
 
+### load
+
+*public bool load(const files::FileHandle & source)*
+
+
+
+**brief** Load an image asset through the selected backend.
+
+**source** Handle naming the encoded image. The handle is retained, so the file system it came from must outlive this texture.
+
+**return** true when the texture loaded successfully.
+
+**note** A handle rather than a path because a path alone cannot be read back: the handle carries its file system with it, which is what lets restore() refill this texture after context loss without reaching into the asset manager that created it.
+
+### load
+
+*public bool load(const files::FileHandle & source, TextureRecoveryOptions recovery)*
+
+
+
+**brief** Load an asset with an explicit recovery policy.
+
+**source** Handle naming the encoded image.
+
+**recovery** Policy controlling post-context-loss recovery.
+
+**return** true when the texture loaded successfully.
+
+### operator=
+
+*public Texture & operator=(Texture && other)*
+
+
+
+**brief** Move-assign from another texture.
+
+**other** Texture to assume; left empty afterward.
+
+**return** Reference to this texture.
+
+**note** Releases this texture's backend object first, if any.
+
 ### operator=
 
 *public Texture & operator=(const Texture & )*
 
 *Defined at [graphics/texture.cppm:33](../../../../graphics/texture.cppm#L33)*
 
-### restore
+### recovery_policy
 
-*public bool restore(const graphics::Context & graphics)*
+*public TextureRecoveryPolicy recovery_policy()*
 
 
 
-**brief** Recreate a released GPU object in the current graphics context.
+**brief** Read the configured recovery policy.
 
-**context_preserved** Whether the GPU context survived loss; true skips recomputing fast-path state where possible.
+**return** Policy selected at creation time.
 
-**return** true when the backend object was restored.
+### release
+
+*public void release()*
+
+
+
+**brief** Release only the GPU object while retaining its restoration recipe.
+
+### restorable
+
+*public bool restorable()*
+
+
+
+**brief** Check whether restoration source data is available.
+
+**return** true when this texture has enough source data to restore.
 
 ### restore
 
@@ -196,25 +250,17 @@
 
 **note** Prefer the overload taking a Context. It reads the answer from the object that knows it, so the polarity cannot be got backwards.
 
-### restorable
+### restore
 
-*public bool restorable()*
-
-
-
-**brief** Check whether restoration source data is available.
-
-**return** true when this texture has enough source data to restore.
-
-### recovery_policy
-
-*public TextureRecoveryPolicy recovery_policy()*
+*public bool restore(const graphics::Context & graphics)*
 
 
 
-**brief** Read the configured recovery policy.
+**brief** Recreate a released GPU object in the current graphics context.
 
-**return** Policy selected at creation time.
+**context_preserved** Whether the GPU context survived loss; true skips recomputing fast-path state where possible.
+
+**return** true when the backend object was restored.
 
 ### retained_recovery_bytes
 
@@ -250,16 +296,6 @@
 
 **vertical** Texture-wide vertical wrap mode.
 
-### bind
-
-*public void bind(unsigned int unit)*
-
-
-
-**brief** Bind the texture to a zero-based texture unit.
-
-**unit** Zero-based texture unit to bind into.
-
 ### valid
 
 *public bool valid()*
@@ -280,37 +316,11 @@
 
 **return** Width in pixels; zero when no backend object exists.
 
-### height
+### ~Texture
 
-*public int height()*
-
-
-
-**brief** Read the texture height.
-
-**return** Height in pixels; zero when no backend object exists.
-
-### content_generation
-
-*public std::uint32_t content_generation()*
+*public void ~Texture()*
 
 
 
-**brief** Read the counter that changes whenever the content does.
-
-**return** A value that increments on every upload, restore, release and invalidate.
-
-**note** This is what makes a stale TextureRegion detectable. A region records the generation it was built against; when the two differ, the region's coordinates no longer describe the pixels that are there, and after a Discard there are no pixels at all. Without it, a region outliving its texture's content is a crash after a phone call.
-
-### has_content
-
-*public bool has_content()*
-
-
-
-**brief** Check whether the texture currently holds usable content.
-
-**return** true when a backend object exists and has not been released, invalidated or discarded.
-
-
+**brief** Destroy the backend object, if any. 
 

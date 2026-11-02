@@ -14,6 +14,8 @@
 
 *Defined at [messaging/model_runner.cppm:45](../../../../../messaging/model_runner.cppm#L45)*
 
+ The earlier of two timeouts in milliseconds, -1 meaning none.
+
 ### milliseconds_until
 
 *int milliseconds_until(time::TimePoint at, time::TimePoint now)*

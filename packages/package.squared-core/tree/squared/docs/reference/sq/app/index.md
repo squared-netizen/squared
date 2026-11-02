@@ -21,6 +21,10 @@
 
 *Defined at [app/src/key_modifiers.cppm:33](../../../../app/src/key_modifiers.cppm#L33)*
 
+
+
+**brief** Equal when the same modifiers are held. 
+
 ### operator==
 
 *bool operator==(const SafeArea & , const SafeArea & )*
@@ -50,6 +54,12 @@
 
 *Defined at [app/src/key.cppm:15](../../../../app/src/key.cppm#L15)*
 
+
+
+**brief** Portable key names for key events.
+
+ The one key vocabulary in squared: the platform layer produces it in an Event, and the GUI routes it to the focused widget unchanged. A key squared does not name arrives as `unknown`, and nothing routes it.
+
 | enum class Navigation |
 
 --
@@ -67,6 +77,12 @@
 
 *Defined at [app/src/navigation.cppm:14](../../../../app/src/navigation.cppm#L14)*
 
+
+
+**brief** Semantic focus and navigation action, from any supported device.
+
+ A D-pad, a gamepad and a keyboard's arrow and Tab keys all produce these. The GUI routes one to the focused widget first, then moves focus with it.
+
 | enum class TextInputPurpose |
 
 --
@@ -78,4 +94,12 @@
 
 
 *Defined at [app/src/text_input_purpose.cppm:13](../../../../app/src/text_input_purpose.cppm#L13)*
+
+
+
+**brief** Desired soft-keyboard content mode.
+
+
+
+**sa** TextInputRequest::purpose
 

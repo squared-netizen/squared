@@ -22,27 +22,13 @@
 
 ### Shader
 
-*public void Shader(const Shader & )*
-
-*Defined at [gles/shader.cppm:27](../../../../gles/shader.cppm#L27)*
-
-### operator=
-
-*public Shader & operator=(const Shader & )*
-
-*Defined at [gles/shader.cppm:28](../../../../gles/shader.cppm#L28)*
-
-### ~Shader
-
-*public void ~Shader()*
+*public void Shader(Shader && other)*
 
 ### Shader
 
-*public void Shader(Shader && other)*
+*public void Shader(const Shader & )*
 
-### operator=
-
-*public Shader & operator=(Shader && other)*
+*Defined at [gles/shader.cppm:27](../../../../gles/shader.cppm#L27)*
 
 ### compile
 
@@ -74,16 +60,6 @@
 
 **brief** Forget the GL name without deleting it, after context loss. 
 
-### valid
-
-*public bool valid()*
-
-*Defined at [gles/shader.cppm:49](../../../../gles/shader.cppm#L49)*
-
-
-
-**brief** Report whether this shader holds a compiled GL object. 
-
 ### name
 
 *public std::uint32_t name()*
@@ -93,6 +69,16 @@
 
 
 **brief** Return the raw GL name, or zero. 
+
+### operator=
+
+*public Shader & operator=(Shader && other)*
+
+### operator=
+
+*public Shader & operator=(const Shader & )*
+
+*Defined at [gles/shader.cppm:28](../../../../gles/shader.cppm#L28)*
 
 ### stage
 
@@ -104,5 +90,17 @@
 
 **brief** Return the stage this shader was compiled for. 
 
+### valid
 
+*public bool valid()*
+
+*Defined at [gles/shader.cppm:49](../../../../gles/shader.cppm#L49)*
+
+
+
+**brief** Report whether this shader holds a compiled GL object. 
+
+### ~Shader
+
+*public void ~Shader()*
 

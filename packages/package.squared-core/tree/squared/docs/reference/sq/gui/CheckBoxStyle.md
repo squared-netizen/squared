@@ -2,6 +2,12 @@
 
 *Defined at [gui/src/check_box_style.cppm:11](../../../../gui/src/check_box_style.cppm#L11)*
 
+
+
+**brief** Style data for a CheckBox widget. 
+
+
+
 ## Members
 
 public shared_ptr unchecked

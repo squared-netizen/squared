@@ -2,6 +2,12 @@
 
 *Defined at [console/src/quad.cppm:10](../../../../console/src/quad.cppm#L10)*
 
+
+
+**brief** One rectangle the layout asks to be drawn: a glyph, stretched to the rectangle. 
+
+
+
 ## Members
 
 public int x

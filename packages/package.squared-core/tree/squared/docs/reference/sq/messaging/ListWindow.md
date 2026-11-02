@@ -20,6 +20,12 @@
 
 **brief** A window of at most `most_rows` rows (`TELEGRAPH_LIST_VIEW`; at least 1). 
 
+### count
+
+*public std::uint32_t count()*
+
+*Defined at [messaging/list_window.cppm:49](../../../../messaging/list_window.cppm#L49)*
+
 ### set_count
 
 *public void set_count(std::uint32_t count)*
@@ -45,12 +51,4 @@
 
 
 **brief** The rows last asked for: the ones to keep bound in the cache. 
-
-### count
-
-*public std::uint32_t count()*
-
-*Defined at [messaging/list_window.cppm:49](../../../../messaging/list_window.cppm#L49)*
-
-
 

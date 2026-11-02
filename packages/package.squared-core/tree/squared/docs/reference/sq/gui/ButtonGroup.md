@@ -14,6 +14,18 @@
 
 ### ButtonGroup
 
+*public void ButtonGroup(ButtonGroup && )*
+
+*Defined at [gui/button_group.cppm:38](../../../../gui/button_group.cppm#L38)*
+
+### ButtonGroup
+
+*public void ButtonGroup(const ButtonGroup & )*
+
+*Defined at [gui/button_group.cppm:36](../../../../gui/button_group.cppm#L36)*
+
+### ButtonGroup
+
 *public void ButtonGroup(std::size_t minimum_checked, std::size_t maximum_checked)*
 
 
@@ -25,34 +37,6 @@
 **maximum_checked** Maximum checked buttons; must not be smaller than `minimum_checked`.
 
 **throws**when the limits are reversed.
-
-### ButtonGroup
-
-*public void ButtonGroup(const ButtonGroup & )*
-
-*Defined at [gui/button_group.cppm:36](../../../../gui/button_group.cppm#L36)*
-
-### operator=
-
-*public ButtonGroup & operator=(const ButtonGroup & )*
-
-*Defined at [gui/button_group.cppm:37](../../../../gui/button_group.cppm#L37)*
-
-### ButtonGroup
-
-*public void ButtonGroup(ButtonGroup && )*
-
-*Defined at [gui/button_group.cppm:38](../../../../gui/button_group.cppm#L38)*
-
-### operator=
-
-*public ButtonGroup & operator=(ButtonGroup && )*
-
-*Defined at [gui/button_group.cppm:39](../../../../gui/button_group.cppm#L39)*
-
-### ~ButtonGroup
-
-*public void ~ButtonGroup()*
 
 ### add
 
@@ -66,6 +50,42 @@
 
 **throws**when the button already belongs to another group.
 
+### checked_button
+
+*public ToggleButton * checked_button()*
+
+
+
+**brief** Return the first checked member, or null when none is checked. 
+
+### checked_count
+
+*public std::size_t checked_count()*
+
+
+
+**brief** Return the number of currently checked members. 
+
+### clear
+
+*public void clear()*
+
+
+
+**brief** Detach every member without destroying any button. 
+
+### operator=
+
+*public ButtonGroup & operator=(ButtonGroup && )*
+
+*Defined at [gui/button_group.cppm:39](../../../../gui/button_group.cppm#L39)*
+
+### operator=
+
+*public ButtonGroup & operator=(const ButtonGroup & )*
+
+*Defined at [gui/button_group.cppm:37](../../../../gui/button_group.cppm#L37)*
+
 ### remove
 
 *public bool remove(ToggleButton & button)*
@@ -77,14 +97,6 @@
 **button** Candidate member.
 
 **return** true when the button was a member.
-
-### clear
-
-*public void clear()*
-
-
-
-**brief** Detach every member without destroying any button. 
 
 ### set_limits
 
@@ -100,22 +112,6 @@
 
 **throws**when the limits are reversed.
 
-### checked_count
-
-*public std::size_t checked_count()*
-
-
-
-**brief** Return the number of currently checked members. 
-
-### checked_button
-
-*public ToggleButton * checked_button()*
-
-
-
-**brief** Return the first checked member, or null when none is checked. 
-
 ### size
 
 *public std::size_t size()*
@@ -126,5 +122,7 @@
 
 **brief** Return the number of registered buttons. 
 
+### ~ButtonGroup
 
+*public void ~ButtonGroup()*
 

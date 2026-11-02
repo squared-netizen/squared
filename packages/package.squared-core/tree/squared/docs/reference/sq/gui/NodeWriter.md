@@ -2,7 +2,31 @@
 
 *Defined at [gui/layout_writer.cppm:148](../../../../gui/layout_writer.cppm#L148)*
 
+
+
+**brief** One node being written: each call sets something about it and returns it, so calls chain. A node that could not be written (the storage is full, or it was added where it cannot go) takes the calls and keeps nothing; `LayoutWriter::complete` says so.
+
+
+
 ## Functions
+
+### add
+
+*public NodeWriter add(std::string_view text)*
+
+*Defined at [gui/layout_writer.cppm:377](../../../../gui/layout_writer.cppm#L377)*
+
+
+
+**brief** Add a node inside this table, scroll (one only), stack, or list (one: its row). 
+
+### add_custom
+
+*public NodeWriter add_custom(std::string_view name)*
+
+
+
+**brief** Add a custom node inside this one: a type the app registers by `name`. 
 
 ### add_list
 
@@ -10,21 +34,23 @@
 
 *Defined at [gui/layout_writer.cppm:232](../../../../gui/layout_writer.cppm#L232)*
 
-### grow
-
-*public NodeWriter & grow()*
 
 
+**brief** Add a list inside this one, showing `rows`; as `LayoutWriter::add_list`. 
 
-**brief** Take the cell's spare room both ways, or one. 
+### align
 
-### grow_x
+*public NodeWriter & align(Alignment x, Alignment y)*
 
-*public NodeWriter & grow_x()*
+### bind
 
-### grow_y
+*public NodeWriter & bind(const K & key)*
 
-*public NodeWriter & grow_y()*
+*Defined at [gui/layout_writer.cppm:181](../../../../gui/layout_writer.cppm#L181)*
+
+
+
+**brief** Show `key`'s `state` (a label, check box, text field, slider or progress bar); a node that edits sends `set` when the key carries it. A value type the node cannot show is refused. A key that takes a uid is shown in a list's row, at the row's uid; outside a row it is refused.
 
 ### fill
 
@@ -42,6 +68,22 @@
 
 *public NodeWriter & fill_y()*
 
+### grow
+
+*public NodeWriter & grow()*
+
+
+
+**brief** Take the cell's spare room both ways, or one. 
+
+### grow_x
+
+*public NodeWriter & grow_x()*
+
+### grow_y
+
+*public NodeWriter & grow_y()*
+
 ### pad
 
 *public NodeWriter & pad(float space)*
@@ -49,40 +91,6 @@
 
 
 **brief** Space around it in its cell. 
-
-### align
-
-*public NodeWriter & align(Alignment x, Alignment y)*
-
-### bind
-
-*public NodeWriter & bind(const K & key)*
-
-*Defined at [gui/layout_writer.cppm:181](../../../../gui/layout_writer.cppm#L181)*
-
-### span
-
-*public NodeWriter & span(std::uint8_t columns)*
-
-
-
-**brief** The columns its cell takes. 
-
-### style
-
-*public NodeWriter & style(std::string_view name)*
-
-
-
-**brief** A style from the skin, in place of `default`. 
-
-### vertical
-
-*public NodeWriter & vertical()*
-
-
-
-**brief** A separator that runs up and down. 
 
 ### range
 
@@ -92,6 +100,22 @@
 
 **brief** A slider's or progress bar's range; `minimum` below `maximum`. 
 
+### row
+
+*public NodeWriter & row()*
+
+
+
+**brief** In a table: the next node added to it starts a new row. 
+
+### span
+
+*public NodeWriter & span(std::uint8_t columns)*
+
+
+
+**brief** The columns its cell takes. 
+
 ### step
 
 *public NodeWriter & step(float step)*
@@ -99,6 +123,24 @@
 
 
 **brief** A slider's step; 0: none. 
+
+### style
+
+*public NodeWriter & style(std::string_view name)*
+
+
+
+**brief** A style from the skin, in place of `default`. 
+
+### tap
+
+*public NodeWriter & tap(Navigate how)*
+
+*Defined at [gui/layout_writer.cppm:195](../../../../gui/layout_writer.cppm#L195)*
+
+
+
+**brief** A navigation to the C++ screen `S`, by its name: `.tap<About>( Navigate::push )`. 
 
 ### tap
 
@@ -110,21 +152,23 @@
 
 ### tap
 
-*public NodeWriter & tap(Navigate how)*
-
-*Defined at [gui/layout_writer.cppm:195](../../../../gui/layout_writer.cppm#L195)*
-
-### tap
-
 *public NodeWriter & tap(const K & key)*
 
 *Defined at [gui/layout_writer.cppm:205](../../../../gui/layout_writer.cppm#L205)*
+
+
+
+**brief** A button's tap that sends `do <key>`. A key that takes a uid is sent from a list's row, with the row's; outside a row it is refused.
 
 ### tap
 
 *public NodeWriter & tap(const K & key, const V & value)*
 
 *Defined at [gui/layout_writer.cppm:218](../../../../gui/layout_writer.cppm#L218)*
+
+
+
+**brief** A button's tap that sends `do <key> <value>`, or `set` for a key without `do`; a key that takes a uid, as `tap( key )`.
 
 ### tap
 
@@ -134,27 +178,13 @@
 
 **brief** A button's tap: a line as a layout file writes it (`do file.open "a.txt"`, `push settings`). 
 
-### add
+### vertical
 
-*public NodeWriter add(std::string_view text)*
-
-*Defined at [gui/layout_writer.cppm:377](../../../../gui/layout_writer.cppm#L377)*
-
-### add_custom
-
-*public NodeWriter add_custom(std::string_view name)*
+*public NodeWriter & vertical()*
 
 
 
-**brief** Add a custom node inside this one: a type the app registers by `name`. 
-
-### row
-
-*public NodeWriter & row()*
-
-
-
-**brief** In a table: the next node added to it starts a new row. 
+**brief** A separator that runs up and down. 
 
 ### written
 
@@ -163,6 +193,4 @@
 
 
 **brief** Whether this node was written. 
-
-
 

@@ -63,15 +63,41 @@ with no comment (constructors, destructors and assignments are left out).
   edited.
 - **Input:** since 7b.4, each public interface (the partitions at a module's
   root, what were the workhorse headers) is a translation unit of its own, so
-  the reference is what a user imports. Each reads the BMIs of what it
-  imports, so the framework is built first (`make`); gles is built for it when
-  the GLES headers are there, and left out otherwise. Until 7b.4: a generated
-  unit per workhorse header, including just that header.
+  the reference is what a user imports. Until 7b.4: a generated unit per
+  workhorse header, including just that header.
+- **The interfaces as text** (2026-11-02): clang-doc reads a copy of the
+  interfaces, `build/release/docs/view/`, not the modules. In the copy,
+  `export module` is `#pragma once`, each import is an `#include` of the
+  partition's or module's file (`import sq.std;` includes `build/std.cppm`'s
+  headers), and `export namespace`/`export extern` lose `export`. The rewrite
+  keeps every line on its line, so "Defined at" points at the real file.
+  Why: clang never writes comments into a named module's BMI (ASTWriter.cpp:
+  "Don't write comments to BMI to reduce the size of BMI"; no option turns it
+  on), and clang-doc 19 and later keep one set of declarations already seen
+  for the whole run (Mapper.cpp, `USRVisited`). A type first reached by a
+  unit that imports it was documented without its comment, and its own unit
+  then skipped it. With the units reading BMIs, the phone's clang-doc 21 lost
+  most comments (581 functions and types without one, 3754 lines gone from
+  the pages, a different set each run); clang-doc 18 merges instead and lost
+  nothing. Read as text: 159 without a comment with 21, 158 with 18, the same
+  pages on every run. No build is needed, and gles is always documented. A
+  line beginning `export` the rewrite does not know stops clang-doc with an
+  error (`export` outside a module), so a new form is added to the rewrite
+  when the code first uses it.
+- **Doc comments sit right above their declaration.** clang-doc takes the
+  nearest comment, `//` too, and merges comments only across a single line
+  break. A `NOLINT` comment goes above the doc comment with a blank line
+  between (`messaging/model_runner.cppm`'s constructor, which lost its
+  description to a `NOLINTNEXTLINE` between them).
 - **Tidying:** "Defined at" becomes a link to the header's line; `_Bool` reads
   `bool`, `basic_string` and `basic_string_view` read `std::string` and
-  `std::string_view`; lists, and a namespace page's enums and functions, are
+  `std::string_view`; lists, and every page's enums and functions, are
   sorted (clang-doc merges in parallel, and their order changed from run to
-  run: five runs in a row now match); the pages of anonymous
+  run: five runs in a row now match). Until 7b.4 a type's page kept its
+  functions in declaration order, read from one unit; read as text, a type is
+  in many units, so its page is sorted too (three runs, one at 8 threads,
+  match). A link into the copy (`build/release/docs/view/`) fails the run;
+  the pages of anonymous
   types and the global namespace are dropped, and a namespace page loses its
   description (clang-doc reads every comment, `//` too, and gave `sq` the one
   above `namespace sq::console::bridge_protocol`).

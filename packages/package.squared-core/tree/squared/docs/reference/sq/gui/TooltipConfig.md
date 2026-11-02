@@ -2,6 +2,12 @@
 
 *Defined at [gui/src/tooltip_config.cppm:7](../../../../gui/src/tooltip_config.cppm#L7)*
 
+
+
+**brief** Timing and placement policy for transient Ui tooltips. 
+
+
+
 ## Members
 
 public double hover_delay

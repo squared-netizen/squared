@@ -2,7 +2,27 @@
 
 *Defined at [gui/cell.cppm:14](../../../../gui/cell.cppm#L14)*
 
+
+
+**brief** Per-child constraints returned by Table::add for fluent configuration. 
+
+
+
 ## Functions
+
+### align
+
+*public Cell & align(Alignment horizontal, Alignment vertical)*
+
+
+
+**brief** Set horizontal and vertical alignment within the cell.
+
+**horizontal** start, center, or end alignment.
+
+**vertical** start, center, or end alignment.
+
+**return** This cell for chaining.
 
 ### column_span
 
@@ -13,36 +33,6 @@
 **brief** Span multiple grid columns.
 
 **columns** Number of grid columns covered by this cell; must be at least one.
-
-**return** This cell for chaining.
-
-### grow
-
-*public Cell & grow()*
-
-
-
-**brief** Stretch equally with other growing cells on both axes.
-
-**return** This cell for chaining.
-
-### grow_x
-
-*public Cell & grow_x()*
-
-
-
-**brief** Stretch horizontally with other growing cells.
-
-**return** This cell for chaining.
-
-### grow_y
-
-*public Cell & grow_y()*
-
-
-
-**brief** Stretch vertically with other growing cells.
 
 **return** This cell for chaining.
 
@@ -76,15 +66,33 @@
 
 **return** This cell for chaining.
 
-### pad
+### grow
 
-*public Cell & pad(float value)*
+*public Cell & grow()*
 
 
 
-**brief** Set uniform padding on all four sides.
+**brief** Stretch equally with other growing cells on both axes.
 
-**value** Padding in logical units; non-negative.
+**return** This cell for chaining.
+
+### grow_x
+
+*public Cell & grow_x()*
+
+
+
+**brief** Stretch horizontally with other growing cells.
+
+**return** This cell for chaining.
+
+### grow_y
+
+*public Cell & grow_y()*
+
+
+
+**brief** Stretch vertically with other growing cells.
 
 **return** This cell for chaining.
 
@@ -100,17 +108,15 @@
 
 **return** This cell for chaining.
 
-### align
+### pad
 
-*public Cell & align(Alignment horizontal, Alignment vertical)*
+*public Cell & pad(float value)*
 
 
 
-**brief** Set horizontal and vertical alignment within the cell.
+**brief** Set uniform padding on all four sides.
 
-**horizontal** start, center, or end alignment.
-
-**vertical** start, center, or end alignment.
+**value** Padding in logical units; non-negative.
 
 **return** This cell for chaining.
 
@@ -121,4 +127,8 @@
 *Defined at [gui/cell.cppm:87](../../../../gui/cell.cppm#L87)*
 
 
+
+**brief** Access the child widget placed in this cell.
+
+**return** Reference to the cell's child widget.
 

@@ -20,6 +20,12 @@ Inherits from Painter
 
 ### BatchPainter
 
+*public void BatchPainter(const BatchPainter & )*
+
+*Defined at [gui/batch_painter.cppm:37](../../../../gui/batch_painter.cppm#L37)*
+
+### BatchPainter
+
 *public void BatchPainter(graphics::SpriteBatch & batch, const FontResource * default_font)*
 
 
@@ -29,18 +35,6 @@ Inherits from Painter
 **batch** Batch to draw into; must outlive this painter.
 
 **default_font** Font used by the text calls that take none; may be null, in which case those calls draw nothing and measure to zero.
-
-### BatchPainter
-
-*public void BatchPainter(const BatchPainter & )*
-
-*Defined at [gui/batch_painter.cppm:37](../../../../gui/batch_painter.cppm#L37)*
-
-### operator=
-
-*public BatchPainter & operator=(const BatchPainter & )*
-
-*Defined at [gui/batch_painter.cppm:38](../../../../gui/batch_painter.cppm#L38)*
 
 ### clip_depth
 
@@ -52,9 +46,43 @@ Inherits from Painter
 
 **brief** Report how deeply clips are currently nested. 
 
-### ~BatchPainter
+### draw_region
 
-*public void ~BatchPainter()*
+*public void draw_region(const graphics::TextureRegion & region, const Rectangle & rectangle, graphics::Color color)*
+
+### draw_text
+
+*public void draw_text(std::string_view text, float x, float y, const FontResource * font, graphics::Color color)*
+
+### draw_text
+
+*public void draw_text(std::string_view text, float x, float y, graphics::Color color)*
+
+### fill_rectangle
+
+*public void fill_rectangle(const Rectangle & rectangle, graphics::Color color)*
+
+### measure_text
+
+*public Size measure_text(std::string_view text)*
+
+### measure_text
+
+*public Size measure_text(std::string_view text, const FontResource * font)*
+
+### operator=
+
+*public BatchPainter & operator=(const BatchPainter & )*
+
+*Defined at [gui/batch_painter.cppm:38](../../../../gui/batch_painter.cppm#L38)*
+
+### pop_clip
+
+*public void pop_clip()*
+
+### push_clip
+
+*public void push_clip(const Rectangle & rectangle)*
 
 ### set_fill_source
 
@@ -100,41 +128,11 @@ Inherits from Painter
 
 **note** Only clipping needs this. Everything else is in logical units and the camera handles it.
 
-### measure_text
-
-*public Size measure_text(std::string_view text)*
-
-### measure_text
-
-*public Size measure_text(std::string_view text, const FontResource * font)*
-
-### fill_rectangle
-
-*public void fill_rectangle(const Rectangle & rectangle, graphics::Color color)*
-
 ### stroke_rectangle
 
 *public void stroke_rectangle(const Rectangle & rectangle, graphics::Color color, float thickness)*
 
-### draw_region
+### ~BatchPainter
 
-*public void draw_region(const graphics::TextureRegion & region, const Rectangle & rectangle, graphics::Color color)*
-
-### draw_text
-
-*public void draw_text(std::string_view text, float x, float y, graphics::Color color)*
-
-### draw_text
-
-*public void draw_text(std::string_view text, float x, float y, const FontResource * font, graphics::Color color)*
-
-### push_clip
-
-*public void push_clip(const Rectangle & rectangle)*
-
-### pop_clip
-
-*public void pop_clip()*
-
-
+*public void ~BatchPainter()*
 

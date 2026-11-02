@@ -49,17 +49,31 @@
 
 *Defined at [messaging/src/value_type.cppm:34](../../../../messaging/src/value_type.cppm#L34)*
 
+
+
+**brief** How many floats a `vec2`, `vec3` or `vec4` holds; 0 for any other type. 
+
 ### list_source
 
 *ListSource list_source(Source & source)*
 
 *Defined at [messaging/model_list.cppm:47](../../../../messaging/model_list.cppm#L47)*
 
+
+
+**brief** `source` as a `ListSource`, publishing through an `Out`. 
+
 ### name_hash
 
 *std::uint64_t name_hash(std::string_view text, std::uint64_t seed)*
 
 *Defined at [messaging/name.cppm:14](../../../../messaging/name.cppm#L14)*
+
+
+
+**brief** 64-bit FNV-1a of a name's text, continuing from `seed`.
+
+ The id a Name carries. Continuing from a seed lets a name be hashed in pieces, as `item[17].name` is: "item", then ".name", with nothing copied.
 
 ### operator<=>
 
@@ -139,11 +153,21 @@
 
 *Defined at [messaging/name.cppm:32](../../../../messaging/name.cppm#L32)*
 
+
+
+**brief** Whether `text` is a name: dot-separated segments of `a`-`z`, `0`-`9` and `_`, none empty, at most 255 bytes in all (`player.hp`, `item.name`).
+
+ One spelling per name, so one id per name: no capitals, no spaces. Which object a telegram is about never goes in the name; that is the uid.
+
 ### value_type_of
 
 *ValueType value_type_of()*
 
 *Defined at [messaging/src/value_type.cppm:65](../../../../messaging/src/value_type.cppm#L65)*
+
+
+
+**brief** The value type a `Key`'s C++ type means. 
 
 ### verb_text
 
@@ -194,6 +218,10 @@
 
 *Defined at [messaging/value_cache.cppm:11](../../../../messaging/value_cache.cppm#L11)*
 
+
+
+**brief** What `ValueCache::store` did. 
+
 | enum class RingResult |
 
 --
@@ -204,6 +232,10 @@
 
 
 *Defined at [messaging/telegram_ring.cppm:10](../../../../messaging/telegram_ring.cppm#L10)*
+
+
+
+**brief** What `TelegramRing::push` did. 
 
 | enum class SendResult |
 
@@ -217,6 +249,10 @@
 
 *Defined at [messaging/telegraph.cppm:24](../../../../messaging/telegraph.cppm#L24)*
 
+
+
+**brief** What a send did. 
+
 | enum class TapDirection |
 
 --
@@ -226,6 +262,10 @@
 
 
 *Defined at [messaging/telegraph.cppm:59](../../../../messaging/telegraph.cppm#L59)*
+
+
+
+**brief** Which way a telegram crossed, for a tap. 
 
 | enum class ValueType |
 
@@ -244,6 +284,12 @@
 
 *Defined at [messaging/src/value_type.cppm:21](../../../../messaging/src/value_type.cppm#L21)*
 
+
+
+**brief** What a telegram's value is, in four bits.
+
+ | Type | Held | Written | |---|---|---| | `none` | nothing | (nothing) | | `boolean` | in the telegram | `true`, `false` | | `integer` | in the telegram, 64-bit signed | `42`, `-7` | | `number` | in the telegram, a double | `1.5`, `2.0`, `1e+21`, `inf` | | `vec2`, `vec3`, `vec4` | in the telegram, floats | `(1.5 2 0 1)` | | `text` | in the data area | `"notes.txt"` | | `uids` | in the data area, 32-bit each | `[17 4 22]` |
+
 | enum class Verb |
 
 --
@@ -255,4 +301,10 @@
 
 
 *Defined at [messaging/src/verb.cppm:18](../../../../messaging/src/verb.cppm#L18)*
+
+
+
+**brief** What a telegram does, in two bits.
+
+ | Verb | Direction | Means | |---|---|---| | `set` | UI to model | the user changed a value | | `do_` | UI to model | an intent (`do file.open "notes.txt"`) | | `state` | model to UI | a value is now this | | `event` | model to UI | something happened |
 

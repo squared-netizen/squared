@@ -11,10 +11,11 @@
 #
 # Every public interface (the partitions at each module's root, 7b.4: what were
 # the workhorse headers) is a translation unit of its own, so the reference
-# covers what a user imports and nothing else. A unit reads the BMIs of what
-# it imports: build first (make). clang-doc's pages are then tidied: "Defined
-# at" becomes a link to the file and line, `_Bool` reads `bool`, and the pages
-# for anonymous types and the global namespace are dropped.
+# covers what a user imports and nothing else. clang-doc reads them as text,
+# not as modules (see "the interfaces as text" below), so no build is needed.
+# clang-doc's pages are then tidied: "Defined at" becomes a link to the file
+# and line, `_Bool` reads `bool`, and the pages for anonymous types and the
+# global namespace are dropped.
 #
 # The pages depend on clang-doc's version, so README.md records the one that
 # made them, and --check compares only with the same major version.
@@ -108,25 +109,66 @@ if ! "$clang_doc" --format=md --output="$work/probe/out" --executor=all-TUs --ex
     exit 2
 fi
 
+# ---- the interfaces as text --------------------------------------------------
+# clang never writes comments into a named module's BMI (ASTWriter: "Don't
+# write comments to BMI to reduce the size of BMI"), and clang-doc 19 and later
+# keep one set of declarations already seen for the whole run (Mapper.cpp,
+# USRVisited), whichever unit saw them. So a type that a unit importing it
+# reached first was documented without its comment, and its own unit then
+# skipped it: on the phone (clang-doc 21) most pages lost their comments, a
+# different set each run (2026-11-02). clang-doc 18 merged instead, and lost
+# nothing.
+#
+# So clang-doc reads a copy of the interfaces, build/release/docs/view/, made
+# here line for line (a line stays on its line, so "Defined at" is right):
+#
+#   module;                     an empty line
+#   export module <name>;       #pragma once
+#   [export] import sq.std;     #include "build/std.cppm" (its #include lines)
+#   [export] import sq.<m>;     #include "<m>/module.cppm"
+#   [export] import :<a>.<b>;   #include "<this module>/<a>/<b>.cppm"
+#   export namespace / extern   namespace / extern
+#
+# Every unit then sees each declaration as text, with its comment, as it did
+# when they were headers. A line beginning `export` that is none of these is
+# left as it is, and clang-doc stops on it: this list grows with the code.
+view="$work/view"
+as_text() { # as_text <module> <in> <out>
+    mkdir -p "$(dirname "$3")"
+    awk -v module="$1" '
+        /^module;$/ { print ""; next }
+        /^export module [^;]*;$/ { print "#pragma once"; next }
+        /^(export )?import sq\.std;$/ { print "#include \"build/std.cppm\""; next }
+        /^(export )?import sq\.[a-z0-9_]+;$/ {
+            name = $0; sub( /^(export )?import sq\./, "", name ); sub( /;$/, "", name )
+            print "#include \"" name "/module.cppm\""; next
+        }
+        /^(export )?import :[a-z0-9_.]+;$/ {
+            part = $0; sub( /^(export )?import :/, "", part ); sub( /;$/, "", part )
+            gsub( /\./, "/", part )
+            print "#include \"" module "/" part ".cppm\""; next
+        }
+        /^export (namespace|extern) / { sub( /^export /, "" ); print; next }
+        { print }' "$2" > "$3"
+}
+rm -rf "$view"
+mkdir -p "$view/build"
+# sq.std: the headers its global module fragment includes, nothing after.
+awk '/^export module / { print "#pragma once"; exit } /^#/ { print; next } { print "" }' \
+    "$root/build/std.cppm" > "$view/build/std.cppm"
+while IFS= read -r unit; do
+    as_text "${unit%%/*}" "$root/$unit" "$view/$unit"
+done < <(
+    cd "$root" && find . -mindepth 2 -name '*.cppm' -not -path './build/*' \
+        -not -path './third_party/*' -not -path './docs/*' -not -path '*/test/*' |
+        sed 's|^\./||' | LC_ALL=C sort)
+
 # ---- one translation unit per public interface ------------------------------
 # The partitions at a module's root, not its primary (module.cppm re-exports,
-# and declares nothing), nor what is under src/.
-bmis="$root/build/release/modules"
-if [ ! -f "$bmis/sq.std.pcm" ]; then
-    echo "docs: no BMIs in ${bmis#"$root/"}: build first (make); clang-doc reads what each unit imports" >&2
-    exit 2
-fi
-# gles is built only for the gles backend; its BMIs are made here when the
-# GLES headers are there (Termux has them), and its pages left out otherwise.
-if [ ! -f "$bmis/sq.gles.pcm" ] && [ -f "$root/gles/Makefile" ]; then
-    make -s --no-print-directory -C "$root/gles" > "$work/gles-build.log" 2>&1 ||
-        echo "docs: gles did not build here (no GLES headers?): its pages are left out" >&2
-fi
+# and declares nothing), nor what is under src/. -x c++: a .cppm would
+# otherwise be read as a module interface.
 headers=()
-while IFS= read -r header; do
-    [ -f "$bmis/sq.${header%%/*}.pcm" ] || continue
-    headers+=("$header")
-done < <(
+while IFS= read -r header; do headers+=("$header"); done < <(
     cd "$root" && find . -mindepth 2 -maxdepth 2 -name '*.cppm' -not -name module.cppm \
         -not -path './build/*' -not -path './third_party/*' -not -path './docs/*' |
         sed 's|^\./||' | LC_ALL=C sort)
@@ -134,11 +176,11 @@ done < <(
     printf '['
     first=1
     for header in "${headers[@]}"; do
-        unit="$root/$header"
+        unit="$view/$header"
         [ "$first" = 1 ] || printf ','
         first=0
-        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-pthread","-I%s","-fprebuilt-module-path=%s","-c","%s"]}' \
-            "$root" "$unit" "$cxx" "$tree" "$bmis" "$unit"
+        printf '\n{"directory":"%s","file":"%s","arguments":["%s","-std=c++20","-pthread","-Wno-pragma-once-outside-header","-I%s","-x","c++","-c","%s"]}' \
+            "$view" "$unit" "$cxx" "$view" "$unit"
     done
     printf '\n]\n'
 } > "$work/compile_commands.json"
@@ -203,7 +245,7 @@ while IFS= read -r page; do
     depth=$(printf '%s' "docs/reference/$rel" | tr -cd '/' | wc -c | tr -d ' ')
     up=""
     for (( i = 0; i < depth; i++ )); do up="../$up"; done
-    awk -v root="$root/" -v up="$up" -v namespace_page="$([ "${rel##*/}" = index.md ] && echo 1 || echo 0)" '
+    awk -v root="$view/" -v view="${view#"$root/"}/" -v up="$up" -v namespace_page="$([ "${rel##*/}" = index.md ] && echo 1 || echo 0)" '
         # A namespace has no comment of its own in squared; clang-doc gives it
         # whatever comment sits above a `namespace a::b::c` line in any header.
         namespace_page && NR > 1 && !sections && !/^## / { next }
@@ -211,13 +253,15 @@ while IFS= read -r page; do
         /^## / { sections = 1 }
         {
             line = $0
-            # "*Defined at <path>#<line>*", the path absolute or under squared/
+            # "*Defined at <path>#<line>*", the path in the view (which mirrors
+            # squared/): absolute, or from squared/ when clang-doc runs there
             if( match( line, /\*Defined at [^#*]+#[0-9]+\*/ ) ) {
                 inner = substr( line, RSTART + 12, RLENGTH - 13 )
                 hash = index( inner, "#" )
                 path = substr( inner, 1, hash - 1 )
                 number = substr( inner, hash + 1 )
                 if( index( path, root ) == 1 ) { path = substr( path, length( root ) + 1 ) }
+                if( index( path, view ) == 1 ) { path = substr( path, length( view ) + 1 ) }
                 line = substr( line, 1, RSTART - 1 ) "*Defined at [" path ":" number "](" up path "#L" number ")*" substr( line, RSTART + RLENGTH )
             }
             gsub( /_Bool/, "bool", line )
@@ -235,41 +279,47 @@ while IFS= read -r page; do
             print line
         }
         END { if( listing ) { close( "LC_ALL=C sort" ) } }' "$page" > "$work/reference/$rel"
-    # A namespace page's enums and functions come in no fixed order either:
-    # each block (from its "| enum" or "###" line to the next) is sorted.
-    if [ "${rel##*/}" = index.md ]; then
-        awk '
-            # A block keeps no blank lines at its end, and gets one: where a
-            # block falls, so do the blank lines after it.
-            function keep() {
-                sub( /(\001)+$/, "", current )
-                blocks[++count] = current "\001"
-                current = ""
-            }
-            function emit(   i, command ) {
-                if( current != "" ) { keep() }
-                if( count == 0 ) { return }
-                fflush()
-                command = "LC_ALL=C sort | tr \"\\001\" \"\\n\""
-                for( i = 1; i <= count; i++ ) { print blocks[i] | command }
-                close( command )
-                count = 0
-            }
-            /^## / { emit(); print; next }
-            /^### / || /^\| enum / {
-                if( current != "" ) { keep() }
-                current = $0
-                next
-            }
-            current != "" { current = current "\001" $0; next }
-            { print }
-            END { emit() }' "$work/reference/$rel" > "$work/reference/$rel.sorted"
-        mv "$work/reference/$rel.sorted" "$work/reference/$rel"
-    fi
+    # Enums and functions come in no fixed order either, on a namespace page
+    # and, since every unit reads a type as text (7b.4), on a type's page
+    # too: each block (from its "| enum" or "###" line to the next) is sorted.
+    awk '
+        # A block keeps no blank lines at its end, and gets one: where a
+        # block falls, so do the blank lines after it.
+        function keep() {
+            sub( /(\001)+$/, "", current )
+            blocks[++count] = current "\001"
+            current = ""
+        }
+        function emit(   i, command ) {
+            if( current != "" ) { keep() }
+            if( count == 0 ) { return }
+            fflush()
+            command = "LC_ALL=C sort | tr \"\\001\" \"\\n\""
+            for( i = 1; i <= count; i++ ) { print blocks[i] | command }
+            close( command )
+            count = 0
+        }
+        /^## / { emit(); print; next }
+        /^### / || /^\| enum / {
+            if( current != "" ) { keep() }
+            current = $0
+            next
+        }
+        current != "" { current = current "\001" $0; next }
+        { print }
+        END { emit() }' "$work/reference/$rel" > "$work/reference/$rel.sorted"
+    mv "$work/reference/$rel.sorted" "$work/reference/$rel"
     pages=$((pages + 1))
     dot "$pages" "$page_total"
 done < <(find "$work/raw/sq" -name '*.md' | LC_ALL=C sort)
 dots_end "$pages" "$page_total"
+# A link into the copy would be committed and lead nowhere: a path form the
+# tidying above does not know.
+if grep -rlF "${view#"$root/"}" "$work/reference" > "$work/stray.txt"; then
+    echo "docs: $(wc -l < "$work/stray.txt" | tr -d ' ') page(s) link into ${view#"$root/"}/, not to the interfaces; nothing written" >&2
+    sed "s|$work/reference/|  |" "$work/stray.txt" | head -5 >&2
+    exit 2
+fi
 
 {
     echo "# API reference"

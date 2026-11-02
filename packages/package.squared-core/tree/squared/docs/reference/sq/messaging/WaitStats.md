@@ -2,6 +2,12 @@
 
 *Defined at [messaging/telegraph.cppm:39](../../../../messaging/telegraph.cppm#L39)*
 
+
+
+**brief** How often the model found no room toward the UI: the `telegraph` command shows these, so a model that outpaces its UI is seen.
+
+
+
 ## Members
 
 public std::uint32_t waits

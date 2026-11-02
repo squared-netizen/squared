@@ -71,5 +71,3 @@ public int editing_length
 
 **brief** Supported event categories for the Phase 5 boundary. 
 
-
-

@@ -2,6 +2,12 @@
 
 *Defined at [gui/src/slider_style.cppm:9](../../../../gui/src/slider_style.cppm#L9)*
 
+
+
+**brief** Style data for a Slider widget. 
+
+
+
 ## Members
 
 public shared_ptr track

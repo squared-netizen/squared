@@ -2,11 +2,31 @@
 
 *Defined at [gui/toggle_button.cppm:12](../../../../gui/toggle_button.cppm#L12)*
 
+
+
+**brief** Two-state button that reports changes through a callback. 
+
+
+
 Inherits from Button
 
 
 
 ## Functions
+
+### ToggleButton
+
+*public void ToggleButton(ToggleButton && )*
+
+*Defined at [gui/toggle_button.cppm:29](../../../../gui/toggle_button.cppm#L29)*
+
+### ToggleButton
+
+*public void ToggleButton(const ToggleButton & )*
+
+*Defined at [gui/toggle_button.cppm:27](../../../../gui/toggle_button.cppm#L27)*
+
+ A ButtonGroup holds members by address, so a button is never copied or moved.
 
 ### ToggleButton
 
@@ -20,29 +40,13 @@ Inherits from Button
 
 **checked** Initial checked state.
 
-### ToggleButton
+### activate
 
-*public void ToggleButton(const ToggleButton & )*
+*protected void activate()*
 
-*Defined at [gui/toggle_button.cppm:27](../../../../gui/toggle_button.cppm#L27)*
 
-### operator=
 
-*public ToggleButton & operator=(const ToggleButton & )*
-
-*Defined at [gui/toggle_button.cppm:28](../../../../gui/toggle_button.cppm#L28)*
-
-### ToggleButton
-
-*public void ToggleButton(ToggleButton && )*
-
-*Defined at [gui/toggle_button.cppm:29](../../../../gui/toggle_button.cppm#L29)*
-
-### operator=
-
-*public ToggleButton & operator=(ToggleButton && )*
-
-*Defined at [gui/toggle_button.cppm:30](../../../../gui/toggle_button.cppm#L30)*
+**brief** Toggle the checked state and invoke the change callback. 
 
 ### checked
 
@@ -50,9 +54,33 @@ Inherits from Button
 
 *Defined at [gui/toggle_button.cppm:42](../../../../gui/toggle_button.cppm#L42)*
 
-### ~ToggleButton
 
-*public void ~ToggleButton()*
+
+**brief** Read the checked state.
+
+**return** Current boolean state.
+
+### operator=
+
+*public ToggleButton & operator=(ToggleButton && )*
+
+*Defined at [gui/toggle_button.cppm:30](../../../../gui/toggle_button.cppm#L30)*
+
+### operator=
+
+*public ToggleButton & operator=(const ToggleButton & )*
+
+*Defined at [gui/toggle_button.cppm:28](../../../../gui/toggle_button.cppm#L28)*
+
+### selected
+
+*protected bool selected()*
+
+
+
+**brief** Report the checked state for selected styling.
+
+**return** `true` when the toggle button is checked.
 
 ### set_checked
 
@@ -74,23 +102,7 @@ Inherits from Button
 
 **callback** Action copied into the button; invoked with the new state whenever it changes.
 
-### activate
+### ~ToggleButton
 
-*protected void activate()*
-
-
-
-**brief** Toggle the checked state and invoke the change callback. 
-
-### selected
-
-*protected bool selected()*
-
-
-
-**brief** Report the checked state for selected styling.
-
-**return** `true` when the toggle button is checked.
-
-
+*public void ~ToggleButton()*
 

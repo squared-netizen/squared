@@ -167,8 +167,16 @@ once tried with clang 21 on the phone.
   BMIs, so it builds first (`make`), and for the Android sources a build of
   its own in `build/lint-android/`.
 - **docs** (`tools/docs.sh`): clang-doc runs on each public interface (the
-  partitions at a module's root), reading the BMIs: build first. gles is built
-  for it when the GLES headers are there.
+  partitions at a module's root), as text: a copy where imports are
+  `#include`s, because a BMI holds no comments and clang-doc 19 and later
+  keep the first unit's view of a type
+  ([tools.md](tools.md#docssh)). No build needed.
+- **Stale objects from before 7b.4:** an object compiled with the
+  precompiled header names `build/std_pch.hpp` in its dependency file, and
+  clang 21 can list it first, with no `-MP` rule. `build/common.mk` has empty
+  rules for it and the old `.pch` files, so make rebuilds those objects
+  instead of stopping at "No rule to make target" (hello's first build after
+  7b.4, 2026-11-02).
 - **format** (`tools/format.sh`): `.cppm` too. `build/std.cppm` is written in
   the generator's order (`// clang-format off`).
 - **make headers** (`tools/check_modules.sh`): sq.std current, the build

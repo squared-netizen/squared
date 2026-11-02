@@ -2,6 +2,12 @@
 
 *Defined at [graphics/src/bitmap_glyph.cppm:9](../../../../graphics/src/bitmap_glyph.cppm#L9)*
 
+
+
+**brief** One Unicode scalar's source rectangle and layout metrics. 
+
+
+
 ## Members
 
 public char32_t codepoint

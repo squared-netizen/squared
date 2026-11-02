@@ -2,6 +2,12 @@
 
 *Defined at [messaging/telegraph.cppm:51](../../../../messaging/telegraph.cppm#L51)*
 
+
+
+**brief** The model's side, as the UI may read it (the `telegraph` command): states held back now and at most, and lists declared.
+
+
+
 ## Members
 
 public std::uint32_t held

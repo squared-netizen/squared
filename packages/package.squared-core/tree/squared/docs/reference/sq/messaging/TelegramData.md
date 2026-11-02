@@ -2,6 +2,12 @@
 
 *Defined at [messaging/telegram_data.cppm:15](../../../../messaging/telegram_data.cppm#L15)*
 
+
+
+**brief** A data area for telegrams' text and uid lists, filled from the front: where `read_telegram` puts what it reads, and what a test or a replay file hands `write_telegram`. Over storage its owner gives it; it allocates nothing. (The Telegraph's rings keep their own.)
+
+
+
 ## Functions
 
 ### TelegramData
@@ -32,6 +38,26 @@
 
 *Defined at [messaging/telegram_data.cppm:29](../../../../messaging/telegram_data.cppm#L29)*
 
+
+
+**brief** Everything appended, for `write_telegram`. 
+
+### capacity
+
+*public std::size_t capacity()*
+
+*Defined at [messaging/telegram_data.cppm:51](../../../../messaging/telegram_data.cppm#L51)*
+
+### clear
+
+*public void clear()*
+
+*Defined at [messaging/telegram_data.cppm:48](../../../../messaging/telegram_data.cppm#L48)*
+
+
+
+**brief** Forget everything appended. 
+
 ### reserve
 
 *public std::optional<DataRef> reserve(std::size_t length)*
@@ -46,23 +72,15 @@
 
 *Defined at [messaging/telegram_data.cppm:45](../../../../messaging/telegram_data.cppm#L45)*
 
-### clear
 
-*public void clear()*
 
-*Defined at [messaging/telegram_data.cppm:48](../../../../messaging/telegram_data.cppm#L48)*
+**brief** Forget what was appended after the first `used` bytes. 
 
 ### used
 
 *public std::size_t used()*
 
 *Defined at [messaging/telegram_data.cppm:50](../../../../messaging/telegram_data.cppm#L50)*
-
-### capacity
-
-*public std::size_t capacity()*
-
-*Defined at [messaging/telegram_data.cppm:51](../../../../messaging/telegram_data.cppm#L51)*
 
 ### writable
 
@@ -71,6 +89,4 @@
 
 
 **brief** The bytes at `where`, to fill; empty outside what was appended. 
-
-
 

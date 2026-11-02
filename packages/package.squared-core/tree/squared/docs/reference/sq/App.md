@@ -32,13 +32,51 @@ public Stage stage
 
 ### App
 
+*public void App(App && )*
+
+*Defined at [stage/app.cppm:111](../../../stage/app.cppm#L111)*
+
+### App
+
 *public void App(const App & )*
 
 *Defined at [stage/app.cppm:109](../../../stage/app.cppm#L109)*
 
+### background
+
+*public void background()*
+
+### create
+
+*public bool create(app::Runtime & runtime)*
+
 ### dispose
 
 *public void dispose()*
+
+### foreground
+
+*public void foreground()*
+
+### handle_event
+
+*public void handle_event(const app::Event & event)*
+
+### hides_bars
+
+*public bool hides_bars()*
+
+*Defined at [stage/app.cppm:172](../../../stage/app.cppm#L172)*
+
+### low_memory
+
+*public void low_memory()*
+
+### operator=
+
+*public App & operator=(App && )*
+
+*Defined at [stage/app.cppm:112](../../../stage/app.cppm#L112)*
 
 ### operator=
 
@@ -46,33 +84,27 @@ public Stage stage
 
 *Defined at [stage/app.cppm:110](../../../stage/app.cppm#L110)*
 
-### App
+### quit
 
-*public void App(App && )*
+*public void quit()*
 
-*Defined at [stage/app.cppm:111](../../../stage/app.cppm#L111)*
+*Defined at [stage/app.cppm:149](../../../stage/app.cppm#L149)*
 
-### create
 
-*public bool create(app::Runtime & runtime)*
 
-### handle_event
+**brief** Quit: the model saves and stops, and the platform closes the app. 
 
-*public void handle_event(const app::Event & event)*
+### quit_requested
 
-### foreground
+*public bool quit_requested()*
 
-*public void foreground()*
+### render
 
-### background
+*public void render(graphics::Context & graphics)*
 
-*public void background()*
+### resize
 
-### operator=
-
-*public App & operator=(App && )*
-
-*Defined at [stage/app.cppm:112](../../../stage/app.cppm#L112)*
+*public void resize(int width, int height)*
 
 ### run
 
@@ -98,15 +130,35 @@ public Stage stage
 
 **brief** Whether a model runs. 
 
-### quit
+### safe_area_changed
 
-*public void quit()*
+*public void safe_area_changed(const app::SafeArea & area)*
 
-*Defined at [stage/app.cppm:149](../../../stage/app.cppm#L149)*
+### save_state
 
+*public std::size_t save_state(std::span<std::byte> out)*
 
+### set_report
 
-**brief** Quit: the model saves and stops, and the platform closes the app. 
+*public void set_report(app::Report report)*
+
+### set_saved_state
+
+*public void set_saved_state(std::span<const std::byte> saved)*
+
+### set_text_input_service
+
+*public void set_text_input_service(app::TextInputService * service)*
+
+ sq::app::Application, for the platform.
+
+### surface_created
+
+*public void surface_created(graphics::Context & graphics)*
+
+### take_background_request
+
+*public bool take_background_request()*
 
 ### telegraph
 
@@ -118,65 +170,11 @@ public Stage stage
 
 **brief** The UI end of the Telegraph (the Stage's). 
 
-### hides_bars
-
-*public bool hides_bars()*
-
-*Defined at [stage/app.cppm:172](../../../stage/app.cppm#L172)*
-
-### ~App
-
-*public void ~App()*
-
-### set_text_input_service
-
-*public void set_text_input_service(app::TextInputService * service)*
-
- sq::app::Application, for the platform.
-
-### set_report
-
-*public void set_report(app::Report report)*
-
 ### update
 
 *public void update(std::chrono::nanoseconds delta)*
 
-### render
+### ~App
 
-*public void render(graphics::Context & graphics)*
-
-### low_memory
-
-*public void low_memory()*
-
-### resize
-
-*public void resize(int width, int height)*
-
-### safe_area_changed
-
-*public void safe_area_changed(const app::SafeArea & area)*
-
-### surface_created
-
-*public void surface_created(graphics::Context & graphics)*
-
-### quit_requested
-
-*public bool quit_requested()*
-
-### set_saved_state
-
-*public void set_saved_state(std::span<const std::byte> saved)*
-
-### save_state
-
-*public std::size_t save_state(std::span<std::byte> out)*
-
-### take_background_request
-
-*public bool take_background_request()*
-
-
+*public void ~App()*
 

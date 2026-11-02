@@ -2,6 +2,14 @@
 
 *Defined at [gui/widget.cppm:27](../../../../gui/widget.cppm#L27)*
 
+
+
+**brief** Base class for every GUI node. Widgets may own other widgets.
+
+ Widget inherits the composite ownership model: children owned via Group. Widgets carry layout, painting, and input behavior.
+
+
+
 Inherits from Group
 
 
@@ -16,15 +24,71 @@ public static const ActorInterfaceId actor_interface_id
 
 ### actor_interface
 
+*public const void * actor_interface(ActorInterfaceId id)*
+
+*Defined at [gui/widget.cppm:55](../../../../gui/widget.cppm#L55)*
+
+
+
+**brief** Publish the Widget interface to actor_cast(), read-only.
+
+**id** Identifier of the requested interface.
+
+**return** This widget for the Widget identifier, otherwise the Group answer.
+
+### actor_interface
+
 *public void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/widget.cppm:44](../../../../gui/widget.cppm#L44)*
 
-### actor_interface
 
-*public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/widget.cppm:55](../../../../gui/widget.cppm#L55)*
+**brief** Publish the Widget interface to actor_cast().
+
+**id** Identifier of the requested interface.
+
+**return** This widget for the Widget identifier, otherwise the Group answer, so actor_cast<Group>() still resolves.
+
+### clear_tooltip
+
+*public void clear_tooltip()*
+
+
+
+**brief** Remove the tooltip declaration from this widget. 
+
+### enabled
+
+*public bool enabled()*
+
+*Defined at [gui/widget.cppm:189](../../../../gui/widget.cppm#L189)*
+
+
+
+**brief** Read the enabled state.
+
+**return** true while the widget is enabled.
+
+### focus_changed
+
+*public void focus_changed(bool focused)*
+
+
+
+**brief** Notify the widget of a focus change.
+
+**focused** true when the widget gained focus.
+
+### focusable
+
+*public bool focusable()*
+
+
+
+**brief** Report whether this widget can take keyboard focus.
+
+**return** true when the widget is focusable.
 
 ### has_tooltip
 
@@ -32,33 +96,65 @@ public static const ActorInterfaceId actor_interface_id
 
 *Defined at [gui/widget.cppm:211](../../../../gui/widget.cppm#L211)*
 
-### minimum_size
-
-*public Size minimum_size(Painter & painter, const Skin & skin)*
 
 
+**brief** Return true when this widget declares tooltip content. 
 
-**brief** Report the smallest acceptable size.
+### input_event
+
+*protected void input_event(InputEvent & event)*
+
+
+
+**brief** Bridge actor dispatch into widget input handlers.
+
+**event** GUI input event to adapt.
+
+### invalidate_layout
+
+*public void invalidate_layout()*
+
+
+
+**brief** Invalidate cached layout so it is recomputed next pass.
+
+### key_down
+
+*public bool key_down(app::Key key, app::KeyModifiers modifiers)*
+
+
+
+**brief** Handle a key-down event.
+
+**key** Portable key name.
+
+**modifiers** Modifier state at the time of the event.
+
+**return** true when the key was handled.
+
+### layout
+
+*public void layout(Painter & painter, const Skin & skin)*
+
+
+
+**brief** Position and size this widget, then lay out children.
 
 **painter** Active painter used for measurement.
 
 **skin** Skin providing style and spacing values.
 
-**return** Minimum extent in logical units.
+### layout_valid
 
-### preferred_size
+*public bool layout_valid()*
 
-*public Size preferred_size(Painter & painter, const Skin & skin)*
+*Defined at [gui/widget.cppm:108](../../../../gui/widget.cppm#L108)*
 
 
 
-**brief** Report the preferred size.
+**brief** Check whether cached layout is current.
 
-**painter** Active painter used for measurement.
-
-**skin** Skin providing style, font, and spacing values.
-
-**return** Preferred extent in logical units.
+**return** true while the layout is valid.
 
 ### maximum_size
 
@@ -74,51 +170,19 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** Maximum extent in logical units.
 
-### size_hints
+### minimum_size
 
-*public SizeHints size_hints(Painter & painter, const Skin & skin)*
-
-
-
-**brief** Compute the full size-hint set.
-
-**painter** Active painter used for measurement.
-
-**skin** Skin providing style and spacing values.
-
-**return** Minimum, preferred, and maximum sizes.
-
-### invalidate_layout
-
-*public void invalidate_layout()*
+*public Size minimum_size(Painter & painter, const Skin & skin)*
 
 
 
-**brief** Invalidate cached layout so it is recomputed next pass.
-
-### validate_layout
-
-*public void validate_layout(Painter & painter, const Skin & skin)*
-
-
-
-**brief** Recompute layout if currently invalid.
+**brief** Report the smallest acceptable size.
 
 **painter** Active painter used for measurement.
 
 **skin** Skin providing style and spacing values.
 
-### layout
-
-*public void layout(Painter & painter, const Skin & skin)*
-
-
-
-**brief** Position and size this widget, then lay out children.
-
-**painter** Active painter used for measurement.
-
-**skin** Skin providing style and spacing values.
+**return** Minimum extent in logical units.
 
 ### paint
 
@@ -148,101 +212,31 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** true when the event was handled and should stop propagating.
 
-### key_down
+### preferred_size
 
-*public bool key_down(app::Key key, app::KeyModifiers modifiers)*
-
-
-
-**brief** Handle a key-down event.
-
-**key** Portable key name.
-
-**modifiers** Modifier state at the time of the event.
-
-**return** true when the key was handled.
-
-### text_input
-
-*public bool text_input(std::string_view text)*
+*public Size preferred_size(Painter & painter, const Skin & skin)*
 
 
 
-**brief** Handle committed UTF-8 text input.
+**brief** Report the preferred size.
 
-**text** Committed text to insert.
+**painter** Active painter used for measurement.
 
-**return** true when the text was handled.
+**skin** Skin providing style, font, and spacing values.
 
-### text_editing
+**return** Preferred extent in logical units.
 
-*public bool text_editing(std::string_view , int , int )*
+### set_enabled
 
+*public void set_enabled(bool enabled)*
 
-
-**brief** Handle composition-edit updates.
-
-**note** Arguments are the current composition text, its start offset, and its length, matching the virtual signature.
-
-**return** true when the composition was handled.
-
-### focus_changed
-
-*public void focus_changed(bool focused)*
+*Defined at [gui/widget.cppm:183](../../../../gui/widget.cppm#L183)*
 
 
 
-**brief** Notify the widget of a focus change.
+**brief** Control the enabled state.
 
-**focused** true when the widget gained focus.
-
-### focusable
-
-*public bool focusable()*
-
-
-
-**brief** Report whether this widget can take keyboard focus.
-
-**return** true when the widget is focusable.
-
-### wants_text_input
-
-*public bool wants_text_input()*
-
-
-
-**brief** Report whether focusing this widget should raise the platform text-input service.
-
-**return** false by default; text-entry widgets override it.
-
-**note** The Ui starts, moves, and stops the platform soft keyboard from this answer. A custom text-entry widget opts in by overriding it, which the previous TextField-specific check did not allow.
-
-### set_tooltip_factory
-
-*public void set_tooltip_factory(TooltipFactory factory)*
-
-
-
-**brief** Attach a custom tooltip widget factory.
-
-**factory** Copyable callback returning a fresh unparented widget subtree. An empty callback clears the tooltip.
-
-**note** The Ui temporarily owns each returned subtree while it is shown.
-
-### clear_tooltip
-
-*public void clear_tooltip()*
-
-
-
-**brief** Remove the tooltip declaration from this widget. 
-
-### enabled
-
-*public bool enabled()*
-
-*Defined at [gui/widget.cppm:189](../../../../gui/widget.cppm#L189)*
+**enabled** false disables interaction and dims rendering.
 
 ### set_tooltip
 
@@ -256,33 +250,83 @@ public static const ActorInterfaceId actor_interface_id
 
 **post** A fresh Stack/Panel/MarginContainer/Label subtree is created each time the tooltip is shown.
 
-### input_event
+### set_tooltip_factory
 
-*protected void input_event(InputEvent & event)*
+*public void set_tooltip_factory(TooltipFactory factory)*
 
 
 
-**brief** Bridge actor dispatch into widget input handlers.
+**brief** Attach a custom tooltip widget factory.
 
-**event** GUI input event to adapt.
+**factory** Copyable callback returning a fresh unparented widget subtree. An empty callback clears the tooltip.
+
+**note** The Ui temporarily owns each returned subtree while it is shown.
+
+### size_hints
+
+*public SizeHints size_hints(Painter & painter, const Skin & skin)*
+
+
+
+**brief** Compute the full size-hint set.
+
+**painter** Active painter used for measurement.
+
+**skin** Skin providing style and spacing values.
+
+**return** Minimum, preferred, and maximum sizes.
+
+### text_editing
+
+*public bool text_editing(std::string_view , int , int )*
+
+
+
+**brief** Handle composition-edit updates.
+
+**note** Arguments are the current composition text, its start offset, and its length, matching the virtual signature.
+
+**return** true when the composition was handled.
+
+### text_input
+
+*public bool text_input(std::string_view text)*
+
+
+
+**brief** Handle committed UTF-8 text input.
+
+**text** Committed text to insert.
+
+**return** true when the text was handled.
+
+### validate_layout
+
+*public void validate_layout(Painter & painter, const Skin & skin)*
+
+
+
+**brief** Recompute layout if currently invalid.
+
+**painter** Active painter used for measurement.
+
+**skin** Skin providing style and spacing values.
+
+### wants_text_input
+
+*public bool wants_text_input()*
+
+
+
+**brief** Report whether focusing this widget should raise the platform text-input service.
+
+**return** false by default; text-entry widgets override it.
+
+**note** The Ui starts, moves, and stops the platform soft keyboard from this answer. A custom text-entry widget opts in by overriding it, which the previous TextField-specific check did not allow.
 
 ### ~Widget
 
 *public void ~Widget()*
 
 *Defined at [gui/widget.cppm:36](../../../../gui/widget.cppm#L36)*
-
-### layout_valid
-
-*public bool layout_valid()*
-
-*Defined at [gui/widget.cppm:108](../../../../gui/widget.cppm#L108)*
-
-### set_enabled
-
-*public void set_enabled(bool enabled)*
-
-*Defined at [gui/widget.cppm:183](../../../../gui/widget.cppm#L183)*
-
-
 

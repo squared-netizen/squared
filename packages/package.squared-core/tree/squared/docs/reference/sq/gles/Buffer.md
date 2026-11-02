@@ -20,27 +20,21 @@
 
 ### Buffer
 
+*public void Buffer(Buffer && other)*
+
+### Buffer
+
 *public void Buffer(const Buffer & )*
 
 *Defined at [gles/buffer.cppm:23](../../../../gles/buffer.cppm#L23)*
 
-### operator=
+### bind
 
-*public Buffer & operator=(const Buffer & )*
+*public void bind()*
 
-*Defined at [gles/buffer.cppm:24](../../../../gles/buffer.cppm#L24)*
 
-### ~Buffer
 
-*public void ~Buffer()*
-
-### Buffer
-
-*public void Buffer(Buffer && other)*
-
-### operator=
-
-*public Buffer & operator=(Buffer && other)*
+**brief** Bind this buffer to its target. 
 
 ### create
 
@@ -60,36 +54,6 @@
 
 **return** A no-error GlesError on success.
 
-### update
-
-*public GlesError update(std::size_t offset_bytes, std::span<const std::byte> bytes)*
-
-
-
-**brief** Replace part of the contents.
-
-**offset_bytes** Byte offset to write at.
-
-**bytes** Data to write; must fit within the allocated size.
-
-**return** A no-error GlesError on success.
-
-### bind
-
-*public void bind()*
-
-
-
-**brief** Bind this buffer to its target. 
-
-### unbind
-
-*public void unbind()*
-
-
-
-**brief** Unbind whatever is bound to this buffer's target. 
-
 ### destroy
 
 *public void destroy()*
@@ -108,16 +72,6 @@
 
  Call this after the rendering context has been lost. The name belonged to a context that no longer exists; deleting it is at best a no-op and at worst frees an unrelated object in the new context. Every object in this module has this method for that reason, and getting it wrong produces corruption that looks like a driver bug.
 
-### valid
-
-*public bool valid()*
-
-*Defined at [gles/buffer.cppm:71](../../../../gles/buffer.cppm#L71)*
-
-
-
-**brief** Report whether this buffer holds a GL object. 
-
 ### name
 
 *public std::uint32_t name()*
@@ -128,15 +82,15 @@
 
 **brief** Return the raw GL name, or zero. For interop and teaching. 
 
-### target
+### operator=
 
-*public BufferTarget target()*
+*public Buffer & operator=(Buffer && other)*
 
-*Defined at [gles/buffer.cppm:77](../../../../gles/buffer.cppm#L77)*
+### operator=
 
+*public Buffer & operator=(const Buffer & )*
 
-
-**brief** Return the target this buffer was created for. 
+*Defined at [gles/buffer.cppm:24](../../../../gles/buffer.cppm#L24)*
 
 ### size_bytes
 
@@ -148,5 +102,49 @@
 
 **brief** Return the allocated size in bytes. 
 
+### target
 
+*public BufferTarget target()*
+
+*Defined at [gles/buffer.cppm:77](../../../../gles/buffer.cppm#L77)*
+
+
+
+**brief** Return the target this buffer was created for. 
+
+### unbind
+
+*public void unbind()*
+
+
+
+**brief** Unbind whatever is bound to this buffer's target. 
+
+### update
+
+*public GlesError update(std::size_t offset_bytes, std::span<const std::byte> bytes)*
+
+
+
+**brief** Replace part of the contents.
+
+**offset_bytes** Byte offset to write at.
+
+**bytes** Data to write; must fit within the allocated size.
+
+**return** A no-error GlesError on success.
+
+### valid
+
+*public bool valid()*
+
+*Defined at [gles/buffer.cppm:71](../../../../gles/buffer.cppm#L71)*
+
+
+
+**brief** Report whether this buffer holds a GL object. 
+
+### ~Buffer
+
+*public void ~Buffer()*
 

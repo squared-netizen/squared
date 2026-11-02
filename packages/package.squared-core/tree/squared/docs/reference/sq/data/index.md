@@ -50,3 +50,7 @@
 
 *Defined at [data/src/json_error_code.cppm:9](../../../../data/src/json_error_code.cppm#L9)*
 
+
+
+**brief** Stable error categories produced by JSON parsing and writing. 
+

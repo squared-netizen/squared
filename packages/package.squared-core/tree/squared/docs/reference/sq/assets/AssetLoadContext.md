@@ -2,11 +2,17 @@
 
 *Defined at [assets/src/asset_load_context.cppm:22](../../../../assets/src/asset_load_context.cppm#L22)*
 
+
+
+**brief** The restricted view of the manager a loader is given.
+
+ A loader reads bytes and asks for typed dependencies through this; it never sees the manager itself. Every dependency requested here is recorded, so reloading or unloading an asset knows what it pulled in.
+
+ A context is valid only for the duration of the loader call that received it. Storing one and using it later is undefined.
+
+
+
 ## Functions
-
-### read_bytes
-
-*public files::FileReadResult read_bytes(std::string_view path)*
 
 ### load
 
@@ -15,4 +21,26 @@
 *Defined at [assets/asset_manager.cppm:192](../../../../assets/asset_manager.cppm#L192)*
 
 
+
+**brief** Load one typed dependency and record the edge.
+
+**T** Asset type with a registered loader.
+
+**path** Path relative to the manager's file system root.
+
+**return** The dependency, or the failure that prevented it.
+
+**note** Defined in asset_manager.hpp, which you need anyway to have a manager to load from.
+
+### read_bytes
+
+*public files::FileReadResult read_bytes(std::string_view path)*
+
+
+
+**brief** Read one source file, subject to the manager's byte limit.
+
+**path** Path relative to the manager's file system root.
+
+**return** The bytes, or the file system failure that prevented them.
 

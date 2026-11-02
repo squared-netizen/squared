@@ -2,6 +2,12 @@
 
 *Defined at [graphics/orthographic_camera.cppm:12](../../../../graphics/orthographic_camera.cppm#L12)*
 
+
+
+**brief** Two-dimensional orthographic camera with pan and zoom.
+
+
+
 ## Functions
 
 ### OrthographicCamera
@@ -18,6 +24,52 @@
 
 **origin** Coordinate orientation of the viewport.
 
+### combined
+
+*public const sq::math::Matrix4 & combined()*
+
+
+
+**brief** Read the current projection matrix.
+
+**return** Matrix combining view and projection transforms.
+
+### origin
+
+*public CoordinateOrigin origin()*
+
+*Defined at [graphics/orthographic_camera.cppm:77](../../../../graphics/orthographic_camera.cppm#L77)*
+
+
+
+**brief** Read which way y points in this camera's logical space.
+
+**return** TopLeft when y grows downwards, BottomLeft when it grows upwards.
+
+ SpriteBatch reads this in begin() so an image's top edge lands at the top of its quad under either orientation.
+
+### position
+
+*public sq::math::Vector2 position()*
+
+
+
+**brief** Read the camera center.
+
+**return** Center position in logical coordinates.
+
+### set_position
+
+*public void set_position(float x, float y)*
+
+
+
+**brief** Set the camera center in logical coordinates.
+
+**x** Camera center horizontal position.
+
+**y** Camera center vertical position.
+
 ### set_viewport
 
 *public void set_viewport(float width, float height)*
@@ -31,18 +83,6 @@
 **height** Logical viewport height; must be greater than zero for a valid projection.
 
 **note** Call update() afterward to recalculate the projection matrix.
-
-### set_position
-
-*public void set_position(float x, float y)*
-
-
-
-**brief** Set the camera center in logical coordinates.
-
-**x** Camera center horizontal position.
-
-**y** Camera center vertical position.
 
 ### set_zoom
 
@@ -62,32 +102,6 @@
 
 **brief** Recalculate the projection matrix after property changes. 
 
-### combined
-
-*public const sq::math::Matrix4 & combined()*
-
-
-
-**brief** Read the current projection matrix.
-
-**return** Matrix combining view and projection transforms.
-
-### origin
-
-*public CoordinateOrigin origin()*
-
-*Defined at [graphics/orthographic_camera.cppm:77](../../../../graphics/orthographic_camera.cppm#L77)*
-
-### position
-
-*public sq::math::Vector2 position()*
-
-
-
-**brief** Read the camera center.
-
-**return** Center position in logical coordinates.
-
 ### zoom
 
 *public float zoom()*
@@ -97,6 +111,4 @@
 **brief** Read the current zoom factor.
 
 **return** Active magnification factor.
-
-
 

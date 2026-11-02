@@ -28,6 +28,38 @@ Inherits from Widget
 
 **value** Initial value; clamped into the ordered range.
 
+### minimum_size
+
+*public Size minimum_size(Painter & , const Skin & )*
+
+
+
+**brief** Report the selected style's minimum horizontal extent. 
+
+### paint
+
+*public void paint(Painter & , const Skin & , float , float )*
+
+
+
+**brief** Paint the complete track and completed portion. 
+
+### preferred_size
+
+*public Size preferred_size(Painter & , const Skin & )*
+
+
+
+**brief** Report the selected style's preferred extent. 
+
+### progress
+
+*public float progress()*
+
+
+
+**brief** Return completion normalized to the closed range `[0, 1]`. 
+
 ### set_range
 
 *public void set_range(float minimum, float maximum)*
@@ -42,22 +74,6 @@ Inherits from Widget
 
 **post** Endpoints are ordered and the current value is clamped.
 
-### set_value
-
-*public void set_value(float value)*
-
-
-
-**brief** Set and clamp the represented value. 
-
-### progress
-
-*public float progress()*
-
-
-
-**brief** Return completion normalized to the closed range `[0, 1]`. 
-
 ### set_style
 
 *public void set_style(std::string style)*
@@ -66,29 +82,13 @@ Inherits from Widget
 
 **brief** Select a named ProgressBarStyle from the active Skin. 
 
-### minimum_size
+### set_value
 
-*public Size minimum_size(Painter & , const Skin & )*
-
-
-
-**brief** Report the selected style's minimum horizontal extent. 
-
-### preferred_size
-
-*public Size preferred_size(Painter & , const Skin & )*
+*public void set_value(float value)*
 
 
 
-**brief** Report the selected style's preferred extent. 
-
-### paint
-
-*public void paint(Painter & , const Skin & , float , float )*
-
-
-
-**brief** Paint the complete track and completed portion. 
+**brief** Set and clamp the represented value. 
 
 ### value
 
@@ -99,6 +99,4 @@ Inherits from Widget
 
 
 **brief** Return the represented value. 
-
-
 

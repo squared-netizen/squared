@@ -20,5 +20,3 @@ Inherits from ModelHolder
 
 *Defined at [stage/app.cppm:41](../../../../stage/app.cppm#L41)*
 
-
-

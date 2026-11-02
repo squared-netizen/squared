@@ -17,6 +17,10 @@
 
 *LayoutCheck build_row(const Layout & row, Table & into, const Skin & skin, const LayoutHooks & hooks)*
 
+
+
+**brief** Build `row`, a list's row as a layout, into `into`, with `hooks`: `instantiate` without its check, which the layout the row came from has passed already (a row on its own would fail it: its uids need a list).
+
 ### clamp_dimension
 
 *float clamp_dimension(float value, float minimum, float maximum)*

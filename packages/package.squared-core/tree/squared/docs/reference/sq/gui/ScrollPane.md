@@ -2,6 +2,12 @@
 
 *Defined at [gui/scroll_pane.cppm:15](../../../../gui/scroll_pane.cppm#L15)*
 
+
+
+**brief** Container clipping and vertically scrolling a larger child. 
+
+
+
 Inherits from Widget
 
 
@@ -16,57 +22,15 @@ public static const ActorInterfaceId actor_interface_id
 
 ### actor_interface
 
-*public void * actor_interface(ActorInterfaceId id)*
-
-*Defined at [gui/scroll_pane.cppm:20](../../../../gui/scroll_pane.cppm#L20)*
-
-### actor_interface
-
 *public const void * actor_interface(ActorInterfaceId id)*
 
 *Defined at [gui/scroll_pane.cppm:25](../../../../gui/scroll_pane.cppm#L25)*
 
-### scroll_y
+### actor_interface
 
-*public float scroll_y()*
+*public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/scroll_pane.cppm:47](../../../../gui/scroll_pane.cppm#L47)*
-
-### set_content
-
-*public Widget & set_content(std::unique_ptr<Widget> content)*
-
-
-
-**brief** Set the single scrollable child.
-
-**content** Widget to adopt; ownership transfers to the pane.
-
-**return** Reference to the adopted content widget.
-
-### set_scroll_y
-
-*public void set_scroll_y(float scroll_y)*
-
-
-
-**brief** Set the vertical scroll offset.
-
-**scroll_y** Offset in logical units; clamped to valid range.
-
-### preferred_size
-
-*public Size preferred_size(Painter & painter, const Skin & skin)*
-
-
-
-**brief** Report the content size.
-
-**painter** Active painter used for measurement.
-
-**skin** Skin forwarded to the content widget.
-
-**return** Preferred extent in logical units.
+*Defined at [gui/scroll_pane.cppm:20](../../../../gui/scroll_pane.cppm#L20)*
 
 ### layout
 
@@ -90,5 +54,51 @@ public static const ActorInterfaceId actor_interface_id
 
 **return** true when the event was handled.
 
+### preferred_size
 
+*public Size preferred_size(Painter & painter, const Skin & skin)*
+
+
+
+**brief** Report the content size.
+
+**painter** Active painter used for measurement.
+
+**skin** Skin forwarded to the content widget.
+
+**return** Preferred extent in logical units.
+
+### scroll_y
+
+*public float scroll_y()*
+
+*Defined at [gui/scroll_pane.cppm:47](../../../../gui/scroll_pane.cppm#L47)*
+
+
+
+**brief** Read the vertical scroll offset.
+
+**return** Current offset in logical units.
+
+### set_content
+
+*public Widget & set_content(std::unique_ptr<Widget> content)*
+
+
+
+**brief** Set the single scrollable child.
+
+**content** Widget to adopt; ownership transfers to the pane.
+
+**return** Reference to the adopted content widget.
+
+### set_scroll_y
+
+*public void set_scroll_y(float scroll_y)*
+
+
+
+**brief** Set the vertical scroll offset.
+
+**scroll_y** Offset in logical units; clamped to valid range.
 

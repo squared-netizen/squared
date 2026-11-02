@@ -16,13 +16,9 @@
 
 ### TelegraphTools
 
-*public void TelegraphTools(messaging::TelegraphUi & ui, const char * directory)*
+*public void TelegraphTools(TelegraphTools && )*
 
-
-
-**brief** The tools for `ui`; they keep its name table from now on.
-
-**directory** Where `record` writes and `replay` reads: the app's `files/` directory. nullptr: neither is offered.
+*Defined at [console/telegraph_tools.cppm:43](../../../../console/telegraph_tools.cppm#L43)*
 
 ### TelegraphTools
 
@@ -30,27 +26,15 @@
 
 *Defined at [console/telegraph_tools.cppm:41](../../../../console/telegraph_tools.cppm#L41)*
 
-### operator=
-
-*public TelegraphTools & operator=(const TelegraphTools & )*
-
-*Defined at [console/telegraph_tools.cppm:42](../../../../console/telegraph_tools.cppm#L42)*
-
 ### TelegraphTools
 
-*public void TelegraphTools(TelegraphTools && )*
+*public void TelegraphTools(messaging::TelegraphUi & ui, const char * directory)*
 
-*Defined at [console/telegraph_tools.cppm:43](../../../../console/telegraph_tools.cppm#L43)*
 
-### operator=
 
-*public TelegraphTools & operator=(TelegraphTools && )*
+**brief** The tools for `ui`; they keep its name table from now on.
 
-*Defined at [console/telegraph_tools.cppm:44](../../../../console/telegraph_tools.cppm#L44)*
-
-### ~TelegraphTools
-
-*public void ~TelegraphTools()*
+**directory** Where `record` writes and `replay` reads: the app's `files/` directory. nullptr: neither is offered.
 
 ### add_commands
 
@@ -66,29 +50,17 @@
 
 *Defined at [console/telegraph_tools.cppm:67](../../../../console/telegraph_tools.cppm#L67)*
 
-### set_sink
+### operator=
 
-*public void set_sink(Sink sink, void * context)*
+*public TelegraphTools & operator=(TelegraphTools && )*
 
+*Defined at [console/telegraph_tools.cppm:44](../../../../console/telegraph_tools.cppm#L44)*
 
+### operator=
 
-**brief** Where the tap's lines go; nullptr (the default): the Console's scrollback. 
+*public TelegraphTools & operator=(const TelegraphTools & )*
 
-### update
-
-*public void update(time::TimePoint now)*
-
-
-
-**brief** Once a frame: the replay's next telegrams, as their time comes. 
-
-### tap
-
-*public void tap(bool on)*
-
-
-
-**brief** Turn the tap on or off. 
+*Defined at [console/telegraph_tools.cppm:42](../../../../console/telegraph_tools.cppm#L42)*
 
 ### record
 
@@ -98,13 +70,11 @@
 
 **brief** Record to `file` in the directory; false when it cannot be opened. 
 
-### stop_recording
+### recording
 
-*public std::uint32_t stop_recording()*
+*public bool recording()*
 
-
-
-**brief** Stop recording; how many telegrams were written. 
+*Defined at [console/telegraph_tools.cppm:70](../../../../console/telegraph_tools.cppm#L70)*
 
 ### replay
 
@@ -114,15 +84,39 @@
 
 **brief** Replay `file`, paced by `update` (or `fast`); false when it cannot be opened. 
 
+### replaying
+
+*public bool replaying()*
+
+*Defined at [console/telegraph_tools.cppm:71](../../../../console/telegraph_tools.cppm#L71)*
+
+### set_sink
+
+*public void set_sink(Sink sink, void * context)*
+
+
+
+**brief** Where the tap's lines go; nullptr (the default): the Console's scrollback. 
+
+### stop_recording
+
+*public std::uint32_t stop_recording()*
+
+
+
+**brief** Stop recording; how many telegrams were written. 
+
 ### stop_replay
 
 *public void stop_replay()*
 
-### ui
+### tap
 
-*public const messaging::TelegraphUi & ui()*
+*public void tap(bool on)*
 
-*Defined at [console/telegraph_tools.cppm:68](../../../../console/telegraph_tools.cppm#L68)*
+
+
+**brief** Turn the tap on or off. 
 
 ### tapping
 
@@ -130,17 +124,21 @@
 
 *Defined at [console/telegraph_tools.cppm:69](../../../../console/telegraph_tools.cppm#L69)*
 
-### recording
+### ui
 
-*public bool recording()*
+*public const messaging::TelegraphUi & ui()*
 
-*Defined at [console/telegraph_tools.cppm:70](../../../../console/telegraph_tools.cppm#L70)*
+*Defined at [console/telegraph_tools.cppm:68](../../../../console/telegraph_tools.cppm#L68)*
 
-### replaying
+### update
 
-*public bool replaying()*
-
-*Defined at [console/telegraph_tools.cppm:71](../../../../console/telegraph_tools.cppm#L71)*
+*public void update(time::TimePoint now)*
 
 
+
+**brief** Once a frame: the replay's next telegrams, as their time comes. 
+
+### ~TelegraphTools
+
+*public void ~TelegraphTools()*
 

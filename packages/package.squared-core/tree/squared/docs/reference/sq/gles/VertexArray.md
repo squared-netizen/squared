@@ -22,63 +22,13 @@
 
 ### VertexArray
 
-*public void VertexArray(const VertexArray & )*
-
-*Defined at [gles/vertex_array.cppm:28](../../../../gles/vertex_array.cppm#L28)*
-
-### operator=
-
-*public VertexArray & operator=(const VertexArray & )*
-
-*Defined at [gles/vertex_array.cppm:29](../../../../gles/vertex_array.cppm#L29)*
-
-### ~VertexArray
-
-*public void ~VertexArray()*
+*public void VertexArray(VertexArray && other)*
 
 ### VertexArray
 
-*public void VertexArray(VertexArray && other)*
+*public void VertexArray(const VertexArray & )*
 
-### operator=
-
-*public VertexArray & operator=(VertexArray && other)*
-
-### create
-
-*public GlesError create()*
-
-
-
-**brief** Create the GL object. 
-
-### set_vertices
-
-*public GlesError set_vertices(const Buffer & vertices, std::span<const VertexAttribute> attributes)*
-
-
-
-**brief** Record a vertex buffer and its attribute layout.
-
-**vertices** Buffer holding the vertex data.
-
-**attributes** One entry per attribute to enable.
-
-**return** A no-error GlesError on success.
-
-**note** This binds the VAO, binds the buffer, and enables each attribute. The bindings are recorded in the VAO, so the buffer does not have to stay bound afterwards — but it does have to stay alive.
-
-### set_indices
-
-*public GlesError set_indices(const Buffer & indices)*
-
-
-
-**brief** Record an index buffer.
-
-**indices** Buffer created with BufferTarget::Index.
-
-**return** A no-error GlesError on success.
+*Defined at [gles/vertex_array.cppm:28](../../../../gles/vertex_array.cppm#L28)*
 
 ### bind
 
@@ -88,13 +38,13 @@
 
 **brief** Bind this vertex array. 
 
-### unbind
+### create
 
-*public static void unbind()*
+*public GlesError create()*
 
 
 
-**brief** Unbind whatever vertex array is bound. 
+**brief** Create the GL object. 
 
 ### destroy
 
@@ -112,16 +62,6 @@
 
 **brief** Forget the GL name without deleting it, after context loss. 
 
-### valid
-
-*public bool valid()*
-
-*Defined at [gles/vertex_array.cppm:69](../../../../gles/vertex_array.cppm#L69)*
-
-
-
-**brief** Report whether this holds a GL object. 
-
 ### name
 
 *public std::uint32_t name()*
@@ -132,5 +72,63 @@
 
 **brief** Return the raw GL name, or zero. 
 
+### operator=
 
+*public VertexArray & operator=(VertexArray && other)*
+
+### operator=
+
+*public VertexArray & operator=(const VertexArray & )*
+
+*Defined at [gles/vertex_array.cppm:29](../../../../gles/vertex_array.cppm#L29)*
+
+### set_indices
+
+*public GlesError set_indices(const Buffer & indices)*
+
+
+
+**brief** Record an index buffer.
+
+**indices** Buffer created with BufferTarget::Index.
+
+**return** A no-error GlesError on success.
+
+### set_vertices
+
+*public GlesError set_vertices(const Buffer & vertices, std::span<const VertexAttribute> attributes)*
+
+
+
+**brief** Record a vertex buffer and its attribute layout.
+
+**vertices** Buffer holding the vertex data.
+
+**attributes** One entry per attribute to enable.
+
+**return** A no-error GlesError on success.
+
+**note** This binds the VAO, binds the buffer, and enables each attribute. The bindings are recorded in the VAO, so the buffer does not have to stay bound afterwards — but it does have to stay alive.
+
+### unbind
+
+*public static void unbind()*
+
+
+
+**brief** Unbind whatever vertex array is bound. 
+
+### valid
+
+*public bool valid()*
+
+*Defined at [gles/vertex_array.cppm:69](../../../../gles/vertex_array.cppm#L69)*
+
+
+
+**brief** Report whether this holds a GL object. 
+
+### ~VertexArray
+
+*public void ~VertexArray()*
 

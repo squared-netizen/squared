@@ -28,5 +28,3 @@ public std::uint32_t rows
 
 **brief** The last row, for `do <list>.view first last`; `rows` must not be 0. 
 
-
-

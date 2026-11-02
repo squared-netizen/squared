@@ -2,6 +2,12 @@
 
 *Defined at [messaging/telegram_ring.cppm:28](../../../../messaging/telegram_ring.cppm#L28)*
 
+
+
+**brief** How full a ring has been, for sizing it (the Console's `telegraph` command). 
+
+
+
 ## Members
 
 public std::uint32_t slots

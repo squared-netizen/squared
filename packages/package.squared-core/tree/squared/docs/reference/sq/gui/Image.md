@@ -24,15 +24,15 @@ Inherits from Widget
 
 **drawable** Drawable to display, or empty for a blank image.
 
-### set_drawable
+### paint
 
-*public void set_drawable(DrawablePtr drawable)*
+*public void paint(Painter & , const Skin & , float , float )*
 
 
 
-**brief** Replace the displayed drawable.
+**brief** Paint the drawable.
 
-**drawable** Drawable to display; shared ownership.
+**note** Parameters match the Widget::paint signature: the active painter, the skin providing style resources, and the stage-space origin.
 
 ### preferred_size
 
@@ -48,15 +48,13 @@ Inherits from Widget
 
 **return** Preferred extent in logical units.
 
-### paint
+### set_drawable
 
-*public void paint(Painter & , const Skin & , float , float )*
-
-
-
-**brief** Paint the drawable.
-
-**note** Parameters match the Widget::paint signature: the active painter, the skin providing style resources, and the stage-space origin.
+*public void set_drawable(DrawablePtr drawable)*
 
 
+
+**brief** Replace the displayed drawable.
+
+**drawable** Drawable to display; shared ownership.
 

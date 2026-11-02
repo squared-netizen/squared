@@ -26,6 +26,16 @@ Inherits from Widget
 
 **return** Reference to the added child.
 
+### layout
+
+*public void layout(Painter & , const Skin & )*
+
+
+
+**brief** Expand every child to the stack box.
+
+**note** Parameters match Widget::layout: an active painter and the skin providing style values.
+
 ### preferred_size
 
 *public Size preferred_size(Painter & painter, const Skin & skin)*
@@ -39,16 +49,4 @@ Inherits from Widget
 **skin** Skin forwarded to every child widget.
 
 **return** Preferred extent in logical units.
-
-### layout
-
-*public void layout(Painter & , const Skin & )*
-
-
-
-**brief** Expand every child to the stack box.
-
-**note** Parameters match Widget::layout: an active painter and the skin providing style values.
-
-
 

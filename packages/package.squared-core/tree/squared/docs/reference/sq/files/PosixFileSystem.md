@@ -2,6 +2,16 @@
 
 *Defined at [files/posix_file_system.cppm:40](../../../../files/posix_file_system.cppm#L40)*
 
+
+
+**brief** FileSystem over ordinary directories.
+
+ This is the backend for Termux and desktop Linux, and it is the one used on Android for Local and External storage. Android Internal storage lives inside the APK and needs the asset backend instead.
+
+ Internal is refused for writes on every platform, so a build that works against a directory in Termux behaves the same on a device where the same files are read-only inside an APK.
+
+
+
 Inherits from FileSystem
 
 
@@ -30,22 +40,6 @@ Inherits from FileSystem
 
 *public std::uint64_t length(FileType type, std::string_view path)*
 
-### read
-
-*public FileReadResult read(FileType type, std::string_view path)*
-
-### write
-
-*public FileError write(FileType type, std::string_view path, std::span<const std::byte> bytes, bool append)*
-
-### write_atomically
-
-*public FileError write_atomically(FileType type, std::string_view path, std::span<const std::byte> bytes)*
-
-
-
-**brief** Written beside it (`.new`), flushed, renamed over it, its directory flushed. 
-
 ### list
 
 *public FileError list(FileType type, std::string_view path, std::vector<std::string> & names)*
@@ -53,6 +47,10 @@ Inherits from FileSystem
 ### make_directories
 
 *public FileError make_directories(FileType type, std::string_view path)*
+
+### read
+
+*public FileReadResult read(FileType type, std::string_view path)*
 
 ### remove
 
@@ -72,5 +70,15 @@ Inherits from FileSystem
 
 **return** The resolved path, or an empty string when the root is unset or the relative path escapes it.
 
+### write
 
+*public FileError write(FileType type, std::string_view path, std::span<const std::byte> bytes, bool append)*
+
+### write_atomically
+
+*public FileError write_atomically(FileType type, std::string_view path, std::span<const std::byte> bytes)*
+
+
+
+**brief** Written beside it (`.new`), flushed, renamed over it, its directory flushed. 
 

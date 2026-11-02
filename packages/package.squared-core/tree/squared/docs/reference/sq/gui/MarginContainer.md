@@ -2,6 +2,12 @@
 
 *Defined at [gui/margin_container.cppm:15](../../../../gui/margin_container.cppm#L15)*
 
+
+
+**brief** Container adding fixed insets around one child. 
+
+
+
 Inherits from Widget
 
 
@@ -18,17 +24,15 @@ Inherits from Widget
 
 **margin** Insets in logical units; non-negative.
 
-### set_content
+### layout
 
-*public Widget & set_content(std::unique_ptr<Widget> content)*
+*public void layout(Painter & , const Skin & )*
 
 
 
-**brief** Set the single wrapped child.
+**brief** Position the content inside the margin insets.
 
-**content** Widget to adopt; ownership transfers to the container.
-
-**return** Reference to the adopted content widget.
+**note** Parameters match Widget::layout: an active painter and the skin providing style values.
 
 ### preferred_size
 
@@ -44,15 +48,15 @@ Inherits from Widget
 
 **return** Preferred extent in logical units.
 
-### layout
+### set_content
 
-*public void layout(Painter & , const Skin & )*
-
-
-
-**brief** Position the content inside the margin insets.
-
-**note** Parameters match Widget::layout: an active painter and the skin providing style values.
+*public Widget & set_content(std::unique_ptr<Widget> content)*
 
 
+
+**brief** Set the single wrapped child.
+
+**content** Widget to adopt; ownership transfers to the container.
+
+**return** Reference to the adopted content widget.
 

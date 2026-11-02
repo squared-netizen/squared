@@ -30,31 +30,15 @@ public static const std::size_t batch_quads
 
 ### Renderer
 
-*public void Renderer(const Renderer & )*
-
-*Defined at [console/renderer.cppm:38](../../../../console/renderer.cppm#L38)*
-
-### operator=
-
-*public Renderer & operator=(const Renderer & )*
-
-*Defined at [console/renderer.cppm:39](../../../../console/renderer.cppm#L39)*
-
-### Renderer
-
 *public void Renderer(Renderer && )*
 
 *Defined at [console/renderer.cppm:40](../../../../console/renderer.cppm#L40)*
 
-### operator=
+### Renderer
 
-*public Renderer & operator=(Renderer && )*
+*public void Renderer(const Renderer & )*
 
-*Defined at [console/renderer.cppm:41](../../../../console/renderer.cppm#L41)*
-
-### ~Renderer
-
-*public void ~Renderer()*
+*Defined at [console/renderer.cppm:38](../../../../console/renderer.cppm#L38)*
 
 ### create
 
@@ -63,6 +47,14 @@ public static const std::size_t batch_quads
 
 
 **brief** Compile the shader, upload the font, make the buffers. Needs a current context. False if any of it failed; nothing is left behind.
+
+### destroy
+
+*public void destroy()*
+
+
+
+**brief** Delete the GL objects. The context must be current. 
 
 ### draw
 
@@ -80,13 +72,17 @@ public static const std::size_t batch_quads
 
 **brief** The context has gone with its objects: forget them without deleting. 
 
-### destroy
+### operator=
 
-*public void destroy()*
+*public Renderer & operator=(Renderer && )*
 
+*Defined at [console/renderer.cppm:41](../../../../console/renderer.cppm#L41)*
 
+### operator=
 
-**brief** Delete the GL objects. The context must be current. 
+*public Renderer & operator=(const Renderer & )*
+
+*Defined at [console/renderer.cppm:39](../../../../console/renderer.cppm#L39)*
 
 ### valid
 
@@ -94,5 +90,7 @@ public static const std::size_t batch_quads
 
 *Defined at [console/renderer.cppm:61](../../../../console/renderer.cppm#L61)*
 
+### ~Renderer
 
+*public void ~Renderer()*
 

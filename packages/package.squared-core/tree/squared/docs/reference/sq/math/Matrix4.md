@@ -2,6 +2,14 @@
 
 *Defined at [math/matrix4.cppm:17](../../../../math/matrix4.cppm#L17)*
 
+
+
+**brief** Column-major four-by-four matrix compatible with OpenGL ES.
+
+ Storage is column-major with `values_` laid out for direct upload to an OpenGL uniform. Vectors are treated as columns, so a transform applies as `M * v`. Handedness is inherited from the consuming camera and projection conventions rather than imposed here. All operations are value types and never allocate.
+
+
+
 ## Functions
 
 ### Matrix4
@@ -10,11 +18,21 @@
 
 *Defined at [math/matrix4.cppm:21](../../../../math/matrix4.cppm#L21)*
 
+
+
+**brief** Construct an identity matrix. 
+
 ### data
 
 *public const float * data()*
 
 *Defined at [math/matrix4.cppm:47](../../../../math/matrix4.cppm#L47)*
+
+
+
+**brief** Read the contiguous OpenGL-compatible matrix data.
+
+**return** Pointer to 16 column-major values; valid for this object's lifetime.
 
 ### orthographic
 
@@ -39,6 +57,4 @@
 **far_plane** Depth of the far plane.
 
 **return** An orthographic projection, or the identity matrix when the bounds are degenerate.
-
-
 

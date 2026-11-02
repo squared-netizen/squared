@@ -98,11 +98,15 @@ class ModelRunner final
         static_assert( TelegraphModel<M>, "a model has receive(Telegraph&, const Received&)" );
 
     public:
+        // NOLINTBEGIN(cppcoreguidelines-missing-std-forward): `args` is
+        // forwarded into the lambda's init-capture below, which clang-tidy 18
+        // does not see. The blank line keeps this out of the API reference.
+
         /** @brief The model on its own thread, made there from `args`. */
         template<typename... Args>
             requires( !detail::starts_on_ui_thread<Args...> )
-        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward): forwarded into the lambda's init-capture below, which clang-tidy 18 does not see
         explicit ModelRunner( TelegraphLine &line, Args &&...args ) noexcept
+            // NOLINTEND(cppcoreguidelines-missing-std-forward)
             : line_( line )
         {
             claim();

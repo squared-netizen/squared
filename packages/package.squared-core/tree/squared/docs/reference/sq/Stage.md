@@ -44,6 +44,12 @@ public static const std::size_t scratch_numbers
 
 ### Stage
 
+*public void Stage(Stage && )*
+
+*Defined at [stage/stage.cppm:139](../../../stage/stage.cppm#L139)*
+
+### Stage
+
 *public void Stage(const Stage & )*
 
 *Defined at [stage/stage.cppm:137](../../../stage/stage.cppm#L137)*
@@ -51,12 +57,6 @@ public static const std::size_t scratch_numbers
 ### Stage
 
 *public void Stage(messaging::TelegraphUi & telegraph)*
-
-### Stage
-
-*public void Stage(Stage && )*
-
-*Defined at [stage/stage.cppm:139](../../../stage/stage.cppm#L139)*
 
 ### add
 
@@ -68,26 +68,6 @@ public static const std::size_t scratch_numbers
 
 **brief** Let taps reach the C++ screen `S` by its name (`push about`), as names.json's `screens` lists it. In `squared_main`. False, and reported, when `max_added` are already added or another has the name.
 
-### ~Stage
-
-*public void ~Stage()*
-
-### push
-
-*public bool push(const gui::Layout & layout)*
-
-
-
-**brief** Show `layout` over the screen there is, which keeps nothing but its layout, and closes its panes. False when the stack is full (`max_depth`) or `layout` is a pane; the problem is reported. `layout` must outlive its place on the stack: a compiled one (`layouts::settings`) does.
-
-### replace
-
-*public bool replace(const gui::Layout & layout)*
-
-
-
-**brief** Show `layout` instead of the screen there is (or as the first). False, and reported, when `layout` is a pane.
-
 ### back
 
 *public bool back()*
@@ -96,13 +76,13 @@ public static const std::size_t scratch_numbers
 
 **brief** What the back button does: close the top pane if one is open, or else go back to the screen beneath. False at the root with no pane open: nothing to go back to.
 
-### open
+### bindings
 
-*public bool open(const gui::Layout & layout)*
+*public std::size_t bindings()*
 
 
 
-**brief** Open the pane `layout` over the screen shown: its file's `place` and `modal` say where and how. False, and reported, when `max_panes` are open or `layout` is a screen. The pane is built when it opens and freed when it closes; it outlives nothing.
+**brief** How many widgets on the screen and its panes show a value of the model's. 
 
 ### close
 
@@ -128,37 +108,71 @@ public static const std::size_t scratch_numbers
 
 **brief** How many screens there are, once what waits has happened. 
 
-### operator=
+### describe
 
-*public Stage & operator=(const Stage & )*
-
-*Defined at [stage/stage.cppm:138](../../../stage/stage.cppm#L138)*
-
-### operator=
-
-*public Stage & operator=(Stage && )*
-
-*Defined at [stage/stage.cppm:140](../../../stage/stage.cppm#L140)*
-
-### push
-
-*public bool push()*
-
-*Defined at [stage/stage.cppm:159](../../../stage/stage.cppm#L159)*
+*public void describe(app::Report out)*
 
 
 
-**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
+**brief** The stack, a line a screen from the root, then the panes over the top, each with what it keeps: what the Console's `screens` shows.
 
-### replace
+### failed
 
-*public void replace()*
+*public bool failed()*
 
-*Defined at [stage/stage.cppm:166](../../../stage/stage.cppm#L166)*
+*Defined at [stage/stage.cppm:257](../../../stage/stage.cppm#L257)*
 
 
 
-**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
+**brief** The skin could not be loaded: the Stage draws dark red. 
+
+### find
+
+*public static const gui::Layout * find(std::string_view name)*
+
+
+
+**brief** The app's layout called `name`, from its layout files (sqgen's `layouts::all()`); nullptr when there is none.
+
+### hide_bars
+
+*public void hide_bars(bool hide)*
+
+*Defined at [stage/stage.cppm:275](../../../stage/stage.cppm#L275)*
+
+
+
+**brief** Whether the system bars (status and navigation) are hidden: on by default. A swipe from the edge shows them for a moment. A tool that wants them, such as an editor, turns this off; it takes effect at the next frame.
+
+### hides_bars
+
+*public bool hides_bars()*
+
+*Defined at [stage/stage.cppm:276](../../../stage/stage.cppm#L276)*
+
+### keep_screens
+
+*public void keep_screens(bool keep)*
+
+*Defined at [stage/stage.cppm:266](../../../stage/stage.cppm#L266)*
+
+
+
+**brief** Whether the stack is kept for Android, to be shown again, panes, scrolls and an unfinished edit with it, when Android brings the app back after ending its process: on, unless an app says otherwise in `squared_main`. A swipe from the recent apps or a quit starts the app fresh either way.
+
+### keeps_screens
+
+*public bool keeps_screens()*
+
+*Defined at [stage/stage.cppm:267](../../../stage/stage.cppm#L267)*
+
+### lists
+
+*public std::size_t lists()*
+
+
+
+**brief** How many lists the screen and its panes show. 
 
 ### open
 
@@ -170,29 +184,25 @@ public static const std::size_t scratch_numbers
 
 **brief** Open the C++ screen `S` as a pane; its `place` and `modal`, if it has them. 
 
-### panes
+### open
 
-*public std::size_t panes()*
-
-
-
-**brief** How many panes are open, once what waits has happened. 
-
-### top
-
-*public const gui::Layout * top()*
+*public bool open(const gui::Layout & layout)*
 
 
 
-**brief** The table of the screen shown: a layout, or what a C++ screen wrote (valid while it is shown, until a C++ pane is written over it: they share one scratch); nullptr when there is none, or it is not built (no window yet).
+**brief** Open the pane `layout` over the screen shown: its file's `place` and `modal` say where and how. False, and reported, when `max_panes` are open or `layout` is a screen. The pane is built when it opens and freed when it closes; it outlives nothing.
 
-### top_name
+### operator=
 
-*public std::string_view top_name()*
+*public Stage & operator=(Stage && )*
 
+*Defined at [stage/stage.cppm:140](../../../stage/stage.cppm#L140)*
 
+### operator=
 
-**brief** The name of the screen shown; empty when there is none. 
+*public Stage & operator=(const Stage & )*
+
+*Defined at [stage/stage.cppm:138](../../../stage/stage.cppm#L138)*
 
 ### pane_name
 
@@ -202,37 +212,49 @@ public static const std::size_t scratch_numbers
 
 **brief** The name of the top pane; empty when none is open. 
 
-### find
+### panes
 
-*public static const gui::Layout * find(std::string_view name)*
-
-
-
-**brief** The app's layout called `name`, from its layout files (sqgen's `layouts::all()`); nullptr when there is none.
-
-### bindings
-
-*public std::size_t bindings()*
+*public std::size_t panes()*
 
 
 
-**brief** How many widgets on the screen and its panes show a value of the model's. 
+**brief** How many panes are open, once what waits has happened. 
 
-### lists
+### push
 
-*public std::size_t lists()*
+*public bool push()*
 
-
-
-**brief** How many lists the screen and its panes show. 
-
-### describe
-
-*public void describe(app::Report out)*
+*Defined at [stage/stage.cppm:159](../../../stage/stage.cppm#L159)*
 
 
 
-**brief** The stack, a line a screen from the root, then the panes over the top, each with what it keeps: what the Console's `screens` shows.
+**brief** Show the C++ screen `S` over the screen there is; as `push( layout )`. 
+
+### push
+
+*public bool push(const gui::Layout & layout)*
+
+
+
+**brief** Show `layout` over the screen there is, which keeps nothing but its layout, and closes its panes. False when the stack is full (`max_depth`) or `layout` is a pane; the problem is reported. `layout` must outlive its place on the stack: a compiled one (`layouts::settings`) does.
+
+### replace
+
+*public bool replace(const gui::Layout & layout)*
+
+
+
+**brief** Show `layout` instead of the screen there is (or as the first). False, and reported, when `layout` is a pane.
+
+### replace
+
+*public void replace()*
+
+*Defined at [stage/stage.cppm:166](../../../stage/stage.cppm#L166)*
+
+
+
+**brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
 
 ### showing
 
@@ -254,47 +276,23 @@ public static const std::size_t scratch_numbers
 
 **brief** The UI end of the Telegraph: send, and read what the model said. 
 
-### failed
+### top
 
-*public bool failed()*
-
-*Defined at [stage/stage.cppm:257](../../../stage/stage.cppm#L257)*
+*public const gui::Layout * top()*
 
 
 
-**brief** The skin could not be loaded: the Stage draws dark red. 
+**brief** The table of the screen shown: a layout, or what a C++ screen wrote (valid while it is shown, until a C++ pane is written over it: they share one scratch); nullptr when there is none, or it is not built (no window yet).
 
-### keep_screens
+### top_name
 
-*public void keep_screens(bool keep)*
-
-*Defined at [stage/stage.cppm:266](../../../stage/stage.cppm#L266)*
+*public std::string_view top_name()*
 
 
 
-**brief** Whether the stack is kept for Android, to be shown again, panes, scrolls and an unfinished edit with it, when Android brings the app back after ending its process: on, unless an app says otherwise in `squared_main`. A swipe from the recent apps or a quit starts the app fresh either way.
+**brief** The name of the screen shown; empty when there is none. 
 
-### keeps_screens
+### ~Stage
 
-*public bool keeps_screens()*
-
-*Defined at [stage/stage.cppm:267](../../../stage/stage.cppm#L267)*
-
-### hide_bars
-
-*public void hide_bars(bool hide)*
-
-*Defined at [stage/stage.cppm:275](../../../stage/stage.cppm#L275)*
-
-
-
-**brief** Whether the system bars (status and navigation) are hidden: on by default. A swipe from the edge shows them for a moment. A tool that wants them, such as an editor, turns this off; it takes effect at the next frame.
-
-### hides_bars
-
-*public bool hides_bars()*
-
-*Defined at [stage/stage.cppm:276](../../../stage/stage.cppm#L276)*
-
-
+*public void ~Stage()*
 
