@@ -212,7 +212,10 @@ struct Shelf final
         static constexpr std::string_view name = "shelf";
         static void build( sq::gui::LayoutWriter &root )
         {
+            // The row as wide as the list, its title taking what is left, as
+            // in hello's numbers.json: a row laid out at another width shows.
             sq::gui::NodeWriter row = root.add_list( books ).grow().add<sq::gui::Table>();
+            row.grow_x().fill_x();
             row.add<sq::gui::Label>( "?" ).bind( book_title ).grow_x();
             row.add<sq::gui::Label>( "0" ).bind( book_taps );
             row.add<sq::gui::CheckBox>( "kept" ).bind( book_kept );
@@ -1340,6 +1343,28 @@ sq::gui::Widget *in_row( sq::gui::List &list, std::uint32_t row, std::size_t whi
     return true;
 }
 
+/// Every row on screen as wide as the list, less its cell's padding: `gap`.
+/// Each row's cells laid out for the list's width as it is now.
+[[nodiscard]] bool rows_as_wide_as( sq::gui::List &list, float gap )
+{
+    const std::uint32_t first = list.first_row();
+    const std::uint32_t last = std::min( first + list.rows_on_screen(), list.count() );
+    for( std::uint32_t row = first; row < last; ++row ) {
+        const std::size_t slot = list.slot_showing( row );
+        if( slot >= list.rows_built() ) {
+            return false;
+        }
+        const sq::gui::Actor &cells = *list.table( slot ).child_at( 0 );
+        if( std::abs( cells.width() + gap - list.width() ) > 0.5F ) {
+            std::fprintf( stderr, "row %u is %.1f wide, the list %.1f less %.1f\n", row,
+                          static_cast<double>( cells.width() ), static_cast<double>( list.width() ),
+                          static_cast<double>( gap ) );
+            return false;
+        }
+    }
+    return true;
+}
+
 void bound_lists()
 {
     start = Start::inline_model;
@@ -1596,6 +1621,9 @@ void rotation_lays_out_once()
     const std::size_t built = list.rows_built();
     sq::gui::Table *const first = &list.table( 0 );
     CHECK( list.width() < logical_width && list.height() > logical_width );
+    // The row's cell pads it on both sides: what that leaves, the same for every row.
+    const float gap = list.width() - list.table( 0 ).child_at( 0 )->width();
+    CHECK( gap >= 0.0F && gap < 64.0F && rows_as_wide_as( list, gap ) );
 
     // The size, then the insets, as a rotation brings them: nothing is laid
     // out until the next frame, and then once, with both; nothing is built.
@@ -1611,6 +1639,10 @@ void rotation_lays_out_once()
     CHECK( widgets_of( app )->content() == content && &list.table( 0 ) == first );
     CHECK( list.rows_built() == built ); // shorter: no more tables needed
     CHECK( list.width() > logical_width && list.height() < logical_width );
+    // Every row on screen laid out at the new width, not only those whose
+    // values changed since (hello's numbers, 2026-11-02: rows laid out before
+    // a rotation kept their portrait layout, their + in mid-screen).
+    CHECK( rows_as_wide_as( list, gap ) );
     float x = 0.0F;
     float y = 0.0F;
     stage_position( list, x, y );

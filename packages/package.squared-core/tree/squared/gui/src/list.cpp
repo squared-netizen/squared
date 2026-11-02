@@ -208,6 +208,15 @@ void List::place( Painter &painter, const Skin &skin )
             tell( slot, row );
         }
         table.set_visible( true );
+        // A row table is laid out again when its size changes (a rotation, the
+        // list given another width), and when it shows another row (its
+        // values invalidate it), not when it only moves: a scroll moves every
+        // row. Moving it alone kept a layout made for the old width: after a
+        // rotation, rows not touched since showed their portrait layout
+        // (hello's numbers, 2026-11-02).
+        if( table.width() != width() || table.height() != row_height_ ) {
+            table.invalidate_layout();
+        }
         table.set_bounds( 0.0F, top, width(), row_height_ );
         table.validate_layout( painter, skin );
     }

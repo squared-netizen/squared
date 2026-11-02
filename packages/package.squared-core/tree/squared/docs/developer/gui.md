@@ -165,6 +165,16 @@ shows (two vectors), and a few floats.
   the others are not touched, so their bindings stay. `place` tells the
   owner (`set_on_row`) when a table's row changes, positions it at
   `r * height - scroll`, and hides the tables past the count or the foot.
+- **Laid out again on a new size, not on a move.** Unlike Table, Stack and
+  the other containers, which mark each child stale as they place it, `place`
+  marks a row table stale only when its width or height changes (a rotation,
+  the list given another width). A scroll moves every row, and lays out
+  only the ones whose values changed (a row coming on screen gets new
+  values, which mark it stale). Until 2026-11-02 a new size did not either:
+  `Actor::set_size` stores a size and nothing more, so after a rotation the
+  rows not touched since kept their portrait layout, their count and button
+  in mid-screen (hello's numbers). `stage_test`'s `rotation_lays_out_once`
+  checks every row on screen fills the list, before and after.
   Variable heights were not taken: they need every row measured, or a
   guess the scroll corrects, for a case no app has yet.
 - **Drag to scroll.** Its own `pointer_event` scrolls when no row's widget
