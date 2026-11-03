@@ -30,7 +30,7 @@
 #   - build/<BUILD>/modules/sq.<module>.inputs: the interface sources of this
 #     module and of every module it uses, for the build cache's key (an
 #     importer's object depends on them, and clang's dependency file does not
-#     say so).
+#     say so); with sq.<module>.sum, their md5s, which the key reads.
 #
 # An interface unit is cached as an object is, its BMI with it
 # (tools/cached_cc.sh, since 2026-11-02): a fresh workspace takes all 233
@@ -117,11 +117,14 @@ $(SQUARED_MODULE_ORDER): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_ROO
 -include $(INTERFACE_OBJECTS:.o=.d)
 
 # The interface sources whose BMIs an importer of this module reads: its own
-# and every used module's (std's PINNED among them), one path a line.
+# and every used module's (std's PINNED among them), one path a line; and,
+# beside it, sq.<module>.sum, what they hold (tools/inputs_sum.sh), which the
+# build cache's keys read instead of the files.
 $(SQUARED_MODULE_INPUTS_FILE): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_USED_INPUTS) \
-                               $(MODULE_DIR)/Makefile
+                               $(MODULE_DIR)/Makefile $(SQUARED_ROOT)/tools/inputs_sum.sh
 	@mkdir -p $(dir $@)
 	{ printf '%s\n' $(addprefix $(MODULE_DIR)/,$(INTERFACES)); cat $(SQUARED_USED_INPUTS); } \
 	    | awk '!seen[$$0]++' > $@.new
+	bash $(SQUARED_ROOT)/tools/inputs_sum.sh $@.new $(@:.inputs=.sum) $(PUBLIC_ROOT)
 	mv -f $@.new $@
 endif

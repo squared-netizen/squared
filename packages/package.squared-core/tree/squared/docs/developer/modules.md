@@ -231,8 +231,26 @@ failed with "cannot open file '<A>/gui/src/detail/ui.cppm'" (clang 21). So
 interfaces are compiled with `-Xclang -fmodules-embed-all-files`
 (`SQUARED_EMBED`): the sources go into the BMI, 40 MB of BMIs became 41 MB,
 and importers need no flag. The BMIs a BMI imports are found by name in the
-importer's own module directory. The umbrella (`squared.cppm`, one compile)
-is not cached, and std's BMI is shared its own way (above).
+importer's own module directory. The umbrella (`squared.cppm`, the top
+`Makefile`) is cached the same way since the next change of the same day
+(before, the one `mod squared` a fresh workspace still printed); std's BMI
+is shared its own way (above).
+
+**The `.sum` beside each `.inputs`.** A key read every file a unit's
+`.inputs` named, 233 interface sources for a unit of gui or stage: about
+90,000 files read for a build that compiled nothing. Now the rule that
+writes `sq.<module>.inputs` first writes `sq.<module>.sum`, the md5 of each
+file with its path under `@ROOT@` (`tools/inputs_sum.sh`; std's rule writes
+`std.sum`), and a key reads that one file. It is as fresh as the list: both
+are made when one of the files changes, and the list's objects are rebuilt
+after. A list without a `.sum` (a build directory from before) is read file
+by file. `k1` holds "inputs by .sum", so lists made the old way are never
+taken.
+
+**Few programs a lookup.** The rest of a lookup's cost was starting
+programs, about 20 a unit (sed for every `@ROOT@` rewrite, cut, ls, tr).
+`cached_cc.sh` now does that text work in bash itself; a hit starts md5sum
+twice, stat, cp (twice for an interface), mv three times and touch: about 8.
 
 Measured here (x86, 2 jobs, clang 21), the cache empty: workspace A 47 s
 (219 interfaces); then a fresh workspace B 13.8 s, every unit from the cache
@@ -240,6 +258,14 @@ Measured here (x86, 2 jobs, clang 21), the cache empty: workspace A 47 s
 moved away. `gui/src/size.cppm` edited in B: gui's 74 interfaces, stage's 6
 and 44 objects compiled, nothing else; edited back: everything from the
 cache.
+
+A build of a fresh workspace that compiles nothing, on one job (2026-11-02,
+x86): 44 s before the `.sum`s, 19.5 s with them, 12.9 s with few programs a
+lookup (12.9 s: about 8 of it lookups, 3 make's own work). The phone pays
+more for each program started, so it gains more: hello's `make dev` after
+pkg75, with every unit from the cache, took 3 min 39 s. Checked again: 37
+tests ok in the fresh workspace; `size.cppm` edited, 125 compiled (gui's
+113, stage's 11, the umbrella), edited back, 0.
 
 ## The tools
 

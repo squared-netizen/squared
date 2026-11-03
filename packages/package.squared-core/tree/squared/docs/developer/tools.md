@@ -166,6 +166,15 @@ static left out, and said: Termux's `tmpfile`), never the pinned files. One
 `mod  std (...)` line, `into` or `made before`.
 The key, the sharing and the races: [modules.md](modules.md#std).
 
+## inputs_sum.sh
+
+`tools/inputs_sum.sh <list> <sum> <public root>`: writes `<sum>`, the md5 of
+every file a module's `.inputs` list names, one line each, the path with the
+workspace's directory written `@ROOT@`. Run by `build/modules.mk`'s
+`.inputs` rule (before the list is renamed into place) and by
+`build/common.mk`'s std rule (`std.sum`). The build cache's keys read it
+instead of the files: [modules.md](modules.md#the-build-cache).
+
 ## format.sh
 
 Runs clang-format over every `.hpp`, `.cpp` and `.cppm` under `squared/`, skipping

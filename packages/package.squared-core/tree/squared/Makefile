@@ -72,17 +72,27 @@ SQUARED_UMBRELLA_PCM := $(SQUARED_MODULE_DIR)/squared.pcm
 SQUARED_UMBRELLA_LIB := $(LIB_DIR)/libsquared.a
 # Its own make, after the modules: so it is made again only when one of their
 # BMIs changed, not on every build (an app's objects wait for squared.pcm, and
-# would all compile again).
-umbrella: app gui messaging stage
+# would all compile again). Through the build cache, as the modules'
+# interfaces are (build/modules.mk): its sources inside its BMI, its key
+# reading the modules' .inputs (by their .sums). Before 2026-11-02 it was
+# compiled in every workspace, the one `mod` line a fresh one still printed.
+SQUARED_UMBRELLA_USES := app gui messaging stage
+umbrella: $(SQUARED_UMBRELLA_USES)
 	$(MAKE) --no-print-directory $(SQUARED_UMBRELLA_LIB)
+$(SQUARED_UMBRELLA_LIB): private MODULE := squared
+$(SQUARED_UMBRELLA_LIB): private SQUARED_IMPORT_INPUTS := \
+    $(foreach m,$(SQUARED_UMBRELLA_USES),$(SQUARED_MODULE_DIR)/sq.$(m).inputs)
 $(SQUARED_UMBRELLA_LIB): squared.cppm $(SQUARED_STD_READY) $(SQUARED_FLAGS_STAMP) \
-                         $(foreach m,app gui messaging stage,$(SQUARED_MODULE_DIR)/sq.$(m).pcm)
+                         $(foreach m,$(SQUARED_UMBRELLA_USES),$(SQUARED_MODULE_DIR)/sq.$(m).pcm \
+                                                             $(SQUARED_MODULE_DIR)/sq.$(m).inputs)
 	@mkdir -p $(OBJ_DIR)/squared
-	$(call say,mod,squared)
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_MODULE_USE) -c $< -fmodule-output=$(SQUARED_UMBRELLA_PCM) \
-	    -o $(OBJ_DIR)/squared/squared.o
+	SQUARED_SAY_LINE='$(if $(filter 1,$(V)),,  mod  squared)' \
+	    $(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_EMBED) -c $< \
+	    -fmodule-output=$(SQUARED_UMBRELLA_PCM) -o $(OBJ_DIR)/squared/squared.o
 	rm -f $@
 	$(AR) rcs $@ $(OBJ_DIR)/squared/squared.o
+	$(call say_archive,$@)
+-include $(OBJ_DIR)/squared/squared.d
 
 headers:
 	bash tools/check_modules.sh

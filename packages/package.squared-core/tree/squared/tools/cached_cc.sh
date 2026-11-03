@@ -42,7 +42,12 @@
 #                        interfaces whose BMIs this compile may import: they
 #                        join what it read, as clang's dependency file does
 #                        not name them (a BMI itself is never part of a key:
-#                        it holds its workspace's paths)
+#                        it holds its workspace's paths). Each by the .sum
+#                        beside it (tools/inputs_sum.sh), one file holding
+#                        their md5s: reading the 233 files themselves for
+#                        every lookup was most of a build that compiled
+#                        nothing (2026-11-02); a list without one is read
+#                        file by file, as before
 #   SQUARED_SAY_LINE     the whole line to print instead of `  cc   <it>`
 #                        (an interface says `  mod  sq.gui-label`)
 #
@@ -55,6 +60,13 @@
 # sources in the BMI (here 40 MB of BMIs became 41 MB), and an importer reads
 # them from there, the other workspace gone or not. The imported BMIs are
 # found by name (-fprebuilt-module-path), in this workspace.
+#
+# A lookup that finds its object runs once for every unit of a build that
+# compiles nothing: 314 of them for squared, more in an app. So it starts few
+# programs (2026-11-02, from about 20 to 8; each costs a few milliseconds here
+# and more on the phone): the text work is bash's own (the @ROOT@ rewriting,
+# the dependency file, the lists' order), and what is left is md5sum, stat,
+# cp, mv and touch.
 
 set -euo pipefail
 
@@ -124,84 +136,135 @@ if [ -z "$cache" ] || [ -z "$root" ]; then
     exit 0
 fi
 
-# The workspace's directory, for sed: as a pattern, and as a replacement.
-root_pattern=$(printf '%s' "$root" | sed 's/[][\.*^$|]/\\&/g')
-root_text=$(printf '%s' "$root" | sed 's/[\&|]/\\&/g')
+# rooted <text>: REPLY, the text with the workspace's directory written
+# @ROOT@ (before a slash anywhere, or ending a line).
+rooted() {
+    local line lines=()
+    while IFS= read -r line; do
+        line=${line//"$root/"/@ROOT@/}
+        [[ $line != *"$root" ]] || line=${line%"$root"}@ROOT@
+        lines+=("$line")
+    done <<<"$1"
+    REPLY=
+    [ ${#lines[@]} -eq 0 ] || printf -v REPLY '%s\n' "${lines[@]}"
+}
 
-# @ROOT@ for the workspace's directory, in a text; and back.
-rooted() { sed -e "s|$root_pattern/|@ROOT@/|g" -e "s|$root_pattern\$|@ROOT@|"; }
-unrooted() { sed "s|^@ROOT@/|$root_text/|"; }
-
-md5() { md5sum | cut -d' ' -f1; }
+# md5_text <text>: REPLY, its md5.
+md5_text() {
+    local sum rest
+    read -r sum rest < <(md5sum <<<"$1")
+    REPLY=$sum
+}
 
 # The files a dependency file names, one a line: not the target, the line
-# breaks or -MP's empty rules, each once.
+# breaks or -MP's empty rules, each once; and the .inputs lists (by their
+# .sums). Only after a compile, so a few programs are fine here.
 files_of() {
     {
         tr -d '\\' <"$1" | tr ' \t' '\n\n'
         local inputs
         for inputs in ${SQUARED_CACHE_INPUTS:-}; do
-            [ ! -f "$inputs" ] || cat "$inputs"
+            if [ -f "${inputs%.inputs}.sum" ]; then
+                printf '%s\n' "${inputs%.inputs}.sum"
+            elif [ -f "$inputs" ]; then
+                cat "$inputs"
+            fi
         done
     } | grep -v -e ':$' -e '^$' -e '\.pcm$' | awk '!seen[$0]++'
 }
 
-# What the files of a list hold now: squared's own by content, the rest by
-# size and date. A file gone is left out, which changes the text.
+# STATE: what the files of a list hold now, squared's own by content, the
+# rest by size and date. A file gone is left out, which changes the text.
 state_of() {
-    local own=() other=() f
+    local own=() other=() f text=
     while IFS= read -r f; do
         case $f in
             @ROOT@/*) own+=("$root/${f#@ROOT@/}") ;;
             *) other+=("$f") ;;
         esac
     done <"$1"
-    if [ ${#own[@]} -gt 0 ]; then md5sum "${own[@]}" 2>/dev/null | rooted || true; fi
-    if [ ${#other[@]} -gt 0 ]; then stat -c '%n %s %Y' "${other[@]}" 2>/dev/null || true; fi
+    STATE=
+    if [ ${#own[@]} -gt 0 ]; then
+        text=$(md5sum "${own[@]}" 2>/dev/null) || true
+        rooted "$text"
+        STATE=$REPLY
+    fi
+    if [ ${#other[@]} -gt 0 ]; then
+        text=$(stat -c '%n %s %Y' "${other[@]}" 2>/dev/null) || true
+        STATE+=$text
+    fi
 }
 
-# key_of <list>: k2, for what the list's files hold now.
+# key_of <list>: REPLY, k2, for what the list's files hold now.
 key_of() {
-    local state
-    state=$(state_of "$1")
-    [ -n "$state" ] || return 1
-    printf '%s\n%s\n' "$k1" "$state" | md5
+    state_of "$1"
+    [ -n "$STATE" ] || return 1
+    md5_text "$k1
+$STATE"
+}
+
+# LISTS: this source's lists, the newest first (there are at most 4).
+newest_first() {
+    local f t i j
+    LISTS=()
+    for f in "$lists"/*; do
+        [ -f "$f" ] && LISTS+=("$f")
+    done
+    for ((i = 1; i < ${#LISTS[@]}; i++)); do
+        t=${LISTS[i]}
+        j=$i
+        while [ "$j" -gt 0 ] && [[ $t -nt ${LISTS[j - 1]} ]]; do
+            LISTS[j]=${LISTS[j - 1]}
+            j=$((j - 1))
+        done
+        LISTS[j]=$t
+    done
 }
 
 version="${SQUARED_CXX_VERSION:-$("$cxx" --version 2>/dev/null | head -n 1)}"
-k1=$( {
-    printf '%s\n' "$version"
-    printf '%s\n' "${flags[@]}" | rooted
-    [ -z "$bmi" ] || printf 'bmi\n'
-    printf '%s\n' "$source" | rooted
-    md5 <"$source"
-} | md5)
+printf -v flag_text '%s\n' "${flags[@]}"
+rooted "$flag_text"
+rooted_flags=$REPLY
+rooted "$source"
+# k1: the version, the flags, the source's path and (the second md5) its
+# contents. "inputs by .sum": lists from before the .sums are not taken.
+k1_text="$version
+$rooted_flags${bmi:+bmi
+}inputs by .sum
+$REPLY"
+mapfile -t k1_sums < <(md5sum - "$source" <<<"$k1_text")
+k1=${k1_sums[0]%% *}${k1_sums[1]%% *}
 lists="$cache/manifests/$k1"
 objects="$cache/objects"
 
 # From the cache, when a list's files hold what they held. Fails when none.
 take() {
-    local list k2
+    local list k2 f deps rules
     [ -d "$lists" ] || return 1
-    for list in $(ls -t "$lists" 2>/dev/null); do
-        [ -f "$lists/$list" ] || continue
-        k2=$(key_of "$lists/$list") || continue
+    newest_first
+    for list in "${LISTS[@]}"; do
+        key_of "$list" || continue
+        k2=$REPLY
         cp -f "$objects/$k2.o" "$out.$$" 2>/dev/null || continue
         if [ -n "$bmi" ] && ! cp -f "$objects/$k2.pcm" "$bmi.$$" 2>/dev/null; then
             rm -f "$out.$$" "$bmi.$$"
             continue
         fi
-        {
-            printf '%s:' "$out"
-            unrooted <"$lists/$list" | sed 's|^| |' | tr -d '\n'
-            printf '\n'
-            unrooted <"$lists/$list" | sed 's|$|:|'
-        } >"$depfile.$$" || return 1
+        # The dependency file -MD -MP would have written, for this
+        # workspace's paths.
+        deps=
+        rules=
+        while IFS= read -r f; do
+            [[ $f != @ROOT@/* ]] || f=$root/${f#@ROOT@/}
+            deps+=" $f"
+            rules+="$f:
+"
+        done <"$list"
+        printf '%s:%s\n%s' "$out" "$deps" "$rules" >"$depfile.$$" || return 1
         [ -z "$bmi" ] || mv -f "$bmi.$$" "$bmi"
         mv -f "$out.$$" "$out"
         mv -f "$depfile.$$" "$depfile"
-        touch "$objects/$k2.o" "$lists/$list" 2>/dev/null || true
-        [ -z "$bmi" ] || touch "$objects/$k2.pcm" 2>/dev/null || true
+        touch "$objects/$k2.o" "$list" ${bmi:+"$objects/$k2.pcm"} 2>/dev/null || true
         [ -z "${SQUARED_HITS:-}" ] || echo hit >>"$SQUARED_HITS"
         return 0
     done
@@ -211,22 +274,26 @@ take() {
 # Into the cache, unless one of squared's files changed while it compiled
 # (the object is then of neither version).
 keep() {
-    local started=$1 text name k2 f own=()
-    text=$(files_of "$depfile" | rooted) || return 1
+    local started=$1 text name k2 f i own=()
+    text=$(files_of "$depfile") || return 1
+    rooted "$text"
+    text=$REPLY
     while IFS= read -r f; do
         case $f in @ROOT@/*) own+=("$root/${f#@ROOT@/}") ;; esac
     done <<<"$text"
     for f in "${own[@]}"; do
         [ "$f" -nt "$started" ] && return 0
     done
-    name=$(printf '%s\n' "$text" | md5)
+    md5_text "$text"
+    name=$REPLY
     mkdir -p "$lists" "$objects" || return 1
     if [ ! -f "$lists/$name" ]; then
-        printf '%s\n' "$text" >"$lists/.$name.$$" || return 1
+        printf '%s' "$text" >"$lists/.$name.$$" || return 1
         mv -f "$lists/.$name.$$" "$lists/$name" || return 1
     fi
     touch "$lists/$name" || return 1
-    k2=$(key_of "$lists/$name") || return 1
+    key_of "$lists/$name" || return 1
+    k2=$REPLY
     if [ -n "$bmi" ]; then
         cp -f "$bmi" "$objects/.$k2.pcm.$$" || return 1
         mv -f "$objects/.$k2.pcm.$$" "$objects/$k2.pcm" || return 1
@@ -234,7 +301,8 @@ keep() {
     cp -f "$out" "$objects/.$k2.$$" || return 1
     mv -f "$objects/.$k2.$$" "$objects/$k2.o" || return 1
     # Four sets of headers is plenty: an old workspace and a new one.
-    for f in $(ls -t "$lists" | tail -n +5); do rm -f "$lists/$f"; done
+    newest_first
+    for ((i = 4; i < ${#LISTS[@]}; i++)); do rm -f "${LISTS[i]}"; done
     return 0
 }
 

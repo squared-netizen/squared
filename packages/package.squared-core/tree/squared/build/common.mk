@@ -274,18 +274,21 @@ $(SQUARED_FLAGS_STAMP):
 #
 # tools/std_bmi.sh makes it, or finds it made (by this build before, or by
 # another project with the same compiler, flags and libc++), and prints one
-# `mod std` line either way. It runs when the flags or PINNED change, when a
-# libc++ header it read changes (std.d), and when the shared BMI went (the
-# link dangles: pruned, or ~/sqsysroot/.sqpg wiped).
+# `mod std` line either way; then std.sum, what std.inputs names holds
+# (tools/inputs_sum.sh, for the build cache). It runs when the flags or
+# PINNED change, when a libc++ header it read changes (std.d), and when the
+# shared BMI went (the link dangles: pruned, or ~/sqsysroot/.sqpg wiped).
 squared_std_gone := $(if $(wildcard $(SQUARED_STD_READY)),$(if $(realpath $(SQUARED_MODULE_DIR)/std.pcm),,squared-std-gone))
 .PHONY: squared-std-gone
 $(SQUARED_STD_READY) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB) &: $(SQUARED_STD_PINNED) $(SQUARED_FLAGS_STAMP) \
-                                                            $(SQUARED_ROOT)/tools/std_bmi.sh $(squared_std_gone)
+                                                            $(SQUARED_ROOT)/tools/std_bmi.sh \
+                                                            $(SQUARED_ROOT)/tools/inputs_sum.sh $(squared_std_gone)
 	@mkdir -p $(SQUARED_MODULE_DIR) $(LIB_DIR)
 	SQUARED_STD_HOME='$(SQUARED_STD_HOME)' SQUARED_STD_KEEP='$(SQUARED_STD_KEEP)' AR='$(AR)' \
 	    SQUARED_SAY='$(if $(filter 1,$(V)),,1)' \
 	    bash $(SQUARED_ROOT)/tools/std_bmi.sh $(SQUARED_MODULE_DIR) $(SQUARED_STD_LIB) \
 	    $(CXX) $(SQUARED_CXXFLAGS)
+	bash $(SQUARED_ROOT)/tools/inputs_sum.sh $(SQUARED_STD_INPUTS) $(SQUARED_MODULE_DIR)/std.sum $(PUBLIC_ROOT)
 	touch $(SQUARED_STD_READY)
 -include $(SQUARED_MODULE_DIR)/std.d
 # The shared copy of the sources, gone (pruned, or ~/sqsysroot/.sqpg wiped):

@@ -353,8 +353,9 @@ needs `libc++_shared.so` (the runtime was not linked in) and, when
 ## The build cache (7b.3)
 
 *Since 7b.4 the precompiled header named below is gone, and an object's key
-also holds the sources of the module interfaces it may import; interface
-units are compiled in each workspace: [modules.md](modules.md#the-build-cache).*
+also holds the sources of the module interfaces it may import (by the
+`.sum` beside each `.inputs` list), and interface units and the umbrella are
+cached with their BMIs: [modules.md](modules.md#the-build-cache).*
 
 A fresh workspace compiled all 95 framework files, though the device had
 compiled the very same files with the same compiler and flags in the last
