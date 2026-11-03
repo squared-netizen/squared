@@ -14,6 +14,7 @@
 * [gui](gui/index.md)
 * [math](math/index.md)
 * [messaging](messaging/index.md)
+* [term](term/index.md)
 * [time](time/index.md)
 
 

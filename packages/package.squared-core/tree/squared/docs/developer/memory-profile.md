@@ -150,6 +150,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | the Stage's lists | each list shown: 4 bytes a row it asks for, sized when the screen or pane is built (7.8; was at its first frame with a height) | global `new`, one `std::vector` |
 | `BatchPainter` | made with each window's `Drawing`: its scratch text layout, room for 64 glyphs on 4 lines (3,744 bytes, 7.8); grows only for a longer text | global `new`, two `std::vector`s |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
+| `term::Terminal` | constructor and `resize` only: two grids (rows x columns x 12 bytes, and 3 bytes a row), the scrollback's ring (1 MB unless configured), tab stops; `feed` never allocates (the test counts) ([term.md](term.md#memory)). The `Terminal` itself is 960 bytes (`static_assert`ed at most 1,024), `Cell` 12 (`static_assert`ed) | global `new`, `unique_ptr<T[]>` |
 | `std::function` assignment | per callback with captures past SBO | global `new` |
 | `std::string` assignment | per name past SSO (15 bytes) | global `new` |
 

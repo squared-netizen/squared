@@ -48,5 +48,6 @@ documentation is in [../programmer/README.md](../programmer/README.md).
   - [layouts](layouts.md) &mdash; the node table, `check`, the writer and `instantiate`; reading layout files and `names.json`; `sqgen` and its app-build wiring: sizes, allocation, patterns, tests
 - [messaging](messaging.md)
 - [stage](stage.md) &mdash; the App and the Stage (Sprint 7.1 to 7.3): lifetimes, a recreated activity and a quit, the model's holder, the stack and its waiting navigations, C++ screens, panes and their slots, taps, the weak layout catalog, `Drawing`, sizes, tests
+- [term](term.md) &mdash; the terminal core (Sprint 12.1): the parser on UTF-8, the grid's row table, the scrollback's ring of cells, the pending wrap, wide characters, the width table and how it was generated, memory, tests
 - [math](math.md)
 - [time](time.md)
