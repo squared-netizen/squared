@@ -40,10 +40,10 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `gles` | 5 | 9 | `import sq.gles;` |
 | `graphics` | 11 | 19 | `import sq.graphics;` |
 | `gui` | 30 | 38 | `import sq.gui;` |
-| `messaging` | 13 | 6 | `import sq.messaging;` |
+| `messaging` | 15 | 7 | `import sq.messaging;` |
 | `math` | 2 | 0 | `import sq.math;` |
 | `stage` | 3 | 0 | `import sq.stage;` |
-| `term` | 13 | 8 | `import sq.term;` |
+| `term` | 15 | 9 | `import sq.term;` |
 | `time` | 5 | 0 | `import sq.time;` |
 
 `import squared;` is everything an app is written against: the standard

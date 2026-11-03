@@ -31,8 +31,10 @@ term/
   cell.cppm cell_attributes.cppm cell_flags.cppm rgb.cppm cursor.cppm
   terminal.cppm terminal_config.cppm terminal_events.cppm terminal_modes.cppm module.cppm
   pty.cppm pty_config.cppm pty_error.cppm process_exit.cppm
+  screen_publisher.cppm screen_view.cppm
   src/   utf8_decoder.cppm parser.cppm csi_sequence.cppm char_width.cppm palette.cppm
          grid.cppm grid.cpp scrollback.cppm scrollback.cpp terminal.cpp pty.cpp
+         screen_layout.cppm screen_snapshot.cpp
   test/  term_test.cpp pty_test.cpp
   Makefile
 ```
@@ -200,6 +202,29 @@ SIGKILL; a write waits 1 s by default. PATH is searched (the user,
 it). The environment sqterm gives its shell (PATH, HOME, the prefix) is the
 app's to set, and the user's `.zshrc` to extend (12.5).
 
+## The screen as a snapshot (12.3c)
+
+`ScreenPublisher` (56 bytes, and a `std::vector<std::uint32_t>` of row
+versions, grown with the screen on the model's thread) and `ScreenView`
+(184 bytes: a copy of the header and two spans) share one layout,
+`src/screen_layout.cppm`: a 152-byte `ScreenHeader` (layout number, size,
+cursor, modes, title, history size, how far back), a version a row, then
+the rows' cells. Both are this module's, so writer and reader never drift;
+`ScreenView::read` refuses another layout number or too few bytes.
+
+- **Versions over dirty bits**: the UI may miss publishes, so "changed
+  since the last publish" would lose changes; a row's version only grows,
+  and the UI compares it with the one it drew. Every row's moves when the
+  size, the view's offset, or (scrolled back) the history moved.
+- **Scrolled back**: row r of the view is screen row `r - back` when that
+  is 0 or more, else history line `back - r - 1`; a history line shorter
+  than the screen (trimmed) is padded with blanks, a longer one cut.
+- **Cells as bytes**: written with `memcpy`; read back as `const Cell *`
+  over the channel's buffer (new'd `std::byte[]`, aligned for any type; the
+  cells start at a multiple of 4). The one `reinterpret_cast`.
+- **Cost per publish**: a header, 4 bytes a row, 12 a cell copied; 24 KB
+  for 50 x 40, three buffers in the channel, 72 KB.
+
 ## Character width
 
 `detail::char_width`: 0 (combining marks: Mn, Me, Cf; Hangul medial vowels
@@ -233,6 +258,8 @@ decade).
 | `Pty` itself | where its owner puts it | 16 bytes |
 | `Pty::spawn` | each start, freed before it returns | the arguments and environment, once, plus two pointer tables |
 | `Pty::read`, `write`, `resize`, `poll_exit` | never | 0 |
+| `ScreenPublisher::write` | when the screen gets taller: its row versions | 4 bytes a row |
+| The snapshot channel's three buffers (messaging's) | when a snapshot is larger than the buffer's largest before | the screen's bytes, 3 times |
 
 80 x 24 with the default scrollback: 2 x 23,112 + 1,048,572 + 16 + 960, about
 1.05 MB. A phone's portrait 50 x 40: about 1.1 MB. The test counts every

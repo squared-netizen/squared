@@ -45,6 +45,7 @@ OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/graphics/%.o,$(SOURCES))
 # warning set switched off. Same treatment as yyjson in the data module.
 STB_OBJECT := $(OBJ_DIR)/graphics/third_party/stb_image.o
 OBJECTS += $(STB_OBJECT)
+THIRD_PARTY_OBJECTS := $(STB_OBJECT)
 DEPENDS := $(OBJECTS:.o=.d)
 TARGET := $(LIB_DIR)/libsquared_graphics.a
 

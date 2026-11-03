@@ -267,6 +267,13 @@ pkg75, with every unit from the cache, took 3 min 39 s. Checked again: 37
 tests ok in the fresh workspace; `size.cppm` edited, 125 compiled (gui's
 113, stage's 11, the umbrella), edited back, 0.
 
+**Vendored C in a module's archive** (yyjson in data, stb_image in
+graphics, FreeType in font) imports no module, so `build/modules.mk` leaves
+it out of what waits for, and is rebuilt after, the module's BMIs, and its
+cache key leaves the interfaces out (`THIRD_PARTY_OBJECTS`, 2026-11-03).
+Before, every change to font's interfaces compiled FreeType's 16 objects
+again, on the phone and in every workspace.
+
 ## The tools
 
 - **lint** (`tools/lint.sh`): `.cppm` files are checked by clang-format and

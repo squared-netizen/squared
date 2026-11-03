@@ -1,6 +1,6 @@
 # struct ModelStats
 
-*Defined at [messaging/telegraph.cppm:51](../../../../messaging/telegraph.cppm#L51)*
+*Defined at [messaging/telegraph.cppm:54](../../../../messaging/telegraph.cppm#L54)*
 
 
 

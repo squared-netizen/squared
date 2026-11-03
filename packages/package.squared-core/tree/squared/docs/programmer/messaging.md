@@ -433,7 +433,8 @@ telegrams each way, `TELEGRAPH_DATA` 8 KB of text each way,
 `TELEGRAPH_CACHE_TEXT` 8 KB, `TELEGRAPH_LISTS` 16 of `TELEGRAPH_LIST_VIEW`
 128 rows, `TELEGRAPH_WAIT_MS` 100 ms of waiting for room (0: never wait),
 `TELEGRAPH_NAMES` 8 KB of names for the dev tools (Console builds only: the
-table is theirs, not the line's).
+table is theirs, not the line's), `TELEGRAPH_SNAPSHOTS` 4 snapshots (their
+buffers are not sized by a knob: they grow as the model needs).
 `RING`, `DATA`, `PENDING` and `CACHE` are powers of two; checked when the
 framework compiles. `make status` shows the ones set.
 
@@ -550,6 +551,39 @@ the widget's. The Telegraph and the list widget use them; an app does not.
 
 Nothing allocates. The model's thread for `ModelList`, the UI thread for
 `ListWindow`.
+
+## Snapshots
+
+The third channel (12.3c): bulk state the model publishes whole, and the UI
+reads the newest of: a terminal's screen, a canvas's pixels. Not a telegram:
+it never goes through a ring, it is never coalesced or held back, and the UI
+never sees a half-written one. Each is named by a `SnapshotKey`.
+
+```cpp
+inline constexpr sq::SnapshotKey screen{ "term.screen" };
+
+// The model's thread:
+const std::span<std::byte> room = t.snapshot( screen, bytes_needed );
+write_into( room );
+t.publish( screen, bytes_written );
+
+// The UI thread, each frame:
+if( const auto shot = ui.snapshot( screen ) ) {
+    draw( shot->bytes );              // the newest; stays put until the next call
+}
+```
+
+| Call | Side | Does |
+|---|---|---|
+| `snapshot(key, bytes)` | model | room for `key`, at least `bytes`, to fill; it grows (allocating, on the model's thread) only past every size asked for before; empty when `TELEGRAPH_SNAPSHOTS` keys exist already |
+| `publish(key, bytes)` | model | the first `bytes` of that room are the newest; wakes the UI if it sleeps; false for a key never given room |
+| `snapshot(key)` | UI | the newest published, as `SnapshotView`: `bytes`, and `sequence` (1 for the first publish, counting each); the bytes stay as they are until the next call for `key`; nothing before the first publish |
+
+A snapshot is bytes: the model and the actor that draws it agree on what
+they mean (`term::ScreenPublisher` writes a terminal's screen,
+`term::ScreenView` reads it). The UI may skip publishes, so each must stand
+alone; the newest always arrives. Neither side ever waits. Three buffers a
+key, each as large as the largest snapshot written into it.
 
 ## Dependencies
 

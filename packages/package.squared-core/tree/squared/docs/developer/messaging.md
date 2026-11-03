@@ -689,6 +689,43 @@ the looper's wiring left to Sprint 7.
 - **Size:** the three pointers took `TelegraphLine` from 87,936 to 88,000
   bytes: 24 bytes past its padding, rounded to its 64-byte alignment.
 
+## Snapshots (12.3c, 2026-11-03)
+
+The app model's third channel, decided in 2026-10-15's spec as "a
+triple-buffered frame", named through the Telegraph (the user, 2026-11-03,
+over a standalone channel object: one way for every model). Its two open
+points from the spec, settled: **a snapshot's size** is not declared at
+start; its buffers grow, on the model's thread only, when it asks for more
+room; **its type** is not the Telegraph's: bytes, whose layout the writer
+and the reader share (for the terminal: `term/src/screen_layout.cppm`).
+
+- **`detail::SnapshotChannel`** (120 bytes): three buffers (a
+  `unique_ptr<std::byte[]>`, capacity, size and the publish's sequence
+  each), an atomic byte holding the middle buffer's index and whether it
+  is newer than the reader's, the writer's index and count, the reader's
+  index. The writer fills its own buffer and `exchange`s it for the middle
+  one (acquire-release); the reader, when the middle is marked newer,
+  `exchange`s its own for it. No lock, no wait, no allocation by the reader.
+  The writer may replace its own buffer with a larger one at any time: it
+  is the only side holding it. The classic triple buffer.
+- **In the line**: `TELEGRAPH_SNAPSHOTS` (4) channels and their names. The
+  model names a key the first time it asks for room, writing the name and
+  then publishing the count with release; the UI reads the count with
+  acquire and scans the names: a name is never read half made. Keys are
+  never removed (a model has a few).
+- **`publish` wakes the UI** like a send (`wake_ui`): an app sleeping on
+  `wake_fd` draws the new snapshot.
+- **`SnapshotKey`**: a name and its text, as `Key`; no value type, no
+  verbs: a snapshot is not a telegram.
+- **Checked** by `test/snapshot_test.cpp`: the channel alone on two real
+  threads (200,000 publishes of varying sizes, buffers growing as the
+  reader reads: never a torn read, never a sequence going back, the last
+  reached), under ThreadSanitizer too (2026-11-03; the sandbox's clang 21
+  runtime); through the Telegraph by name (nothing before the first
+  publish, the newer of two, the bytes kept while the model writes on,
+  growing to 100,000 bytes, two keys apart, a full set of names refused,
+  the UI's wake descriptor made readable).
+
 ## Memory
 
 | Type | Bytes |
@@ -703,7 +740,9 @@ the looper's wiring left to Sprint 7.
 | `ValueCache` | 88, plus the storage it is given |
 | `ModelList` | 96, plus 4 bytes a row of its window (and a shared scratch as large) |
 | `ListWindow` | 24 |
-| `TelegraphLine` | 88,000 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and descriptors fit its padding, 6.7b's tap and names pointers took it one 64-byte step further |
+| `TelegraphLine` | 88,576 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and descriptors fit its padding, 6.7b's tap and names pointers took it one 64-byte step further (88,000), 12.3c's four snapshot channels and names 576 more |
+| `SnapshotChannel` | 120, plus its three buffers (the heap's, as large as the largest snapshot written into each) |
+| `SnapshotKey` | 16 (a constant) |
 | `Wake` | 4 (a descriptor) |
 | `WaitStats` | 8 |
 | `ModelRunner<M>` | 56 plus `std::optional<M>` (`M` and a flag, rounded to `M`'s alignment): the line's reference, the tick clock (40, a `Timepiece` inside), the thread; 64 for an empty model |

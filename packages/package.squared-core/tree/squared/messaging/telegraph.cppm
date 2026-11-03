@@ -5,7 +5,10 @@ export import :key;
 export import :list_window;
 export import :model_list;
 export import :name_table;
+export import :snapshot_key;
+export import :snapshot_view;
 export import :src.pack;
+export import :src.snapshot_channel;
 export import :src.telegraph_config;
 export import :src.wake;
 export import :telegram;
@@ -215,6 +218,22 @@ class Telegraph final
             changed_item( rows.name(), uid );
         }
 
+        /**
+         * @brief Room for the snapshot `key`: at least `bytes`, the model's
+         * to fill, then `publish`. It grows (allocates, on the model's
+         * thread) only past every size asked for before. Empty when
+         * `TELEGRAPH_SNAPSHOTS` other snapshots exist already.
+         */
+        [[nodiscard]] std::span<std::byte> snapshot( const SnapshotKey &key, std::size_t bytes );
+
+        /**
+         * @brief The first `bytes` of what `snapshot( key, ... )` gave are
+         * the newest: the UI's next read of `key` takes them, whatever it
+         * missed before. Wakes the UI if it sleeps. False for a key never
+         * given room.
+         */
+        bool publish( const SnapshotKey &key, std::size_t bytes ) noexcept;
+
         /** @brief Ask for `tick` every `milliseconds` (0: no tick, the default). `ModelRunner` calls it. */
         void tick_every( std::uint32_t milliseconds ) noexcept;
         [[nodiscard]] std::uint32_t tick_interval() const noexcept;
@@ -280,6 +299,7 @@ class Telegraph final
         void changed_list( Name rows ) noexcept;
         void changed_item( Name rows, std::uint32_t uid ) noexcept;
         [[nodiscard]] ModelList *list_named( Name rows ) noexcept;
+        [[nodiscard]] detail::SnapshotChannel *snapshot_named( Name name, bool add ) noexcept;
         // A `do <list>.view (first last)`: answered, and true; false if not one.
         bool answer_view( const Received &received ) noexcept;
         [[nodiscard]] ListOutput output() noexcept;
@@ -442,6 +462,13 @@ class TelegraphUi final
          */
         void set_tap( Tap tap, void *context ) noexcept;
 
+        /**
+         * @brief The newest snapshot of `key` the model has published: its
+         * bytes stay as they are until the next call for this key. Nothing
+         * before the first publish. Never waits.
+         */
+        [[nodiscard]] std::optional<SnapshotView> snapshot( const SnapshotKey &key ) noexcept;
+
         /** @brief An actor shows `address`: its value is kept in the cache. */
         [[nodiscard]] bool bind( Address address ) noexcept;
         void unbind( Address address ) noexcept;
@@ -566,6 +593,12 @@ class TelegraphLine final
         std::array<std::uint32_t, telegraph_size::list_view> scratch_{};
         std::array<std::optional<ModelList>, telegraph_size::lists> lists_{};
         std::array<Name, telegraph_size::lists> view_names_{};
+        // Snapshots: the model names them (snapshots_count_ published last,
+        // so the UI never reads a name half made); each channel's buffers
+        // are the heap's, grown by the model.
+        std::array<detail::SnapshotChannel, telegraph_size::snapshots> snapshot_channels_{};
+        std::array<Name, telegraph_size::snapshots> snapshot_names_{};
+        std::atomic<std::uint32_t> snapshots_count_{ 0 };
 
         TelegramRing to_model_;
         TelegramRing to_ui_;

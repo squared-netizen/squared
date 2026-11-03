@@ -10,7 +10,8 @@
 #   <module>/src/*.cpp          implementation units: `module sq.<module>;`
 #
 # A module Makefile includes this file at its end, after OBJECTS (its
-# implementation units' objects) and TESTS. What it finds for itself:
+# implementation units' objects), THIRD_PARTY_OBJECTS (those of OBJECTS that
+# are vendored C, importing nothing) and TESTS. What it finds for itself:
 #
 #   INTERFACES    every .cppm in the module's directory (not test/)
 #   USES_MODULES  every other module its files import (`import sq.gui;`, in
@@ -84,8 +85,15 @@ $(SQUARED_MODULE_DIR)/sq.%.pcm $(SQUARED_MODULE_DIR)/sq.%.inputs:
 	@false
 
 # The module's own objects (not its interfaces: their order is below) and its
-# tests wait for the BMIs.
-$(filter-out $(INTERFACE_OBJECTS),$(OBJECTS)): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
+# tests wait for the BMIs. Vendored C a module compiles into its archive
+# (THIRD_PARTY_OBJECTS: data's yyjson, graphics' stb_image, font's FreeType)
+# imports no module: it neither waits for the BMIs nor is rebuilt after them,
+# and its cache key leaves the interfaces out (2026-11-03: FreeType's 16
+# objects were compiled again whenever font's interfaces changed).
+$(filter-out $(INTERFACE_OBJECTS) $(THIRD_PARTY_OBJECTS),$(OBJECTS)): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
+ifneq ($(strip $(THIRD_PARTY_OBJECTS)),)
+$(THIRD_PARTY_OBJECTS): SQUARED_IMPORT_INPUTS :=
+endif
 ifneq ($(strip $(TESTS)),)
 $(TESTS): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
 endif

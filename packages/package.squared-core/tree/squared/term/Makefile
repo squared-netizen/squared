@@ -14,6 +14,7 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/grid.cpp \
     src/pty.cpp \
+    src/screen_snapshot.cpp \
     src/scrollback.cpp \
     src/terminal.cpp
 
@@ -44,6 +45,7 @@ $(TESTS): $(SQUARED_FLAGS_STAMP)
 
 $(TERM_TEST): $(MODULE_DIR)/test/term_test.cpp \
               $(MODULE_DIR)/src/grid.cpp \
+              $(MODULE_DIR)/src/screen_snapshot.cpp \
               $(MODULE_DIR)/src/scrollback.cpp \
               $(MODULE_DIR)/src/terminal.cpp
 	@mkdir -p $(dir $@)

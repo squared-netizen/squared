@@ -15,6 +15,7 @@ SOURCES := src/address.cpp \
     src/model_list.cpp \
     src/model_runner.cpp \
     src/name_table.cpp \
+    src/snapshot.cpp \
     src/telegram.cpp \
     src/telegram_data.cpp \
     src/telegram_ring.cpp \
@@ -54,8 +55,14 @@ TELEGRAPH_TEST := $(BUILD_DIR)/telegraph_test
 # The runner measures its ticks with time's Timepiece, so time's sources too.
 THREAD_TEST := $(BUILD_DIR)/telegraph_thread_test
 
+# Snapshots (12.3c, the app model's third channel): the triple buffer on two
+# real threads (every snapshot read whole, never older than one before it),
+# and through the Telegraph by name: room, publish, the newest, growing, a
+# full set of names (so -pthread).
+SNAPSHOT_TEST := $(BUILD_DIR)/snapshot_test
+
 TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
-    $(TELEGRAPH_TEST) $(THREAD_TEST)
+    $(TELEGRAPH_TEST) $(THREAD_TEST) $(SNAPSHOT_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -111,6 +118,7 @@ $(TELEGRAPH_TEST): $(MODULE_DIR)/test/telegraph_test.cpp \
                    $(MODULE_DIR)/src/model_list.cpp \
                    $(MODULE_DIR)/src/list_window.cpp \
                    $(MODULE_DIR)/src/telegraph.cpp \
+                   $(MODULE_DIR)/src/snapshot.cpp \
                    $(MODULE_DIR)/src/name_table.cpp \
                    $(MODULE_DIR)/src/address.cpp \
                    $(MODULE_DIR)/src/wake.cpp
@@ -125,12 +133,28 @@ $(THREAD_TEST): $(MODULE_DIR)/test/telegraph_thread_test.cpp \
                 $(MODULE_DIR)/src/model_list.cpp \
                 $(MODULE_DIR)/src/list_window.cpp \
                 $(MODULE_DIR)/src/telegraph.cpp \
+                $(MODULE_DIR)/src/snapshot.cpp \
                 $(MODULE_DIR)/src/name_table.cpp \
                 $(MODULE_DIR)/src/address.cpp \
                 $(MODULE_DIR)/src/wake.cpp \
                 $(MODULE_DIR)/src/model_runner.cpp \
                 $(SQUARED_ROOT)/time/src/now.cpp \
                 $(SQUARED_ROOT)/time/src/timepiece.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@
+
+$(SNAPSHOT_TEST): $(MODULE_DIR)/test/snapshot_test.cpp \
+                  $(MODULE_DIR)/src/telegram.cpp \
+                  $(MODULE_DIR)/src/telegram_ring.cpp \
+                  $(MODULE_DIR)/src/value_cache.cpp \
+                  $(MODULE_DIR)/src/model_list.cpp \
+                  $(MODULE_DIR)/src/list_window.cpp \
+                  $(MODULE_DIR)/src/telegraph.cpp \
+                  $(MODULE_DIR)/src/snapshot.cpp \
+                  $(MODULE_DIR)/src/name_table.cpp \
+                  $(MODULE_DIR)/src/address.cpp \
+                  $(MODULE_DIR)/src/wake.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@

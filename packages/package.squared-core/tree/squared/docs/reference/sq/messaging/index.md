@@ -28,6 +28,8 @@
 * [Received](Received.md)
 * [RingStats](RingStats.md)
 * [RowSpan](RowSpan.md)
+* [SnapshotKey](SnapshotKey.md)
+* [SnapshotView](SnapshotView.md)
 * [TelegramBytes](TelegramBytes.md)
 * [TelegramData](TelegramData.md)
 * [TelegramRing](TelegramRing.md)
@@ -247,7 +249,7 @@
 | too_large |
 
 
-*Defined at [messaging/telegraph.cppm:24](../../../../messaging/telegraph.cppm#L24)*
+*Defined at [messaging/telegraph.cppm:27](../../../../messaging/telegraph.cppm#L27)*
 
 
 
@@ -261,7 +263,7 @@
 | to_ui |
 
 
-*Defined at [messaging/telegraph.cppm:59](../../../../messaging/telegraph.cppm#L59)*
+*Defined at [messaging/telegraph.cppm:62](../../../../messaging/telegraph.cppm#L62)*
 
 
 

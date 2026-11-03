@@ -26,6 +26,7 @@ DEPENDS := $(OBJECTS:.o=.d)
 # links one library rather than two.
 YYJSON_OBJECT := $(OBJ_DIR)/data/third_party/yyjson.o
 OBJECTS += $(YYJSON_OBJECT)
+THIRD_PARTY_OBJECTS := $(YYJSON_OBJECT)
 
 TARGET := $(LIB_DIR)/libsquared_data.a
 

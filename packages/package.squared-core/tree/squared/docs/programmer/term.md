@@ -33,6 +33,8 @@ Developer counterpart: [../developer/term.md](../developer/term.md)
 | `PtyConfig` | `squared/term/pty_config.cppm` | The program (a path, or a name looked up on PATH), arguments, environment, directory, and the terminal's size |
 | `PtyError`, `PtyErrorCode` | `squared/term/pty_error.cppm` | Why starting it failed: the step, and its `errno` |
 | `ProcessExit` | `squared/term/process_exit.cppm` | How it ended: the exit code, or the signal |
+| `ScreenPublisher` | `squared/term/screen_publisher.cppm` | A terminal's screen written as a snapshot, on the model's thread, with a version for each row |
+| `ScreenView` | `squared/term/screen_view.cppm` | A screen snapshot as the UI reads it: rows, versions, cursor, modes, title |
 
 ## The shortest use
 
@@ -162,4 +164,44 @@ A program that reads nothing fills the pty: a `write` then waits up to its
 timeout and returns short. In line mode (the default, until a program turns
 it off) the line discipline drops what does not fit instead, and a write
 never waits.
+
+## The screen as a snapshot
+
+A terminal runs on the model's thread (the shell's output is read and fed
+there); the UI draws it from the Telegraph's snapshot channel
+([messaging.md](messaging.md#snapshots)).
+
+```cpp
+// The model's thread, after feeding what the shell wrote:
+auto room = t.snapshot( screen, publisher.bytes_for( terminal ) );
+t.publish( screen, publisher.write( terminal, room ) );
+
+// The UI thread:
+if( const auto shot = ui.snapshot( screen ) ) {
+    if( const auto view = sq::term::ScreenView::read( shot->bytes ) ) {
+        for( std::uint16_t r = 0; r < view->rows(); ++r ) {
+            if( view->version( r ) != drawn[r] ) { draw_row( r, view->row( r ) ); drawn[r] = view->version( r ); }
+        }
+        if( view->cursor_shown() ) { draw_cursor( view->cursor() ); }
+    }
+}
+```
+
+| `ScreenPublisher` | Does |
+|---|---|
+| `bytes_for(terminal)` | the room a snapshot of it needs now: 152 bytes, 4 a row, 12 a cell |
+| `write(terminal, out)` | the screen into `out`; each row changed since the last write (or every row, when the size or the view moved) gets a new version; the terminal's dirty marks cleared; the bytes written, 0 when `out` is too small |
+| `scroll_back(lines)`, `scrolled_back()` | the view `lines` back into the scrollback (0: the screen); held to what the scrollback has |
+
+| `ScreenView` | Gives |
+|---|---|
+| `read(bytes)` | the view, or nothing when the bytes are not a whole snapshot of this layout |
+| `columns()`, `rows()`, `row(r)` | the size, and row `r`'s cells |
+| `version(r)` | moves on each time row `r` changes: redraw the rows whose version is not the one drawn |
+| `cursor()`, `cursor_shown()` | where the cursor is, and whether to draw it (the program shows it and the view is not scrolled back) |
+| `modes()`, `title()`, `history_size()`, `scrolled_back()` | as the terminal had them |
+
+Each snapshot is the whole screen (24 KB at 50 x 40): the UI may skip some,
+and what it reads must stand alone. A scrolled-back view follows the bottom:
+new output moves it.
 

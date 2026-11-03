@@ -1,6 +1,6 @@
 # struct DoResult
 
-*Defined at [messaging/telegraph.cppm:77](../../../../messaging/telegraph.cppm#L77)*
+*Defined at [messaging/telegraph.cppm:80](../../../../messaging/telegraph.cppm#L80)*
 
 
 

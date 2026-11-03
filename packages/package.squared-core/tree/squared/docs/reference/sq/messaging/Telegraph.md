@@ -1,6 +1,6 @@
 # class Telegraph
 
-*Defined at [messaging/telegraph.cppm:103](../../../../messaging/telegraph.cppm#L103)*
+*Defined at [messaging/telegraph.cppm:106](../../../../messaging/telegraph.cppm#L106)*
 
 
 
@@ -16,19 +16,19 @@
 
 *public void Telegraph(Telegraph && )*
 
-*Defined at [messaging/telegraph.cppm:108](../../../../messaging/telegraph.cppm#L108)*
+*Defined at [messaging/telegraph.cppm:111](../../../../messaging/telegraph.cppm#L111)*
 
 ### Telegraph
 
 *public void Telegraph(const Telegraph & )*
 
-*Defined at [messaging/telegraph.cppm:106](../../../../messaging/telegraph.cppm#L106)*
+*Defined at [messaging/telegraph.cppm:109](../../../../messaging/telegraph.cppm#L109)*
 
 ### answer
 
 *public SendResult answer(const Received & request, const K & key)*
 
-*Defined at [messaging/telegraph.cppm:172](../../../../messaging/telegraph.cppm#L172)*
+*Defined at [messaging/telegraph.cppm:175](../../../../messaging/telegraph.cppm#L175)*
 
 
 
@@ -38,7 +38,7 @@
 
 *public SendResult answer(const Received & request, const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:181](../../../../messaging/telegraph.cppm#L181)*
+*Defined at [messaging/telegraph.cppm:184](../../../../messaging/telegraph.cppm#L184)*
 
 
 
@@ -48,7 +48,7 @@
 
 *public void changed(const K & rows)*
 
-*Defined at [messaging/telegraph.cppm:205](../../../../messaging/telegraph.cppm#L205)*
+*Defined at [messaging/telegraph.cppm:208](../../../../messaging/telegraph.cppm#L208)*
 
 
 
@@ -58,7 +58,7 @@
 
 *public void changed(const K & rows, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.cppm:213](../../../../messaging/telegraph.cppm#L213)*
+*Defined at [messaging/telegraph.cppm:216](../../../../messaging/telegraph.cppm#L216)*
 
 
 
@@ -68,7 +68,7 @@
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.cppm:618](../../../../messaging/telegraph.cppm#L618)*
+*Defined at [messaging/telegraph.cppm:651](../../../../messaging/telegraph.cppm#L651)*
 
 
 
@@ -78,7 +78,7 @@
 
 *public SendResult event(const K & key)*
 
-*Defined at [messaging/telegraph.cppm:144](../../../../messaging/telegraph.cppm#L144)*
+*Defined at [messaging/telegraph.cppm:147](../../../../messaging/telegraph.cppm#L147)*
 
 
 
@@ -88,7 +88,7 @@
 
 *public SendResult event(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:152](../../../../messaging/telegraph.cppm#L152)*
+*Defined at [messaging/telegraph.cppm:155](../../../../messaging/telegraph.cppm#L155)*
 
 
 
@@ -98,7 +98,7 @@
 
 *public SendResult event(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:162](../../../../messaging/telegraph.cppm#L162)*
+*Defined at [messaging/telegraph.cppm:165](../../../../messaging/telegraph.cppm#L165)*
 
 
 
@@ -108,7 +108,7 @@
 
 *public bool list(const K & rows, S & source)*
 
-*Defined at [messaging/telegraph.cppm:197](../../../../messaging/telegraph.cppm#L197)*
+*Defined at [messaging/telegraph.cppm:200](../../../../messaging/telegraph.cppm#L200)*
 
 
 
@@ -118,13 +118,13 @@
 
 *public Telegraph & operator=(Telegraph && )*
 
-*Defined at [messaging/telegraph.cppm:109](../../../../messaging/telegraph.cppm#L109)*
+*Defined at [messaging/telegraph.cppm:112](../../../../messaging/telegraph.cppm#L112)*
 
 ### operator=
 
 *public Telegraph & operator=(const Telegraph & )*
 
-*Defined at [messaging/telegraph.cppm:107](../../../../messaging/telegraph.cppm#L107)*
+*Defined at [messaging/telegraph.cppm:110](../../../../messaging/telegraph.cppm#L110)*
 
 ### pending
 
@@ -134,6 +134,14 @@
 
 **brief** States held back, waiting for room. 
 
+### publish
+
+*public bool publish(const SnapshotKey & key, std::size_t bytes)*
+
+
+
+**brief** The first `bytes` of what `snapshot( key, ... )` gave are the newest: the UI's next read of `key` takes them, whatever it missed before. Wakes the UI if it sleeps. False for a key never given room.
+
 ### quitting
 
 *public bool quitting()*
@@ -142,11 +150,19 @@
 
 **brief** Whether quit has been asked for: the model saved, and is to stop. 
 
+### snapshot
+
+*public std::span<std::byte> snapshot(const SnapshotKey & key, std::size_t bytes)*
+
+
+
+**brief** Room for the snapshot `key`: at least `bytes`, the model's to fill, then `publish`. It grows (allocates, on the model's thread) only past every size asked for before. Empty when `TELEGRAPH_SNAPSHOTS` other snapshots exist already.
+
 ### start
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.cppm:610](../../../../messaging/telegraph.cppm#L610)*
+*Defined at [messaging/telegraph.cppm:643](../../../../messaging/telegraph.cppm#L643)*
 
 
 
@@ -158,7 +174,7 @@
 
 *public SendResult state(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:120](../../../../messaging/telegraph.cppm#L120)*
+*Defined at [messaging/telegraph.cppm:123](../../../../messaging/telegraph.cppm#L123)*
 
 
 
@@ -168,7 +184,7 @@
 
 *public SendResult state(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:130](../../../../messaging/telegraph.cppm#L130)*
+*Defined at [messaging/telegraph.cppm:133](../../../../messaging/telegraph.cppm#L133)*
 
 
 
@@ -190,5 +206,5 @@
 
 *public void ~Telegraph()*
 
-*Defined at [messaging/telegraph.cppm:110](../../../../messaging/telegraph.cppm#L110)*
+*Defined at [messaging/telegraph.cppm:113](../../../../messaging/telegraph.cppm#L113)*
 

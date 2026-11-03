@@ -4,7 +4,9 @@
 // colours, wide characters, the alternate screen, modes, replies, titles,
 // tabs, resizing), the scrollback ring (trimming, eviction, wrap-around),
 // a stream fed one byte at a time read the same as whole, random bytes, and
-// no allocation while feeding.
+// no allocation while feeding; the screen as a snapshot (12.3c): written and
+// read back, row versions, scrolled back into the history, a resize, a
+// snapshot too short or of another layout.
 
 #include <stdio.h>
 
@@ -678,6 +680,104 @@ void random_bytes()
     }
 }
 
+std::vector<std::byte> publish( ScreenPublisher &publisher, Terminal &terminal )
+{
+    std::vector<std::byte> bytes( publisher.bytes_for( terminal ) );
+    CHECK( publisher.write( terminal, bytes ) == bytes.size() );
+    return bytes;
+}
+
+std::string view_text( const ScreenView &view )
+{
+    std::string out;
+    for( std::uint16_t r = 0; r < view.rows(); ++r ) {
+        const std::string line = line_text( view.row( r ) );
+        out += line;
+        out += '\n';
+    }
+    while( out.ends_with( "\n\n" ) ) {
+        out.pop_back();
+    }
+    return out;
+}
+
+void screen_snapshots()
+{
+    Terminal t = small( 10, 3, 4096 );
+    ScreenPublisher publisher;
+    t.feed( "\x1b]2;shell\x07one\r\ntwo\x1b[31mX" );
+    std::vector<std::byte> bytes = publish( publisher, t );
+    std::optional<ScreenView> view = ScreenView::read( bytes );
+    CHECK( view.has_value() );
+    if( !view ) {
+        return;
+    }
+    CHECK( view->columns() == 10 && view->rows() == 3 );
+    CHECK( view_text( *view ) == "one\ntwo\n" || view_text( *view ) == "one\ntwoX\n" );
+    CHECK( line_text( view->row( 1 ) ) == "twoX" );
+    CHECK( view->row( 1 )[3].foreground == ( Rgb{ 205, 0, 0 } ) );
+    CHECK( ( view->cursor() == Cursor{ 4, 1 } ) && view->cursor_shown() );
+    CHECK( view->title() == "shell" );
+    CHECK( view->history_size() == 0 && view->scrolled_back() == 0 );
+    const std::array<std::uint32_t, 3> first{ view->version( 0 ), view->version( 1 ),
+                                              view->version( 2 ) };
+    // Written: the terminal's dirty marks are cleared.
+    CHECK( !t.row_dirty( 0 ) && !t.row_dirty( 1 ) );
+
+    // One row changed: only its version moves.
+    t.feed( "\x1b[3;1Hthree" );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && view->version( 0 ) == first[0] && view->version( 1 ) == first[1] &&
+           view->version( 2 ) != first[2] );
+    CHECK( view && line_text( view->row( 2 ) ) == "three" );
+
+    // The cursor hidden by the program.
+    t.feed( "\x1b[?25l" );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && !view->cursor_shown() );
+    t.feed( "\x1b[?25h" );
+
+    // Scrolled back: the history's lines, then the screen's; every row new.
+    t.feed( "\r\nfour\r\nfive" ); // "one" and "two" scroll off
+    CHECK( t.history_size() == 2 );
+    publisher.scroll_back( 1 );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && view->scrolled_back() == 1 && view->history_size() == 2 );
+    CHECK( view && view_text( *view ) == "twoX\nthree\nfour\n" );
+    CHECK( view && !view->cursor_shown() );
+    // Further back than there is: held to the history.
+    publisher.scroll_back( 99 );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && view->scrolled_back() == 2 && view_text( *view ) == "one\ntwoX\nthree\n" );
+    const std::uint32_t before = view ? view->version( 0 ) : 0;
+    // Back to the screen: every row new again.
+    publisher.scroll_back( 0 );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && view->scrolled_back() == 0 && view->version( 0 ) != before );
+    CHECK( view && view_text( *view ) == "three\nfour\nfive\n" );
+
+    // A resize: the new size, every row new.
+    t.resize( 6, 2 );
+    bytes = publish( publisher, t );
+    view = ScreenView::read( bytes );
+    CHECK( view && view->columns() == 6 && view->rows() == 2 );
+
+    // Too small a buffer: nothing written.
+    std::vector<std::byte> short_buffer( 10 );
+    CHECK( publisher.write( t, short_buffer ) == 0 );
+    // Not a snapshot: refused.
+    CHECK( !ScreenView::read( std::span<const std::byte>{ bytes.data(), 20 } ) );
+    std::vector<std::byte> wrong = bytes;
+    wrong[0] = std::byte{ 9 }; // another layout
+    CHECK( !ScreenView::read( wrong ) );
+    CHECK( !ScreenView::read( std::span<const std::byte>{ bytes.data(), bytes.size() - 1 } ) );
+}
+
 } // namespace
 
 int main()
@@ -698,6 +798,7 @@ int main()
     split_feeding();
     no_allocation_while_feeding();
     random_bytes();
+    screen_snapshots();
     if( failures > 0 ) {
         std::fprintf( stderr, "term_test: %d failed\n", failures );
         return 1;

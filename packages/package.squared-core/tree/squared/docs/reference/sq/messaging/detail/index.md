@@ -3,6 +3,7 @@
 ## Records
 
 * [Packed](Packed.md)
+* [SnapshotChannel](SnapshotChannel.md)
 * [TickClock](TickClock.md)
 
 

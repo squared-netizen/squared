@@ -32,6 +32,7 @@ FREETYPE_SOURCES := base/ftbase.c base/ftinit.c base/ftsystem.c base/ftdebug.c \
     cff/cff.c psaux/psaux.c pshinter/pshinter.c psnames/psnames.c
 FREETYPE_OBJECTS := $(patsubst %.c,$(OBJ_DIR)/font/freetype/%.o,$(FREETYPE_SOURCES))
 OBJECTS += $(FREETYPE_OBJECTS)
+THIRD_PARTY_OBJECTS := $(FREETYPE_OBJECTS)
 
 TARGET := $(LIB_DIR)/libsquared_font.a
 

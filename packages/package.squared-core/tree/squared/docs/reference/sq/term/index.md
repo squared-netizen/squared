@@ -16,6 +16,8 @@
 * [PtyError](PtyError.md)
 * [Pty](Pty.md)
 * [Rgb](Rgb.md)
+* [ScreenPublisher](ScreenPublisher.md)
+* [ScreenView](ScreenView.md)
 * [TerminalConfig](TerminalConfig.md)
 * [TerminalEvents](TerminalEvents.md)
 * [TerminalModes](TerminalModes.md)
