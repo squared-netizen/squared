@@ -183,10 +183,11 @@ objects of the sources tests share are kept in
 
 **Framework objects are cached** (7b.3), by what each compile reads: the
 source and every file it includes by content, the module interfaces it may
-import, the compiler and the flags. The interfaces themselves are compiled
-in each workspace. A compile
-that would read the same again takes the object instead: a new workspace, a
-`make clean`, a header edited and edited back. With squared-pg set up the
+import, the compiler and the flags. Module interfaces are cached the same
+way, their BMI kept with the object. A compile that would read the same
+again takes the object instead: a new workspace (it compiles nothing that
+another workspace on the device already did), a `make clean`, a header
+edited and edited back. With squared-pg set up the
 cache is one for every workspace on the device, `~/sqsysroot/.sqpg/cache`;
 otherwise it is the workspace's `build/cache`, which `make clean` keeps. The
 archive's line says how many came from it:

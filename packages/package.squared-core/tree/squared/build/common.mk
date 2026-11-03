@@ -109,6 +109,9 @@ SQUARED_CXX_VERSION := $(shell $(CXX) --version 2>/dev/null | head -n 1 | tr ' '
 # every compile looks for what it imports.
 SQUARED_MODULE_DIR := $(BUILD_DIR)/modules
 SQUARED_MODULE_USE := -fprebuilt-module-path=$(SQUARED_MODULE_DIR)
+# An interface unit puts its sources in its BMI, so a BMI from the build cache,
+# made in another workspace, reads nothing of that one (build/modules.mk).
+SQUARED_EMBED := -Xclang -fmodules-embed-all-files
 
 # std, the standard library as a module (C++23, libc++'s, pinned in
 # third_party/libcxx/), made by tools/std_bmi.sh once per compiler, flags and

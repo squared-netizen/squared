@@ -12,6 +12,7 @@
 #                           read, one file a line, squared's own written
 #                           @ROOT@/<path>; up to 4, one per set of headers
 #   objects/<k2>.o          an object
+#   objects/<k2>.pcm        and, for a module interface unit, its BMI
 # k1 is an md5 of the compiler's version, the flags (the workspace's own
 # directory in them written @ROOT@), the source's path under @ROOT@ and its
 # contents. k2 is an md5 of k1 and what each file of a list holds now:
@@ -42,6 +43,18 @@
 #                        join what it read, as clang's dependency file does
 #                        not name them (a BMI itself is never part of a key:
 #                        it holds its workspace's paths)
+#   SQUARED_SAY_LINE     the whole line to print instead of `  cc   <it>`
+#                        (an interface says `  mod  sq.gui-label`)
+#
+# A module interface unit (a .cppm, with -fmodule-output=<bmi>) is cached the
+# same way, its BMI with its object, and a hit gives both, or neither (the
+# prune may have taken one). Since 2026-11-02; before, the 233 interfaces were
+# compiled in every workspace. A BMI names its sources by path, so a BMI from
+# another workspace would read that workspace's files: build/modules.mk
+# compiles interfaces with -Xclang -fmodules-embed-all-files, which puts the
+# sources in the BMI (here 40 MB of BMIs became 41 MB), and an importer reads
+# them from there, the other workspace gone or not. The imported BMIs are
+# found by name (-fprebuilt-module-path), in this workspace.
 
 set -euo pipefail
 
@@ -54,6 +67,7 @@ shift
 
 out=
 source=
+bmi=
 flags=()
 while [ $# -gt 0 ]; do
     case $1 in
@@ -68,9 +82,10 @@ while [ $# -gt 0 ]; do
             shift 2
             continue
             ;;
-        *.cpp | *.cc | *.c)
+        *.cpp | *.cc | *.c | *.cppm)
             if [ -z "$source" ]; then source=$1; else flags+=("$1"); fi
             ;;
+        -fmodule-output=*) bmi=${1#-fmodule-output=} ;;
         *) flags+=("$1") ;;
     esac
     shift
@@ -84,9 +99,22 @@ root="${SQUARED_PUBLIC_ROOT%/}"
 cache="${SQUARED_CACHE:-}"
 [ "$cache" = off ] && cache=
 
+# The BMI's flag, when there is one: written beside its name, then renamed.
+bmi_flag=()
+[ -z "$bmi" ] || bmi_flag=(-fmodule-output="$bmi.$$")
+
+say() {
+    if [ -n "${SQUARED_SAY_LINE:-}" ]; then
+        printf '%s\n' "$SQUARED_SAY_LINE"
+    elif [ -n "${SQUARED_SAY:-}" ]; then
+        printf '  %-4s %s\n' cc "$SQUARED_SAY"
+    fi
+}
+
 compile() {
-    [ -z "${SQUARED_SAY:-}" ] || printf '  %-4s %s\n' cc "$SQUARED_SAY"
-    "$cxx" "${flags[@]}" -MD -MP -MT "$out" -MF "$depfile.$$" -c "$source" -o "$out.$$"
+    say
+    "$cxx" "${flags[@]}" "${bmi_flag[@]}" -MD -MP -MT "$out" -MF "$depfile.$$" -c "$source" -o "$out.$$"
+    [ -z "$bmi" ] || mv -f "$bmi.$$" "$bmi"
     mv -f "$out.$$" "$out"
     mv -f "$depfile.$$" "$depfile"
 }
@@ -144,6 +172,7 @@ version="${SQUARED_CXX_VERSION:-$("$cxx" --version 2>/dev/null | head -n 1)}"
 k1=$( {
     printf '%s\n' "$version"
     printf '%s\n' "${flags[@]}" | rooted
+    [ -z "$bmi" ] || printf 'bmi\n'
     printf '%s\n' "$source" | rooted
     md5 <"$source"
 } | md5)
@@ -158,15 +187,21 @@ take() {
         [ -f "$lists/$list" ] || continue
         k2=$(key_of "$lists/$list") || continue
         cp -f "$objects/$k2.o" "$out.$$" 2>/dev/null || continue
+        if [ -n "$bmi" ] && ! cp -f "$objects/$k2.pcm" "$bmi.$$" 2>/dev/null; then
+            rm -f "$out.$$" "$bmi.$$"
+            continue
+        fi
         {
             printf '%s:' "$out"
             unrooted <"$lists/$list" | sed 's|^| |' | tr -d '\n'
             printf '\n'
             unrooted <"$lists/$list" | sed 's|$|:|'
         } >"$depfile.$$" || return 1
+        [ -z "$bmi" ] || mv -f "$bmi.$$" "$bmi"
         mv -f "$out.$$" "$out"
         mv -f "$depfile.$$" "$depfile"
         touch "$objects/$k2.o" "$lists/$list" 2>/dev/null || true
+        [ -z "$bmi" ] || touch "$objects/$k2.pcm" 2>/dev/null || true
         [ -z "${SQUARED_HITS:-}" ] || echo hit >>"$SQUARED_HITS"
         return 0
     done
@@ -192,6 +227,10 @@ keep() {
     fi
     touch "$lists/$name" || return 1
     k2=$(key_of "$lists/$name") || return 1
+    if [ -n "$bmi" ]; then
+        cp -f "$bmi" "$objects/.$k2.pcm.$$" || return 1
+        mv -f "$objects/.$k2.pcm.$$" "$objects/$k2.pcm" || return 1
+    fi
     cp -f "$out" "$objects/.$k2.$$" || return 1
     mv -f "$objects/.$k2.$$" "$objects/$k2.o" || return 1
     # Four sets of headers is plenty: an old workspace and a new one.
@@ -203,11 +242,12 @@ if take; then
     exit 0
 fi
 rm -f "$out.$$" "$depfile.$$"
+[ -z "$bmi" ] || rm -f "$bmi.$$"
 
 started="$out.started.$$"
 mkdir -p "$(dirname "$out")"
 : >"$started"
-trap 'rm -f "$started" "$out.$$" "$depfile.$$"' EXIT
+trap 'rm -f "$started" "$out.$$" "$depfile.$$" ${bmi:+"$bmi.$$"}' EXIT
 compile
 if ! keep "$started"; then
     rm -f "$objects"/.*."$$" "$lists"/.*."$$" 2>/dev/null || true

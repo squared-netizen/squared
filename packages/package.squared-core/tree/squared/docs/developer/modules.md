@@ -215,13 +215,31 @@ types settle, each module becomes one interface unit (the user's plan).
 
 ## The build cache
 
-Implementation units are cached as other objects were: their key adds the
-sources of every interface whose BMI they may import (`SQUARED_CACHE_INPUTS`,
-the module's `.inputs` list; std's is `PINNED`), because clang's dependency
-file names no BMI. Interface units are compiled in each workspace: a fresh
-workspace takes every implementation object from the cache and compiles the
-233 interfaces. A BMI holds its workspace's paths; std's is the exception,
-made where it is shared.
+Every unit is cached, interfaces too since 2026-11-02 (their BMI with their
+object: `objects/<k2>.pcm` beside `<k2>.o`, both or neither). A key adds the
+sources of every interface whose BMI the unit may import
+(`SQUARED_CACHE_INPUTS`, the module's `.inputs` list), because clang's
+dependency file names only the BMIs; and std's `std.inputs`: `PINNED` and
+`std.key`, the std BMI's own key, so a libc++ updated in place (a new std
+BMI) takes nothing made against the old one. An interface waits for its
+module's `.inputs` list: an interface of its own module that it imports is
+part of its key.
+
+**A BMI from another workspace.** A BMI names its sources by path, and an
+importer opens them: a BMI copied into workspace B, with A moved away,
+failed with "cannot open file '<A>/gui/src/detail/ui.cppm'" (clang 21). So
+interfaces are compiled with `-Xclang -fmodules-embed-all-files`
+(`SQUARED_EMBED`): the sources go into the BMI, 40 MB of BMIs became 41 MB,
+and importers need no flag. The BMIs a BMI imports are found by name in the
+importer's own module directory. The umbrella (`squared.cppm`, one compile)
+is not cached, and std's BMI is shared its own way (above).
+
+Measured here (x86, 2 jobs, clang 21), the cache empty: workspace A 47 s
+(219 interfaces); then a fresh workspace B 13.8 s, every unit from the cache
+(18.5 s before, compiling the interfaces), and every test passed in B with A
+moved away. `gui/src/size.cppm` edited in B: gui's 74 interfaces, stage's 6
+and 44 objects compiled, nothing else; edited back: everything from the
+cache.
 
 ## The tools
 

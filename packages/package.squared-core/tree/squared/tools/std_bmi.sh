@@ -21,7 +21,10 @@
 #                             finds it (-fprebuilt-module-path)
 #   <module dir>/std.d        <key>/std.d, for make: a libc++ header that
 #                             changes makes the BMI again
-#   <module dir>/std.inputs   the PINNED record, for the build cache's key
+#   <module dir>/std.inputs   for the build cache's key: PINNED, and
+#                             <module dir>/std.key (this BMI's key), so an
+#                             object or BMI made against another std module
+#                             (a libc++ updated in place) is never taken
 #   <archive>                 <key>/std.o, which every program links
 #
 # The copy, not the pinned files, is made to fit the headers it is built
@@ -187,7 +190,8 @@ ln -sfn "$dir/std.pcm" "$modules/std.pcm"
     sed "1s|^std\\.pcm:|$modules/std.ready:|" "$dir/std.d"
     printf '%s:\n' "$dir/src/std.cppm"
 } > "$modules/std.d"
-printf '%s\n' "$pinned" > "$modules/std.inputs"
+printf '%s\n' "$key" > "$modules/std.key"
+printf '%s\n%s\n' "$pinned" "$modules/std.key" > "$modules/std.inputs"
 rm -f "$archive"
 "${AR:-ar}" rcs "$archive" "$dir/std.o"
 

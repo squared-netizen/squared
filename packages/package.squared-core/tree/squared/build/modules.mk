@@ -32,8 +32,12 @@
 #     importer's object depends on them, and clang's dependency file does not
 #     say so).
 #
-# A BMI is not cached: it holds the paths of its workspace's sources and of the
-# BMIs it imports, so it is made in each workspace. The objects are cached.
+# An interface unit is cached as an object is, its BMI with it
+# (tools/cached_cc.sh, since 2026-11-02): a fresh workspace takes all 233
+# from the cache. A BMI names its sources by path, so interfaces are compiled
+# with -Xclang -fmodules-embed-all-files (SQUARED_EMBED): the sources go into
+# the BMI, and one made in another workspace reads nothing of that workspace's
+# (tried with it moved away). Importers need no flag.
 
 # A build/common.mk from before 7b.4 has no module directory: every BMI would
 # go to /. Said plainly, before anything is compiled.
@@ -87,13 +91,17 @@ $(TESTS): $(SQUARED_IMPORT_PCMS) $(SQUARED_IMPORT_INPUTS)
 endif
 
 ifneq ($(strip $(INTERFACES)),)
-# An interface unit: its object and, beside it, its BMI. -MD: the headers its
-# global module fragment includes (system ones too).
-$(OBJ_DIR)/$(MODULE)/%.cppm.o: $(MODULE_DIR)/%.cppm $(SQUARED_FLAGS_STAMP) $(SQUARED_USED_PCMS)
+# An interface unit: its object and, beside it, its BMI, through the build
+# cache (the dependency file too: the headers its global module fragment
+# includes, system ones as well). It waits for the module's .inputs list, which
+# is part of its key: an interface it imports from its own module may have
+# changed, and clang's dependency file names only that interface's BMI.
+$(OBJ_DIR)/$(MODULE)/%.cppm.o: $(MODULE_DIR)/%.cppm $(SQUARED_FLAGS_STAMP) $(SQUARED_USED_PCMS) \
+                               $(SQUARED_MODULE_INPUTS_FILE)
 	@mkdir -p $(dir $@) $(SQUARED_MODULE_DIR)
-	$(call say,mod,$(call squared_pcm_name,$*))
-	$(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_MODULE_USE) $(INCLUDES) \
-	    -MD -MP -MT $@ -MF $(@:.o=.d) -c $< -fmodule-output=$(call squared_pcm_of,$*) -o $@
+	SQUARED_SAY_LINE='$(if $(filter 1,$(V)),,  mod  $(call squared_pcm_name,$*))' \
+	    $(SQUARED_CC) $(SQUARED_CXXFLAGS) $(SQUARED_EMBED) $(INCLUDES) \
+	    -c $< -fmodule-output=$(call squared_pcm_of,$*) -o $@
 
 # Each BMI is made by its interface's compile.
 $(foreach i,$(INTERFACES:.cppm=),$(eval $(call squared_pcm_of,$(i)): $(OBJ_DIR)/$(MODULE)/$(i).cppm.o ;))
