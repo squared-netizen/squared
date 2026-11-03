@@ -134,7 +134,7 @@ Terminal small( std::uint16_t columns = 10, std::uint16_t rows = 4, std::size_t 
 std::string replies_of( Terminal &terminal )
 {
     const auto bytes = terminal.replies();
-    std::string out( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ); // NOLINT
+    std::string out( reinterpret_cast<const char *>( bytes.data() ), bytes.size() );
     terminal.clear_replies();
     return out;
 }

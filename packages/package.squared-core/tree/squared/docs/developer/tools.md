@@ -151,6 +151,19 @@ without them, or without headers beside it. `make headers` checks the sums.
 Run when the NDK's libc++ moves; then build, test, commit. Why pinned, and
 from where: [modules.md](modules.md#std).
 
+## pin_freetype.sh
+
+`tools/pin_freetype.sh <freetype source>`: copies FreeType's `include/` and
+the sources of the modules the font module builds (base, truetype, sfnt,
+smooth, autofit, cff, psaux, pshinter, psnames; `.c` and `.h` only) from an
+unpacked release or a checkout of its tag into `third_party/freetype/`,
+replacing what was pinned, through a new directory renamed into place; and
+writes `PINNED`: where from (the git tag and commit when it is a
+checkout), the version, the modules, the date, a sha256 for each file.
+Keeps squared's `README.md` there. Refuses a directory that is not
+FreeType's. `make headers` checks the sums. Why, and what is compiled:
+[font.md](font.md#freetype-as-squared-builds-it).
+
 ## std_bmi.sh
 
 `tools/std_bmi.sh <module dir> <archive> <compiler> <flags>...`, run by

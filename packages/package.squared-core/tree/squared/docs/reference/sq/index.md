@@ -9,6 +9,7 @@
 * [detail](detail/index.md)
 * [dev](dev/index.md)
 * [files](files/index.md)
+* [font](font/index.md)
 * [gles](gles/index.md)
 * [graphics](graphics/index.md)
 * [gui](gui/index.md)

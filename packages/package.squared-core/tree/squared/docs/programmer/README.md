@@ -17,6 +17,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [data](data.md) &mdash; strict RFC 8259 JSON parsing and writing
 - [dev](dev.md) &mdash; development aids: a loopback log sink and its listener, crash reporter and frame-allocation counter (not in release builds)
 - [files](files.md) &mdash; virtual filesystem and libGDX-style file handles; files compiled into the program (`EmbeddedFileSystem`, `tools/embed_files.sh`)
+- [font](font.md) &mdash; font faces read and rendered at run time (FreeType): cell metrics, glyphs as 8-bit coverage, bold and italic made
 - [gles](gles.md) &mdash; the GL object layer: buffers, shaders, programs, textures
 - [graphics](graphics.md) &mdash; the rendering context and colour, then textures, atlases, sprites, the sprite batch, the 2D camera and bitmap fonts
 - [gui](gui.md) &mdash; the libGDX-flavoured widget set and skinning, on the Actor/Group/Widget tree and its input routing (the host is internal since 7.7)
@@ -35,6 +36,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 | `data` | 2 | 6 | `import sq.data;` |
 | `dev` | 3 | 1 | `import sq.dev;` |
 | `files` | 5 | 5 | `import sq.files;` |
+| `font` | 5 | 0 | `import sq.font;` |
 | `gles` | 5 | 9 | `import sq.gles;` |
 | `graphics` | 11 | 19 | `import sq.graphics;` |
 | `gui` | 30 | 38 | `import sq.gui;` |

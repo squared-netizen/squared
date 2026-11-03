@@ -34,12 +34,12 @@ SQUARED_GRAPHICS_BACKEND ?= null
 
 MODULES := app math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
-           gui messaging time dev console stage term
+           gui messaging time dev console stage term font
 
 .PHONY: all clean docs docs-check headers lint test retest umbrella sqgen sqconsole $(MODULES)
 
 # The modules with tests, in the order they are run.
-TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage term
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage term font
 
 # Then the build cache, back under its size (build/common.mk, "the build
 # cache"). Quick when it is under: one du.

@@ -151,6 +151,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `BatchPainter` | made with each window's `Drawing`: its scratch text layout, room for 64 glyphs on 4 lines (3,744 bytes, 7.8); grows only for a longer text | global `new`, two `std::vector`s |
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
 | `term::Terminal` | constructor and `resize` only: two grids (rows x columns x 12 bytes, and 3 bytes a row), the scrollback's ring (1 MB unless configured), tab stops; `feed` never allocates (the test counts) ([term.md](term.md#memory)). The `Terminal` itself is 960 bytes (`static_assert`ed at most 1,024), `Cell` 12 (`static_assert`ed) | global `new`, `unique_ptr<T[]>` |
+| `font::Face` | `open_*`: FreeType's library and face, from `malloc` (about 100 KB a face); `render`: the glyph buffer, grown only for a larger glyph. The `Face` itself is 32 bytes (`static_assert`ed) ([font.md](font.md#face)) | `malloc`, FreeType's |
 | `term::Pty::spawn` | each program started: its arguments and environment as C strings and their pointer tables, freed before `spawn` returns; the `Pty` is 16 bytes (`static_assert`ed) and nothing else of it allocates | global `new`, a `std::string` and two `std::vector`s |
 | `std::function` assignment | per callback with captures past SBO | global `new` |
 | `std::string` assignment | per name past SSO (15 bytes) | global `new` |
