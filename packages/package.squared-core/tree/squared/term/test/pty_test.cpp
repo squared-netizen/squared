@@ -1,5 +1,6 @@
 // A program in a pty (12.2), read through a Terminal: what it writes, its
-// exit code, the environment and directory it was given, the size it sees
+// exit code, a name found on PATH (this process's, or the given
+// environment's), the environment and directory it was given, the size it sees
 // and SIGWINCH on a resize, keys written to it, Ctrl-C, a program that
 // cannot run, a full pty, hanging up a program that would run on, and no
 // process left behind.
@@ -137,6 +138,40 @@ void output_and_exit()
     CHECK( pty.poll_exit() == exit ); // asked again: the same
 }
 
+void found_on_path()
+{
+    // A name, found on this process's PATH; argv[0] stays the name.
+    Pty pty;
+    const std::array<std::string_view, 2> arguments{ "-c", "printf 'as %s\\n' \"$0\"" };
+    CHECK( !pty.spawn( { .program = "sh", .arguments = arguments } ) );
+    Terminal terminal = terminal_of();
+    CHECK(
+        pump( pty, terminal, []( const std::string &text ) { return contains( text, "as " ); } ) );
+    CHECK( contains( screen_text( terminal ), "as sh" ) );
+    CHECK( wait_exit( pty ) == ( ProcessExit{ 0, 0 } ) );
+
+    // On the given environment's PATH, not this process's.
+    const std::string directory{ shell().substr( 0, shell().rfind( '/' ) ) };
+    const std::string path = "PATH=/sq-nowhere:" + directory;
+    const std::array<std::string_view, 1> environment{ path };
+    const std::array<std::string_view, 2> echo{ "-c", "echo found" };
+    Pty given;
+    CHECK( !given.spawn( { .program = "sh", .arguments = echo, .environment = environment } ) );
+    Terminal other = terminal_of();
+    CHECK(
+        pump( given, other, []( const std::string &text ) { return contains( text, "found" ); } ) );
+    CHECK( wait_exit( given ) == ( ProcessExit{ 0, 0 } ) );
+
+    // A PATH without it: not found.
+    const std::array<std::string_view, 1> empty_path{ "PATH=/sq-nowhere" };
+    Pty lost;
+    CHECK( !lost.spawn( { .program = "sh", .arguments = echo, .environment = empty_path } ) );
+    Terminal third = terminal_of( 60, 5 );
+    CHECK( pump( lost, third,
+                 []( const std::string &text ) { return contains( text, "not found" ); } ) );
+    CHECK( wait_exit( lost ) == ( ProcessExit{ 127, 0 } ) );
+}
+
 void environment_and_directory()
 {
     Pty pty;
@@ -213,9 +248,17 @@ void cannot_run()
     const auto exit = wait_exit( pty );
     CHECK( exit && exit->code == 127 );
 
+    // A name not on PATH: the same, from the child.
+    Pty missing;
+    CHECK( !missing.spawn( { .program = "sq-no-such-program" } ) );
+    Terminal said = terminal_of( 60, 5 );
+    CHECK( pump( missing, said,
+                 []( const std::string &text ) { return contains( text, "not found" ); } ) );
+    CHECK( contains( screen_text( said ), "pty: cannot run sq-no-such-program: not found" ) );
+    CHECK( wait_exit( missing ) == ( ProcessExit{ 127, 0 } ) );
+
     // Refused before anything is made.
     Pty none;
-    CHECK( none.spawn( { .program = "sh" } ).code == PtyErrorCode::no_program );
     CHECK( none.spawn( {} ).code == PtyErrorCode::no_program );
     CHECK( none.read( std::span<std::byte>{} ) == 0 );
     CHECK( !none.poll_exit() );
@@ -290,6 +333,7 @@ void hang_up()
 int main()
 {
     output_and_exit();
+    found_on_path();
     environment_and_directory();
     size_and_resize();
     keys_and_ctrl_c();

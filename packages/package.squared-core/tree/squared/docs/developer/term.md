@@ -151,9 +151,15 @@ with no porting layer (the porting layer is for what differs).
 is a returned error, not a child that dies); its termios given IUTF8 (the
 line editor erases a whole UTF-8 character) and XON/XOFF off, as Termux's;
 the size set with `TIOCSWINSZ` on the master. Then everything the child
-needs is made: the arguments, the environment and the failure message as
-one `std::string` with a NUL after each, and two `std::vector<char *>` into
-it (`prepare`). Then `fork`.
+needs is made: the program's path, the arguments, the environment and the
+failure message as one `std::string` with a NUL after each, and two
+`std::vector<char *>` into it (`prepare`). A program named without a `/` is
+looked up on PATH here, in the parent (`resolve`: the first `dir/name` that
+`access(X_OK)` accepts, an empty entry being `.`), on the given
+environment's PATH or else this process's, `/system/bin:/usr/bin:/bin` with
+neither; `argv[0]` stays the name as given. Not `execvp` in the child: it is
+not async-signal-safe on every C library. Not found: the child skips
+`execve` and says "not found". Then `fork`.
 
 **The child** (`run_child`) calls only what is async-signal-safe, since the
 parent has threads (an app always does): `setsid`; `ioctl(TIOCSCTTY)`;
@@ -188,10 +194,11 @@ two flags. `spawn` allocates the strings and pointer tables and frees them
 before it returns (in the parent; the child's copies go with `execve`).
 
 Decided without asking (2026-11-03, to say if wrong): the `Pty` lives in
-`sq.term` (POSIX, no platform difference); PATH is not searched (the
-caller passes a path: a terminal app knows where its shell is, and
-`execvp` is not async-signal-safe on every libc); hanging up waits 200 ms
-before SIGKILL; a write waits 1 s by default.
+`sq.term` (POSIX, no platform difference); hanging up waits 200 ms before
+SIGKILL; a write waits 1 s by default. PATH is searched (the user,
+2026-11-03: "Typing the full path is unreasonable"; first shipped without
+it). The environment sqterm gives its shell (PATH, HOME, the prefix) is the
+app's to set, and the user's `.zshrc` to extend (12.5).
 
 ## Character width
 
@@ -267,7 +274,9 @@ line checked); a mixed stream fed whole and one byte at a time, compared
 cell by cell; no allocation while feeding; 2,000 rounds of random,
 sequence-shaped bytes with resizes.
 
-Run here (2026-11-02, clang 21) as built, and with
+Run here (2026-11-02, clang 21) as built; under AddressSanitizer and UBSan
+(2026-11-03, `make BUILD=asan SQUARED_CACHE=off SQUARED_ABI='-fsanitize=
+address,undefined -fno-sanitize-recover=undefined'`); and with
 `SQUARED_ABI='-fsanitize=undefined,bounds -fsanitize-trap=all
 -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG'` (a build of its own,
 `BUILD=hard`): UBSan without a runtime (the sandbox's clang 21 has none), and
@@ -276,13 +285,17 @@ coloured lines (every one scrolling into the scrollback) took 68 ms here.
 
 `term/test/pty_test.cpp` (12.2): a shell (`/bin/sh`, or `/system/bin/sh`
 on Android) in a `Pty`, read through a `Terminal`: output with UTF-8 and the
-exit code; the environment and directory given; the size at the start and
+exit code; a name found on this process's PATH (`argv[0]` kept), on a
+given environment's PATH, and not found (127); the environment and
+directory given; the size at the start and
 again after `resize` (SIGWINCH, read with `stty size` in a trap); a line
 typed and echoed; Ctrl-C ending `sleep` with SIGINT; a program that cannot
-run (the message, 127); refusals (no program, not a path, already running);
+run (the message, 127); refusals (no program, already running);
 a full pty (a 1 MB paste stops at its 200 ms timeout); hanging up a program
 that ignores SIGHUP (killed in time, reaped, `kill(pid, 0)` then fails); a
-moved `Pty`; nothing left after destruction. Run 6 times here, and hardened.
+moved `Pty`; nothing left after destruction. Run 6 times here, hardened,
+and under AddressSanitizer and UBSan with leak checking (2026-11-03: the
+sandbox's clang 21 has its sanitizer runtimes now).
 
 ## Known limits
 

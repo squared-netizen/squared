@@ -13,7 +13,11 @@ export namespace sq::term
  */
 struct PtyConfig
 {
-        /** A path (`/system/bin/sh`): PATH is not searched. */
+        /**
+         * The program: a path (`/system/bin/sh`, `./run.sh`), or a name
+         * (`zsh`) looked up on PATH, as a shell does: the environment's PATH
+         * when `environment` is given, else this process's.
+         */
         std::string_view program;
         /** The arguments after the program's name (its `argv[1]` on). */
         std::span<const std::string_view> arguments;

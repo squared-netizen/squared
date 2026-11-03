@@ -30,14 +30,61 @@ struct Exec
         std::string text;
         std::vector<char *> argv;
         std::vector<char *> envp;
+        /** What execve runs; null when the program was not found on PATH. */
+        const char *path = nullptr;
         const char *directory = nullptr;
         const char *failure = nullptr;
         std::size_t failure_size = 0;
 };
 
+// The PATH the program is looked up on: the given environment's, when one
+// is given, else this process's; with neither, the system's directories.
+std::string_view search_path( const PtyConfig &config ) noexcept
+{
+    if( !config.environment.empty() ) {
+        for( const std::string_view variable : config.environment ) {
+            if( variable.starts_with( "PATH=" ) ) {
+                return variable.substr( 5 );
+            }
+        }
+    } else if( const char *path = ::getenv( "PATH" ) ) {
+        return path;
+    }
+    return "/system/bin:/usr/bin:/bin";
+}
+
+// The program's path: as given when it names a directory (`/bin/sh`,
+// `./run.sh`), else the first executable of that name on PATH, as a shell
+// finds it. Done here, before fork: execvp is not async-signal-safe on every
+// C library. Empty when nothing on PATH has it.
+std::string resolve( const PtyConfig &config )
+{
+    if( config.program.find( '/' ) != std::string_view::npos ) {
+        return std::string{ config.program };
+    }
+    std::string candidate;
+    std::string_view path = search_path( config );
+    while( true ) {
+        const std::size_t colon = path.find( ':' );
+        const std::string_view directory = path.substr( 0, colon );
+        // An empty entry is the current directory, as POSIX has it.
+        candidate.assign( directory.empty() ? "." : directory );
+        candidate.push_back( '/' );
+        candidate.append( config.program );
+        if( ::access( candidate.c_str(), X_OK ) == 0 ) {
+            return candidate;
+        }
+        if( colon == std::string_view::npos ) {
+            return {};
+        }
+        path.remove_prefix( colon + 1 );
+    }
+}
+
 Exec prepare( const PtyConfig &config )
 {
     Exec exec;
+    const std::string path = resolve( config );
     std::vector<std::size_t> argv_at;
     std::vector<std::size_t> envp_at;
     const auto add = [&exec]( std::string_view text ) {
@@ -53,6 +100,7 @@ Exec prepare( const PtyConfig &config )
     for( const std::string_view variable : config.environment ) {
         envp_at.push_back( add( variable ) );
     }
+    const std::size_t path_at = path.empty() ? 0 : add( path );
     const std::size_t directory_at = config.directory.empty() ? 0 : add( config.directory );
     std::string failure = "pty: cannot run ";
     failure.append( config.program );
@@ -70,6 +118,7 @@ Exec prepare( const PtyConfig &config )
         }
         exec.envp.push_back( nullptr );
     }
+    exec.path = path.empty() ? nullptr : base + path_at;
     exec.directory = config.directory.empty() ? nullptr : base + directory_at;
     exec.failure = base + failure_at;
     exec.failure_size = failure.size();
@@ -128,8 +177,7 @@ std::string_view reason( int error ) noexcept
     for( int fd = 3; fd < max_fd; ++fd ) {
         ::close( fd );
     }
-    struct sigaction initial
-    {};
+    struct sigaction initial{};
     initial.sa_handler = SIG_DFL;
     ::sigemptyset( &initial.sa_mask );
     for( int signal = 1; signal < NSIG; ++signal ) {
@@ -142,8 +190,11 @@ std::string_view reason( int error ) noexcept
         say( "pty: cannot change to the directory asked for; staying where it was\n" );
     }
     char *const *environment = exec.envp.empty() ? environ : exec.envp.data();
-    ::execve( exec.argv[0], exec.argv.data(), environment );
-    const int error = errno;
+    int error = ENOENT; // not on PATH
+    if( exec.path != nullptr ) {
+        ::execve( exec.path, exec.argv.data(), environment );
+        error = errno;
+    }
     say( exec.failure, exec.failure_size );
     say( reason( error ) );
     ::_exit( 127 );
@@ -190,7 +241,7 @@ PtyError Pty::spawn( const PtyConfig &config )
     if( pid_ > 0 && !exited_ ) {
         return { PtyErrorCode::already_running, 0 };
     }
-    if( config.program.empty() || config.program.find( '/' ) == std::string_view::npos ) {
+    if( config.program.empty() ) {
         return { PtyErrorCode::no_program, 0 };
     }
     hang_up();

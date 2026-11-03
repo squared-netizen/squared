@@ -10,7 +10,7 @@ enum class PtyErrorCode : std::uint8_t {
     none,
     /** This `Pty` runs a program already. */
     already_running,
-    /** `PtyConfig::program` is empty, or is not a path. */
+    /** `PtyConfig::program` is empty. */
     no_program,
     /** The pseudo-terminal could not be made (`posix_openpt`, `grantpt`, `unlockpt`, `ptsname_r`). */
     open_master,
@@ -43,7 +43,7 @@ struct PtyError
                 case PtyErrorCode::already_running:
                     return "a program is running in this pty already";
                 case PtyErrorCode::no_program:
-                    return "no program: give its path";
+                    return "no program given";
                 case PtyErrorCode::open_master:
                     return "could not make a pseudo-terminal";
                 case PtyErrorCode::open_slave:

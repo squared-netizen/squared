@@ -30,7 +30,7 @@ Developer counterpart: [../developer/term.md](../developer/term.md)
 | `TerminalModes` | `squared/term/terminal_modes.cppm` | What a program has set that changes what the owner does: cursor keys, cursor visible, bracketed paste, alternate screen, autowrap, insert |
 | `TerminalEvents` | `squared/term/terminal_events.cppm` | The bell rang; the title changed |
 | `Pty` | `squared/term/pty.cppm` | A program in a pseudo-terminal: start it, read what it writes, write keys, resize, see it end, hang up |
-| `PtyConfig` | `squared/term/pty_config.cppm` | The program's path, arguments, environment, directory, and the terminal's size |
+| `PtyConfig` | `squared/term/pty_config.cppm` | The program (a path, or a name looked up on PATH), arguments, environment, directory, and the terminal's size |
 | `PtyError`, `PtyErrorCode` | `squared/term/pty_error.cppm` | Why starting it failed: the step, and its `errno` |
 | `ProcessExit` | `squared/term/process_exit.cppm` | How it ended: the exit code, or the signal |
 
@@ -137,7 +137,7 @@ if( const auto exit = shell.poll_exit() ) { /* exit->code, or exit->signal */ }
 
 | Call | Does |
 |---|---|
-| `spawn(config)` | starts `config.program` (a path: PATH is not searched) with `config.arguments` after its name, in a new session with the pty as its terminal, sized `columns` x `rows`. `environment` empty: this process's own; `directory` empty: this process's. An error (true) when it could not |
+| `spawn(config)` | starts `config.program` (a path such as `/system/bin/sh` or `./run.sh`, or a name such as `zsh`, looked up on PATH as a shell does: the given environment's PATH, else this process's) with `config.arguments` after its name, in a new session with the pty as its terminal, sized `columns` x `rows`. `environment` empty: this process's own; `directory` empty: this process's. An error (true) when it could not |
 | `read(into)` | what the program wrote, up to `into.size()` bytes; 0 when nothing waits. Never blocks |
 | `write(bytes, timeout_ms)`, `write(text, timeout_ms)` | sends keys or a paste; waits for room up to `timeout_ms` (1000) in all and returns how many bytes went |
 | `resize(columns, rows)` | the new size; the program gets SIGWINCH |
@@ -148,10 +148,10 @@ if( const auto exit = shell.poll_exit() ) { /* exit->code, or exit->signal */ }
 | `fd()`, `pid()` | the pty, to wait on with poll alongside other things; the program's process |
 
 Failure modes, returned by `spawn` (`PtyError::code`): `already_running`
-(this `Pty` has a program that has not ended), `no_program` (empty, or not a
-path), `open_master`, `open_slave`, `fork`, each with its `errno` in
-`system_error`; `what()` says it in words. A program that cannot be run is
-not one of them: the process was made, so it writes
+(this `Pty` has a program that has not ended), `no_program` (empty),
+`open_master`, `open_slave`, `fork`, each with its `errno` in
+`system_error`; `what()` says it in words. A program that cannot be run (or
+a name not on PATH) is not one of them: the process was made, so it writes
 `pty: cannot run <program>: <why>` to the terminal and exits with 127. On
 Android 10 and later the "why" for a program in an app's own folder is
 "permission denied" unless the app targets SDK 28 (sqterm does).
