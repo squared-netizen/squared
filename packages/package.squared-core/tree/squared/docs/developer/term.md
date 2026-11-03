@@ -2,7 +2,8 @@
 
 Sprint 12.1 (2026-11-02): the core of sqterm's terminal, a module of its own
 so the Neovim front end (9d) and any app with a terminal pane use it too.
-Bytes in, cells out; nothing of a pty, a renderer or keys.
+Bytes in, cells out (`Terminal`). Sprint 12.2 (2026-11-03): a program in a
+pseudo-terminal (`Pty`), apart from the `Terminal`: neither knows the other.
 
 Programmer counterpart: [../programmer/term.md](../programmer/term.md)
 
@@ -29,9 +30,10 @@ Programmer counterpart: [../programmer/term.md](../programmer/term.md)
 term/
   cell.cppm cell_attributes.cppm cell_flags.cppm rgb.cppm cursor.cppm
   terminal.cppm terminal_config.cppm terminal_events.cppm terminal_modes.cppm module.cppm
+  pty.cppm pty_config.cppm pty_error.cppm process_exit.cppm
   src/   utf8_decoder.cppm parser.cppm csi_sequence.cppm char_width.cppm palette.cppm
-         grid.cppm grid.cpp scrollback.cppm scrollback.cpp terminal.cpp
-  test/  term_test.cpp
+         grid.cppm grid.cpp scrollback.cppm scrollback.cpp terminal.cpp pty.cpp
+  test/  term_test.cpp pty_test.cpp
   Makefile
 ```
 
@@ -139,6 +141,58 @@ modes. 960 bytes (`static_assert`ed at most 1024).
   and clears the alternate screen on the way in, restores them on the way
   out.
 
+## Pty
+
+POSIX only, the same calls on Linux and Android, so it sits in this module
+with no porting layer (the porting layer is for what differs).
+
+**spawn.** `posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC)`, `grantpt`,
+`unlockpt`, `ptsname_r`; the other end opened in the parent (so a failure
+is a returned error, not a child that dies); its termios given IUTF8 (the
+line editor erases a whole UTF-8 character) and XON/XOFF off, as Termux's;
+the size set with `TIOCSWINSZ` on the master. Then everything the child
+needs is made: the arguments, the environment and the failure message as
+one `std::string` with a NUL after each, and two `std::vector<char *>` into
+it (`prepare`). Then `fork`.
+
+**The child** (`run_child`) calls only what is async-signal-safe, since the
+parent has threads (an app always does): `setsid`; `ioctl(TIOCSCTTY)`;
+`dup2` onto 0, 1 and 2; `close` of every descriptor from 3 to the soft
+`RLIMIT_NOFILE` (at most 65,536): an app's binder, sockets and files never
+reach the program (`close_range` would be one call, but it is API 31 and
+Linux 5.9, and squared builds for API 22); every signal's disposition back
+to default and the mask cleared (an app's runtime blocks and catches
+several); `chdir`; `execve`. If `execve` fails, the child writes
+`pty: cannot run <program>: <why>` (the why chosen from `errno` by a switch
+over fixed strings; `strerror` is not async-signal-safe) to the terminal and
+`_exit(127)`.
+
+**The parent** closes its copy of the other end and makes the master
+non-blocking. `read` returns 0 on `EAGAIN`; `EIO` (Linux, once every
+process has closed the other end) or 0 sets `closed()`. `write` loops over
+partial writes and, on `EAGAIN`, polls for `POLLOUT` until its deadline. In
+line mode (ICANON) Linux's line discipline drops input past its 4,095-byte
+buffer instead of pushing back, so only a program that turned line mode off
+can fill it (the test does, with `stty -icanon`).
+
+**Ending.** `poll_exit` is `waitpid(WNOHANG)`; the status is kept, so asking
+again gives the same answer. `hang_up` closes the master, sends SIGHUP to the
+process group (the child is its session's and group's leader, so `-pid`),
+polls 20 times 10 ms, then SIGKILLs the group and the process and waits.
+The destructor calls it: a `Pty` leaves no process and no zombie behind.
+`ECHILD` from `waitpid` (an app's own SIGCHLD handler reaped it) counts as
+ended, exit code unknown (0).
+
+**Size.** 16 bytes (`static_assert`ed): the master, the pid, the status,
+two flags. `spawn` allocates the strings and pointer tables and frees them
+before it returns (in the parent; the child's copies go with `execve`).
+
+Decided without asking (2026-11-03, to say if wrong): the `Pty` lives in
+`sq.term` (POSIX, no platform difference); PATH is not searched (the
+caller passes a path: a terminal app knows where its shell is, and
+`execvp` is not async-signal-safe on every libc); hanging up waits 200 ms
+before SIGKILL; a write waits 1 s by default.
+
 ## Character width
 
 `detail::char_width`: 0 (combining marks: Mn, Me, Cf; Hangul medial vowels
@@ -169,6 +223,9 @@ decade).
 | Scrollback ring | constructor | `scrollback_bytes`, rounded down to 12 |
 | Tab stops | constructor, `resize` | 8 bytes per 64 columns |
 | `feed` | never | 0 |
+| `Pty` itself | where its owner puts it | 16 bytes |
+| `Pty::spawn` | each start, freed before it returns | the arguments and environment, once, plus two pointer tables |
+| `Pty::read`, `write`, `resize`, `poll_exit` | never | 0 |
 
 80 x 24 with the default scrollback: 2 x 23,112 + 1,048,572 + 16 + 960, about
 1.05 MB. A phone's portrait 50 x 40: about 1.1 MB. The test counts every
@@ -217,9 +274,23 @@ Run here (2026-11-02, clang 21) as built, and with
 libc++'s checks on every `span` and `array` index. A feed of 3.4 MB of
 coloured lines (every one scrolling into the scrollback) took 68 ms here.
 
+`term/test/pty_test.cpp` (12.2): a shell (`/bin/sh`, or `/system/bin/sh`
+on Android) in a `Pty`, read through a `Terminal`: output with UTF-8 and the
+exit code; the environment and directory given; the size at the start and
+again after `resize` (SIGWINCH, read with `stty size` in a trap); a line
+typed and echoed; Ctrl-C ending `sleep` with SIGINT; a program that cannot
+run (the message, 127); refusals (no program, not a path, already running);
+a full pty (a 1 MB paste stops at its 200 ms timeout); hanging up a program
+that ignores SIGHUP (killed in time, reaped, `kill(pid, 0)` then fails); a
+moved `Pty`; nothing left after destruction. Run 6 times here, and hardened.
+
 ## Known limits
 
 - No rewrap on resize; no combining marks; no palette changes (OSC 4); no
   origin mode, left and right margins, character sets (`ESC ( 0`), mouse
   reporting, or OSC 52 (the clipboard). Each waits for a use.
 - `REP` repeats at most a screenful.
+- `Pty`: one program per `Pty`; no reading of the program's current
+  directory or name (`/proc/<pid>` can, later); a write is synchronous up to
+  its timeout, so a large paste into a busy program waits on the caller's
+  thread.

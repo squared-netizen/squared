@@ -1,8 +1,9 @@
 # Build term into lib/libsquared_term.a
 #
 # A terminal emulator's core (Sprint 12, sqterm): bytes in, a screen of cells
-# out. No pty, no drawing, no platform code: it builds and is tested the same
-# on the host and for Android.
+# out; a program in a pseudo-terminal (POSIX, the same on Linux and Android).
+# No drawing, no platform code: it builds and is tested the same on the host
+# and for Android.
 
 include $(dir $(lastword $(MAKEFILE_LIST)))../build/common.mk
 
@@ -12,6 +13,7 @@ MODULE_DIR := $(SQUARED_ROOT)/term
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/grid.cpp \
+    src/pty.cpp \
     src/scrollback.cpp \
     src/terminal.cpp
 
@@ -25,8 +27,12 @@ all: $(TARGET)
 # The parser, the screen and the scrollback against hand-written streams;
 # random bytes; no allocation while feeding.
 TERM_TEST := $(BUILD_DIR)/term_test
+# A shell in a pty, read through a Terminal: output, exit codes, the
+# environment and directory, resizing, Ctrl-C, a program that cannot run,
+# hanging up.
+PTY_TEST := $(BUILD_DIR)/pty_test
 
-TESTS := $(TERM_TEST)
+TESTS := $(TERM_TEST) $(PTY_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -52,6 +58,15 @@ $(TARGET): $(OBJECTS)
 $(OBJ_DIR)/term/%.o: $(MODULE_DIR)/%.cpp $(SQUARED_FLAGS_STAMP)
 	@mkdir -p $(dir $@)
 	$(SQUARED_CC) $(SQUARED_CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+$(PTY_TEST): $(MODULE_DIR)/test/pty_test.cpp \
+             $(MODULE_DIR)/src/grid.cpp \
+             $(MODULE_DIR)/src/pty.cpp \
+             $(MODULE_DIR)/src/scrollback.cpp \
+             $(MODULE_DIR)/src/terminal.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@
 
 clean:
 	rm -rf $(OBJ_DIR)/term $(TARGET)

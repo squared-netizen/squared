@@ -11,6 +11,10 @@
 * [CellFlags](CellFlags.md)
 * [Cell](Cell.md)
 * [Cursor](Cursor.md)
+* [ProcessExit](ProcessExit.md)
+* [PtyConfig](PtyConfig.md)
+* [PtyError](PtyError.md)
+* [Pty](Pty.md)
 * [Rgb](Rgb.md)
 * [TerminalConfig](TerminalConfig.md)
 * [TerminalEvents](TerminalEvents.md)
@@ -40,6 +44,12 @@
 
 ### operator==
 
+*bool operator==(ProcessExit , ProcessExit )*
+
+*Defined at [term/process_exit.cppm:16](../../../../term/process_exit.cppm#L16)*
+
+### operator==
+
 *bool operator==(Rgb , Rgb )*
 
 *Defined at [term/rgb.cppm:15](../../../../term/rgb.cppm#L15)*
@@ -55,4 +65,24 @@
 *bool operator==(const Cell & , const Cell & )*
 
 *Defined at [term/cell.cppm:28](../../../../term/cell.cppm#L28)*
+
+## Enums
+
+| enum class PtyErrorCode |
+
+--
+
+| none |
+| already_running |
+| no_program |
+| open_master |
+| open_slave |
+| fork |
+
+
+*Defined at [term/pty_error.cppm:9](../../../../term/pty_error.cppm#L9)*
+
+
+
+**brief** Which step of starting a program failed. 
 

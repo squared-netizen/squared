@@ -2,8 +2,10 @@
 
 A terminal emulator's core, for sqterm (Sprint 12) and any app that shows a
 program's output: the bytes a program writes go in, a screen of cells comes
-out. It owns no pty, draws nothing and reads no keys, so it runs on the
-model's thread, on the host, and in a test with no program at all.
+out (`Terminal`); and a program running in a pseudo-terminal, to read those
+bytes from and write keys to (`Pty`). The two are apart: a `Terminal` owns
+no pty, draws nothing and reads no keys, so it runs on the model's thread,
+on the host, and in a test with no program at all.
 
 It reads ECMA-48 over UTF-8: control functions, control sequences, colours
 and attributes (SGR, with 256 colours and 24-bit colour), and operating
@@ -27,19 +29,28 @@ Developer counterpart: [../developer/term.md](../developer/term.md)
 | `Cursor` | `squared/term/cursor.cppm` | Column and row, from 0 at the top left |
 | `TerminalModes` | `squared/term/terminal_modes.cppm` | What a program has set that changes what the owner does: cursor keys, cursor visible, bracketed paste, alternate screen, autowrap, insert |
 | `TerminalEvents` | `squared/term/terminal_events.cppm` | The bell rang; the title changed |
+| `Pty` | `squared/term/pty.cppm` | A program in a pseudo-terminal: start it, read what it writes, write keys, resize, see it end, hang up |
+| `PtyConfig` | `squared/term/pty_config.cppm` | The program's path, arguments, environment, directory, and the terminal's size |
+| `PtyError`, `PtyErrorCode` | `squared/term/pty_error.cppm` | Why starting it failed: the step, and its `errno` |
+| `ProcessExit` | `squared/term/process_exit.cppm` | How it ended: the exit code, or the signal |
 
 ## The shortest use
 
 ```cpp
 sq::term::Terminal terminal{ { .columns = 80, .rows = 24 } };
-terminal.feed( bytes_read_from_the_program );        // any piece of the stream
+sq::term::Pty shell;
+if( const auto error = shell.spawn( { .program = "/system/bin/sh" } ) ) {
+    report( error.what() );
+}
+std::array<std::byte, 4096> buffer;
+terminal.feed( { buffer.data(), shell.read( buffer ) } );   // any piece of the stream
 for( std::uint16_t r = 0; r < terminal.rows(); ++r ) {
     if( terminal.row_dirty( r ) ) {
         draw( r, terminal.row( r ) );                 // std::span<const sq::term::Cell>
     }
 }
 terminal.clear_dirty();
-write_to_the_program( terminal.replies() );           // a cursor position report, say
+shell.write( terminal.replies() );                    // a cursor position report, say
 terminal.clear_replies();
 ```
 
@@ -102,3 +113,53 @@ now: the letter shows without it.
 | OSC | 0 and 2, the title |
 
 Erasing fills with the current background colour.
+
+## Pty
+
+A program in a pseudo-terminal, the same on Linux and Android (POSIX). Its
+terminal starts with UTF-8 input and without XON/XOFF, so Ctrl-S and Ctrl-Q
+reach the program.
+
+```cpp
+sq::term::Pty shell;
+const std::array<std::string_view, 2> environment{ "TERM=sqterm", "HOME=/data/..." };
+if( const auto error = shell.spawn( { .program = "/system/bin/sh", .environment = environment,
+                                      .columns = 80, .rows = 24 } ) ) {
+    report( error.what(), error.system_error );
+}
+shell.write( "ls\r" );                         // keys: Enter is \r, Ctrl-C is \x03
+if( shell.wait_readable( 16 ) ) {
+    terminal.feed( { buffer.data(), shell.read( buffer ) } );
+}
+shell.resize( terminal.columns(), terminal.rows() );   // after terminal.resize
+if( const auto exit = shell.poll_exit() ) { /* exit->code, or exit->signal */ }
+```
+
+| Call | Does |
+|---|---|
+| `spawn(config)` | starts `config.program` (a path: PATH is not searched) with `config.arguments` after its name, in a new session with the pty as its terminal, sized `columns` x `rows`. `environment` empty: this process's own; `directory` empty: this process's. An error (true) when it could not |
+| `read(into)` | what the program wrote, up to `into.size()` bytes; 0 when nothing waits. Never blocks |
+| `write(bytes, timeout_ms)`, `write(text, timeout_ms)` | sends keys or a paste; waits for room up to `timeout_ms` (1000) in all and returns how many bytes went |
+| `resize(columns, rows)` | the new size; the program gets SIGWINCH |
+| `wait_readable(timeout_ms)` | waits up to `timeout_ms` for something to read, or for the end |
+| `poll_exit()` | how the program ended, once it has (the process is reaped then); nothing while it runs |
+| `closed()` | nothing more will come: every process holding the terminal has closed it |
+| `hang_up()` | ends the program: SIGHUP to its process group, SIGKILL after 200 ms if it is still there; closes the pty. The destructor does it |
+| `fd()`, `pid()` | the pty, to wait on with poll alongside other things; the program's process |
+
+Failure modes, returned by `spawn` (`PtyError::code`): `already_running`
+(this `Pty` has a program that has not ended), `no_program` (empty, or not a
+path), `open_master`, `open_slave`, `fork`, each with its `errno` in
+`system_error`; `what()` says it in words. A program that cannot be run is
+not one of them: the process was made, so it writes
+`pty: cannot run <program>: <why>` to the terminal and exits with 127. On
+Android 10 and later the "why" for a program in an app's own folder is
+"permission denied" unless the app targets SDK 28 (sqterm does).
+
+Preconditions: one thread uses a `Pty`. Moved, not copied.
+
+A program that reads nothing fills the pty: a `write` then waits up to its
+timeout and returns short. In line mode (the default, until a program turns
+it off) the line discipline drops what does not fit instead, and a write
+never waits.
+
