@@ -43,7 +43,14 @@ OBJ_DIR := $(BUILD_DIR)/obj
 # isalpha and the rest static inline, which a module cannot export; with it
 # they are plain inline, in the std module and in a file that includes
 # <ctype.h> itself alike. Elsewhere it names nothing.
-STANDARD := -std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline
+#
+# -stdlib=libc++ only where nothing names libc++'s headers already: an Android
+# build gives the NDK's with -stdlib++-isystem (the template's flags), and
+# there clang warned "argument unused during compilation: '-stdlib=libc++'"
+# on every interface (the demo's build, 2026-11-02). Android's C++ library is
+# libc++ in any case.
+squared_names_libcxx = $(findstring -stdlib++-isystem,$(CXXFLAGS_EXTRA) $(SQUARED_EXTERNAL_INCLUDES))
+STANDARD = -std=c++23 $(if $(squared_names_libcxx),,-stdlib=libc++) -pthread -D__BIONIC_CTYPE_INLINE=inline
 WARNINGS := -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
 
 ifeq ($(BUILD),debug)

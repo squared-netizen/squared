@@ -108,6 +108,7 @@ the module makes with the extra flags already in it and get them twice.
 
 Tests and tools build with `TESTFLAGS = $(STANDARD) -O1 -g $(SQUARED_ABI)`
 (`STANDARD`: `-std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline`,
+`-stdlib=libc++` left out where `-stdlib++-isystem` names the headers,
 [modules.md](modules.md#what-an-importer-must-share)). The
 `$(SQUARED_ABI)` is new: before, `make SQUARED_ABI=-fno-rtti test` failed to
 link `gui`'s tests, built with RTTI against archives without it (`undefined

@@ -1,2 +1,0 @@
-# The order of sq.math's interfaces (tools/module_deps.sh); written by the build.
-/data/data/com.termux/files/home/projects/squared-pg/resources/.squared/packages/package.squared-core/tree/squared/build/lint-android/obj/math/module.cppm.o: /data/data/com.termux/files/home/projects/squared-pg/resources/.squared/packages/package.squared-core/tree/squared/build/lint-android/modules/sq.math-matrix4.pcm /data/data/com.termux/files/home/projects/squared-pg/resources/.squared/packages/package.squared-core/tree/squared/build/lint-android/modules/sq.math-vector2.pcm

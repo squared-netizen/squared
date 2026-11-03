@@ -72,7 +72,9 @@ its sources (`std.cppm`, `std/*.inc`) are pinned in `third_party/libcxx/`
   std module is made: libstdc++ ships no std module before GCC 15. A desktop
   installs libc++ (Debian and Ubuntu: `libc++-dev libc++abi-dev`);
   `STANDARD` passes `-stdlib=libc++` (Android's and Termux's default
-  already).
+  already), except where the flags name libc++'s headers already
+  (`-stdlib++-isystem`, an Android build): there clang warned it was
+  unused, on every interface of the demo's build (2026-11-02).
 - **Made once per compiler, flags and libc++, and shared.**
   `tools/std_bmi.sh` (run by `build/common.mk`'s std rule) makes it in
   `$(SQUARED_STD_HOME)/<key>/`: `~/sqsysroot/.sqpg/std/<key>/` when
@@ -169,8 +171,9 @@ clang refuses a BMI made with other language options: "configuration
 mismatch". Measured: `-O`, `-g`, `-fPIC` and `-D` may differ; the C++
 standard, threads, RTTI and exceptions may not. So:
 
-- `STANDARD := -std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline`
-  (`build/common.mk`): the framework, tests and tools; `-pthread` changes
+- `STANDARD = -std=c++23 -stdlib=libc++ -pthread -D__BIONIC_CTYPE_INLINE=inline`
+  (`build/common.mk`; `-stdlib=libc++` only without `-stdlib++-isystem`):
+  the framework, tests and tools; `-pthread` changes
   nothing on Android but the check.
 - A project's code gets `-pthread -D__BIONIC_CTYPE_INLINE=inline
   -fprebuilt-module-path=...` from `mk/pkg_squared_core.mk`, and must keep

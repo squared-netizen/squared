@@ -7,10 +7,11 @@
 /kits/kit.sfml/tree/sq_kit/include/SFML/
 /kits/kit.sfml/tree/sq_kit/BUILD-INFO
 
-# Framework development inside a package payload. build/common.mk is source
-# and stays tracked; everything else under build/ is output.
-packages/*/tree/squared/build/release/
-packages/*/tree/squared/build/debug/
+# Framework development inside a package payload. The files directly in
+# squared/build/ (common.mk, modules.mk) are source and stay tracked; every
+# directory under it is output: release, debug, host, cache, lint-android
+# (lint's Android BMIs, committed once by `git add -A`, 2026-11-02).
+packages/*/tree/squared/build/*/
 packages/*/tree/squared/local.mk
 
 *.bak.[0-9]*-[0-9]*
