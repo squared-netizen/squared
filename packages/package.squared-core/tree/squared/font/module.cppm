@@ -3,8 +3,11 @@
 
 export module sq.font;
 
+export import :atlas_glyph;
 export import :face;
 export import :face_error;
 export import :font_metrics;
+export import :font_set;
+export import :glyph_atlas;
 export import :glyph_bitmap;
 export import :glyph_style;

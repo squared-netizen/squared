@@ -42,7 +42,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [dev](dev.md) &mdash; loopback log sink and its listener, crash reporter and frame-allocation counter (development only)
 - [files](files.md)
   - [asset-index](asset-index.md) &mdash; how nested APK assets are listed
-- [font](font.md) &mdash; FreeType pinned and configured from outside, what is compiled and what it costs, `Face`, tests (Sprint 12.3a)
+- [font](font.md) &mdash; FreeType pinned and configured from outside, what is compiled and what it costs, `Face`, `FontSet` and its fallbacks, `GlyphAtlas`'s table and shelves, tests (Sprint 12.3a and b)
 - [gles](gles.md)
 - [graphics](graphics.md) &mdash; includes the former `graphics2d`
 - [gui](gui.md) &mdash; includes the former `scene2d`

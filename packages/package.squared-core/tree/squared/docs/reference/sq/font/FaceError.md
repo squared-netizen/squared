@@ -1,6 +1,6 @@
 # struct FaceError
 
-*Defined at [font/face_error.cppm:27](../../../../font/face_error.cppm#L27)*
+*Defined at [font/face_error.cppm:29](../../../../font/face_error.cppm#L29)*
 
 
 
@@ -22,11 +22,11 @@ public int freetype_error
 
 *public bool operator bool()*
 
-*Defined at [font/face_error.cppm:32](../../../../font/face_error.cppm#L32)*
+*Defined at [font/face_error.cppm:34](../../../../font/face_error.cppm#L34)*
 
 ### what
 
 *public std::string_view what()*
 
-*Defined at [font/face_error.cppm:37](../../../../font/face_error.cppm#L37)*
+*Defined at [font/face_error.cppm:39](../../../../font/face_error.cppm#L39)*
 

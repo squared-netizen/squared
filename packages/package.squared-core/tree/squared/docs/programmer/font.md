@@ -18,6 +18,9 @@ Developer counterpart: [../developer/font.md](../developer/font.md)
 | `GlyphBitmap` | `squared/font/glyph_bitmap.cppm` | A rendered glyph: coverage rows, size, bearings, advance |
 | `GlyphStyle` | `squared/font/glyph_style.cppm` | Bold and italic, made from the face when it lacks them |
 | `FaceError`, `FaceErrorCode` | `squared/font/face_error.cppm` | Why opening or sizing failed |
+| `FontSet` | `squared/font/font_set.cppm` | The faces a terminal draws with: the primary, its bold, fallbacks for what it lacks |
+| `GlyphAtlas` | `squared/font/glyph_atlas.cppm` | Glyphs rendered once into one coverage image, for one texture |
+| `AtlasGlyph` | `squared/font/atlas_glyph.cppm` | Where a glyph is in the atlas, and how it sits on the baseline |
 
 ## The shortest use
 
@@ -53,7 +56,58 @@ uses a face; faces on different threads are independent.
 Failure modes (`FaceError::code`, with FreeType's own error in
 `freetype_error`): `library` (FreeType could not start: out of memory),
 `open` (missing, or not a font FreeType reads), `no_such_face` (no face of
-that index), `size` (0, or a size a bitmap-only font lacks), `not_open`.
+that index), `size` (0, or a size a bitmap-only font lacks), `not_open`,
+`set_full` (a `FontSet` already holds `max_faces`).
+
+## FontSet
+
+```cpp
+sq::font::FontSet fonts;
+(void)fonts.add( std::move( regular ) );          // the primary: its cell is the grid's
+(void)fonts.set_bold( std::move( bold ) );
+fonts.add_system_fallbacks();                     // Noto CJK and symbols, where they are
+(void)fonts.set_pixel_size( 32 );
+```
+
+| Call | Does |
+|---|---|
+| `add(face)` | a regular face (opened), after those before; the first is the primary. Sized to the set's size if one is set |
+| `set_bold(face)` | the primary's bold face |
+| `add_system_fallbacks()` | opens and adds each of `system_fallback_paths()` that exists here, in order, until the set is full; returns how many |
+| `set_pixel_size(pixels)` | every face at `pixels`; `metrics()` is the primary's |
+| `choose(code, bold)` | which face draws `code`: for bold the bold face when it has it, else the first face that does; nothing when none has it |
+| `render(code, style, chosen)` | `code` rendered by that face, `style` made where the face lacks it; `chosen` (optional) says which |
+| `size()`, `has_bold()`, `max_faces` (8) | faces held |
+
+`system_fallback_paths()`, in order: Android's Noto Sans CJK and Noto Sans
+SC, the Droid Sans Fallback fonts of Android 6 and before (the 5.1
+tablet's), Noto Sans Symbols; then a Debian desktop's Noto Sans CJK and
+DejaVu. A wide character drawn by a fallback is about an em wide, less than
+its two cells: centre it in them.
+
+## GlyphAtlas
+
+```cpp
+sq::font::GlyphAtlas atlas;                       // 1024 x 1024, 2,048 glyphs
+const auto g = atlas.glyph( fonts, U'A', { .bold = cell.attributes.bold } );
+if( g ) { quad( g->x, g->y, g->width, g->height, pen_x + g->left, baseline - g->top ); }
+if( !atlas.dirty().empty() ) {
+    texture.update( atlas.pixels(), atlas.dirty() );   // the changed rectangle only
+    atlas.clear_dirty();
+}
+```
+
+| Call | Does |
+|---|---|
+| `GlyphAtlas(width, height, capacity)` | an empty image (1024 x 1024 bytes) and room for `capacity` glyphs (2,048) |
+| `glyph(fonts, code, style)` | where `code` in `style` is: rendered by `fonts` the first time, found after that; nothing when no face has it (remembered, so asking again costs a lookup) |
+| `pixels()`, `width()`, `height()` | the coverage image, row by row |
+| `dirty()`, `clear_dirty()` | the rectangle changed since the last `clear_dirty` (all of it at first): upload it |
+| `generation()` | moves on whenever the atlas starts again (full, at capacity, or `clear`): every place taken before is gone |
+| `clear()` | everything forgotten: after `set_pixel_size` |
+| `size()` | glyphs held |
+
+Never allocates after construction. One thread at a time.
 
 ## FontMetrics
 

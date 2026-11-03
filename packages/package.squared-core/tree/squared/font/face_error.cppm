@@ -18,6 +18,8 @@ enum class FaceErrorCode : std::uint8_t {
     size,
     /** No face is open. */
     not_open,
+    /** A `FontSet` holds as many faces as it can (`FontSet::max_faces`). */
+    set_full,
 };
 
 /**
@@ -49,6 +51,8 @@ struct FaceError
                     return "the face cannot be set to that size";
                 case FaceErrorCode::not_open:
                     return "no face is open";
+                case FaceErrorCode::set_full:
+                    return "the font set holds as many faces as it can";
             }
             return "unknown";
         }

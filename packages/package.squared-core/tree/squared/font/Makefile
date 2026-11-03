@@ -16,7 +16,9 @@ FREETYPE_DIR := $(SQUARED_ROOT)/third_party/freetype
 FREETYPE_INCLUDES := -I$(MODULE_DIR)/src/freetype -I$(FREETYPE_DIR)/include
 INCLUDES := $(SQUARED_INCLUDE) $(FREETYPE_INCLUDES) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
-SOURCES := src/face.cpp
+SOURCES := src/face.cpp \
+    src/font_set.cpp \
+    src/glyph_atlas.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/font/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -38,7 +40,8 @@ all: $(TARGET)
 
 # A face from the test font (JetBrains Mono, test/data/, read from the
 # module's directory, where tests run): metrics, glyphs, bold and italic
-# made, a missing glyph, errors, moves.
+# made, a missing glyph, errors, moves; a FontSet with the system's
+# fallbacks (CJK when the machine has Noto CJK); the glyph atlas.
 FONT_TEST := $(BUILD_DIR)/font_test
 
 TESTS := $(FONT_TEST)
@@ -50,7 +53,8 @@ $(TESTS): $(SQUARED_FLAGS_STAMP)
 
 -include $(TESTS:=.d)
 
-$(FONT_TEST): $(MODULE_DIR)/test/font_test.cpp $(MODULE_DIR)/src/face.cpp $(FREETYPE_OBJECTS)
+$(FONT_TEST): $(MODULE_DIR)/test/font_test.cpp $(MODULE_DIR)/src/face.cpp \
+              $(MODULE_DIR)/src/font_set.cpp $(MODULE_DIR)/src/glyph_atlas.cpp $(FREETYPE_OBJECTS)
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(FREETYPE_INCLUDES) $(SQUARED_TEST_INPUTS) -o $@

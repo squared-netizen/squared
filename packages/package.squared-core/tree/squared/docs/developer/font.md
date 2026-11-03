@@ -1,8 +1,10 @@
 # font &mdash; internals
 
 Sprint 12.3a (2026-11-03): FreeType vendored, and `Face`, a face at a size
-rendering coverage bitmaps. The glyph cache in a texture and fallback faces
-are 12.3b.
+rendering coverage bitmaps. 12.3b (the same day): `FontSet` (the primary,
+its bold, fallbacks from the system) and `GlyphAtlas` (glyphs rendered once
+into one coverage image). Uploading the image to a texture is the drawing's
+(12.3d): this module has no graphics dependency, so it is tested with no GL.
 
 Programmer counterpart: [../programmer/font.md](../programmer/font.md)
 
@@ -19,8 +21,9 @@ Programmer counterpart: [../programmer/font.md](../programmer/font.md)
 
 ```
 font/
-  face.cppm face_error.cppm font_metrics.cppm glyph_bitmap.cppm glyph_style.cppm module.cppm
-  src/   face.cpp
+  face.cppm face_error.cppm font_metrics.cppm glyph_bitmap.cppm glyph_style.cppm
+  font_set.cppm glyph_atlas.cppm atlas_glyph.cppm module.cppm
+  src/   face.cpp font_set.cpp glyph_atlas.cpp
          freetype/freetype/config/ftmodule.h ftoption.h   (squared's FreeType config)
   test/  font_test.cpp, data/JetBrainsMono-Regular.ttf, data/OFL.txt
   Makefile
@@ -78,6 +81,41 @@ bold, a fallback) make the cost a few KB each.
   error goes back in `FaceError::freetype_error`; the text is squared's
   fixed one.
 
+## FontSet
+
+Up to 8 regular faces and one bold, held by value (`std::array<Face, 8>`:
+fixed, no allocation; 320 bytes with the bold one and the size).
+`choose` asks each face `FT_Get_Char_Index` in order: for a character every
+face lacks, that is 8 lookups, which the atlas spares by remembering a
+miss. A face added after `set_pixel_size` is sized on the way in. The
+fallback list is fixed paths probed with `std::filesystem::is_regular_file`
+(over parsing Android's `/system/etc/fonts.xml`: the list a terminal needs
+is short and stable; fonts.xml's format changed across Android releases).
+`open_file` reads a font through FreeType's stream, on demand: a 20 MB
+Noto CJK collection is not read whole.
+
+## GlyphAtlas
+
+- **Storage**, at construction only: the image (`unique_ptr<uint8_t[]>`,
+  zeroed: the gaps must be empty) and an open-addressed table of
+  `bit_ceil(2 x capacity)` slots (24 bytes each: the code, the style bits,
+  a state, the `AtlasGlyph`), linear probing, a multiplicative hash.
+  Over `std::unordered_map` (a node per glyph, priority 1); no erase is
+  ever needed: the table empties all at once.
+- **Packing**: shelves, left to right, a new shelf below when a row is
+  full; each glyph a pixel from the next, so linear filtering never mixes
+  two. A monospace font's glyphs are about one height, so shelves waste
+  little.
+- **Full** (no room, or `capacity` glyphs held): everything goes, the image
+  is zeroed, `generation` moves on, and the glyph asked for is placed first.
+  For a terminal's few hundred glyphs at once this is rare; an LRU would
+  cost a list per glyph and repacking. A glyph larger than the image is
+  remembered as missing.
+- **Dirty**: the union of what was written since `clear_dirty`, one
+  rectangle (a texture update of one sub-image).
+- **Missing** characters are kept as such, so a program printing one each
+  frame does not make every face look for it each frame.
+
 ## Tests
 
 `font/test/font_test.cpp`, on JetBrains Mono Regular from `test/data/`
@@ -87,8 +125,16 @@ doubling); 'A' (ink from its first row to its last, the advance a cell),
 'g' below the baseline, a space with no ink, Cyrillic and box drawing
 present, CJK absent; bold (over a tenth more ink, no narrower) and italic
 (wider, about the same ink) from the regular face; a .ttc index past the
-end, junk, a missing file; moves; reopening. Run here as built and under
-AddressSanitizer and UBSan; clang-tidy 21 on the module: no findings.
+end, junk, a missing file; moves; reopening. `FontSet`: the primary, CJK
+absent and then drawn by the system's Noto Sans CJK (checked where it is
+installed: here Debian's, on the phone Android's; said when it is not),
+added after sizing and so sized, bold by emboldening and by a bold face,
+a full set. `GlyphAtlas`: a glyph's coverage in the image as the face
+renders it, the dirty rectangle, found again unchanged, bold and italic as
+other glyphs, a space, a missing character remembered, no two glyphs
+overlapping, starting again when full and at capacity, a glyph larger than
+the image, `clear`. Run here as built and under AddressSanitizer and UBSan;
+clang-tidy 21 on the module: no findings.
 
 ## Known limits
 
