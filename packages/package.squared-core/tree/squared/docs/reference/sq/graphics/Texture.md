@@ -1,6 +1,6 @@
 # class Texture
 
-*Defined at [graphics/texture.cppm:27](../../../../graphics/texture.cppm#L27)*
+*Defined at [graphics/texture.cppm:28](../../../../graphics/texture.cppm#L28)*
 
 
 
@@ -16,7 +16,7 @@
 
 *public void Texture()*
 
-*Defined at [graphics/texture.cppm:31](../../../../graphics/texture.cppm#L31)*
+*Defined at [graphics/texture.cppm:32](../../../../graphics/texture.cppm#L32)*
 
 
 
@@ -36,7 +36,7 @@
 
 *public void Texture(const Texture & )*
 
-*Defined at [graphics/texture.cppm:32](../../../../graphics/texture.cppm#L32)*
+*Defined at [graphics/texture.cppm:33](../../../../graphics/texture.cppm#L33)*
 
 ### bind
 
@@ -59,6 +59,24 @@
 **return** A value that increments on every upload, restore, release and invalidate.
 
 **note** This is what makes a stale TextureRegion detectable. A region records the generation it was built against; when the two differ, the region's coordinates no longer describe the pixels that are there, and after a Discard there are no pixels at all. Without it, a region outliving its texture's content is a crash after a phone call.
+
+### create_alpha
+
+*public bool create_alpha(int width, int height, const std::uint8_t * pixels, TextureRecoveryOptions recovery)*
+
+
+
+**brief** Create an 8-bit alpha texture (`TextureFormat::Alpha8`): it draws as the draw colour, each texel its alpha. A glyph atlas, a mask.
+
+**width** Image width in pixels; must be greater than zero.
+
+**height** Image height in pixels; must be greater than zero.
+
+**pixels** Tightly packed, one byte a texel, width * height bytes.
+
+**recovery** Policy controlling post-context-loss recovery: `Regenerate` for pixels the caller keeps (its callback calls `TextureRecoveryTarget::upload_alpha`), `RetainPixels` for a copy kept here; `ReloadFromAsset` is refused, as for `create_rgba`.
+
+**return** true when the texture storage was created.
 
 ### create_rgba
 
@@ -127,6 +145,16 @@
 
 
 **brief** Destroy the backend texture. 
+
+### format
+
+*public TextureFormat format()*
+
+*Defined at [graphics/texture.cppm:127](../../../../graphics/texture.cppm#L127)*
+
+
+
+**brief** What a texel holds: `Rgba8`, or `Alpha8` from `create_alpha`. 
 
 ### has_content
 
@@ -202,7 +230,7 @@
 
 *public Texture & operator=(const Texture & )*
 
-*Defined at [graphics/texture.cppm:33](../../../../graphics/texture.cppm#L33)*
+*Defined at [graphics/texture.cppm:34](../../../../graphics/texture.cppm#L34)*
 
 ### recovery_policy
 
@@ -295,6 +323,28 @@
 **horizontal** Texture-wide horizontal wrap mode.
 
 **vertical** Texture-wide vertical wrap mode.
+
+### update
+
+*public bool update(int x, int y, int width, int height, const std::uint8_t * pixels, int stride)*
+
+
+
+**brief** Replace a rectangle of the texture's pixels, in its own format: what changed in an atlas, without uploading the rest. Regions stay valid (the generation does not move); a retained copy is updated too.
+
+**x** Left edge, in texels from the texture's left.
+
+**y** Top edge, in texels from the texture's first row.
+
+**width** Width of the rectangle; must be greater than zero.
+
+**height** Height of the rectangle; must be greater than zero.
+
+**pixels** The rectangle's first texel; rows `stride` texels apart.
+
+**stride** Texels from one row of `pixels` to the next; at least `width`.
+
+**return** false, changing nothing, for a texture with no content, a rectangle not inside it, or null pixels.
 
 ### valid
 

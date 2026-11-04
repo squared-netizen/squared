@@ -1,6 +1,6 @@
 # class TickClock
 
-*Defined at [messaging/model_runner.cppm:57](../../../../../messaging/model_runner.cppm#L57)*
+*Defined at [messaging/model_runner.cppm:59](../../../../../messaging/model_runner.cppm#L59)*
 
  When a model's `tick` is due; its steps measured by a `time::Timepiece`.
 

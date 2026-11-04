@@ -244,6 +244,43 @@ zeros, an empty file, the errors), listing (direct children, each once,
 sorted; a file; a missing path), the refusals, and reading through a
 handle.
 
+## `map` and `MappedFile` (12.3d, 2026-11-03)
+
+For sqterm's fonts: FreeType reads a face from memory that stays put for the
+face's life. Read into a vector, JetBrains Mono NL regular and bold are
+420 KB of heap, dirty, resident for the app's life. Mapped, they are clean
+file-backed pages: only those FreeType touches are resident, and Android can
+drop them and fault them back.
+
+- **`MappedFile`** (40 bytes): the bytes, a release function pointer and its
+  handle, `in_place` and `valid`. Each file system gives back its own kind
+  of mapping through the pointer: `munmap` for POSIX, `AAsset_close` for an
+  asset (the asset owns the buffer), nothing for embedded files (the
+  program's own pages). A function pointer and a `void *`, not
+  `std::function` (an allocation and type erasure, §2.1) nor a virtual base
+  (an allocation per mapping, or a variant of every backend's kind).
+- **POSIX:** `open`, `fstat`, `mmap( PROT_READ, MAP_PRIVATE )`, the
+  descriptor closed at once (the mapping keeps the file). An empty file is a
+  valid mapping of nothing (`mmap` refuses length 0). A directory is
+  `IsADirectory`, as `read` says.
+- **Android:** `Internal` is `AAssetManager_open( AASSET_MODE_BUFFER )` and
+  `AAsset_getBuffer`, the asset kept open for the mapping's life. Stored
+  uncompressed (aapt2 `-0`), the buffer is a mapping of the APK;
+  compressed, Android inflates it into memory of its own, which
+  `AAsset_isAllocated` reports, so `in_place()` says so. The template's
+  packaging (`SQ_STORED`, `mk/squared_android_package.mk`) stores fonts. The
+  other types go to the POSIX storage, as `read` does.
+- **Embedded:** the table's span; `NotSupported` for any type but
+  `Internal`, as `read`.
+- **Pure virtual** on `FileSystem`, like `read`: the three implementations
+  each have a real answer, and a default that read into the heap would hide
+  a missing one behind the very copy `map` exists to avoid.
+- **Tested** in the three file-system tests: POSIX (a file, an empty file,
+  missing, a directory, an escaping path, through a handle), the asset stub
+  (stored and "compressed", the stub reporting `.z` names as allocated;
+  moved, reset; missing; escaping; an unbound handle), embedded (the table's
+  own pointer, empty, a directory, missing, another type).
+
 ## Not yet written
 
 Nothing in this module.

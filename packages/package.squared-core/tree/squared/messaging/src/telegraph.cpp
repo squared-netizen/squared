@@ -1,6 +1,8 @@
 module;
 
 #include <assert.h>
+#include <errno.h>
+#include <poll.h>
 
 module sq.messaging;
 
@@ -27,6 +29,91 @@ TelegraphLine::TelegraphLine() noexcept
 {}
 
 // ---- the model's end --------------------------------------------------------------------
+
+bool Telegraph::watch( int fd ) noexcept
+{
+    if( fd < 0 || !line_.reads_ ) {
+        return false;
+    }
+    for( std::size_t i = 0; i < line_.watched_count_; ++i ) {
+        if( line_.watched_[i] == fd ) {
+            return true;
+        }
+    }
+    if( line_.watched_count_ == telegraph_size::watches ) {
+        return false;
+    }
+    line_.watched_[line_.watched_count_] = fd;
+    line_.watched_ready_[line_.watched_count_] = false;
+    ++line_.watched_count_;
+    return true;
+}
+
+void Telegraph::unwatch( int fd ) noexcept
+{
+    for( std::size_t i = 0; i < line_.watched_count_; ++i ) {
+        if( line_.watched_[i] == fd ) {
+            const std::size_t last = line_.watched_count_ - 1;
+            line_.watched_[i] = line_.watched_[last];
+            line_.watched_ready_[i] = line_.watched_ready_[last];
+            line_.watched_count_ = static_cast<std::uint32_t>( last );
+            return;
+        }
+    }
+}
+
+std::size_t Telegraph::watching() const noexcept
+{
+    return line_.watched_count_;
+}
+
+void Telegraph::sleep( int timeout_ms ) noexcept
+{
+    const std::size_t count = line_.watched_count_;
+    if( count == 0 ) {
+        if( timeout_ms != 0 ) {
+            line_.model_wake_.wait( timeout_ms );
+        }
+        line_.model_wake_.clear();
+        return;
+    }
+    // The wake first, then the watched; a descriptor of -1 (no wake) poll skips.
+    std::array<pollfd, telegraph_size::watches + 1> fds{};
+    fds[0] = { line_.model_wake_.fd(), POLLIN, 0 };
+    for( std::size_t i = 0; i < count; ++i ) {
+        fds[i + 1] = { line_.watched_[i], POLLIN, 0 };
+    }
+    // nfds_t is 32 bits on bionic; count is at most TELEGRAPH_WATCHES (16).
+    while( ::poll( fds.data(), static_cast<nfds_t>( count + 1 ), timeout_ms ) < 0 &&
+           errno == EINTR ) {
+    }
+    for( std::size_t i = 0; i < count; ++i ) {
+        // Readable, closed (POLLHUP) or failed: `readable` finds out which.
+        if( fds[i + 1].revents != 0 ) {
+            line_.watched_ready_[i] = true;
+        }
+    }
+    line_.model_wake_.clear();
+}
+
+void Telegraph::look_at_watched() noexcept
+{
+    const std::size_t count = line_.watched_count_;
+    if( count == 0 ) {
+        return;
+    }
+    std::array<pollfd, telegraph_size::watches> fds{};
+    for( std::size_t i = 0; i < count; ++i ) {
+        fds[i] = { line_.watched_[i], POLLIN, 0 };
+    }
+    while( ::poll( fds.data(), static_cast<nfds_t>( count ), 0 ) < 0 && errno == EINTR ) {
+    }
+    for( std::size_t i = 0; i < count; ++i ) {
+        if( fds[i].revents != 0 ) {
+            line_.watched_ready_[i] = true;
+        }
+    }
+}
 
 void Telegraph::tick_every( std::uint32_t milliseconds ) noexcept
 {
@@ -145,9 +232,12 @@ void Telegraph::idle( int timeout_ms ) noexcept
         flush(); // the UI drained since the first try
         work = line_.pending_count_ < held;
     }
+    // With work waiting, only a look at the watched descriptors: a model
+    // kept busy by the UI still hears from them.
     if( !work ) {
-        line_.model_wake_.wait( timeout_ms );
-        line_.model_wake_.clear();
+        sleep( timeout_ms );
+    } else if( line_.watched_count_ != 0 ) {
+        sleep( 0 );
     }
     line_.model_sleeping_.store( false, std::memory_order_relaxed );
     line_.model_waiting_.store( false, std::memory_order_relaxed );

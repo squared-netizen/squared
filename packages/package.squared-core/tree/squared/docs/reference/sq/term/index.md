@@ -11,6 +11,7 @@
 * [CellFlags](CellFlags.md)
 * [Cell](Cell.md)
 * [Cursor](Cursor.md)
+* [KeyBytes](KeyBytes.md)
 * [ProcessExit](ProcessExit.md)
 * [PtyConfig](PtyConfig.md)
 * [PtyError](PtyError.md)
@@ -25,6 +26,22 @@
 
 
 ## Functions
+
+### key_bytes
+
+*KeyBytes key_bytes(app::Key key, app::KeyModifiers modifiers, TerminalModes modes)*
+
+
+
+**brief** The bytes a named key sends, as xterm sends them: arrows `CSI A` (`SS3 A` in application cursor mode, DECCKM), Home and End, Insert, Delete, Page Up and Down (`CSI 5 ~`), F1 to F12, with Shift, Alt and Ctrl as xterm's modifier parameter (`CSI 1 ; 5 A` for Ctrl-Up); Backspace DEL (Ctrl: BS), Enter CR, Tab HT (Shift: `CSI Z`), Escape ESC, Alt putting ESC before the last four. Empty for `unknown` and `space` (a space is text).
+
+### key_text_bytes
+
+*KeyBytes key_text_bytes(std::string_view text, app::KeyModifiers modifiers)*
+
+
+
+**brief** The bytes a key that types `text` sends with Ctrl or Alt held (`Widget::key_text`): Ctrl makes a control character of `@` to `_`, the letters, `?` (DEL), space and `2` (NUL), `3` to `7` (ESC to US), `8` (DEL) and `/` (US); Alt puts ESC before it. Text with no control character is sent as it is (with ESC for Alt); text over 14 bytes sends nothing.
 
 ### operator==
 

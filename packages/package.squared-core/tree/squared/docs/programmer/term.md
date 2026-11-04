@@ -35,6 +35,7 @@ Developer counterpart: [../developer/term.md](../developer/term.md)
 | `ProcessExit` | `squared/term/process_exit.cppm` | How it ended: the exit code, or the signal |
 | `ScreenPublisher` | `squared/term/screen_publisher.cppm` | A terminal's screen written as a snapshot, on the model's thread, with a version for each row |
 | `ScreenView` | `squared/term/screen_view.cppm` | A screen snapshot as the UI reads it: rows, versions, cursor, modes, title |
+| `KeyBytes`, `key_bytes`, `key_text_bytes` | `squared/term/key_bytes.cppm` | What a key sends to the program: a named key with its modifiers, or a typed character with Ctrl or Alt |
 
 ## The shortest use
 
@@ -204,4 +205,30 @@ if( const auto shot = ui.snapshot( screen ) ) {
 Each snapshot is the whole screen (24 KB at 50 x 40): the UI may skip some,
 and what it reads must stand alone. A scrolled-back view follows the bottom:
 new output moves it.
+
+## What keys send
+
+A terminal widget turns the keys it is given into the bytes a program reads,
+as xterm sends them, and writes them to the pty
+([gui.md](gui.md): `key_down` for named keys, `key_text` for a character
+typed with Ctrl or Alt, `text_input` for plain text, written as it is).
+
+```cpp
+bool key_down( sq::app::Key key, sq::app::KeyModifiers held ) override
+{
+    const sq::term::KeyBytes bytes = sq::term::key_bytes( key, held, view.modes() );
+    return !bytes.empty() && send( bytes.view() );
+}
+bool key_text( std::string_view text, sq::app::KeyModifiers held ) override
+{
+    const sq::term::KeyBytes bytes = sq::term::key_text_bytes( text, held );
+    return !bytes.empty() && send( bytes.view() );
+}
+```
+
+| Function | Gives |
+|---|---|
+| `key_bytes( key, modifiers, modes )` | arrows `ESC [ A` (`ESC O A` when the program asked for application cursor keys), Home `ESC [ H`, End `ESC [ F`, Insert `ESC [ 2 ~`, Delete `ESC [ 3 ~`, Page Up and Down `ESC [ 5 ~` and `6 ~`, F1 to F4 `ESC O P` to `S`, F5 to F12 `ESC [ 15 ~` to `24 ~`; with modifiers xterm's parameter, 1 + Shift 1 + Alt 2 + Ctrl 4 + Meta 8 (`ESC [ 1 ; 5 A` is Ctrl-Up, `ESC [ 5 ; 2 ~` Shift-Page Up). Backspace DEL (Ctrl: BS), Enter CR, Tab HT (Shift: `ESC [ Z`), Escape ESC, Alt putting ESC before these four. Empty for Space (it is text) and `unknown` |
+| `key_text_bytes( text, modifiers )` | Ctrl with `@` to `_` or a letter: its control character (Ctrl-C 0x03, Ctrl-[ ESC); with Space or `2` NUL, `3` to `7` ESC to US, `8` and `?` DEL, `/` US; any other text as it is. Alt puts ESC before it. Empty for empty text, or text over 14 bytes |
+| `KeyBytes::view()`, `empty()` | the bytes; none. 16 bytes by value, no allocation |
 

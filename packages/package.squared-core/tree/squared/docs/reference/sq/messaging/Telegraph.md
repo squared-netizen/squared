@@ -68,7 +68,7 @@
 
 *public std::uint32_t deliver(M & model)*
 
-*Defined at [messaging/telegraph.cppm:651](../../../../messaging/telegraph.cppm#L651)*
+*Defined at [messaging/telegraph.cppm:688](../../../../messaging/telegraph.cppm#L688)*
 
 
 
@@ -150,6 +150,16 @@
 
 **brief** Whether quit has been asked for: the model saved, and is to stop. 
 
+### read_watched
+
+*public void read_watched(M & model)*
+
+*Defined at [messaging/telegraph.cppm:744](../../../../messaging/telegraph.cppm#L744)*
+
+
+
+**brief** Calls `model.readable(*this, fd)` for each watched descriptor found ready since the last call, if the model has `readable`. `ModelRunner` calls it, after `deliver`.
+
 ### snapshot
 
 *public std::span<std::byte> snapshot(const SnapshotKey & key, std::size_t bytes)*
@@ -162,7 +172,7 @@
 
 *public void start(M & model)*
 
-*Defined at [messaging/telegraph.cppm:643](../../../../messaging/telegraph.cppm#L643)*
+*Defined at [messaging/telegraph.cppm:680](../../../../messaging/telegraph.cppm#L680)*
 
 
 
@@ -201,6 +211,30 @@
 ### tick_interval
 
 *public std::uint32_t tick_interval()*
+
+### unwatch
+
+*public void unwatch(int fd)*
+
+
+
+**brief** Stop watching `fd`; nothing for one not watched. 
+
+### watch
+
+*public bool watch(int fd)*
+
+
+
+**brief** Wake the model when `fd` has something to read (or has closed): its `readable( Telegraph &, int fd )` is called in the next turn, after `receive`. For a pty, a socket, a pipe; the model keeps the descriptor, and unwatches it before closing it. False for a model with no `readable`, a negative `fd`, or `TELEGRAPH_WATCHES` watched already; true when `fd` is watched already.
+
+### watching
+
+*public std::size_t watching()*
+
+
+
+**brief** How many descriptors are watched. 
 
 ### ~Telegraph
 

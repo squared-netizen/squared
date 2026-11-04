@@ -65,6 +65,7 @@ Texture::Texture( Texture &&other ) noexcept
     , vertical_wrap_( other.vertical_wrap_ )
     , content_generation_( std::exchange( other.content_generation_, 0 ) )
     , invalidated_( std::exchange( other.invalidated_, false ) )
+    , format_( std::exchange( other.format_, TextureFormat::Rgba8 ) )
 {
     other.source_ = files::FileHandle{};
     other.pixels_.clear();
@@ -88,6 +89,7 @@ Texture &Texture::operator=( Texture &&other ) noexcept
         vertical_wrap_ = other.vertical_wrap_;
         content_generation_ = std::exchange( other.content_generation_, 0 );
         invalidated_ = std::exchange( other.invalidated_, false );
+        format_ = std::exchange( other.format_, TextureFormat::Rgba8 );
         other.source_ = files::FileHandle{};
         other.pixels_.clear();
     }
@@ -134,6 +136,7 @@ bool Texture::load( const files::FileHandle &source, TextureRecoveryOptions reco
     recovery_callback_ = recovery.callback;
     recovery_user_data_ = recovery.user_data;
     source_ = source;
+    format_ = TextureFormat::Rgba8;
 
     if( recovery.policy == TextureRecoveryPolicy::RetainPixels ) {
         pixels_ = std::move( image.pixels );
@@ -155,6 +158,19 @@ bool Texture::create_rgba( int width, int height, const std::uint8_t *pixels ) n
 bool Texture::create_rgba( int width, int height, const std::uint8_t *pixels,
                            TextureRecoveryOptions recovery ) noexcept
 {
+    return create_from_memory( TextureFormat::Rgba8, width, height, pixels, recovery );
+}
+
+bool Texture::create_alpha( int width, int height, const std::uint8_t *pixels,
+                            TextureRecoveryOptions recovery ) noexcept
+{
+    return create_from_memory( TextureFormat::Alpha8, width, height, pixels, recovery );
+}
+
+bool Texture::create_from_memory( TextureFormat format, int width, int height,
+                                  const std::uint8_t *pixels,
+                                  TextureRecoveryOptions recovery ) noexcept
+{
     if( width <= 0 || height <= 0 || pixels == nullptr ) {
         return false;
     }
@@ -168,7 +184,9 @@ bool Texture::create_rgba( int width, int height, const std::uint8_t *pixels,
         return false;
     }
 
-    if( !upload_rgba( width, height, pixels ) ) {
+    const bool uploaded = format == TextureFormat::Alpha8 ? upload_alpha( width, height, pixels )
+                                                          : upload_rgba( width, height, pixels );
+    if( !uploaded ) {
         return false;
     }
 
@@ -178,12 +196,39 @@ bool Texture::create_rgba( int width, int height, const std::uint8_t *pixels,
     source_ = files::FileHandle{};
 
     if( recovery.policy == TextureRecoveryPolicy::RetainPixels ) {
-        const auto count =
-            static_cast<std::size_t>( width ) * static_cast<std::size_t>( height ) * 4U;
+        const auto count = static_cast<std::size_t>( width ) * static_cast<std::size_t>( height ) *
+                           static_cast<std::size_t>( texel_bytes( format ) );
         pixels_.assign( pixels, pixels + count );
     } else {
         pixels_.clear();
         pixels_.shrink_to_fit();
+    }
+    return true;
+}
+
+bool Texture::update( int x, int y, int width, int height, const std::uint8_t *pixels,
+                      int stride ) noexcept
+{
+    if( !has_content() || pixels == nullptr || width <= 0 || height <= 0 || stride < width ) {
+        return false;
+    }
+    if( x < 0 || y < 0 || x > width_ - width || y > height_ - height ) {
+        return false;
+    }
+    update_backend( x, y, width, height, pixels, stride );
+    if( !pixels_.empty() ) {
+        // The retained copy follows, so a restore brings back what is shown.
+        const auto bytes = static_cast<std::size_t>( texel_bytes( format_ ) );
+        const auto row = static_cast<std::size_t>( width ) * bytes;
+        for( int r = 0; r < height; ++r ) {
+            const std::size_t from =
+                static_cast<std::size_t>( r ) * static_cast<std::size_t>( stride ) * bytes;
+            const std::size_t to =
+                ( ( static_cast<std::size_t>( y + r ) * static_cast<std::size_t>( width_ ) ) +
+                  static_cast<std::size_t>( x ) ) *
+                bytes;
+            std::copy_n( pixels + from, row, pixels_.begin() + static_cast<std::ptrdiff_t>( to ) );
+        }
     }
     return true;
 }
@@ -260,7 +305,9 @@ bool Texture::restore( bool context_preserved ) noexcept
             if( pixels_.empty() || width_ <= 0 || height_ <= 0 ) {
                 return false;
             }
-            return upload_rgba( width_, height_, pixels_.data() );
+            return format_ == TextureFormat::Alpha8
+                       ? upload_alpha( width_, height_, pixels_.data() )
+                       : upload_rgba( width_, height_, pixels_.data() );
 
         case TextureRecoveryPolicy::Regenerate:
             return restore_callback();
@@ -362,6 +409,19 @@ bool TextureRecoveryTarget::upload_rgba( int width, int height,
         return false;
     }
     if( !texture_->upload_rgba( width, height, pixels ) ) {
+        return false;
+    }
+    uploaded_ = true;
+    return true;
+}
+
+bool TextureRecoveryTarget::upload_alpha( int width, int height,
+                                          const std::uint8_t *pixels ) noexcept
+{
+    if( texture_ == nullptr || uploaded_ ) {
+        return false;
+    }
+    if( !texture_->upload_alpha( width, height, pixels ) ) {
         return false;
     }
     uploaded_ = true;

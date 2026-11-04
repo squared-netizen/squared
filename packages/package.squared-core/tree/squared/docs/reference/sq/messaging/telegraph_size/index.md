@@ -6,5 +6,5 @@
 
 *bool power_of_two(std::size_t n)*
 
-*Defined at [messaging/src/telegraph_config.cppm:62](../../../../../messaging/src/telegraph_config.cppm#L62)*
+*Defined at [messaging/src/telegraph_config.cppm:66](../../../../../messaging/src/telegraph_config.cppm#L66)*
 

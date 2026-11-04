@@ -62,7 +62,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool enabled()*
 
-*Defined at [gui/widget.cppm:189](../../../../gui/widget.cppm#L189)*
+*Defined at [gui/widget.cppm:199](../../../../gui/widget.cppm#L199)*
 
 
 
@@ -94,7 +94,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool has_tooltip()*
 
-*Defined at [gui/widget.cppm:211](../../../../gui/widget.cppm#L211)*
+*Defined at [gui/widget.cppm:221](../../../../gui/widget.cppm#L221)*
 
 
 
@@ -129,6 +129,20 @@ public static const ActorInterfaceId actor_interface_id
 **key** Portable key name.
 
 **modifiers** Modifier state at the time of the event.
+
+**return** true when the key was handled.
+
+### key_text
+
+*public bool key_text(std::string_view text, app::KeyModifiers modifiers)*
+
+
+
+**brief** Handle what a key typed with Ctrl, Alt or Meta held: `c` with Ctrl for Ctrl-C. Text fields leave it (false, the default), as a desktop's do; a terminal makes control characters of it.
+
+**text** The character the key types without those modifiers.
+
+**modifiers** Which were held: at least one of control, alt, meta.
 
 **return** true when the key was handled.
 
@@ -230,7 +244,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void set_enabled(bool enabled)*
 
-*Defined at [gui/widget.cppm:183](../../../../gui/widget.cppm#L183)*
+*Defined at [gui/widget.cppm:193](../../../../gui/widget.cppm#L193)*
 
 
 

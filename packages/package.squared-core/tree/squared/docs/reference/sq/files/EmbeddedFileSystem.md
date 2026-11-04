@@ -30,7 +30,7 @@ Inherits from FileSystem
 
 *public std::span<const EmbeddedFile> files()*
 
-*Defined at [files/embedded_file_system.cppm:79](../../../../files/embedded_file_system.cppm#L79)*
+*Defined at [files/embedded_file_system.cppm:80](../../../../files/embedded_file_system.cppm#L80)*
 
 
 
@@ -59,6 +59,10 @@ Inherits from FileSystem
 
 
 **brief** Refused: `ReadOnly`. 
+
+### map
+
+*public MapResult map(FileType type, std::string_view path)*
 
 ### read
 

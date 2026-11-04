@@ -25,7 +25,10 @@ int main()
     const char *tmpdir = std::getenv( "TMPDIR" );
     const std::string base = std::string{ tmpdir != nullptr ? tmpdir : "." } + "/sq_asset_test";
 
-    AAssetManager *fake = nullptr; // the stub ignores it
+    // The stub ignores the manager; any address will do, but not null: a
+    // reference bound to null is undefined (UBSan stops the test on it).
+    alignas( 16 ) static unsigned char stand_in[16];
+    auto *fake = reinterpret_cast<AAssetManager *>( stand_in );
     AndroidAssetFileSystem fs{ *fake, AndroidStorageRoots{ .local_root = base + "/files",
                                                            .external_root = {} } };
 
@@ -52,6 +55,28 @@ int main()
         assert( bytes );
         assert( bytes.bytes.size() == 4096 ); // not 100
         assetstub::short_read_bytes = 0;
+    }
+
+    // --- mapped: in place when stored uncompressed, a copy when not (12.3d) --
+    {
+        assetstub::add( "fonts/mono.ttf", "glyphs" );
+        assetstub::add( "fonts/mono.ttf.z", "packed" );
+        {
+            MapResult font = fs.internal( "fonts/mono.ttf" ).map();
+            assert( font && font.file.valid() && font.file.in_place() );
+            assert( font.file.bytes().size() == 6 );
+            assert( static_cast<char>( font.file.bytes()[0] ) == 'g' );
+            MappedFile moved = std::move( font.file );
+            // NOLINTNEXTLINE(bugprone-use-after-move): moved from, it maps nothing
+            assert( moved.valid() && !font.file.valid() );
+            moved.reset();
+            assert( !moved.valid() && moved.bytes().empty() );
+        }
+        MapResult packed = fs.internal( "fonts/mono.ttf.z" ).map();
+        assert( packed && !packed.file.in_place() );
+        assert( fs.internal( "fonts/none.ttf" ).map().error.code == FileErrorCode::NotFound );
+        assert( fs.internal( "../escape" ).map().error.code == FileErrorCode::NotSupported );
+        assert( FileHandle{}.map().error );
     }
 
     // --- Internal is a directory when it has entries ----------------------

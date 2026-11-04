@@ -30,6 +30,17 @@ class TextureRecoveryTarget final
         [[nodiscard]] bool upload_rgba( int width, int height,
                                         const std::uint8_t *pixels ) noexcept;
 
+        /**
+     * @brief Upload one tightly packed 8-bit alpha image synchronously: the
+     * recovery of a texture made by `Texture::create_alpha`.
+     * @param width Image width in pixels; must be greater than zero.
+     * @param height Image height in pixels; must be greater than zero.
+     * @param pixels width * height bytes, valid for the duration of the call.
+     * @return true when the upload replaced the recovered texture.
+     */
+        [[nodiscard]] bool upload_alpha( int width, int height,
+                                         const std::uint8_t *pixels ) noexcept;
+
     private:
         friend class Texture;
         explicit TextureRecoveryTarget( Texture &texture ) noexcept;

@@ -24,6 +24,30 @@ Developer counterpart: [../developer/graphics.md](../developer/graphics.md)
 | `AtlasRegion` | `squared/graphics/atlas_region.cppm` | One named region and its libGDX-compatible atlas metadata |
 | `TextureFilter` | `squared/graphics/src/texture_filter.cppm` | Nearest or linear sampling; also what `gles::Texture2D` takes |
 | `TextureWrap` | `squared/graphics/src/texture_wrap.cppm` | Clamp, repeat or mirrored outside zero to one; also what `gles::Texture2D` takes |
+| `TextureFormat` | `squared/graphics/src/texture_format.cppm` | What a texel holds: `Rgba8`, or `Alpha8` (one byte, drawn tinted by the draw colour) |
+
+### Alpha textures and partial updates (12.3d)
+
+A glyph atlas, a mask: one byte a texel, a quarter of RGBA's memory. It draws
+as the draw colour, each texel its alpha, so the same `SpriteBatch` and
+`Painter::draw_region` tint it; no shader of your own. Filled a piece at a
+time with `update`, which uploads only the rectangle that changed:
+
+```cpp
+sq::graphics::Texture glyphs;
+glyphs.create_alpha( 1024, 1024, atlas.pixels(),
+                     TextureRecoveryOptions::regenerate( refill, &atlas ) );
+// later, after new glyphs were drawn into the atlas's image:
+glyphs.update( dirty.x, dirty.y, dirty.width, dirty.height,
+               atlas.pixels() + dirty.y * 1024 + dirty.x, 1024 );
+```
+
+| Call | Does |
+|---|---|
+| `create_alpha( w, h, pixels, recovery )` | an `Alpha8` texture from `w * h` bytes. `ReloadFromAsset` is refused (no asset behind memory); `Regenerate` for pixels you keep (its callback calls `TextureRecoveryTarget::upload_alpha`), `RetainPixels` for a copy kept by the texture |
+| `update( x, y, w, h, pixels, stride )` | replace that rectangle, in the texture's own format (1 or 4 bytes a texel), from rows `stride` texels apart. Regions stay valid: the generation does not move. A retained copy is updated too. False, changing nothing, outside the texture, for a stride under `w`, null pixels, or a texture with no content |
+| `format()` | `Rgba8` (loaded, `create_rgba`, `create_solid`) or `Alpha8` |
+| `texel_bytes( format )` | 4 or 1 |
 
 ## Recovering textures after context loss
 

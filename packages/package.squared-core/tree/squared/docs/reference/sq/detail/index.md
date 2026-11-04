@@ -44,7 +44,7 @@
 
 *gui::PaneShape shape_of()*
 
-*Defined at [stage/stage.cppm:59](../../../../stage/stage.cppm#L59)*
+*Defined at [stage/stage.cppm:71](../../../../stage/stage.cppm#L71)*
 
 
 

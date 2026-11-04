@@ -375,7 +375,12 @@ if run tidy; then
         ndk=$(ndk_include || true)
         if [ -n "$ndk" ]; then
             sysroot=${ndk%/usr/include}
+            # The target in CXX too, as the package mk passes it: the std
+            # BMI is made with CXX and its flags, not the includes, and one
+            # made for Termux's own API (24) refuses a unit for 22 (seen
+            # 2026-11-03, the first Android units since C++23).
             overrides=(BUILD=lint-android SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android
+                "CXX=${CXX:-clang++} --target=aarch64-linux-android$android_api --sysroot=$sysroot"
                 "SQUARED_EXTERNAL_INCLUDES=--target=aarch64-linux-android$android_api --sysroot=$sysroot -stdlib++-isystem $sysroot/usr/include/c++/v1")
             plan_config android
         fi

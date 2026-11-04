@@ -86,7 +86,7 @@
 
 *public Widget * focused()*
 
-*Defined at [gui/src/detail/ui.cppm:210](../../../../gui/src/detail/ui.cppm#L210)*
+*Defined at [gui/src/detail/ui.cppm:212](../../../../gui/src/detail/ui.cppm#L212)*
 
 
 
@@ -278,7 +278,7 @@
 
 *public Skin & skin()*
 
-*Defined at [gui/src/detail/ui.cppm:260](../../../../gui/src/detail/ui.cppm#L260)*
+*Defined at [gui/src/detail/ui.cppm:262](../../../../gui/src/detail/ui.cppm#L262)*
 
 
 
@@ -290,7 +290,7 @@
 
 *public const Skin & skin()*
 
-*Defined at [gui/src/detail/ui.cppm:254](../../../../gui/src/detail/ui.cppm#L254)*
+*Defined at [gui/src/detail/ui.cppm:256](../../../../gui/src/detail/ui.cppm#L256)*
 
 
 
@@ -316,13 +316,15 @@
 
 ### text_input
 
-*public bool text_input(std::string_view text)*
+*public bool text_input(std::string_view text, app::KeyModifiers modifiers)*
 
 
 
-**brief** Forward committed text to the focused widget.
+**brief** Forward committed text to the focused widget: as `Widget::text_input`, or with Ctrl, Alt or Meta held as `Widget::key_text`.
 
 **text** Committed UTF-8 text.
+
+**modifiers** The modifiers held when a key typed it.
 
 **return** true when the focused widget handled the text.
 
@@ -330,7 +332,7 @@
 
 *public std::optional<Rectangle> tooltip_bounds()*
 
-*Defined at [gui/src/detail/ui.cppm:241](../../../../gui/src/detail/ui.cppm#L241)*
+*Defined at [gui/src/detail/ui.cppm:243](../../../../gui/src/detail/ui.cppm#L243)*
 
 
 
@@ -342,7 +344,7 @@
 
 *public const TooltipConfig & tooltip_config()*
 
-*Defined at [gui/src/detail/ui.cppm:222](../../../../gui/src/detail/ui.cppm#L222)*
+*Defined at [gui/src/detail/ui.cppm:224](../../../../gui/src/detail/ui.cppm#L224)*
 
 
 
@@ -354,7 +356,7 @@
 
 *public const Widget * tooltip_owner()*
 
-*Defined at [gui/src/detail/ui.cppm:235](../../../../gui/src/detail/ui.cppm#L235)*
+*Defined at [gui/src/detail/ui.cppm:237](../../../../gui/src/detail/ui.cppm#L237)*
 
 
 
@@ -366,7 +368,7 @@
 
 *public bool tooltip_visible()*
 
-*Defined at [gui/src/detail/ui.cppm:230](../../../../gui/src/detail/ui.cppm#L230)*
+*Defined at [gui/src/detail/ui.cppm:232](../../../../gui/src/detail/ui.cppm#L232)*
 
 
 

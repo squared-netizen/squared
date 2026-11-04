@@ -234,6 +234,23 @@ class Telegraph final
          */
         bool publish( const SnapshotKey &key, std::size_t bytes ) noexcept;
 
+        /**
+         * @brief Wake the model when `fd` has something to read (or has
+         * closed): its `readable( Telegraph &, int fd )` is called in the
+         * next turn, after `receive`. For a pty, a socket, a pipe; the model
+         * keeps the descriptor, and unwatches it before closing it. False
+         * for a model with no `readable`, a negative `fd`, or
+         * `TELEGRAPH_WATCHES` watched already; true when `fd` is watched
+         * already.
+         */
+        bool watch( int fd ) noexcept;
+
+        /** @brief Stop watching `fd`; nothing for one not watched. */
+        void unwatch( int fd ) noexcept;
+
+        /** @brief How many descriptors are watched. */
+        [[nodiscard]] std::size_t watching() const noexcept;
+
         /** @brief Ask for `tick` every `milliseconds` (0: no tick, the default). `ModelRunner` calls it. */
         void tick_every( std::uint32_t milliseconds ) noexcept;
         [[nodiscard]] std::uint32_t tick_interval() const noexcept;
@@ -252,6 +269,14 @@ class Telegraph final
          */
         template<typename M>
         std::uint32_t deliver( M &model ) noexcept;
+
+        /**
+         * @brief Calls `model.readable(*this, fd)` for each watched
+         * descriptor found ready since the last call, if the model has
+         * `readable`. `ModelRunner` calls it, after `deliver`.
+         */
+        template<typename M>
+        void read_watched( M &model ) noexcept;
 
         /** @brief States held back, waiting for room. */
         [[nodiscard]] std::uint32_t pending() const noexcept;
@@ -292,6 +317,11 @@ class Telegraph final
         // the UI for what this turn sent, and sleep until the UI sends, a
         // lifecycle signal, room for what is held, or `timeout_ms` (-1: none).
         void idle( int timeout_ms ) noexcept;
+        // Sleep on the model's wake and the watched descriptors, noting
+        // which watched are ready; `timeout_ms` 0 only looks.
+        void sleep( int timeout_ms ) noexcept;
+        // Inline: whether a watched descriptor is ready now, without the wake.
+        void look_at_watched() noexcept;
         void wake_ui() noexcept;
         void count_full() noexcept;
         void publish_held() noexcept;
@@ -626,11 +656,18 @@ class TelegraphLine final
         Wake model_wake_;
         Wake ui_wake_;
 
+        // The model's watched descriptors, packed from the front, and
+        // which of them a sleep found ready.
+        std::array<int, telegraph_size::watches> watched_{};
+        std::array<bool, telegraph_size::watches> watched_ready_{};
+        std::uint32_t watched_count_ = 0; // the model's
+
         std::uint32_t pending_count_ = 0; // the model's
         std::uint32_t tick_ms_ = 0;       // the model's
         bool quitting_ = false;           // the model's
         bool threaded_ = false;           // set by a ModelRunner before its thread starts
         bool has_runner_ = false;         // the runner's: one to a line
+        bool reads_ = false;              // the runner's: its model has readable()
         std::uint16_t correlation_ = 0;   // the UI's
 
         Telegraph model_;
@@ -701,6 +738,25 @@ std::uint32_t Telegraph::deliver( M &model ) noexcept
         ++handled;
     }
     return handled;
+}
+
+template<typename M>
+void Telegraph::read_watched( M &model ) noexcept
+{
+    if constexpr( requires { model.readable( *this, 0 ); } ) {
+        // Copied first: `readable` may watch or unwatch, which reorders the table.
+        std::array<int, telegraph_size::watches> ready{};
+        std::size_t count = 0;
+        for( std::size_t i = 0; i < line_.watched_count_; ++i ) {
+            if( line_.watched_ready_[i] ) {
+                line_.watched_ready_[i] = false;
+                ready[count++] = line_.watched_[i];
+            }
+        }
+        for( std::size_t i = 0; i < count; ++i ) {
+            model.readable( *this, ready[i] );
+        }
+    }
 }
 
 template<typename K>

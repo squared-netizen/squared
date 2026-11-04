@@ -4,6 +4,7 @@ module;
 
 export module sq.files:file_handle;
 
+export import :mapped_file;
 export import :src.file_error;
 export import :src.file_read_result;
 export import :src.file_text_result;
@@ -111,6 +112,12 @@ class FileHandle final
      * returned unvalidated and untranscoded.
      */
         [[nodiscard]] FileTextResult read_string() const;
+
+        /**
+         * @brief Map the file to read in place, for as long as the result
+         * lives; see `MappedFile`. An invalid handle gives `NotSupported`.
+         */
+        [[nodiscard]] MapResult map() const;
 
         /**
      * @brief Write bytes to this path, creating the file if needed.

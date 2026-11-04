@@ -1,6 +1,6 @@
 # class FileSystem
 
-*Defined at [files/file_system.cppm:28](../../../../files/file_system.cppm#L28)*
+*Defined at [files/file_system.cppm:29](../../../../files/file_system.cppm#L29)*
 
 
 
@@ -18,19 +18,19 @@
 
 *public void FileSystem()*
 
-*Defined at [files/file_system.cppm:31](../../../../files/file_system.cppm#L31)*
+*Defined at [files/file_system.cppm:32](../../../../files/file_system.cppm#L32)*
 
 ### FileSystem
 
 *public void FileSystem(FileSystem && )*
 
-*Defined at [files/file_system.cppm:36](../../../../files/file_system.cppm#L36)*
+*Defined at [files/file_system.cppm:37](../../../../files/file_system.cppm#L37)*
 
 ### FileSystem
 
 *public void FileSystem(const FileSystem & )*
 
-*Defined at [files/file_system.cppm:34](../../../../files/file_system.cppm#L34)*
+*Defined at [files/file_system.cppm:35](../../../../files/file_system.cppm#L35)*
 
 ### absolute
 
@@ -104,17 +104,31 @@
 
 **brief** Create a directory and any missing parents. 
 
+### map
+
+*public MapResult map(FileType type, std::string_view path)*
+
+
+
+**brief** Map a file to read in place (`MappedFile`): no copy of a file's bytes on the heap where the platform can avoid one.
+
+**type** Which root `path` is under.
+
+**path** The file.
+
+**return** The mapping, or the error (`NotFound`, `IsADirectory`, `NotSupported` where a root has no files to map).
+
 ### operator=
 
 *public FileSystem & operator=(FileSystem && )*
 
-*Defined at [files/file_system.cppm:37](../../../../files/file_system.cppm#L37)*
+*Defined at [files/file_system.cppm:38](../../../../files/file_system.cppm#L38)*
 
 ### operator=
 
 *public FileSystem & operator=(const FileSystem & )*
 
-*Defined at [files/file_system.cppm:35](../../../../files/file_system.cppm#L35)*
+*Defined at [files/file_system.cppm:36](../../../../files/file_system.cppm#L36)*
 
 ### read
 
@@ -170,5 +184,5 @@
 
 *public void ~FileSystem()*
 
-*Defined at [files/file_system.cppm:32](../../../../files/file_system.cppm#L32)*
+*Defined at [files/file_system.cppm:33](../../../../files/file_system.cppm#L33)*
 

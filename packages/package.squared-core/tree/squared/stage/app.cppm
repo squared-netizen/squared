@@ -193,10 +193,10 @@ class App final : public app::Application
         bool to_background_ = false;
 };
 
-// The Telegraph line (88,000 bytes at the default knobs, which size it), then
-// the Stage (4,056 bytes, 2,960 of them what screens and panes keep), the
+// The Telegraph line (88,576 bytes at the default knobs, which size it), then
+// the Stage (4,080 bytes, 2,960 of them what screens and panes keep), the
 // model's runner, the path, the saved state's view, and the App's own few
-// bytes, rounded to the line's 64.
+// bytes, rounded to the line's 64: 92,800 since 12.3d, the bound exactly.
 static_assert( sizeof( App ) <= sizeof( messaging::TelegraphLine ) + 4224 );
 
 } // namespace sq

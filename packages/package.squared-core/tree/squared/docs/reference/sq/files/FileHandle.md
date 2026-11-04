@@ -1,6 +1,6 @@
 # class FileHandle
 
-*Defined at [files/file_handle.cppm:33](../../../../files/file_handle.cppm#L33)*
+*Defined at [files/file_handle.cppm:34](../../../../files/file_handle.cppm#L34)*
 
 
 
@@ -22,7 +22,7 @@
 
 *public void FileHandle()*
 
-*Defined at [files/file_handle.cppm:37](../../../../files/file_handle.cppm#L37)*
+*Defined at [files/file_handle.cppm:38](../../../../files/file_handle.cppm#L38)*
 
 
 
@@ -114,6 +114,14 @@
 
 **return** A no-error FileError on success, including when the directory already exists.
 
+### map
+
+*public MapResult map()*
+
+
+
+**brief** Map the file to read in place, for as long as the result lives; see `MappedFile`. An invalid handle gives `NotSupported`.
+
 ### name
 
 *public std::string_view name()*
@@ -152,7 +160,7 @@
 
 *public const std::string & path()*
 
-*Defined at [files/file_handle.cppm:56](../../../../files/file_handle.cppm#L56)*
+*Defined at [files/file_handle.cppm:57](../../../../files/file_handle.cppm#L57)*
 
 
 
@@ -204,7 +212,7 @@
 
 *public FileType type()*
 
-*Defined at [files/file_handle.cppm:53](../../../../files/file_handle.cppm#L53)*
+*Defined at [files/file_handle.cppm:54](../../../../files/file_handle.cppm#L54)*
 
 
 
@@ -214,7 +222,7 @@
 
 *public bool valid()*
 
-*Defined at [files/file_handle.cppm:50](../../../../files/file_handle.cppm#L50)*
+*Defined at [files/file_handle.cppm:51](../../../../files/file_handle.cppm#L51)*
 
 
 

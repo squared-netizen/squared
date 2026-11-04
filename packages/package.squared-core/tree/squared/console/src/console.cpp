@@ -324,9 +324,25 @@ bool Console::key( app::Key key, app::KeyModifiers ) noexcept
             input_.clear();
             return true;
         // A space arrives as typed text, through text(); taking the key as
-        // well would type it twice.
+        // well would type it twice. A terminal's keys mean nothing to a
+        // one-line input.
         case app::Key::space:
         case app::Key::unknown:
+        case app::Key::page_up:
+        case app::Key::page_down:
+        case app::Key::insert:
+        case app::Key::f1:
+        case app::Key::f2:
+        case app::Key::f3:
+        case app::Key::f4:
+        case app::Key::f5:
+        case app::Key::f6:
+        case app::Key::f7:
+        case app::Key::f8:
+        case app::Key::f9:
+        case app::Key::f10:
+        case app::Key::f11:
+        case app::Key::f12:
             return false;
     }
     return false;

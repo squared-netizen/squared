@@ -13,7 +13,7 @@
 
 *int earliest(int first, int second)*
 
-*Defined at [messaging/model_runner.cppm:45](../../../../../messaging/model_runner.cppm#L45)*
+*Defined at [messaging/model_runner.cppm:47](../../../../../messaging/model_runner.cppm#L47)*
 
  The earlier of two timeouts in milliseconds, -1 meaning none.
 

@@ -60,6 +60,18 @@ false. `Ui` reads it in three places and no longer names `TextField` at all,
 which is why `ui.cpp` does not include `text_field.cppm`. Any custom text-entry
 widget can opt in by overriding it.
 
+**Text typed with Ctrl, Alt or Meta** (12.3d) goes to `Widget::key_text`,
+not `text_input`: `Ui::text_input( text, modifiers )` picks by the event's
+modifiers (Shift alone is typing). The default returns false, so a
+`TextField` leaves Ctrl-C alone instead of inserting a `c`, as a desktop's
+fields do; a terminal makes a control character of it. A second virtual
+rather than modifiers on `text_input`: an overload would hide the other in
+every widget that overrides one (`-Woverloaded-virtual`), and each existing
+`text_input` would have to learn to ignore modified text. The platform sends
+it (the template's `entry.cpp`): with those modifiers held, the character
+the key types without them; when the key types something else with them
+held (AltGr), that, as plain text.
+
 ## A text field's commit, and a slider held (7.5a)
 
 The Stage needs to know when a text edit is finished, and whether the user

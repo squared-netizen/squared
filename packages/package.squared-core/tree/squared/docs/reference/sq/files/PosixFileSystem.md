@@ -48,6 +48,10 @@ Inherits from FileSystem
 
 *public FileError make_directories(FileType type, std::string_view path)*
 
+### map
+
+*public MapResult map(FileType type, std::string_view path)*
+
 ### read
 
 *public FileReadResult read(FileType type, std::string_view path)*

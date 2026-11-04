@@ -4,6 +4,7 @@ module;
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -219,6 +220,46 @@ FileReadResult PosixFileSystem::read( FileType type, std::string_view path ) con
     }
     result.bytes.resize( used );
     return result;
+}
+
+namespace
+{
+
+void unmap( void * /*handle*/, const std::byte *data, std::size_t size ) noexcept
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast): munmap takes what mmap gave
+    static_cast<void>( ::munmap( const_cast<std::byte *>( data ), size ) );
+}
+
+} // namespace
+
+MapResult PosixFileSystem::map( FileType type, std::string_view path ) const
+{
+    Target to = target( *this, type, path, false );
+    if( to.error ) {
+        return { .file = {}, .error = std::move( to.error ) };
+    }
+    const Descriptor file{ ::open( to.path.c_str(), O_RDONLY | O_CLOEXEC ) };
+    struct stat status{};
+    if( file.fd < 0 || ::fstat( file.fd, &status ) != 0 ) {
+        return { .file = {}, .error = from_errno( std::move( to.path ) ) };
+    }
+    if( S_ISDIR( status.st_mode ) ) {
+        return { .file = {},
+                 .error = make_error( FileErrorCode::IsADirectory, std::strerror( EISDIR ),
+                                      std::move( to.path ) ) };
+    }
+    const auto size = static_cast<std::size_t>( status.st_size );
+    if( size == 0 ) {
+        return { .file = MappedFile( {}, true, nullptr, nullptr ), .error = {} }; // nothing to map
+    }
+    // The descriptor may close once mapped: the mapping keeps the file.
+    void *at = ::mmap( nullptr, size, PROT_READ, MAP_PRIVATE, file.fd, 0 );
+    if( at == MAP_FAILED ) {
+        return { .file = {}, .error = from_errno( std::move( to.path ) ) };
+    }
+    const std::span<const std::byte> bytes( static_cast<const std::byte *>( at ), size );
+    return { .file = MappedFile( bytes, true, &unmap, nullptr ), .error = {} };
 }
 
 namespace

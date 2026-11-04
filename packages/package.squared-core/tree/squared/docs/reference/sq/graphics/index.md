@@ -32,6 +32,18 @@
 * [Texture](Texture.md)
 
 
+## Functions
+
+### texel_bytes
+
+*int texel_bytes(TextureFormat format)*
+
+*Defined at [graphics/src/texture_format.cppm:22](../../../../graphics/src/texture_format.cppm#L22)*
+
+
+
+**brief** Bytes a texel of `format` takes. 
+
 ## Enums
 
 | enum class BitmapFontErrorCode |
@@ -98,6 +110,22 @@
 **brief** How a texture is sampled between texels.
 
  The one filter vocabulary in squared: `graphics::Texture` and the lower-level `gles::Texture2D` both take it.
+
+| enum class TextureFormat |
+
+--
+
+| Rgba8 |
+| Alpha8 |
+
+
+*Defined at [graphics/src/texture_format.cppm:16](../../../../graphics/src/texture_format.cppm#L16)*
+
+
+
+**brief** What one texel of a `Texture` holds.
+
+ `Rgba8` is four bytes a texel, colour and alpha, as loaded images are. `Alpha8` is one byte, drawn as white with that alpha, so the draw colour tints it: glyph coverage, masks. A quarter of the memory, on the GPU and in a retained copy.
 
 | enum class TextureRecoveryPolicy |
 

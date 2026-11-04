@@ -21,6 +21,8 @@ inline constexpr OnUiThread on_ui_thread{};
 /**
  * @brief A model: it takes what the UI sends. Its other hooks are optional:
  * `start(Telegraph&)`, `tick(Telegraph&, double seconds)`,
+ * `readable(Telegraph&, int fd)` (a descriptor it watches, `Telegraph::watch`,
+ * has something to read or has closed),
  * `low_memory(Telegraph&)`, `background(Telegraph&)` (save here),
  * `foreground(Telegraph&, std::uint64_t elapsed_milliseconds)`, and for
  * timers the pair `std::optional<sq::time::TimePoint> wake_at()` (when it
@@ -148,6 +150,8 @@ class ModelRunner final
             }
             line_.threaded_ = false;
             line_.has_runner_ = false;
+            line_.reads_ = false;
+            line_.watched_count_ = 0;
         }
 
         /**
@@ -163,6 +167,8 @@ class ModelRunner final
             }
             const std::uint32_t handled = telegraph.deliver( *model_ );
             if( !telegraph.quitting() ) {
+                telegraph.look_at_watched();
+                telegraph.read_watched( *model_ );
                 static_cast<void>( after_deliver( telegraph ) );
             }
             return handled;
@@ -176,6 +182,7 @@ class ModelRunner final
         {
             assert( !line_.has_runner_ && "one ModelRunner to a TelegraphLine" );
             line_.has_runner_ = true;
+            line_.reads_ = requires( M &model, Telegraph &t ) { model.readable( t, 0 ); };
         }
 
         // The model's thread: turns, and sleep between them.
@@ -188,6 +195,7 @@ class ModelRunner final
                 if( telegraph.quitting() ) {
                     break;
                 }
+                telegraph.read_watched( *model_ );
                 telegraph.idle( after_deliver( telegraph ) );
             }
         }

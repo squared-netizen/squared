@@ -81,6 +81,11 @@ bool Widget::text_input( std::string_view )
     return false;
 }
 
+bool Widget::key_text( std::string_view, app::KeyModifiers )
+{
+    return false;
+}
+
 bool Widget::text_editing( std::string_view, int, int )
 {
     return false;

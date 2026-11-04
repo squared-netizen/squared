@@ -57,6 +57,7 @@ class PosixFileSystem final : public FileSystem
                                             std::string_view path ) const noexcept override;
 
         [[nodiscard]] FileReadResult read( FileType type, std::string_view path ) const override;
+        [[nodiscard]] MapResult map( FileType type, std::string_view path ) const override;
 
         [[nodiscard]] FileError write( FileType type, std::string_view path,
                                        std::span<const std::byte> bytes, bool append ) override;

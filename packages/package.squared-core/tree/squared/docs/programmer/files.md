@@ -99,6 +99,34 @@ is no useful difference between "missing" and "could not tell". `length()`
 returns zero for a missing file, a directory, and an empty file alike; use
 `exists()` when the difference matters.
 
+## Reading in place: `map` (12.3d)
+
+A file read now and then for as long as the app runs (a font FreeType reads
+a glyph at a time, a table looked up by offset) is mapped rather than read:
+no copy on the heap.
+
+```cpp
+sq::files::MapResult font = fs.internal("fonts/JetBrainsMonoNL-Regular.ttf").map();
+if (!font) { report(font.error); return; }
+face.open(font.file.bytes());     // valid while `font.file` lives
+```
+
+| Call | Does |
+|---|---|
+| `handle.map()`, `fs.map( type, path )` | a `MapResult`: the `MappedFile`, or the error (`NotFound`, `IsADirectory`, `NotSupported` for a path that escapes its root, a root that is not set, or a non-`Internal` embedded file) |
+| `file.bytes()` | the file's bytes, read in place; empty for an empty file |
+| `file.valid()` | a file is mapped (an empty one is) |
+| `file.in_place()` | the file's own pages (`mmap`, an asset stored uncompressed, an embedded file), not a copy |
+| `file.reset()`, the destructor | give it back; `bytes()` is empty after |
+
+`MappedFile` is move-only (40 bytes). Its pages are clean: Android can drop
+them under memory pressure and read them again, and only what is touched is
+resident. **An asset is mapped in place only when the APK stores it
+uncompressed**: the template's packaging stores `ttf`, `otf` and `ttc` so
+(`SQ_STORED` in the project's Makefile adds more). A compressed asset still
+maps, into memory Android unpacks it to, and `in_place()` is false: check it
+once in a dev build.
+
 ## Writing
 
 ```cpp

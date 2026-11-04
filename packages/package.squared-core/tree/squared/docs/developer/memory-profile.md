@@ -58,6 +58,8 @@ Regenerate with `tools/measure_sizes.sh`.
 | `files::FileHandle` | 48 | 8 |
 | `files::PosixFileSystem` | 104 | 8 |
 | `files::FileError` | 72 | 8 |
+| `files::MappedFile` | 40 | 8 |
+| `term::KeyBytes` | 16 | 1 |
 | `data::JsonValue` | 56 | 8 |
 | `data::JsonError` | 64 | 8 |
 | `assets::AssetError` | 72 | 8 |
@@ -135,7 +137,7 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Table::add` | every cell added | global `new`, `std::deque` chunk |
 | `Ui::show_pane` | per pane shown: its entry in the `Ui`'s list (16 bytes) | global `new`, the vector's growth |
 | compiled layouts (`sqgen`) | never: read-only data, 32 bytes a node plus text and numbers ([layouts.md](layouts.md#memory)) | none |
-| `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (92,224 bytes at the default knobs, `static_assert`ed against the line as at most line + 4,224; the Stage's 4,056 hold 2,960 bytes of what screens and panes keep) ([stage.md](stage.md#memory-profile)) | none |
+| `sq::App` | never: static storage in the platform layer, the Telegraph line inside it (92,800 bytes at the default knobs, `static_assert`ed against the line as at most line + 4,224, which it now meets exactly; the Stage's 4,080 hold 2,960 bytes of what screens and panes keep) ([stage.md](stage.md#memory-profile)) | none |
 | `App::create`, first start | the platform's path of the model's save | global `new`, one `std::string` |
 | `App::run` | once, at the model's start: its runner, the model inside; for a model with `save`, its last save, freed at its `start` | global `new`, one `unique_ptr`, one `std::vector` |
 | `App::background` | a model's save, from 8 KB on its thread's stack; the write's paths | the stack; global `new` for the paths |
@@ -152,6 +154,9 @@ to 80 bytes when its four-byte modifiers became the one-byte `app::KeyModifiers`
 | `Widget::set_tooltip` | per tooltip shown | global `new`, a fresh subtree each time |
 | `term::Terminal` | constructor and `resize` only: two grids (rows x columns x 12 bytes, and 3 bytes a row), the scrollback's ring (1 MB unless configured), tab stops; `feed` never allocates (the test counts) ([term.md](term.md#memory)). The `Terminal` itself is 960 bytes (`static_assert`ed at most 1,024), `Cell` 12 (`static_assert`ed) | global `new`, `unique_ptr<T[]>` |
 | `font::Face` | `open_*`: FreeType's library and face, from `malloc` (about 100 KB a face); `render`: the glyph buffer, grown only for a larger glyph. The `Face` itself is 32 bytes (`static_assert`ed) ([font.md](font.md#face)) | `malloc`, FreeType's |
+| `files::MappedFile` (12.3d) | never on the heap: `mmap` of the file, or an asset's buffer, which Android maps from the APK for an asset stored uncompressed and inflates into memory of its own for a compressed one (`in_place()` false). Clean, file-backed pages: only what is read is resident ([files.md](files.md#map-and-mappedfile-123d-2026-11-03)) | `mmap`, `AAsset_getBuffer` |
+| `graphics::Texture` alpha (12.3d) | `create_alpha`: the GPU's `w x h` bytes (a quarter of RGBA's); a retained copy only with `RetainPixels`; `update` none | the driver's |
+| Watched descriptors (`messaging`, 12.3d) | never: 20 bytes in the line, in its padding | none |
 | Snapshots (`messaging`, 12.3c) | on the model's thread, when a snapshot is larger than its buffer's largest: three buffers a key, each as large as the largest snapshot written into it (a terminal's screen at 50 x 40: 24 KB, so 72 KB); the UI never allocates. The line holds `TELEGRAPH_SNAPSHOTS` (4) channels of 120 bytes. `term::ScreenPublisher`: 4 bytes a row of versions, when the screen grows ([messaging.md](messaging.md#snapshots-123c-2026-11-03)) | global `new`, `unique_ptr<std::byte[]>` |
 | `font::GlyphAtlas` | construction only: the image (width x height bytes, 1 MB by default) and its table (24 bytes a slot, two slots a glyph: 96 KB for 2,048); `glyph` never allocates. `FontSet` holds its faces by value (no allocation of its own) ([font.md](font.md#glyphatlas)) | global `new`, two `unique_ptr<T[]>` |
 | `term::Pty::spawn` | each program started: its arguments and environment as C strings and their pointer tables, freed before `spawn` returns; the `Pty` is 16 bytes (`static_assert`ed) and nothing else of it allocates | global `new`, a `std::string` and two `std::vector`s |

@@ -107,9 +107,24 @@ void through_a_handle()
 
 } // namespace
 
+// Mapped: the table's own bytes, nothing copied (12.3d).
+void maps()
+{
+    const EmbeddedFileSystem files( table );
+    const sq::files::MapResult top = files.map( FileType::Internal, "top.txt" );
+    CHECK( top && top.file.in_place() );
+    CHECK( top.file.bytes().data() == reinterpret_cast<const std::byte *>( hello ) );
+    CHECK( top.file.bytes().size() == 5 );
+    CHECK( files.map( FileType::Internal, "skins/empty" ).file.bytes().empty() );
+    CHECK( files.map( FileType::Internal, "skins" ).error.code == FileErrorCode::IsADirectory );
+    CHECK( files.map( FileType::Internal, "nope" ).error.code == FileErrorCode::NotFound );
+    CHECK( files.map( FileType::Local, "top.txt" ).error.code == FileErrorCode::NotSupported );
+}
+
 int main()
 {
     looks_up();
+    maps();
     reads();
     lists();
     refuses_writing();

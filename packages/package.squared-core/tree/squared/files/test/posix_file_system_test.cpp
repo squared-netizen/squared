@@ -106,6 +106,19 @@ int main()
     assert( fs.exists( local, "empty" ) && fs.length( local, "empty" ) == 0 );
     assert( fs.read( local, "empty" ) && fs.read( local, "empty" ).bytes.empty() );
 
+    // --- mapped in place (12.3d) -------------------------------------------------
+    {
+        MapResult mapped = fs.map( local, "a/b/c/f.bin" );
+        assert( mapped && mapped.file.valid() && mapped.file.in_place() );
+        assert( mapped.file.bytes().size() == 24 && mapped.file.bytes().front() == tail.front() );
+        MapResult none = fs.map( local, "empty" );
+        assert( none && none.file.valid() && none.file.bytes().empty() );
+        assert( fs.map( local, "missing" ).error.code == FileErrorCode::NotFound );
+        assert( fs.map( local, "a/b" ).error.code == FileErrorCode::IsADirectory );
+        assert( fs.map( local, "../x" ).error.code == FileErrorCode::NotSupported );
+        assert( fs.local( "a/b/c/f.bin" ).map().file.bytes().size() == 24 );
+    }
+
     // --- failures ---------------------------------------------------------------
     assert( fs.read( local, "missing" ).error.code == FileErrorCode::NotFound );
     assert( fs.read( local, "missing" ).error.path == base + "/local/missing" );

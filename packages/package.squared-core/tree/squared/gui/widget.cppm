@@ -147,6 +147,16 @@ class Widget : public Group
         virtual bool text_input( std::string_view text );
 
         /**
+     * @brief Handle what a key typed with Ctrl, Alt or Meta held: `c` with
+     * Ctrl for Ctrl-C. Text fields leave it (false, the default), as a
+     * desktop's do; a terminal makes control characters of it.
+     * @param text The character the key types without those modifiers.
+     * @param modifiers Which were held: at least one of control, alt, meta.
+     * @return true when the key was handled.
+     */
+        virtual bool key_text( std::string_view text, app::KeyModifiers modifiers );
+
+        /**
      * @brief Handle composition-edit updates.
      * @note Arguments are the current composition text, its start offset, and
      * its length, matching the virtual signature.

@@ -113,14 +113,17 @@ endif
 #   TELEGRAPH_LIST_VIEW=<n>    the most rows a list's view holds (128)
 #   TELEGRAPH_WAIT_MS=<ms>     how long the model waits for room (100)
 #   TELEGRAPH_NAMES=<bytes>    the dev tools' name table, Console builds (8192)
+#   TELEGRAPH_SNAPSHOTS=<n>    snapshots a model publishes (4)
+#   TELEGRAPH_WATCHES=<n>      descriptors a model watches (4)
 #
-# The defaults are in squared/messaging/src/telegraph_config.hpp, one place;
+# The defaults are in squared/messaging/src/telegraph_config.cppm, one place;
 # only the ones set here are passed, so a default build adds no flags. They
 # reach the application and the framework alike (the application makes the
 # TelegraphLine, so both must agree on its layout), and the framework's stamp,
 # so changing one rebuilds both. RING, DATA, PENDING and CACHE must be powers
 # of two: the framework checks when it compiles.
-SQ_TELEGRAPH_KNOBS := RING DATA PENDING CACHE CACHE_TEXT LISTS LIST_VIEW WAIT_MS NAMES
+SQ_TELEGRAPH_KNOBS := RING DATA PENDING CACHE CACHE_TEXT LISTS LIST_VIEW WAIT_MS NAMES \
+                      SNAPSHOTS WATCHES
 SQ_TELEGRAPH_SIZES := $(strip $(foreach k,$(SQ_TELEGRAPH_KNOBS),\
     $(if $(TELEGRAPH_$(k)),-DSQUARED_TELEGRAPH_$(k)=$(TELEGRAPH_$(k)))))
 SQ_CPPFLAGS += $(SQ_TELEGRAPH_SIZES)
@@ -262,8 +265,8 @@ endif
 
 # Modules that publish headers. A module with no sources still publishes
 # headers, which is why this is a list rather than the archive list.
-SQ_SQUARED_MODULES := app assets console data dev files gles graphics gui \
-                      math messaging stage time
+SQ_SQUARED_MODULES := app assets console data dev files font gles graphics gui \
+                      math messaging stage term time
 
 # One include root, the directory that holds squared/: the few headers that
 # are still headers (and squared's third_party/).
@@ -298,14 +301,19 @@ $(SQ_SQUARED_BMIS): squared-core ;
 # assets, messaging and time; gui and stage need app; gui needs graphics;
 # graphics needs math and files; assets needs files; everything that parses
 # needs data; every module, and your code, needs std, last. gles stands
-# alone. An app that has no sq::App (the demo, still on its own) links
-# nothing of stage: an archive's member comes in only when something refers to
-# it. (Since 7b.4 each archive also holds its module's interfaces: what an
+# alone. term and font (`import sq.term;`, `import sq.font;`, outside the
+# umbrella) come before stage: term's interfaces call app's initializer, and
+# font holds FreeType inside. An app that has no sq::App (the demo, still on
+# its own) links nothing of stage, and one that imports neither term nor font
+# nothing of theirs: an archive's member comes in only when something refers
+# to it. (Since 7b.4 each archive also holds its module's interfaces: what an
 # importer calls, and each module's initializer.)
 SQ_SQUARED_LIB_DIR := $(SQ_SQUARED_DIR)/build/release/lib
 SQ_SQUARED_LIBS := \
   $(SQ_SQUARED_LIB_DIR)/libsquared.a \
   $(if $(filter-out 0,$(CONSOLE)),$(SQ_SQUARED_LIB_DIR)/libsquared_console.a,) \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_term.a \
+  $(SQ_SQUARED_LIB_DIR)/libsquared_font.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_stage.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_gui.a \
   $(SQ_SQUARED_LIB_DIR)/libsquared_app.a \

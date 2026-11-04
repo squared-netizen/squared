@@ -99,6 +99,21 @@ bool key_down(sq::app::Key key, sq::app::KeyModifiers held) override
 }
 ```
 
+**What a key types with Ctrl, Alt or Meta held** goes to `key_text`, not
+`text_input` (12.3d): Ctrl-C arrives as `key_text( "c", {.control = true} )`.
+A text field leaves it (the default returns false), as a desktop's does; a
+terminal turns it into a control character (`sq::term::key_text_bytes`).
+Shift alone is typing, and goes to `text_input`.
+
+```cpp
+bool key_text(std::string_view text, sq::app::KeyModifiers held) override
+{
+    if (!held.control || text != "s") return false;
+    save();
+    return true;
+}
+```
+
 ## Widget base
 
 | Type | Header | Purpose |

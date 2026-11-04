@@ -1,6 +1,6 @@
 # class TelegraphUi
 
-*Defined at [messaging/telegraph.cppm:324](../../../../messaging/telegraph.cppm#L324)*
+*Defined at [messaging/telegraph.cppm:354](../../../../messaging/telegraph.cppm#L354)*
 
 
 
@@ -16,13 +16,13 @@
 
 *public void TelegraphUi(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.cppm:329](../../../../messaging/telegraph.cppm#L329)*
+*Defined at [messaging/telegraph.cppm:359](../../../../messaging/telegraph.cppm#L359)*
 
 ### TelegraphUi
 
 *public void TelegraphUi(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.cppm:327](../../../../messaging/telegraph.cppm#L327)*
+*Defined at [messaging/telegraph.cppm:357](../../../../messaging/telegraph.cppm#L357)*
 
 ### background
 
@@ -56,7 +56,7 @@
 
 *public DoResult do_(const K & key)*
 
-*Defined at [messaging/telegraph.cppm:358](../../../../messaging/telegraph.cppm#L358)*
+*Defined at [messaging/telegraph.cppm:388](../../../../messaging/telegraph.cppm#L388)*
 
 
 
@@ -66,7 +66,7 @@
 
 *public DoResult do_(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:367](../../../../messaging/telegraph.cppm#L367)*
+*Defined at [messaging/telegraph.cppm:397](../../../../messaging/telegraph.cppm#L397)*
 
 
 
@@ -76,7 +76,7 @@
 
 *public DoResult do_(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.cppm:377](../../../../messaging/telegraph.cppm#L377)*
+*Defined at [messaging/telegraph.cppm:407](../../../../messaging/telegraph.cppm#L407)*
 
 
 
@@ -94,7 +94,7 @@
 
 *public std::uint32_t drain(H & handler)*
 
-*Defined at [messaging/telegraph.cppm:725](../../../../messaging/telegraph.cppm#L725)*
+*Defined at [messaging/telegraph.cppm:781](../../../../messaging/telegraph.cppm#L781)*
 
 
 
@@ -128,13 +128,13 @@
 
 *public TelegraphUi & operator=(TelegraphUi && )*
 
-*Defined at [messaging/telegraph.cppm:330](../../../../messaging/telegraph.cppm#L330)*
+*Defined at [messaging/telegraph.cppm:360](../../../../messaging/telegraph.cppm#L360)*
 
 ### operator=
 
 *public TelegraphUi & operator=(const TelegraphUi & )*
 
-*Defined at [messaging/telegraph.cppm:328](../../../../messaging/telegraph.cppm#L328)*
+*Defined at [messaging/telegraph.cppm:358](../../../../messaging/telegraph.cppm#L358)*
 
 ### quit
 
@@ -152,7 +152,7 @@
 
 *public void register_names(const K &... keys)*
 
-*Defined at [messaging/telegraph.cppm:454](../../../../messaging/telegraph.cppm#L454)*
+*Defined at [messaging/telegraph.cppm:484](../../../../messaging/telegraph.cppm#L484)*
 
 
 
@@ -178,7 +178,7 @@
 
 *public SendResult set(const K & key, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:336](../../../../messaging/telegraph.cppm#L336)*
+*Defined at [messaging/telegraph.cppm:366](../../../../messaging/telegraph.cppm#L366)*
 
 
 
@@ -188,7 +188,7 @@
 
 *public SendResult set(const K & key, std::uint32_t uid, const V & value)*
 
-*Defined at [messaging/telegraph.cppm:347](../../../../messaging/telegraph.cppm#L347)*
+*Defined at [messaging/telegraph.cppm:377](../../../../messaging/telegraph.cppm#L377)*
 
 
 
@@ -234,7 +234,7 @@
 
 *public detail::value_of<K> value(const K & key)*
 
-*Defined at [messaging/telegraph.cppm:427](../../../../messaging/telegraph.cppm#L427)*
+*Defined at [messaging/telegraph.cppm:457](../../../../messaging/telegraph.cppm#L457)*
 
 
 
@@ -244,7 +244,7 @@
 
 *public detail::value_of<K> value(const K & key, std::uint32_t uid)*
 
-*Defined at [messaging/telegraph.cppm:436](../../../../messaging/telegraph.cppm#L436)*
+*Defined at [messaging/telegraph.cppm:466](../../../../messaging/telegraph.cppm#L466)*
 
 
 
@@ -262,7 +262,7 @@
 
 *public SendResult view(const K & rows, RowSpan span)*
 
-*Defined at [messaging/telegraph.cppm:708](../../../../messaging/telegraph.cppm#L708)*
+*Defined at [messaging/telegraph.cppm:764](../../../../messaging/telegraph.cppm#L764)*
 
 
 
@@ -292,5 +292,5 @@
 
 *public void ~TelegraphUi()*
 
-*Defined at [messaging/telegraph.cppm:331](../../../../messaging/telegraph.cppm#L331)*
+*Defined at [messaging/telegraph.cppm:361](../../../../messaging/telegraph.cppm#L361)*
 

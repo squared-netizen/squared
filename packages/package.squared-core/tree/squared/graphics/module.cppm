@@ -27,6 +27,7 @@ export import :src.glyph_layout_options;
 export import :src.glyph_line;
 export import :src.glyph_placement;
 export import :src.texture_filter;
+export import :src.texture_format;
 export import :src.texture_recovery_callback;
 export import :src.texture_recovery_options;
 export import :src.texture_recovery_policy;

@@ -39,10 +39,40 @@ bool Texture::upload_rgba( int width, int height, const std::uint8_t *pixels ) n
     width_ = width;
     height_ = height;
     invalidated_ = false;
+    format_ = TextureFormat::Rgba8;
     ++content_generation_;
 
     apply_sampling();
     return true;
+}
+
+bool Texture::upload_alpha( int width, int height, const std::uint8_t *pixels ) noexcept
+{
+    if( width <= 0 || height <= 0 || pixels == nullptr ) {
+        return false;
+    }
+    if( handle_ == 0 ) {
+        handle_ = g_next_name++;
+    }
+    width_ = width;
+    height_ = height;
+    invalidated_ = false;
+    format_ = TextureFormat::Alpha8;
+    ++content_generation_;
+    apply_sampling();
+    return true;
+}
+
+void Texture::update_backend( int x, int y, int width, int height, const std::uint8_t *pixels,
+                              int stride ) noexcept
+{
+    // Checked by update(); nothing to draw into.
+    static_cast<void>( x );
+    static_cast<void>( y );
+    static_cast<void>( width );
+    static_cast<void>( height );
+    static_cast<void>( pixels );
+    static_cast<void>( stride );
 }
 
 void Texture::apply_sampling() noexcept

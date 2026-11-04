@@ -1,6 +1,6 @@
 // The GPU half of Texture, for GLES 3.0.
 //
-// Six members: everything that issues a graphics call. The policy and
+// Eight members: everything that issues a graphics call. The policy and
 // bookkeeping live in src/common/texture_common.cpp and are shared by every
 // backend.
 
@@ -62,14 +62,67 @@ bool Texture::upload_rgba( int width, int height, const std::uint8_t *pixels ) n
     glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
 
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels );
+    // A name that held an alpha texture before keeps its swizzle: put it back.
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_RED );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_GREEN );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_BLUE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ALPHA );
 
     width_ = width;
     height_ = height;
     invalidated_ = false;
+    format_ = TextureFormat::Rgba8;
     ++content_generation_;
 
     apply_sampling();
     return true;
+}
+
+bool Texture::upload_alpha( int width, int height, const std::uint8_t *pixels ) noexcept
+{
+    if( width <= 0 || height <= 0 || pixels == nullptr ) {
+        return false;
+    }
+
+    if( handle_ == 0 ) {
+        GLuint name = 0;
+        glGenTextures( 1, &name );
+        if( name == 0 ) {
+            return false;
+        }
+        handle_ = name;
+    }
+
+    glBindTexture( GL_TEXTURE_2D, handle_ );
+    glPixelStorei( GL_UNPACK_ALIGNMENT, 1 ); // rows of any width
+    // One byte a texel, in the red channel (GLES 3 has R8 and swizzles; the
+    // old ALPHA format is gone from its sized formats). Sampled as white with
+    // that alpha, so the sprite shader's colour tints it: no shader of its own.
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, pixels );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_ONE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_ONE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED );
+
+    width_ = width;
+    height_ = height;
+    invalidated_ = false;
+    format_ = TextureFormat::Alpha8;
+    ++content_generation_;
+
+    apply_sampling();
+    return true;
+}
+
+void Texture::update_backend( int x, int y, int width, int height, const std::uint8_t *pixels,
+                              int stride ) noexcept
+{
+    glBindTexture( GL_TEXTURE_2D, handle_ );
+    glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, stride );
+    const GLenum layout = format_ == TextureFormat::Alpha8 ? GL_RED : GL_RGBA;
+    glTexSubImage2D( GL_TEXTURE_2D, 0, x, y, width, height, layout, GL_UNSIGNED_BYTE, pixels );
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, 0 ); // the default, for every other upload
 }
 
 void Texture::apply_sampling() noexcept

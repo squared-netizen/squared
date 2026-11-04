@@ -303,7 +303,7 @@ static_assert( sq::detail::screen_entry<About>.pane == sq::gui::PaneShape{} );
 static_assert( sq::ScreenType<About> );
 static_assert( !sq::ScreenType<Written> );
 
-std::unique_ptr<sq::gui::Widget> make_gauge()
+std::unique_ptr<sq::gui::Widget> make_gauge( sq::Stage & /*stage*/ )
 {
     return std::make_unique<sq::gui::Label>( "made gauge" );
 }
@@ -333,8 +333,22 @@ class Opener final : public sq::gui::Widget
         }
 };
 
-std::unique_ptr<sq::gui::Widget> make_opener()
+/// The Stage it was made on: the one it opens panes on (the maker is given it).
+sq::Stage *made_on = nullptr;
+
+/// How often the surface hook ran, and with what context.
+int surfaces = 0;
+void *surface_context = nullptr;
+
+void count_surface( void *context, sq::graphics::Context & /*graphics*/ ) noexcept
 {
+    ++surfaces;
+    surface_context = context;
+}
+
+std::unique_ptr<sq::gui::Widget> make_opener( sq::Stage &stage )
+{
+    made_on = &stage;
     return std::make_unique<Opener>();
 }
 
@@ -612,6 +626,7 @@ void squared_main( sq::App &app )
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
     CHECK( app.stage.custom( "opener", make_opener ) );
+    app.stage.on_surface( &count_surface, &surfaces );
     app.stage.push( landing.layout );
 }
 
@@ -996,7 +1011,13 @@ void cpp_screens()
         CHECK( sq::dev::frame_end().count == 0 );
     }
 
-    // Panes opened from inside an event wait for it, and count as open.
+    // Panes opened from inside an event wait for it, and count as open. The
+    // maker was given the Stage the widget is on, which has the app's files,
+    // the pixel scale, and called the surface hook when the surface came.
+    CHECK( made_on == &app.stage );
+    CHECK( app.stage.files() != nullptr );
+    CHECK( app.stage.pixels_per_unit() == 1.5F ); // 1,080 pixels across 720 units
+    CHECK( surfaces >= 1 && surface_context == &surfaces );
     opening = &app.stage;
     tap_on( app, *root.child_at( 2 ) );
     CHECK( opener_opened && opener_saw == 2 );

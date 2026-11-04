@@ -33,6 +33,9 @@ import std;
 #define SQUARED_TELEGRAPH_SNAPSHOTS                                                                \
     4 // snapshots a model may publish (their buffers grow as needed)
 #endif
+#ifndef SQUARED_TELEGRAPH_WATCHES
+#define SQUARED_TELEGRAPH_WATCHES 4 // descriptors a model may watch (a pty, a socket)
+#endif
 #ifndef SQUARED_TELEGRAPH_NAMES
 #define SQUARED_TELEGRAPH_NAMES 8192 // the dev tools' name table, for the text form
 #endif
@@ -55,6 +58,7 @@ inline constexpr std::size_t lists = SQUARED_TELEGRAPH_LISTS;
 inline constexpr std::size_t list_view = SQUARED_TELEGRAPH_LIST_VIEW;
 inline constexpr int wait_ms = SQUARED_TELEGRAPH_WAIT_MS;
 inline constexpr std::size_t snapshots = SQUARED_TELEGRAPH_SNAPSHOTS;
+inline constexpr std::size_t watches = SQUARED_TELEGRAPH_WATCHES;
 // In the dev tools only (console::TelegraphTools), not in the line: a plain
 // build holds no name table. About 250 names at the default.
 inline constexpr std::size_t names = SQUARED_TELEGRAPH_NAMES;
@@ -75,6 +79,7 @@ static_assert( cache_text <= std::size_t{ 4 } * 0xFFFF && pending_text <= std::s
 static_assert( lists >= 1 && list_view >= 1, "TELEGRAPH_LISTS and TELEGRAPH_LIST_VIEW: 1 or more" );
 static_assert( wait_ms >= 0, "TELEGRAPH_WAIT_MS: 0 or more (0: never wait)" );
 static_assert( snapshots >= 1 && snapshots <= 64, "TELEGRAPH_SNAPSHOTS: 1 to 64" );
+static_assert( watches >= 1 && watches <= 16, "TELEGRAPH_WATCHES: 1 to 16" );
 static_assert( names >= 64 && names <= std::size_t{ 1 } << 24,
                "TELEGRAPH_NAMES: 64 bytes to 16 MB" );
 

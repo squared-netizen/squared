@@ -466,8 +466,20 @@ void Stage::say( const char *format, ... ) noexcept
 
 // --- the window ------------------------------------------------------------
 
+float Stage::pixels_per_unit() const noexcept
+{
+    return logical_width_ > 0.0F ? static_cast<float>( pixel_width_ ) / logical_width_ : 0.0F;
+}
+
+void Stage::on_surface( SurfaceHook hook, void *context ) noexcept
+{
+    surface_hook_ = hook;
+    surface_context_ = hook != nullptr ? context : nullptr;
+}
+
 void Stage::attach( app::Runtime &runtime )
 {
+    files_ = &runtime.files;
     keep_shown(); // a window made again without a detach: what it showed is kept
     unbind_all();
     drawing_.reset();
@@ -601,6 +613,10 @@ void Stage::surface_created( graphics::Context &graphics ) noexcept
     // A first context loses nothing, and restore() knows it.
     if( !drawing_->atlas.restore( graphics ) || !drawing_->batch.restore( graphics ) ) {
         say( "stage: the skin's textures did not come back" );
+    }
+    // The app's own textures, before its widgets are made again over them.
+    if( surface_hook_ != nullptr ) {
+        surface_hook_( surface_context_, graphics );
     }
     resize( graphics.pixel_width(), graphics.pixel_height() );
     if( !graphics.resources_preserved() ) {
@@ -2299,10 +2315,10 @@ std::unique_ptr<gui::Widget> Stage::made_in_row( void *context, std::string_view
 
 std::unique_ptr<gui::Widget> Stage::made( void *context, std::string_view name )
 {
-    const auto &stage = *static_cast<const Stage *>( context );
+    auto &stage = *static_cast<Stage *>( context );
     for( std::size_t i = 0; i < stage.custom_count_; ++i ) {
         if( stage.customs_[i].name == name ) {
-            return stage.customs_[i].make();
+            return stage.customs_[i].make( stage );
         }
     }
     return nullptr;

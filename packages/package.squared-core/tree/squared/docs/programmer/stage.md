@@ -112,13 +112,16 @@ edit not finished ([What is kept](#what-is-kept)).
 | `panes()` | how many panes are open, once anything waiting has happened |
 | `push<S>()`, `replace<S>()` | the same for the C++ screen `S` (below) |
 | `add<S>()` | let taps reach the C++ screen `S` by its name (`push about`). In `squared_main`. False, and reported, for a name that is not one, that a layout file or another screen has, or past `max_added` (16) |
-| `custom( name, make )` | make a layout's custom node `name` (`"type": "custom", "name": "minimap"`) with `make`. `name` must outlive the Stage: a literal does. False, and reported, for a name taken or past 16 |
+| `custom( name, make )` | make a layout's custom node `name` (`"type": "custom", "name": "minimap"`) with `make`, a `std::unique_ptr<gui::Widget> (*)( Stage & )`. `name` must outlive the Stage: a literal does. False, and reported, for a name taken or past 16 |
 | `top()` | the table shown: a layout, or what a C++ screen wrote (valid while shown, until a C++ pane is opened over it: they share one scratch); nullptr for none |
 | `top_name()` | the name of the screen shown; empty for none |
 | `pane_name()` | the name of the top pane; empty for none |
 | `showing<S>()` | whether the C++ screen `S` is the one shown |
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
+| `files()` | the app's files, the platform's (`Internal` is what the APK bundles): what a custom widget reads its own from (`files()->internal( "fonts/a.ttf" ).map()`); nullptr before the first window (12.3d) |
+| `pixels_per_unit()` | pixels to a logical unit (the shorter side is 720 units), for a widget that draws pixel-exact, as a terminal's glyphs; 0 before the first window (12.3d) |
+| `on_surface( hook, context )` | `hook( context, graphics )` each time the drawing surface is made, before the screen is built again: where an app's own textures come back (`texture.restore( graphics )`). One; null removes it (12.3d) |
 | `bindings()` | how many widgets are bound now (below) |
 | `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
@@ -406,10 +409,18 @@ A layout's `"type": "custom"` node (`add_custom( "minimap" )` in C++) is made
 by a function the app gives:
 
 ```cpp
-std::unique_ptr<sq::gui::Widget> make_minimap() { return std::make_unique<Minimap>(); }
+std::unique_ptr<sq::gui::Widget> make_minimap( sq::Stage &stage )
+{
+    return std::make_unique<Minimap>( stage.telegraph() );
+}
 
 app.stage.custom( "minimap", make_minimap );
 ```
+
+The maker is given the Stage (12.3d): its `telegraph()` is what the widget
+reads the model's values and snapshots from and sends to, and its
+navigation is what a tap inside the widget may push or open. A plain
+function pointer, so a lambda with no capture does too.
 
 A custom node with no maker shows a label saying so, and is reported.
 
@@ -504,8 +515,8 @@ Nothing stops the app; each failure is one line to the platform's report
 ## Memory
 
 The App is made once, in static storage, not on the heap: the Telegraph line
-(88,000 bytes at the default sizes, which its knobs set) and 4,224 bytes more
-(the Stage is 4,056: its stack, the added screens and custom types, the pane
+(88,576 bytes at the default sizes, which its knobs set) and 4,224 bytes more
+(the Stage is 4,080: its stack, the added screens and custom types, the pane
 slots, and 2,960 bytes of what 16 screens and 4 panes keep), and the two
 paths where it keeps things (allocated once, at start). The skin's files are 46 KB of read-only data in the program, mapped
 from its file, not the heap. A model's runner is one allocation, at `run`.

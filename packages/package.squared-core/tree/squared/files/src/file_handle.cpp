@@ -123,6 +123,14 @@ std::uint64_t FileHandle::length() const noexcept
     return system_ == nullptr ? 0U : system_->length( type_, path_ );
 }
 
+MapResult FileHandle::map() const
+{
+    if( system_ == nullptr ) {
+        return MapResult{ .file = {}, .error = unbound() };
+    }
+    return system_->map( type_, path_ );
+}
+
 FileReadResult FileHandle::read_bytes() const
 {
     if( system_ == nullptr ) {

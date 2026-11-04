@@ -48,6 +48,15 @@ sq::app::KeyModifiers held{.shift = true};   // build one with designated initia
 if (held.any()) { /* ... */ }
 ```
 
+`Key` names the keys that do something rather than type: the arrows, Home
+and End, Backspace and Delete, Enter, Space, Tab, Escape, and from 12.3d the
+ones a terminal needs, `page_up`, `page_down`, `insert`, `f1` to `f12`. What
+a key types (letters, digits, punctuation) comes as `TextInput` text; with
+Ctrl, Alt or Meta held, as the character without them plus those modifiers
+in `event.modifiers` (Ctrl-C is `"c"` with `control`), which the GUI gives to
+`Widget::key_text` instead of `text_input`. A key that types something else
+with them held (AltGr's `@` on a German keyboard) comes as plain text.
+
 | Type | Values |
 |---|---|
 | `Key` | `unknown`, `left`, `right`, `up`, `down`, `home`, `end`, `backspace`, `delete_key`, `enter`, `space`, `tab`, `escape`. A key squared doesn't name arrives as `unknown`, with the platform's code in `Event::input_device_id` |

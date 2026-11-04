@@ -248,6 +248,48 @@ std::uint64_t AndroidAssetFileSystem::length( FileType type, std::string_view pa
     return size > 0 ? static_cast<std::uint64_t>( size ) : 0U;
 }
 
+namespace
+{
+
+void close_asset( void *handle, const std::byte * /*data*/, std::size_t /*size*/ ) noexcept
+{
+    AAsset_close( static_cast<AAsset *>( handle ) );
+}
+
+} // namespace
+
+MapResult AndroidAssetFileSystem::map( FileType type, std::string_view path ) const
+{
+    if( type != FileType::Internal ) {
+        return storage_.map( type, path );
+    }
+    if( escapes_root( path ) ) {
+        return { .file = {},
+                 .error = make_error( FileErrorCode::NotSupported,
+                                      "asset path escapes the bundle root", path ) };
+    }
+    const std::string name{ path };
+    // BUFFER: the whole asset at once. Stored uncompressed (aapt2 -0), that
+    // is a mapping of the APK itself; compressed, Android unpacks it into
+    // memory the asset owns, which AAsset_isAllocated reports.
+    AAsset *asset = AAssetManager_open( assets_, name.c_str(), AASSET_MODE_BUFFER );
+    if( asset == nullptr ) {
+        return { .file = {},
+                 .error = make_error( FileErrorCode::NotFound, "no such asset", path ) };
+    }
+    const off64_t size = AAsset_getLength64( asset );
+    const void *data = size > 0 ? AAsset_getBuffer( asset ) : nullptr;
+    if( size < 0 || ( size > 0 && data == nullptr ) ) {
+        AAsset_close( asset );
+        return { .file = {},
+                 .error = make_error( FileErrorCode::IoFailure, "asset cannot be mapped", path ) };
+    }
+    const bool in_place = AAsset_isAllocated( asset ) == 0;
+    const std::span<const std::byte> bytes( static_cast<const std::byte *>( data ),
+                                            static_cast<std::size_t>( size ) );
+    return { .file = MappedFile( bytes, in_place, &close_asset, asset ), .error = {} };
+}
+
 FileReadResult AndroidAssetFileSystem::read( FileType type, std::string_view path ) const
 {
     if( type != FileType::Internal ) {

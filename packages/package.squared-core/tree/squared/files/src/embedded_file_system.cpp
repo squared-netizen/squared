@@ -71,6 +71,27 @@ std::uint64_t EmbeddedFileSystem::length( FileType type, std::string_view path )
     return file != nullptr ? file->bytes.size() : 0;
 }
 
+MapResult EmbeddedFileSystem::map( FileType type, std::string_view path ) const
+{
+    if( type != FileType::Internal ) {
+        return { .file = {},
+                 .error = error_of( FileErrorCode::NotSupported,
+                                    "an embedded file system holds bundled files only", path ) };
+    }
+    const EmbeddedFile *file = find( type, path );
+    if( file == nullptr ) {
+        if( is_directory( type, path ) ) {
+            return { .file = {},
+                     .error = error_of( FileErrorCode::IsADirectory, "a directory", path ) };
+        }
+        return { .file = {},
+                 .error = error_of( FileErrorCode::NotFound, "no embedded file", path ) };
+    }
+    // Already in the program's own read-only pages: nothing to give back.
+    const std::span<const std::byte> bytes = std::as_bytes( file->bytes );
+    return { .file = MappedFile( bytes, true, nullptr, nullptr ), .error = {} };
+}
+
 FileReadResult EmbeddedFileSystem::read( FileType type, std::string_view path ) const
 {
     FileReadResult result;

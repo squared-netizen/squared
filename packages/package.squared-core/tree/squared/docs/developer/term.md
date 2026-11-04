@@ -31,17 +31,42 @@ term/
   cell.cppm cell_attributes.cppm cell_flags.cppm rgb.cppm cursor.cppm
   terminal.cppm terminal_config.cppm terminal_events.cppm terminal_modes.cppm module.cppm
   pty.cppm pty_config.cppm pty_error.cppm process_exit.cppm
-  screen_publisher.cppm screen_view.cppm
+  screen_publisher.cppm screen_view.cppm key_bytes.cppm
   src/   utf8_decoder.cppm parser.cppm csi_sequence.cppm char_width.cppm palette.cppm
          grid.cppm grid.cpp scrollback.cppm scrollback.cpp terminal.cpp pty.cpp
-         screen_layout.cppm screen_snapshot.cpp
-  test/  term_test.cpp pty_test.cpp
+         screen_layout.cppm screen_snapshot.cpp key_bytes.cpp
+  test/  term_test.cpp pty_test.cpp key_test.cpp
   Makefile
 ```
 
-It imports only `std`, so the top `Makefile` builds it with nothing before
-it. Not in the umbrella (`import squared;`): an app that wants a terminal
-imports `sq.term`.
+It imports `std`, and `sq.app` for its key names (`key_bytes`, 12.3d): the
+top `Makefile` builds it after `app` (`term: app`). Only the enum and the
+modifiers are used, so nothing of app's is linked; what it costs is that a
+change to app's interfaces (or graphics', which app imports) rebuilds term's
+objects. Chosen over a key enum of term's own (a second vocabulary for the
+same keys, against `sq::app::Key`'s "one key vocabulary in squared": priority
+2 over build time). Not in the umbrella (`import squared;`): an app that
+wants a terminal imports `sq.term`.
+
+## What keys send (12.3d)
+
+`key_bytes` and `key_text_bytes` (`src/key_bytes.cpp`) are xterm's encoding,
+the one programs expect, though compatibility comes last elsewhere: a key
+has to mean what readline, zsh and neovim think it means. Cursor keys and
+Home and End are `CSI` letters, `SS3` in DECCKM; the modifier parameter is
+xterm's (1 + Shift + 2 Alt + 4 Ctrl + 8 Meta), and with one the key is
+`CSI 1 ; m` whatever the mode, as xterm does. F1 to F4 are `SS3` letters
+(xterm's default, not the VT220's `CSI 11 ~`); F5 to F12 the VT220 tilde
+numbers with xterm's gaps (16 and 22 unused). Backspace sends DEL (as
+`stty erase ^?` expects, Termux's choice too), Ctrl-Backspace BS for
+editors that tell the two apart. Ctrl with a character follows xterm's
+table, including the digits (`2` NUL to `8` DEL). Alt is ESC before the
+key (xterm's `metaSendsEscape`), never the eighth bit, which UTF-8 makes
+ambiguous. `KeyBytes` is 16 bytes: an array and a count, returned by value,
+no allocation. Tested by `test/key_test.cpp`: every named key plain, in
+both cursor modes, and with each modifier and a pair; the editing keys;
+F1 to F12; the control keys with Ctrl and Alt; Ctrl over the whole table,
+non-ASCII text, Alt with and without Ctrl, the 14-byte limit.
 
 ## The flow
 
@@ -259,6 +284,7 @@ decade).
 | `Pty::spawn` | each start, freed before it returns | the arguments and environment, once, plus two pointer tables |
 | `Pty::read`, `write`, `resize`, `poll_exit` | never | 0 |
 | `ScreenPublisher::write` | when the screen gets taller: its row versions | 4 bytes a row |
+| `key_bytes`, `key_text_bytes` | never | 0 (a 16-byte `KeyBytes` returned) |
 | The snapshot channel's three buffers (messaging's) | when a snapshot is larger than the buffer's largest before | the screen's bytes, 3 times |
 
 80 x 24 with the default scrollback: 2 x 23,112 + 1,048,572 + 16 + 960, about

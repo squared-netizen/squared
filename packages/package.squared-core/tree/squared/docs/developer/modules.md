@@ -33,7 +33,7 @@ against an older one. Three levels of order:
 
 1. **std first**, from the root Makefile: every unit imports it.
 2. **Modules in the top Makefile's order** (`gui: graphics math data dev files
-   messaging ...`). `make headers` (`tools/check_modules.sh`) checks that
+   messaging ...`; `term: app` since 12.3d, for the key names). `make headers` (`tools/check_modules.sh`) checks that
    every module a module's files import is built before it: under `make -j`
    a missing line would race the BMI, and fail only sometimes.
 3. **Interfaces inside a module from their import lines**:

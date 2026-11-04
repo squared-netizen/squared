@@ -11,6 +11,8 @@
 * [FileReadResult](FileReadResult.md)
 * [FileSystem](FileSystem.md)
 * [FileTextResult](FileTextResult.md)
+* [MapResult](MapResult.md)
+* [MappedFile](MappedFile.md)
 * [PosixFileSystemRoots](PosixFileSystemRoots.md)
 * [PosixFileSystem](PosixFileSystem.md)
 

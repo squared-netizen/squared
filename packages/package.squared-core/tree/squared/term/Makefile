@@ -13,6 +13,7 @@ MODULE_DIR := $(SQUARED_ROOT)/term
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/grid.cpp \
+    src/key_bytes.cpp \
     src/pty.cpp \
     src/screen_snapshot.cpp \
     src/scrollback.cpp \
@@ -33,7 +34,11 @@ TERM_TEST := $(BUILD_DIR)/term_test
 # hanging up.
 PTY_TEST := $(BUILD_DIR)/pty_test
 
-TESTS := $(TERM_TEST) $(PTY_TEST)
+# What keys send (12.3d): every named key with its modifiers, both cursor-key
+# modes, text with Ctrl and Alt.
+KEY_TEST := $(BUILD_DIR)/key_test
+
+TESTS := $(TERM_TEST) $(PTY_TEST) $(KEY_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -66,6 +71,12 @@ $(PTY_TEST): $(MODULE_DIR)/test/pty_test.cpp \
              $(MODULE_DIR)/src/pty.cpp \
              $(MODULE_DIR)/src/scrollback.cpp \
              $(MODULE_DIR)/src/terminal.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@
+
+$(KEY_TEST): $(MODULE_DIR)/test/key_test.cpp \
+             $(MODULE_DIR)/src/key_bytes.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@

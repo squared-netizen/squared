@@ -32,6 +32,8 @@ const char* AAssetDir_getNextFileName(AAssetDir*);
 void AAssetDir_close(AAssetDir*);
 int AAsset_read(AAsset*, void*, size_t);
 off64_t AAsset_getLength64(AAsset*);
+const void* AAsset_getBuffer(AAsset*);
+int AAsset_isAllocated(AAsset*);
 void AAsset_close(AAsset*);
 #ifdef __cplusplus
 }

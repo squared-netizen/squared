@@ -22,6 +22,7 @@ MODULE_DIR := $(SQUARED_ROOT)/files
 INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 
 SOURCES := src/file_handle.cpp \
+    src/mapped_file.cpp \
     src/file_system.cpp \
     src/embedded_file_system.cpp \
     src/posix_file_system.cpp \
@@ -62,6 +63,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
                 $(MODULE_DIR)/src/android_asset_file_system.cpp \
                 $(MODULE_DIR)/src/posix_file_system.cpp \
                 $(MODULE_DIR)/src/file_handle.cpp \
+                $(MODULE_DIR)/src/mapped_file.cpp \
                 $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
@@ -71,6 +73,7 @@ $(TEST_BINARY): $(MODULE_DIR)/test/android_asset_test.cpp \
 $(POSIX_TEST): $(MODULE_DIR)/test/posix_file_system_test.cpp \
                $(MODULE_DIR)/src/posix_file_system.cpp \
                $(MODULE_DIR)/src/file_handle.cpp \
+               $(MODULE_DIR)/src/mapped_file.cpp \
                $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
@@ -79,6 +82,7 @@ $(POSIX_TEST): $(MODULE_DIR)/test/posix_file_system_test.cpp \
 $(EMBEDDED_TEST): $(MODULE_DIR)/test/embedded_file_system_test.cpp \
                   $(MODULE_DIR)/src/embedded_file_system.cpp \
                   $(MODULE_DIR)/src/file_handle.cpp \
+                  $(MODULE_DIR)/src/mapped_file.cpp \
                   $(MODULE_DIR)/src/file_system.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))

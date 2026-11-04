@@ -245,7 +245,7 @@ bool Ui::event( const app::Event &event )
             resize( static_cast<float>( event.width ), static_cast<float>( event.height ) );
             return true;
         case app::Event::Type::TextInput:
-            return text_input( event.text );
+            return text_input( event.text, event.modifiers );
         case app::Event::Type::TextEditing:
             return text_editing( event.text, event.editing_start, event.editing_length );
         case app::Event::Type::TextInputHidden:
@@ -442,12 +442,18 @@ bool Ui::navigation( app::Navigation navigation_value, std::int32_t input_device
     }
 }
 
-bool Ui::text_input( std::string_view text )
+bool Ui::text_input( std::string_view text, app::KeyModifiers modifiers )
 {
     hide_tooltip();
     focus_tooltip_owner_ = nullptr;
     focus_tooltip_elapsed_ = 0.0;
-    return focused_ && focused_->text_input( text );
+    if( focused_ == nullptr ) {
+        return false;
+    }
+    if( modifiers.control || modifiers.alt || modifiers.meta ) {
+        return focused_->key_text( text, modifiers );
+    }
+    return focused_->text_input( text );
 }
 
 bool Ui::text_editing( std::string_view text, int start, int length )

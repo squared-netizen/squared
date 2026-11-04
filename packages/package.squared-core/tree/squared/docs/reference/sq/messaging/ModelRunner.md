@@ -1,6 +1,6 @@
 # class ModelRunner
 
-*Defined at [messaging/model_runner.cppm:96](../../../../messaging/model_runner.cppm#L96)*
+*Defined at [messaging/model_runner.cppm:98](../../../../messaging/model_runner.cppm#L98)*
 
 
 
@@ -18,13 +18,13 @@
 
 *public void ModelRunner<M>(ModelRunner<M> && )*
 
-*Defined at [messaging/model_runner.cppm:137](../../../../messaging/model_runner.cppm#L137)*
+*Defined at [messaging/model_runner.cppm:139](../../../../messaging/model_runner.cppm#L139)*
 
 ### ModelRunner<M>
 
 *public void ModelRunner<M>(TelegraphLine & line, Args &&... args)*
 
-*Defined at [messaging/model_runner.cppm:108](../../../../messaging/model_runner.cppm#L108)*
+*Defined at [messaging/model_runner.cppm:110](../../../../messaging/model_runner.cppm#L110)*
 
 
 
@@ -34,7 +34,7 @@
 
 *public void ModelRunner<M>(TelegraphLine & line, OnUiThread , Args &&... args)*
 
-*Defined at [messaging/model_runner.cppm:127](../../../../messaging/model_runner.cppm#L127)*
+*Defined at [messaging/model_runner.cppm:129](../../../../messaging/model_runner.cppm#L129)*
 
 
 
@@ -44,25 +44,25 @@
 
 *public void ModelRunner<M>(const ModelRunner<M> & )*
 
-*Defined at [messaging/model_runner.cppm:135](../../../../messaging/model_runner.cppm#L135)*
+*Defined at [messaging/model_runner.cppm:137](../../../../messaging/model_runner.cppm#L137)*
 
 ### operator=
 
 *public ModelRunner<M> & operator=(ModelRunner<M> && )*
 
-*Defined at [messaging/model_runner.cppm:138](../../../../messaging/model_runner.cppm#L138)*
+*Defined at [messaging/model_runner.cppm:140](../../../../messaging/model_runner.cppm#L140)*
 
 ### operator=
 
 *public ModelRunner<M> & operator=(const ModelRunner<M> & )*
 
-*Defined at [messaging/model_runner.cppm:136](../../../../messaging/model_runner.cppm#L136)*
+*Defined at [messaging/model_runner.cppm:138](../../../../messaging/model_runner.cppm#L138)*
 
 ### threaded
 
 *public bool threaded()*
 
-*Defined at [messaging/model_runner.cppm:172](../../../../messaging/model_runner.cppm#L172)*
+*Defined at [messaging/model_runner.cppm:178](../../../../messaging/model_runner.cppm#L178)*
 
 
 
@@ -72,7 +72,7 @@
 
 *public std::uint32_t turn()*
 
-*Defined at [messaging/model_runner.cppm:157](../../../../messaging/model_runner.cppm#L157)*
+*Defined at [messaging/model_runner.cppm:161](../../../../messaging/model_runner.cppm#L161)*
 
 
 
@@ -82,5 +82,5 @@
 
 *public void ~ModelRunner<M>()*
 
-*Defined at [messaging/model_runner.cppm:140](../../../../messaging/model_runner.cppm#L140)*
+*Defined at [messaging/model_runner.cppm:142](../../../../messaging/model_runner.cppm#L142)*
 

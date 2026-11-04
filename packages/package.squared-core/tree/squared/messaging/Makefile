@@ -61,8 +61,12 @@ THREAD_TEST := $(BUILD_DIR)/telegraph_thread_test
 # full set of names (so -pthread).
 SNAPSHOT_TEST := $(BUILD_DIR)/snapshot_test
 
+# Watched descriptors (12.3d): a pipe waking the model on its own thread and
+# inline, closing, unwatching, the table, a model with no readable (-pthread).
+WATCH_TEST := $(BUILD_DIR)/watch_test
+
 TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
-    $(TELEGRAPH_TEST) $(THREAD_TEST) $(SNAPSHOT_TEST)
+    $(TELEGRAPH_TEST) $(THREAD_TEST) $(SNAPSHOT_TEST) $(WATCH_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -155,6 +159,24 @@ $(SNAPSHOT_TEST): $(MODULE_DIR)/test/snapshot_test.cpp \
                   $(MODULE_DIR)/src/name_table.cpp \
                   $(MODULE_DIR)/src/address.cpp \
                   $(MODULE_DIR)/src/wake.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@
+
+$(WATCH_TEST): $(MODULE_DIR)/test/watch_test.cpp \
+               $(MODULE_DIR)/src/telegram.cpp \
+               $(MODULE_DIR)/src/telegram_ring.cpp \
+               $(MODULE_DIR)/src/value_cache.cpp \
+               $(MODULE_DIR)/src/model_list.cpp \
+               $(MODULE_DIR)/src/list_window.cpp \
+               $(MODULE_DIR)/src/telegraph.cpp \
+               $(MODULE_DIR)/src/snapshot.cpp \
+               $(MODULE_DIR)/src/name_table.cpp \
+               $(MODULE_DIR)/src/address.cpp \
+               $(MODULE_DIR)/src/wake.cpp \
+               $(MODULE_DIR)/src/model_runner.cpp \
+               $(SQUARED_ROOT)/time/src/now.cpp \
+               $(SQUARED_ROOT)/time/src/timepiece.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@

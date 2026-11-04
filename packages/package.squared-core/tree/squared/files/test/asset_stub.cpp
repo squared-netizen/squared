@@ -65,6 +65,23 @@ int AAsset_read( AAsset *asset, void *out, size_t count )
     return static_cast<int>( take );
 }
 
+const void *AAsset_getBuffer( AAsset *asset )
+{
+    return asset->data->data();
+}
+
+// A compressed asset is unpacked into memory the asset owns: the stub says so
+// for names ending .z, as a test of in_place().
+int AAsset_isAllocated( AAsset *asset )
+{
+    for( const auto &entry : assetstub::entries ) {
+        if( &entry.second == asset->data ) {
+            return entry.first.ends_with( ".z" ) ? 1 : 0;
+        }
+    }
+    return 0;
+}
+
 void AAsset_close( AAsset *asset )
 {
     delete asset;

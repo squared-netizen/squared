@@ -654,6 +654,55 @@ the looper's wiring left to Sprint 7.
   waking the model, `due` never called, the tick cadence drifting, timeouts
   rounded down, `earliest` picking the later.
 
+### Watched descriptors (12.3d, 2026-11-03)
+
+For sqterm: its model reads a shell's pty, and must sleep until the shell
+writes, with no tick to poll it ("wait on events rather than polling").
+The `Wake` was made an `eventfd` with this in mind (`src/wake.cppm`: "so the
+sleeper can wait on other file descriptors in the same `poll`").
+
+- **The table** is the line's, the model's thread alone touching it:
+  `watched_` (`TELEGRAPH_WATCHES` ints, 4 by default, 1 to 16) packed from
+  the front, `watched_ready_` beside it, `watched_count_`. `watch` appends
+  (a descriptor already there is not added twice), `unwatch` moves the last
+  entry into the hole, its ready flag with it. 20 bytes at the default knobs:
+  they fit the line's padding, which stays 88,576.
+- **Sleeping.** `idle` calls `sleep( timeout )`: with nothing watched, the
+  `Wake`'s own wait, as before; otherwise one `poll` over the wake and the
+  watched descriptors (`POLLIN`; any `revents`, `POLLHUP` and `POLLERR` too,
+  marks one ready: the model's read says which). The wake is cleared after,
+  as before. With work already waiting, `idle` does not sleep, but polls the
+  watched with a zero timeout, so a model the UI keeps busy is not starved of
+  its descriptors.
+- **Calling the model.** `read_watched( model )`, a template like `deliver`,
+  copies the ready descriptors out (clearing their flags) before calling
+  `readable` for each, since `readable` may watch or unwatch and reorder
+  the table. The threaded runner calls it after `deliver` and before
+  `idle`: what the UI sent comes first in a turn (a key, then the shell's
+  echo of it). Inline, `turn()` first polls the watched with a zero timeout
+  (`look_at_watched`, without the wake: the UI thread never sleeps on it).
+- **A model with no `readable`** cannot watch: the runner sets `reads_` from
+  a requires-expression when it claims the line, and `watch` refuses without
+  it. A watched descriptor no one reads would stay ready, and the model would
+  spin. The runner's destructor clears the table and the flag, so the line's
+  next model starts with nothing watched.
+- **Chosen over** a tick reading the pty every 16 ms (a wakeup 60 times a
+  second for a shell that prints nothing, and up to 16 ms of latency on each
+  key's echo: priorities 1 and 3 against no gain), and over a thread of the
+  model's own blocked in `read` (a second thread and a queue to the model:
+  memory, and a second wake). A `std::function` per descriptor was passed
+  over for the hook on the model, as the other hooks are.
+- **Tested** (`test/watch_test.cpp`, a pipe, every wait bounded): a model
+  with no tick and no timer woken by the pipe alone, its count stated back
+  twice; quiet while the pipe is empty (readable not called again); the
+  writer closing seen as readable once, then unwatched, no spinning; a `set`
+  and bytes arriving together, received before read; a UI sending without
+  pause, the pipe still read; unwatch from `receive` stopping it; the table
+  (4 at most, the same descriptor once, negative refused, unwatching what is
+  not watched, room again after one goes); a model with no `readable`
+  refused, inline and on its own thread; the inline runner reading in the
+  turn after bytes arrive, and not before. Under ThreadSanitizer too.
+
 ## For the Console (6.7a)
 
 - **`ValueCache::entry_from(from)`**: the walk `bound_from` is, over every
@@ -740,7 +789,7 @@ and the reader share (for the terminal: `term/src/screen_layout.cppm`).
 | `ValueCache` | 88, plus the storage it is given |
 | `ModelList` | 96, plus 4 bytes a row of its window (and a shared scratch as large) |
 | `ListWindow` | 24 |
-| `TelegraphLine` | 88,576 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and descriptors fit its padding, 6.7b's tap and names pointers took it one 64-byte step further (88,000), 12.3c's four snapshot channels and names 576 more |
+| `TelegraphLine` | 88,576 at the default knobs, every array inside (the two ends are a reference each); 6.6c's flags, counters and descriptors fit its padding, 6.7b's tap and names pointers took it one 64-byte step further (88,000), 12.3c's four snapshot channels and names 576 more; 12.3d's watched descriptors (20 bytes) fit its padding |
 | `SnapshotChannel` | 120, plus its three buffers (the heap's, as large as the largest snapshot written into each) |
 | `SnapshotKey` | 16 (a constant) |
 | `Wake` | 4 (a descriptor) |

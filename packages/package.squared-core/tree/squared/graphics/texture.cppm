@@ -2,6 +2,7 @@ export module sq.graphics:texture;
 
 export import :color;
 export import :src.texture_filter;
+export import :src.texture_format;
 export import :src.texture_recovery_callback;
 export import :src.texture_recovery_options;
 export import :src.texture_recovery_policy;
@@ -90,6 +91,40 @@ class Texture final
      */
         [[nodiscard]] bool create_rgba( int width, int height, const std::uint8_t *pixels,
                                         TextureRecoveryOptions recovery ) noexcept;
+
+        /**
+     * @brief Create an 8-bit alpha texture (`TextureFormat::Alpha8`): it
+     * draws as the draw colour, each texel its alpha. A glyph atlas, a mask.
+     * @param width Image width in pixels; must be greater than zero.
+     * @param height Image height in pixels; must be greater than zero.
+     * @param pixels Tightly packed, one byte a texel, width * height bytes.
+     * @param recovery Policy controlling post-context-loss recovery:
+     * `Regenerate` for pixels the caller keeps (its callback calls
+     * `TextureRecoveryTarget::upload_alpha`), `RetainPixels` for a copy kept
+     * here; `ReloadFromAsset` is refused, as for `create_rgba`.
+     * @return true when the texture storage was created.
+     */
+        [[nodiscard]] bool create_alpha( int width, int height, const std::uint8_t *pixels,
+                                         TextureRecoveryOptions recovery ) noexcept;
+
+        /**
+     * @brief Replace a rectangle of the texture's pixels, in its own format:
+     * what changed in an atlas, without uploading the rest. Regions stay
+     * valid (the generation does not move); a retained copy is updated too.
+     * @param x Left edge, in texels from the texture's left.
+     * @param y Top edge, in texels from the texture's first row.
+     * @param width Width of the rectangle; must be greater than zero.
+     * @param height Height of the rectangle; must be greater than zero.
+     * @param pixels The rectangle's first texel; rows `stride` texels apart.
+     * @param stride Texels from one row of `pixels` to the next; at least `width`.
+     * @return false, changing nothing, for a texture with no content, a
+     * rectangle not inside it, or null pixels.
+     */
+        [[nodiscard]] bool update( int x, int y, int width, int height, const std::uint8_t *pixels,
+                                   int stride ) noexcept;
+
+        /** @brief What a texel holds: `Rgba8`, or `Alpha8` from `create_alpha`. */
+        [[nodiscard]] TextureFormat format() const noexcept { return format_; }
 
         /**
      * @brief Create a one-pixel texture containing a solid color.
@@ -224,6 +259,14 @@ class Texture final
         // Implemented per backend; everything else is backend-independent.
         [[nodiscard]] bool upload_rgba( int width, int height,
                                         const std::uint8_t *pixels ) noexcept;
+        [[nodiscard]] bool upload_alpha( int width, int height,
+                                         const std::uint8_t *pixels ) noexcept;
+        // A rectangle already checked to be inside, in format_.
+        void update_backend( int x, int y, int width, int height, const std::uint8_t *pixels,
+                             int stride ) noexcept;
+        [[nodiscard]] bool create_from_memory( TextureFormat format, int width, int height,
+                                               const std::uint8_t *pixels,
+                                               TextureRecoveryOptions recovery ) noexcept;
         void destroy_backend_object() noexcept;
         void apply_sampling() noexcept;
 
@@ -247,6 +290,7 @@ class Texture final
         TextureWrap vertical_wrap_{ TextureWrap::ClampToEdge };
         std::uint32_t content_generation_{ 0 };
         bool invalidated_{ false };
+        TextureFormat format_{ TextureFormat::Rgba8 };
 };
 
 } // namespace sq::graphics

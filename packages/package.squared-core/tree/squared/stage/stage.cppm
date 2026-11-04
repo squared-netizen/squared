@@ -11,6 +11,7 @@ export namespace sq
 {
 
 class App;
+class Stage;
 
 /**
  * @brief A screen written in C++: a type with a name and a build, no object.
@@ -40,8 +41,19 @@ concept ScreenType = requires( gui::LayoutWriter &root ) {
     S::build( root );
 };
 
-/** @brief Makes a custom node's widget (a layout's `"type": "custom"`); nullptr for none. */
-using CustomMaker = std::unique_ptr<gui::Widget> ( * )();
+/**
+ * @brief Makes a custom node's widget (a layout's `"type": "custom"`);
+ * nullptr for none. Given the Stage: its `telegraph()` for what the widget
+ * shows of the model and sends to it, and its navigation.
+ */
+using CustomMaker = std::unique_ptr<gui::Widget> ( * )( Stage &stage );
+
+/**
+ * @brief Called when the drawing surface is there again (`Stage::on_surface`),
+ * with the graphics context: textures the app made itself are restored here
+ * (`texture.restore( graphics )`), before the screen is built again.
+ */
+using SurfaceHook = void ( * )( void *context, graphics::Context &graphics ) noexcept;
 
 namespace detail
 {
@@ -246,6 +258,29 @@ class Stage final
 
         /** @brief The UI end of the Telegraph: send, and read what the model said. */
         [[nodiscard]] messaging::TelegraphUi &telegraph() noexcept { return telegraph_; }
+
+        /**
+         * @brief The app's files (the platform's: `Internal` is what the APK
+         * bundles), for a custom widget that reads its own (a font to
+         * `map`); nullptr before the first window.
+         */
+        [[nodiscard]] files::FileSystem *files() const noexcept { return files_; }
+
+        /**
+         * @brief Pixels to one logical unit (the drawable's shorter side is
+         * 720 units), for a custom widget that draws pixel-exact, as a
+         * terminal's glyphs are; 0 before the first window.
+         */
+        [[nodiscard]] float pixels_per_unit() const noexcept;
+
+        /**
+         * @brief Call `hook( context, graphics )` each time the drawing
+         * surface is made (the first, and each one after Android took it
+         * away), before the screen is built again: what an app's own
+         * textures need to come back. One; a later call replaces it, and
+         * null removes it. `context` must outlive the Stage or be removed.
+         */
+        void on_surface( SurfaceHook hook, void *context ) noexcept;
 
         /** @brief How many widgets on the screen and its panes show a value of the model's. */
         [[nodiscard]] std::size_t bindings() const noexcept;
@@ -506,6 +541,10 @@ class Stage final
         app::TextInputService *text_input_ = nullptr;
         /// Where the skin is read from; nullptr: the compiled-in default. A test's.
         files::FileSystem *skin_files_ = nullptr;
+        /// The platform's files, from the window's runtime (files()).
+        files::FileSystem *files_ = nullptr;
+        SurfaceHook surface_hook_ = nullptr;
+        void *surface_context_ = nullptr;
         std::unique_ptr<Drawing> drawing_;
         std::array<Shown, max_depth> screens_{};
         std::array<Change, 4> pending_{};
@@ -539,8 +578,9 @@ class Stage final
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
 // custom types, as a pointer and a name each; 4 pane slots of 192 bytes; 16
-// screens' and 4 panes' kept scrolls and edits (148 bytes each). The
-// bindings are the window's, in its Drawing.
-static_assert( sizeof( Stage ) == 4056 );
+// screens' and 4 panes' kept scrolls and edits (148 bytes each); the files
+// and the surface hook (12.3d, 24). The bindings are the window's, in its
+// Drawing.
+static_assert( sizeof( Stage ) == 4080 );
 
 } // namespace sq

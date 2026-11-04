@@ -176,11 +176,13 @@ class Ui
         bool navigation( app::Navigation navigation, std::int32_t input_device_id = 0 );
 
         /**
-     * @brief Forward committed text to the focused widget.
+     * @brief Forward committed text to the focused widget: as
+     * `Widget::text_input`, or with Ctrl, Alt or Meta held as `Widget::key_text`.
      * @param text Committed UTF-8 text.
+     * @param modifiers The modifiers held when a key typed it.
      * @return true when the focused widget handled the text.
      */
-        bool text_input( std::string_view text );
+        bool text_input( std::string_view text, app::KeyModifiers modifiers = {} );
 
         /**
      * @brief Forward composition updates to the focused widget.

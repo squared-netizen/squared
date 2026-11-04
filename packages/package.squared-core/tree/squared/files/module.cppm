@@ -9,6 +9,7 @@ export import :android_asset_file_system;
 export import :embedded_file_system;
 export import :file_handle;
 export import :file_system;
+export import :mapped_file;
 export import :posix_file_system;
 export import :src.file_error;
 export import :src.file_error_code;

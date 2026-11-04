@@ -24,10 +24,29 @@ struct Recorder final : gui::Widget
         app::Key last = app::Key::unknown;
         app::KeyModifiers modifiers;
 
+        int texts = 0;
+        int key_texts = 0;
+        std::string text;
+
         bool key_down( app::Key key, app::KeyModifiers held ) override
         {
             ++downs;
             last = key;
+            modifiers = held;
+            return true;
+        }
+
+        bool text_input( std::string_view typed ) override
+        {
+            ++texts;
+            text = typed;
+            return true;
+        }
+
+        bool key_text( std::string_view typed, app::KeyModifiers held ) override
+        {
+            ++key_texts;
+            text = typed;
             modifiers = held;
             return true;
         }
@@ -40,6 +59,15 @@ app::Event key_event( app::Key key, app::KeyModifiers modifiers = {} )
     app::Event event;
     event.type = app::Event::Type::KeyDown;
     event.key = key;
+    event.modifiers = modifiers;
+    return event;
+}
+
+app::Event text_event( std::string_view text, app::KeyModifiers modifiers = {} )
+{
+    app::Event event;
+    event.type = app::Event::Type::TextInput;
+    event.text = text;
     event.modifiers = modifiers;
     return event;
 }
@@ -81,11 +109,40 @@ int main()
     constexpr app::Key keys[] = { app::Key::left,      app::Key::right,      app::Key::up,
                                   app::Key::down,      app::Key::home,       app::Key::end,
                                   app::Key::backspace, app::Key::delete_key, app::Key::enter,
-                                  app::Key::space,     app::Key::tab,        app::Key::escape };
+                                  app::Key::space,     app::Key::tab,        app::Key::escape,
+                                  app::Key::page_up,   app::Key::page_down,  app::Key::insert,
+                                  app::Key::f1,        app::Key::f2,         app::Key::f3,
+                                  app::Key::f4,        app::Key::f5,         app::Key::f6,
+                                  app::Key::f7,        app::Key::f8,         app::Key::f9,
+                                  app::Key::f10,       app::Key::f11,        app::Key::f12 };
     for( const app::Key key : keys ) {
         assert( ui.event( key_event( key ) ) && first.last == key );
     }
-    assert( first.downs == 13 && second.downs == 0 );
+    assert( first.downs == 28 && second.downs == 0 );
+
+    // Text: plain, and with Shift, to text_input; with Ctrl, Alt or Meta to key_text.
+    assert( ui.event( text_event( "a" ) ) && first.texts == 1 && first.text == "a" );
+    assert( ui.event( text_event( "A", { .shift = true } ) ) && first.texts == 2 );
+    assert( ui.event( text_event( "c", { .control = true } ) ) && first.key_texts == 1 );
+    assert( first.text == "c" && first.modifiers.control );
+    assert( ui.event( text_event( "x", { .alt = true } ) ) && first.key_texts == 2 );
+    assert( ui.event( text_event( "q", { .meta = true } ) ) && first.key_texts == 3 );
+    assert( first.texts == 2 );
+    // A widget that does not take it (the default) leaves it unhandled.
+    {
+        gui::Ui plain( 100.0F, 100.0F );
+        auto &only = static_cast<gui::LinearLayout &>(
+            plain.set_content( std::make_unique<gui::LinearLayout>() ) );
+        struct Field final : gui::Widget
+        {
+                [[nodiscard]] bool focusable() const noexcept override { return true; }
+                bool text_input( std::string_view ) override { return true; }
+        };
+        only.add( std::make_unique<Field>() );
+        assert( plain.event( key_event( app::Key::tab ) ) );
+        assert( plain.event( text_event( "c" ) ) );
+        assert( !plain.event( text_event( "c", { .control = true } ) ) );
+    }
 
     // Navigation: offered to the focused widget, which ignores it here, so
     // focus moves; activate and cancel arrive as Enter and Escape.

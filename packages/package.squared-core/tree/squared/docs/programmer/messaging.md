@@ -434,7 +434,8 @@ telegrams each way, `TELEGRAPH_DATA` 8 KB of text each way,
 128 rows, `TELEGRAPH_WAIT_MS` 100 ms of waiting for room (0: never wait),
 `TELEGRAPH_NAMES` 8 KB of names for the dev tools (Console builds only: the
 table is theirs, not the line's), `TELEGRAPH_SNAPSHOTS` 4 snapshots (their
-buffers are not sized by a knob: they grow as the model needs).
+buffers are not sized by a knob: they grow as the model needs),
+`TELEGRAPH_WATCHES` 4 watched descriptors.
 `RING`, `DATA`, `PENDING` and `CACHE` are powers of two; checked when the
 framework compiles. `make status` shows the ones set.
 
@@ -495,6 +496,31 @@ void due( Telegraph &t, sq::time::TimePoint now ) {
 
 A model with `wake_at()` and no `due` does not compile. The clock is read
 once a turn, after `deliver`, for both the tick and the timers.
+
+**Watched descriptors** (12.3d). A model that reads a pty, a socket or a pipe
+watches its descriptor, and is called when it has something to read or has
+closed; it sleeps in between, with no tick and no polling. sqterm's model
+reads its shell this way:
+
+```cpp
+void start( Telegraph &t ) { t.watch( pty.fd() ); }
+void readable( Telegraph &t, int fd ) {
+    while( pty.read( buffer ) > 0 ) { /* ... */ }   // until it would block
+}
+```
+
+| Call or hook | Does |
+|---|---|
+| `t.watch( fd )` | wake the model when `fd` is readable, closed or in error. True when watched (or already); false for a model with no `readable`, a negative `fd`, or `TELEGRAPH_WATCHES` (4) watched already |
+| `t.unwatch( fd )` | stop; nothing for one not watched. Before closing the descriptor |
+| `t.watching()` | how many are watched |
+| `readable( t, fd )` | in the next turn, after `receive`: `fd` has something to read, or has closed (a read gives 0 or `EIO`), or failed |
+
+The model owns the descriptor: the Telegraph only polls it, beside its own
+wake. A descriptor that closed stays ready, so `readable` unwatches it (or
+the model is called every turn). On its own thread, a model the UI keeps busy
+still hears from its descriptors: each turn looks at them. Inline, `turn()`
+looks at them once each frame. The runner forgets every watch when it ends.
 
 ## Lists
 

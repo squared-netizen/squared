@@ -1,6 +1,6 @@
 # struct ScreenEntry
 
-*Defined at [stage/stage.cppm:50](../../../../stage/stage.cppm#L50)*
+*Defined at [stage/stage.cppm:62](../../../../stage/stage.cppm#L62)*
 
 
 

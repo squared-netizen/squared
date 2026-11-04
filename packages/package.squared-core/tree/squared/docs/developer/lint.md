@@ -140,7 +140,12 @@ as the implementation units are; clang-tidy reads the BMIs of what a unit
 imports, so `tools/lint.sh` builds first (`make`: quick when the build is
 current), and for the Android units a build of its own in
 `build/lint-android/`, its objects from the build cache when the same were
-built before. The few headers left (a test's stub) are analysed through the
+built before. That build is given the target in `CXX` as well
+(`CXX=clang++ --target=aarch64-linux-android22 --sysroot=...`), as the
+package mk gives it: the std BMI is made from `CXX` and the flags, not the
+includes, so without it the std BMI was Termux's own (API 24) and every
+Android unit refused it (2026-11-03, the first Android units changed since
+C++23). The few headers left (a test's stub) are analysed through the
 files that include them; findings are deduplicated by place and check.
 
 A tree without Makefiles (a test fixture) falls back to every

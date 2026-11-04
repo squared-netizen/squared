@@ -5,6 +5,7 @@ module;
 export module sq.files:file_system;
 
 export import :file_handle;
+export import :mapped_file;
 export import :src.file_error;
 export import :src.file_read_result;
 export import :src.file_type;
@@ -65,6 +66,16 @@ class FileSystem
 
         /** @brief Read a whole file. */
         [[nodiscard]] virtual FileReadResult read( FileType type, std::string_view path ) const = 0;
+
+        /**
+         * @brief Map a file to read in place (`MappedFile`): no copy of a
+         * file's bytes on the heap where the platform can avoid one.
+         * @param type Which root `path` is under.
+         * @param path The file.
+         * @return The mapping, or the error (`NotFound`, `IsADirectory`,
+         * `NotSupported` where a root has no files to map).
+         */
+        [[nodiscard]] virtual MapResult map( FileType type, std::string_view path ) const = 0;
 
         /** @brief Write a whole file, truncating or appending. */
         [[nodiscard]] virtual FileError write( FileType type, std::string_view path,

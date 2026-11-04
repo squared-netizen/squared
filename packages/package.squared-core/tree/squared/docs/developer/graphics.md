@@ -130,10 +130,31 @@ error at that line rather than a silent mismatch.
 
 Split the way `Context` is: `src/common/texture_common.cpp` holds
 everything that is policy and bookkeeping, and `src/<backend>/texture.cpp`
-holds the six members that issue a graphics call. The recovery logic - the
+holds the eight members that issue a graphics call. The recovery logic - the
 part with the interesting failure modes - is written once and tested once.
 
-`sizeof(Texture)` is 128 bytes. The largest part is the 48-byte
+**Alpha textures (12.3d).** For sqterm's glyph atlas: one byte a texel. GLES
+3 has no sized `ALPHA` format, so an `Alpha8` texture is `GL_R8` with a
+swizzle (`R`, `G`, `B` read 1, `A` reads red), and samples as `(1, 1, 1,
+coverage)`: the sprite shader's `texture * colour` tints it, with the same
+straight-alpha blending, so a glyph is one more quad in the batch, not a
+second shader or a batch break of its own. Chosen over expanding coverage to
+RGBA (4 MB on the GPU for a 1024 x 1024 atlas against 1 MB, and four times
+the bytes per update: priority 1) and over a second shader (a program
+switch, and every caller choosing). An RGBA upload sets the swizzle back to
+identity, since a texture object's name may be reused. `format_` (one byte,
+in padding: `sizeof(Texture)` stays 112 here) says which, and decides the
+upload in `RetainPixels` recovery and the layout in `update`.
+
+**`update` uploads a rectangle** with `glTexSubImage2D` and
+`GL_UNPACK_ROW_LENGTH` set to the stride (GLES 3 has it; reset to 0 after),
+so an atlas's dirty rectangle goes up straight from its image with no copy.
+It does not move `content_generation()`: the pixels outside the rectangle are
+the same, and every region into them stays good. `RetainPixels` copies the
+rectangle into the retained copy as well, so a restore brings back what was
+shown. The null backend checks and records nothing.
+
+`sizeof(Texture)` is 112 bytes (libc++, the only library since C++23). The largest part is the 48-byte
 `files::FileHandle`, which is what lets `restore()` refill the texture without
 reaching back into the `AssetManager` that created it. The alternative was
 routing recovery through `AssetManager::reload`, which creates a *new* texture

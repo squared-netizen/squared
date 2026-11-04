@@ -59,6 +59,7 @@ gles: graphics
 messaging: time
 console: app dev messaging time
 stage: app gui graphics assets dev files messaging data time math
+term: app
 
 # std first, here, once: every module imports it, and they build at the
 # same time under -j (build/common.mk, "the standard library, as a module").

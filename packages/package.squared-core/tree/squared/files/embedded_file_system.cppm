@@ -52,6 +52,7 @@ class EmbeddedFileSystem final : public FileSystem
 
         /** @brief A copy of the file's bytes; `NotFound` for none, `NotSupported` outside `Internal`. */
         [[nodiscard]] FileReadResult read( FileType type, std::string_view path ) const override;
+        [[nodiscard]] MapResult map( FileType type, std::string_view path ) const override;
 
         /** @brief Refused: `ReadOnly`. */
         [[nodiscard]] FileError write( FileType type, std::string_view path,
