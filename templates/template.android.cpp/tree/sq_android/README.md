@@ -76,8 +76,11 @@ the keyboard is up (it can be closed without a word to the app).
 Java's `KeyCharacterMap` (one JNI call per key press, never per frame), and
 shows and hides the soft keyboard. `entry.cpp` hands your `App` a
 `sq::app::TextInputService` (`set_text_input_service`): when a text field
-takes focus the keyboard shows, and each key arrives as a `KeyDown` event
-and, if it types something, a `TextInput` event. What does not arrive: an
+takes focus the keyboard shows (once every finger is up: one shown while the
+touch is still going, Android puts away when it ends), tapping it again
+brings the keyboard back after it was put away, and each key arrives as a
+`KeyDown` event and, if it types something, a `TextInput` event (with
+Ctrl, Alt or Meta held, the character without them and the modifiers). What does not arrive: an
 input method's composition (accents built from two keys, CJK input, emoji),
 which needs a Java `InputConnection`. The volume keys are left to Android.
 

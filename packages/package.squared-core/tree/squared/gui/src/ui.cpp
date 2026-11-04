@@ -532,8 +532,10 @@ void Ui::set_focus( Widget *widget )
         widget = nullptr;
     }
     if( focused_ == widget ) {
-        if( text_input_service_ && !text_input_service_->active() && focused_ &&
-            focused_->wants_text_input() ) {
+        // Asked again even when active: the person may have put the keyboard
+        // away (back, or its own button), which the service is not told of,
+        // and tapping the field again is how they ask for it back.
+        if( text_input_service_ && focused_ && focused_->wants_text_input() ) {
             float stage_x = 0.0F;
             float stage_y = 0.0F;
             for( const Actor *current = focused_; current; current = current->parent() ) {

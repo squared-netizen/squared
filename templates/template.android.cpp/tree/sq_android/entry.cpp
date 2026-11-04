@@ -175,6 +175,21 @@ Key translate_key(std::int32_t code) {
         case AKEYCODE_SPACE:      return Key::space;
         case AKEYCODE_TAB:        return Key::tab;
         case AKEYCODE_ESCAPE:     return Key::escape;
+        case AKEYCODE_PAGE_UP:    return Key::page_up;
+        case AKEYCODE_PAGE_DOWN:  return Key::page_down;
+        case AKEYCODE_INSERT:     return Key::insert;
+        case AKEYCODE_F1:         return Key::f1;
+        case AKEYCODE_F2:         return Key::f2;
+        case AKEYCODE_F3:         return Key::f3;
+        case AKEYCODE_F4:         return Key::f4;
+        case AKEYCODE_F5:         return Key::f5;
+        case AKEYCODE_F6:         return Key::f6;
+        case AKEYCODE_F7:         return Key::f7;
+        case AKEYCODE_F8:         return Key::f8;
+        case AKEYCODE_F9:         return Key::f9;
+        case AKEYCODE_F10:        return Key::f10;
+        case AKEYCODE_F11:        return Key::f11;
+        case AKEYCODE_F12:        return Key::f12;
         default:                  return Key::unknown;
     }
 }
@@ -1799,14 +1814,34 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
 
     platform.send(event);
 
-    // What the key types, for a text field that asked for the keyboard.
+    // What the key types, for a text field that asked for the keyboard. With
+    // Ctrl, Alt or Meta held, a key that types a character (c, with Ctrl)
+    // sends that character, without them, and the modifiers: a text field
+    // leaves it, a terminal makes Ctrl-C of it (Widget::key_text). A key that
+    // types something else with them held (AltGr's @ on a German keyboard)
+    // sends that, as plain text.
     if (event.type == Event::Type::KeyDown && platform.text_input.active()) {
+        constexpr std::int32_t held = AMETA_CTRL_ON | AMETA_CTRL_LEFT_ON | AMETA_CTRL_RIGHT_ON |
+                                      AMETA_ALT_ON | AMETA_ALT_LEFT_ON | AMETA_ALT_RIGHT_ON |
+                                      AMETA_META_ON | AMETA_META_LEFT_ON | AMETA_META_RIGHT_ON;
         const char32_t typed = platform.text.character(device, code, meta);
-        if (typed >= 0x20 && typed != 0x7F) {
+        const char32_t bare = (meta & held) != 0
+                                  ? platform.text.character(device, code, meta & ~held)
+                                  : typed;
+        const auto printable = [](char32_t c) { return c >= 0x20 && c != 0x7F; };
+        Event text;
+        text.type = Event::Type::TextInput;
+        char32_t sent = 0;
+        if ((meta & held) != 0 && (typed == 0 || typed == bare) && printable(bare)) {
+            sent = bare;
+            text.modifiers = event.modifiers;
+        } else if (printable(typed)) {
+            sent = typed;
+            text.modifiers.shift = event.modifiers.shift;
+        }
+        if (sent != 0) {
             std::array<char, 4> utf8{};
-            Event text;
-            text.type = Event::Type::TextInput;
-            text.text.assign(utf8.data(), sq_android::encode_utf8(typed, utf8));
+            text.text.assign(utf8.data(), sq_android::encode_utf8(sent, utf8));
             platform.send(text);
         }
     }

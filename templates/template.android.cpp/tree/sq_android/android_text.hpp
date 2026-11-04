@@ -114,24 +114,41 @@ private:
 /// sq::app::TextInputService on Android: the keyboard shows while a widget
 /// wants text. The entry point turns key presses into TextInput events while
 /// active() is true.
+///
+/// The keyboard is shown once no finger is down, at the next frame(), not in
+/// start(): a widget takes the focus as a finger goes down, and a keyboard
+/// shown while that touch is still going is put away again by Android when it
+/// ends (sqterm's terminal on the phone, 2026-11-04; the Console's keyboard,
+/// shown as its three-finger tap ends, stayed).
 class TextInput final : public sq::app::TextInputService {
 public:
     explicit TextInput(AndroidText& text) noexcept : text_(text) {}
 
     void start(const sq::app::TextInputRequest&) override {
         active_ = true;
-        text_.show_keyboard();
+        show_due_ = true;
     }
     void update_area(const sq::app::TextInputArea&) override {}
     void stop() override {
         active_ = false;
+        show_due_ = false;
         text_.hide_keyboard();
     }
     [[nodiscard]] bool active() const noexcept override { return active_; }
 
+    /// Each frame, with whether a finger is on the screen: the keyboard
+    /// start() asked for, once none is.
+    void frame(bool touching) noexcept {
+        if (show_due_ && !touching) {
+            show_due_ = false;
+            text_.show_keyboard();
+        }
+    }
+
 private:
     AndroidText& text_;
     bool active_{false};
+    bool show_due_{false};
 };
 
 }  // namespace sq_android

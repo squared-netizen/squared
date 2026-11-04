@@ -2027,6 +2027,10 @@ void a_new_activity_forgets_the_old_one()
     CHECK( app.stage.push<Notes>() );
     tap_on( app, *widgets_of( app )->content()->child_at( 2 ) );
     CHECK( keyboard.asked == 1 );
+    // Tapped again, focused already and the keyboard "active": asked again,
+    // since it may have been put away (back) without the service knowing.
+    tap_on( app, *widgets_of( app )->content()->child_at( 2 ) );
+    CHECK( keyboard.asked == 2 );
     platform.frame( app );
     app.quit();
     app.dispose();

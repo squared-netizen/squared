@@ -48,8 +48,16 @@ apk: $(SQ_APK)
 # APK and rebuilds nothing else.
 SQ_DEBUGGABLE ?= $(if $(or $(DEV_LOG),$(filter-out 0,$(CONSOLE))),1,)
 SQ_AAPT2_LINK_FLAGS := $(if $(strip $(SQ_DEBUGGABLE)),--debug-mode,)
+# Assets stored uncompressed, by extension: what is read in place
+# (FileSystem::map) rather than copied. A stored asset is mapped from the APK,
+# clean pages Android can drop; a compressed one is unpacked into memory the
+# app holds for as long as it reads it. Fonts by default (FreeType reads them
+# a glyph at a time). An app adds to it in its Makefile:
+#     SQ_STORED := ttf otf ttc zst
+# In the link stamp too: a change relinks the APK.
+SQ_STORED ?= ttf otf ttc
 SQ_LINK_STAMP := $(SQ_APK_DIR)/.link-flags
-$(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = 'link $(SQ_AAPT2_LINK_FLAGS)' ] || printf '%s' 'link $(SQ_AAPT2_LINK_FLAGS)' > '$(SQ_LINK_STAMP)')
+$(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = 'link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED)' ] || printf '%s' 'link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED)' > '$(SQ_LINK_STAMP)')
 
 $(SQ_APK_DIR)/resources.zip: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null)
 	@mkdir -p $(SQ_APK_DIR)
@@ -155,6 +163,7 @@ $(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_ST
 	    --target-sdk-version $(SQ_TARGET_SDK) \
 	    $(SQ_AAPT2_LINK_FLAGS) \
 	    $(if $(strip $(SQ_ASSET_FILES)),-A $(SQ_ASSETS_DIR),) \
+	    $(foreach extension,$(SQ_STORED),-0 $(extension)) \
 	    $(SQ_APK_DIR)/resources.zip
 	@if [ -n "$(SQ_AAPT2_LINK_FLAGS)" ]; then \
 	  manifest=$$($(SQ_AAPT2) dump xmltree --file AndroidManifest.xml $@ 2>/dev/null) || { \

@@ -58,7 +58,13 @@ actor trees this way; none of them uses RTTI. See
 platform soft keyboard. `TextField` returns true; everything else returns
 false. `Ui` reads it in three places and no longer names `TextField` at all,
 which is why `ui.cpp` does not include `text_field.cppm`. Any custom text-entry
-widget can opt in by overriding it.
+widget can opt in by overriding it. A tap on the widget that has the focus
+asks the service to start again even when it says it is active (12.3d): the
+person may have put the keyboard away (back, or the keyboard's own button),
+which the service is not told of, and tapping the field is how they ask for
+it back. The template's service shows the keyboard once every finger is up,
+not as the finger goes down: shown during the touch, Android put it away
+again when the touch ended (sqterm on the phone, 2026-11-04).
 
 **Text typed with Ctrl, Alt or Meta** (12.3d) goes to `Widget::key_text`,
 not `text_input`: `Ui::text_input( text, modifiers )` picks by the event's
