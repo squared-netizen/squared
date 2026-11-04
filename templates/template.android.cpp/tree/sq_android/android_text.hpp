@@ -72,14 +72,23 @@ public:
     /// the whole text.
     bool clip_begin() noexcept;
     void clip_append(std::string_view utf8) noexcept;
-    bool clip_end() noexcept;
+    /// `label` is what Android shows of the clip where it shows one.
+    bool clip_end(const char* label = "squared console") noexcept;
 
-    /// The clipboard's text as UTF-8, as much as fits in `out`, cut at a
-    /// character; the bytes written (0 when it is empty or not text).
+    /// The clipboard's text as UTF-8, as much as fits in `out` of its first
+    /// 512 UTF-16 units, cut at a character; the bytes written (0 when it is
+    /// empty or not text). The Console's: a line.
     std::size_t clip_text(std::span<char> out) noexcept;
+
+    /// The clipboard's whole text as UTF-8 into `out`: whole characters, in
+    /// order, until one does not fit; the bytes the whole text takes (0 when
+    /// it is empty or not text). Read 512 units at a time, no allocation.
+    std::size_t clip_read(std::span<char> out) noexcept;
 
 private:
     bool failed() noexcept;
+    /// The clip's first item as text: a local reference, or nullptr.
+    jstring clip_string() noexcept;
 
     JNIEnv* env_{nullptr};
     ANativeActivity* native_{nullptr};
@@ -163,6 +172,24 @@ private:
     bool active_{false};
     bool show_due_{false};
     std::uint8_t again_frames_{0};
+};
+
+/// sq::app::ClipboardService on Android: the system clipboard's text, through
+/// AndroidText, on the glue thread (the App's). The entry point hands it to
+/// the App after create().
+class Clipboard final : public sq::app::ClipboardService {
+public:
+    explicit Clipboard(AndroidText& text) noexcept : text_(text) {}
+
+    [[nodiscard]] std::size_t text(std::span<char> out) override { return text_.clip_read(out); }
+    bool set_text(std::string_view utf8) override {
+        if (!text_.clip_begin()) return false;
+        text_.clip_append(utf8);
+        return text_.clip_end("{{project_name}}");
+    }
+
+private:
+    AndroidText& text_;
 };
 
 }  // namespace sq_android

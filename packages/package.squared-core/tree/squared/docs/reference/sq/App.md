@@ -66,7 +66,7 @@ public Stage stage
 
 *public bool hides_bars()*
 
-*Defined at [stage/app.cppm:172](../../../stage/app.cppm#L172)*
+*Defined at [stage/app.cppm:173](../../../stage/app.cppm#L173)*
 
 ### low_memory
 
@@ -137,6 +137,10 @@ public Stage stage
 ### save_state
 
 *public std::size_t save_state(std::span<std::byte> out)*
+
+### set_clipboard_service
+
+*public void set_clipboard_service(app::ClipboardService * service)*
 
 ### set_report
 

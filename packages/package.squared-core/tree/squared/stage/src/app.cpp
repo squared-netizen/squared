@@ -50,6 +50,11 @@ void App::set_text_input_service( app::TextInputService *service ) noexcept
     stage.set_text_input_service( service );
 }
 
+void App::set_clipboard_service( app::ClipboardService *service ) noexcept
+{
+    stage.set_clipboard( service );
+}
+
 void App::set_report( app::Report report ) noexcept
 {
     report_ = report;
@@ -244,6 +249,7 @@ void App::dispose()
     // What the platform handed over lives as long as its activity: the next
     // one hands its own (reopened from the recent apps, the process lives on).
     stage.set_text_input_service( nullptr );
+    stage.set_clipboard( nullptr );
     set_report( {} );
 }
 

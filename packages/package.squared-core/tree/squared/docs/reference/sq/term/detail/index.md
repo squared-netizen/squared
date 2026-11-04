@@ -16,11 +16,11 @@
 
 *std::size_t cells_offset(std::uint16_t rows)*
 
-*Defined at [term/src/screen_layout.cppm:34](../../../../../term/src/screen_layout.cppm#L34)*
+*Defined at [term/src/screen_layout.cppm:37](../../../../../term/src/screen_layout.cppm#L37)*
 
 ### screen_bytes
 
 *std::size_t screen_bytes(std::uint16_t columns, std::uint16_t rows)*
 
-*Defined at [term/src/screen_layout.cppm:39](../../../../../term/src/screen_layout.cppm#L39)*
+*Defined at [term/src/screen_layout.cppm:42](../../../../../term/src/screen_layout.cppm#L42)*
 

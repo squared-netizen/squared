@@ -10,8 +10,8 @@
 // rotation laid out once with nothing built again; scrolls and an unfinished
 // edit kept beneath the top and through a lost context; the stack written
 // in the background, shown again after the process ends, forgotten by a
-// quit; the model's own save given back; the Console's `screens` lines; and
-// a new activity that forgets the old one's keyboard.
+// quit; the model's own save given back; the Console's `screens` lines; a
+// new activity that forgets the old one's keyboard; and the clipboard (12.4).
 
 #include <stdio.h>
 
@@ -2013,6 +2013,41 @@ struct Keyboard final : sq::app::TextInputService
         }
 };
 
+struct Clipboard final : sq::app::ClipboardService
+{
+        std::string held;
+        [[nodiscard]] std::size_t text( std::span<char> out ) override
+        {
+            std::copy_n( held.begin(), std::min( out.size(), held.size() ), out.begin() );
+            return held.size();
+        }
+        bool set_text( std::string_view utf8 ) override
+        {
+            held = utf8;
+            return true;
+        }
+};
+
+/// The platform's clipboard reaches the Stage (12.4), and goes with the
+/// activity that gave it: a custom widget must not reach a dead one.
+void the_clipboard_comes_and_goes()
+{
+    start = Start::no_model;
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    platform.open( app );
+    CHECK( app.stage.clipboard() == nullptr );
+    Clipboard clipboard;
+    app.set_clipboard_service( &clipboard );
+    CHECK( app.stage.clipboard() == &clipboard );
+    CHECK( app.stage.clipboard()->set_text( "copied" ) && clipboard.held == "copied" );
+    std::array<char, 8> out{};
+    CHECK( app.stage.clipboard()->text( out ) == 6 );
+    app.quit();
+    app.dispose();
+    CHECK( app.stage.clipboard() == nullptr );
+}
+
 void a_new_activity_forgets_the_old_one()
 {
     // Quit, then opened again from the recent apps: the process lives on, the
@@ -2238,6 +2273,7 @@ int main()
     rotation_lays_out_once();
     kept_beneath_the_top();
     kept_after_the_process();
+    the_clipboard_comes_and_goes();
     a_new_activity_forgets_the_old_one();
     back_tap_at_the_root_goes_to_the_background();
     a_swipe_starts_fresh();

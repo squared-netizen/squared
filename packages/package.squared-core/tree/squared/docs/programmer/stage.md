@@ -430,6 +430,20 @@ since building the next screen replaces the widgets, the tapped button among
 them. Up to four navigations can wait for one event; more are dropped and
 reported.
 
+## The clipboard
+
+`stage.clipboard()` is the platform's clipboard (`sq::app::ClipboardService`,
+[app.md](app.md#the-clipboard)): what a paste reads and a copy writes, for a
+custom widget (sqterm's terminal). nullptr where the platform gives none (a
+host test), and between one activity's end and the next's start, so a
+widget asks each time rather than keeping it.
+
+```cpp
+if( sq::app::ClipboardService *clipboard = stage_.clipboard() ) {
+    clipboard->set_text( selected );
+}
+```
+
 ## Taps
 
 A button's tap (its `tap` in a layout file) does what it reads
@@ -515,8 +529,8 @@ Nothing stops the app; each failure is one line to the platform's report
 ## Memory
 
 The App is made once, in static storage, not on the heap: the Telegraph line
-(88,576 bytes at the default sizes, which its knobs set) and 4,224 bytes more
-(the Stage is 4,080: its stack, the added screens and custom types, the pane
+(88,576 bytes at the default sizes, which its knobs set) and 4,288 bytes more
+(the Stage is 4,088: its stack, the added screens and custom types, the pane
 slots, and 2,960 bytes of what 16 screens and 4 panes keep), and the two
 paths where it keeps things (allocated once, at start). The skin's files are 46 KB of read-only data in the program, mapped
 from its file, not the heap. A model's runner is one allocation, at `run`.

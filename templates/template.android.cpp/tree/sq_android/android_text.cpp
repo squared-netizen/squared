@@ -320,12 +320,12 @@ void AndroidText::clip_append(std::string_view utf8) noexcept {
     }
 }
 
-bool AndroidText::clip_end() noexcept {
+bool AndroidText::clip_end(const char* label_text) noexcept {
     if (builder_ == nullptr) return false;
     bool done = false;
     jobject text = env_->CallObjectMethod(builder_, to_string_);
     if (!failed() && text != nullptr) {
-        jstring label = env_->NewStringUTF("squared console");
+        jstring label = env_->NewStringUTF(label_text);
         jobject clip = env_->CallStaticObjectMethod(clip_data_class_, new_plain_text_, label, text);
         if (!failed() && clip != nullptr) {
             env_->CallVoidMethod(clipboard_, set_primary_clip_, clip);
@@ -340,36 +340,22 @@ bool AndroidText::clip_end() noexcept {
     return done;
 }
 
-std::size_t AndroidText::clip_text(std::span<char> out) noexcept {
+jstring AndroidText::clip_string() noexcept {
     if (clipboard_ == nullptr || get_primary_clip_ == nullptr || item_count_ == nullptr ||
         item_at_ == nullptr || coerce_to_text_ == nullptr || to_string_ == nullptr) {
-        return 0;
+        return nullptr;
     }
-    std::size_t written = 0;
+    jstring text = nullptr;
     jobject clip = env_->CallObjectMethod(clipboard_, get_primary_clip_);
-    if (failed() || clip == nullptr) return 0;
+    if (failed() || clip == nullptr) return nullptr;
     const jint items = env_->CallIntMethod(clip, item_count_);
     if (!failed() && items > 0) {
         jobject item = env_->CallObjectMethod(clip, item_at_, 0);
         if (!failed() && item != nullptr) {
             jobject sequence = env_->CallObjectMethod(item, coerce_to_text_, activity_);
             if (!failed() && sequence != nullptr) {
-                auto text = static_cast<jstring>(env_->CallObjectMethod(sequence, to_string_));
-                if (!failed() && text != nullptr) {
-                    // Only what can fit: at most one UTF-16 unit per output byte.
-                    std::array<char16_t, 512> units{};
-                    const jsize length = env_->GetStringLength(text);
-                    const auto take = static_cast<jsize>(
-                        std::min<std::size_t>({static_cast<std::size_t>(length), units.size(),
-                                               out.size()}));
-                    env_->GetStringRegion(text, 0, take, reinterpret_cast<jchar*>(units.data()));
-                    if (!failed()) {
-                        written = utf16_to_utf8(
-                            std::span<const char16_t>(units.data(), static_cast<std::size_t>(take)),
-                            out);
-                    }
-                    env_->DeleteLocalRef(text);
-                }
+                text = static_cast<jstring>(env_->CallObjectMethod(sequence, to_string_));
+                if (failed()) text = nullptr;
                 env_->DeleteLocalRef(sequence);
             }
             env_->DeleteLocalRef(item);
@@ -377,7 +363,67 @@ std::size_t AndroidText::clip_text(std::span<char> out) noexcept {
     }
     failed();
     env_->DeleteLocalRef(clip);
+    return text;
+}
+
+std::size_t AndroidText::clip_text(std::span<char> out) noexcept {
+    jstring text = clip_string();
+    if (text == nullptr) return 0;
+    std::size_t written = 0;
+    // Only what can fit: at most one UTF-16 unit per output byte.
+    std::array<char16_t, 512> units{};
+    const jsize length = env_->GetStringLength(text);
+    const auto take = static_cast<jsize>(
+        std::min<std::size_t>({static_cast<std::size_t>(length), units.size(), out.size()}));
+    env_->GetStringRegion(text, 0, take, reinterpret_cast<jchar*>(units.data()));
+    if (!failed()) {
+        written = utf16_to_utf8(
+            std::span<const char16_t>(units.data(), static_cast<std::size_t>(take)), out);
+    }
+    env_->DeleteLocalRef(text);
     return written;
+}
+
+std::size_t AndroidText::clip_read(std::span<char> out) noexcept {
+    jstring text = clip_string();
+    if (text == nullptr) return 0;
+    const jsize length = env_->GetStringLength(text);
+    std::size_t total = 0;
+    std::size_t written = 0;
+    bool full = false;
+    // 512 UTF-16 units at a time, on the stack; a surrogate pair is never
+    // split between two reads.
+    std::array<char16_t, 512> units{};
+    for (jsize at = 0; at < length && !failed();) {
+        auto take = static_cast<jsize>(
+            std::min<std::size_t>(static_cast<std::size_t>(length - at), units.size()));
+        env_->GetStringRegion(text, at, take, reinterpret_cast<jchar*>(units.data()));
+        if (failed()) break;
+        const char16_t last = units[static_cast<std::size_t>(take - 1)];
+        if (at + take < length && take > 1 && last >= 0xD800 && last <= 0xDBFF) --take;
+        for (std::size_t i = 0; i < static_cast<std::size_t>(take); ++i) {
+            char32_t c = units[i];
+            if (c >= 0xD800 && c <= 0xDBFF && i + 1 < static_cast<std::size_t>(take) &&
+                units[i + 1] >= 0xDC00 && units[i + 1] <= 0xDFFF) {
+                c = 0x10000 + ((c - 0xD800) << 10) + (units[i + 1] - 0xDC00);
+                ++i;
+            } else if (c >= 0xD800 && c <= 0xDFFF) {
+                c = kReplacement;
+            }
+            std::array<char, 4> bytes{};
+            const std::size_t size = encode_utf8(c, bytes);
+            if (!full && written + size <= out.size()) {
+                std::copy_n(bytes.begin(), size, out.begin() + static_cast<std::ptrdiff_t>(written));
+                written += size;
+            } else {
+                full = true;  // whole characters, in order: none after one that did not fit
+            }
+            total += size;
+        }
+        at += take;
+    }
+    env_->DeleteLocalRef(text);
+    return total;
 }
 
 }  // namespace sq_android

@@ -267,6 +267,16 @@ class Stage final
         [[nodiscard]] files::FileSystem *files() const noexcept { return files_; }
 
         /**
+         * @brief The platform's clipboard: what a paste reads, a copy writes;
+         * nullptr where the platform gives none (a host test, until it does).
+         *
+         * @code
+         * if( sq::app::ClipboardService *clip = stage.clipboard() ) { clip->set_text( "copied" ); }
+         * @endcode
+         */
+        [[nodiscard]] app::ClipboardService *clipboard() const noexcept { return clipboard_; }
+
+        /**
          * @brief Pixels to one logical unit (the drawable's shorter side is
          * 720 units), for a custom widget that draws pixel-exact, as a
          * terminal's glyphs are; 0 before the first window.
@@ -436,6 +446,7 @@ class Stage final
         void surface_created( graphics::Context &graphics ) noexcept;
         void set_report( app::Report report ) noexcept { report_ = report; }
         void set_text_input_service( app::TextInputService *service ) noexcept;
+        void set_clipboard( app::ClipboardService *service ) noexcept { clipboard_ = service; }
         [[nodiscard]] bool leave_requested() const noexcept { return leave_; }
         [[nodiscard]] bool take_background_request() noexcept
         {
@@ -539,6 +550,7 @@ class Stage final
         messaging::TelegraphUi &telegraph_;
         app::Report report_{};
         app::TextInputService *text_input_ = nullptr;
+        app::ClipboardService *clipboard_ = nullptr;
         /// Where the skin is read from; nullptr: the compiled-in default. A test's.
         files::FileSystem *skin_files_ = nullptr;
         /// The platform's files, from the window's runtime (files()).
@@ -579,8 +591,8 @@ class Stage final
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
 // custom types, as a pointer and a name each; 4 pane slots of 192 bytes; 16
 // screens' and 4 panes' kept scrolls and edits (148 bytes each); the files
-// and the surface hook (12.3d, 24). The bindings are the window's, in its
-// Drawing.
-static_assert( sizeof( Stage ) == 4080 );
+// and the surface hook (12.3d, 24); the clipboard (12.4, 8). The bindings
+// are the window's, in its Drawing.
+static_assert( sizeof( Stage ) == 4088 );
 
 } // namespace sq

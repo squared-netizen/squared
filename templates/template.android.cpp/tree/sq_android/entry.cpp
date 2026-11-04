@@ -735,6 +735,7 @@ struct Platform {
     /// text-input service the application's text fields use.
     sq_android::AndroidText text;
     sq_android::TextInput text_input{text};
+    sq_android::Clipboard clipboard{text};
 
 #ifdef SQUARED_CONSOLE
     /// The Console and what draws it, inside this object's one allocation
@@ -1342,6 +1343,7 @@ struct Platform {
         created = true;
         last_frame = Clock::now();
         app.set_text_input_service(&text_input);
+        app.set_clipboard_service(&clipboard);
         return true;
     }
 

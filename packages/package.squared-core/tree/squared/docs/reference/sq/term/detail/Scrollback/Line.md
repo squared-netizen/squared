@@ -1,6 +1,6 @@
 # struct Line
 
-*Defined at [term/src/scrollback.cppm:23](../../../../../../term/src/scrollback.cppm#L23)*
+*Defined at [term/src/scrollback.cppm:28](../../../../../../term/src/scrollback.cppm#L28)*
 
 ## Members
 

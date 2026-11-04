@@ -1,6 +1,6 @@
 # class Terminal
 
-*Defined at [term/terminal.cppm:40](../../../../term/terminal.cppm#L40)*
+*Defined at [term/terminal.cppm:41](../../../../term/terminal.cppm#L41)*
 
 
 
@@ -30,13 +30,13 @@
 
 *public void Terminal(Terminal && )*
 
-*Defined at [term/terminal.cppm:47](../../../../term/terminal.cppm#L47)*
+*Defined at [term/terminal.cppm:48](../../../../term/terminal.cppm#L48)*
 
 ### Terminal
 
 *public void Terminal(const Terminal & )*
 
-*Defined at [term/terminal.cppm:45](../../../../term/terminal.cppm#L45)*
+*Defined at [term/terminal.cppm:46](../../../../term/terminal.cppm#L46)*
 
 ### Terminal
 
@@ -46,25 +46,33 @@
 
 *public void clear_dirty()*
 
-*Defined at [term/terminal.cppm:77](../../../../term/terminal.cppm#L77)*
+*Defined at [term/terminal.cppm:78](../../../../term/terminal.cppm#L78)*
 
 ### clear_replies
 
 *public void clear_replies()*
 
-*Defined at [term/terminal.cppm:108](../../../../term/terminal.cppm#L108)*
+*Defined at [term/terminal.cppm:141](../../../../term/terminal.cppm#L141)*
 
 ### columns
 
 *public std::uint16_t columns()*
 
-*Defined at [term/terminal.cppm:63](../../../../term/terminal.cppm#L63)*
+*Defined at [term/terminal.cppm:64](../../../../term/terminal.cppm#L64)*
+
+### copy_text
+
+*public std::size_t copy_text(TextPoint from, TextPoint to, std::span<char> out)*
+
+ The text from `from` to `to` (both included, either first), as UTF-8, into `out`; the bytes it takes, all of them, whatever `out` holds. Scrollback lines, then the screen in use's rows, held to the lines there are. A line that wrapped runs on into the next; any other ends with LF, its trailing blanks left out. A wide character's second cell gives nothing.
+
+ `out` takes whole characters, in order, until one does not fit: call it with an empty `out` for the size, then with that much. No allocation; finding the first scrollback line walks back to it.
 
 ### cursor
 
 *public Cursor cursor()*
 
-*Defined at [term/terminal.cppm:79](../../../../term/terminal.cppm#L79)*
+*Defined at [term/terminal.cppm:80](../../../../term/terminal.cppm#L80)*
 
 ### feed
 
@@ -76,13 +84,21 @@
 
 *public void feed(std::string_view text)*
 
-*Defined at [term/terminal.cppm:53](../../../../term/terminal.cppm#L53)*
+*Defined at [term/terminal.cppm:54](../../../../term/terminal.cppm#L54)*
+
+### first_line
+
+*public std::uint64_t first_line()*
+
+*Defined at [term/terminal.cppm:97](../../../../term/terminal.cppm#L97)*
+
+ Its lines are numbered from the first it took: the scrollback's oldest kept line is `first_line()`, the screen's row 0 is `screen_line()`, row r is `screen_line() + r`. A line keeps its number as more scroll off (they move up the scrollback, then out).
 
 ### history_line
 
 *public std::span<const Cell> history_line(std::size_t back)*
 
-*Defined at [term/terminal.cppm:85](../../../../term/terminal.cppm#L85)*
+*Defined at [term/terminal.cppm:86](../../../../term/terminal.cppm#L86)*
 
  Line `back`, 0 the newest; `back` is below `history_size()`. 
 
@@ -90,7 +106,7 @@
 
 *public std::size_t history_size()*
 
-*Defined at [term/terminal.cppm:83](../../../../term/terminal.cppm#L83)*
+*Defined at [term/terminal.cppm:84](../../../../term/terminal.cppm#L84)*
 
  Lines scrolled off the top of the main screen. 
 
@@ -98,25 +114,25 @@
 
 *public TerminalModes modes()*
 
-*Defined at [term/terminal.cppm:80](../../../../term/terminal.cppm#L80)*
+*Defined at [term/terminal.cppm:81](../../../../term/terminal.cppm#L81)*
 
 ### operator=
 
 *public Terminal & operator=(Terminal && )*
 
-*Defined at [term/terminal.cppm:48](../../../../term/terminal.cppm#L48)*
+*Defined at [term/terminal.cppm:49](../../../../term/terminal.cppm#L49)*
 
 ### operator=
 
 *public Terminal & operator=(const Terminal & )*
 
-*Defined at [term/terminal.cppm:46](../../../../term/terminal.cppm#L46)*
+*Defined at [term/terminal.cppm:47](../../../../term/terminal.cppm#L47)*
 
 ### replies
 
 *public std::span<const std::byte> replies()*
 
-*Defined at [term/terminal.cppm:104](../../../../term/terminal.cppm#L104)*
+*Defined at [term/terminal.cppm:137](../../../../term/terminal.cppm#L137)*
 
  Bytes for the program (replies to a device status report or a device attributes request), for the owner to write to it; then `clear_replies`. At most 256 wait; more are dropped.
 
@@ -130,7 +146,7 @@
 
 *public std::span<const Cell> row(std::uint16_t row)*
 
-*Defined at [term/terminal.cppm:67](../../../../term/terminal.cppm#L67)*
+*Defined at [term/terminal.cppm:68](../../../../term/terminal.cppm#L68)*
 
  Row `row` of the screen in use (the alternate one while a program has it). 
 
@@ -138,21 +154,35 @@
 
 *public bool row_dirty(std::uint16_t row)*
 
-*Defined at [term/terminal.cppm:73](../../../../term/terminal.cppm#L73)*
+*Defined at [term/terminal.cppm:74](../../../../term/terminal.cppm#L74)*
 
  Changed since `clear_dirty`. 
+
+### row_wrapped
+
+*public bool row_wrapped(std::uint16_t row)*
+
+*Defined at [term/terminal.cppm:104](../../../../term/terminal.cppm#L104)*
+
+ Row `row` of the screen in use went on into the next by autowrap. 
 
 ### rows
 
 *public std::uint16_t rows()*
 
-*Defined at [term/terminal.cppm:64](../../../../term/terminal.cppm#L64)*
+*Defined at [term/terminal.cppm:65](../../../../term/terminal.cppm#L65)*
+
+### screen_line
+
+*public std::uint64_t screen_line()*
+
+*Defined at [term/terminal.cppm:101](../../../../term/terminal.cppm#L101)*
 
 ### take_events
 
 *public TerminalEvents take_events()*
 
-*Defined at [term/terminal.cppm:97](../../../../term/terminal.cppm#L97)*
+*Defined at [term/terminal.cppm:130](../../../../term/terminal.cppm#L130)*
 
  What happened since the last call: the bell, a new title. 
 
@@ -160,7 +190,7 @@
 
 *public std::string_view title()*
 
-*Defined at [term/terminal.cppm:91](../../../../term/terminal.cppm#L91)*
+*Defined at [term/terminal.cppm:124](../../../../term/terminal.cppm#L124)*
 
  The title a program set (OSC 0 or 2), UTF-8, at most 128 bytes. 
 
@@ -168,5 +198,5 @@
 
 *public void ~Terminal()*
 
-*Defined at [term/terminal.cppm:49](../../../../term/terminal.cppm#L49)*
+*Defined at [term/terminal.cppm:50](../../../../term/terminal.cppm#L50)*
 

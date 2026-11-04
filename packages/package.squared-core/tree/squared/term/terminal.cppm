@@ -8,6 +8,7 @@ export import :src.scrollback;
 export import :terminal_config;
 export import :terminal_events;
 export import :terminal_modes;
+export import :text_point;
 import std;
 
 export namespace sq::term
@@ -86,6 +87,38 @@ class Terminal final
         {
             return scrollback_.line( back ).cells;
         }
+
+        /**
+         * Its lines are numbered from the first it took: the scrollback's
+         * oldest kept line is `first_line()`, the screen's row 0 is
+         * `screen_line()`, row r is `screen_line() + r`. A line keeps its
+         * number as more scroll off (they move up the scrollback, then out).
+         */
+        [[nodiscard]] std::uint64_t first_line() const noexcept
+        {
+            return scrollback_.pushed() - scrollback_.size();
+        }
+        [[nodiscard]] std::uint64_t screen_line() const noexcept { return scrollback_.pushed(); }
+
+        /** Row `row` of the screen in use went on into the next by autowrap. */
+        [[nodiscard]] bool row_wrapped( std::uint16_t row ) const noexcept
+        {
+            return screen().wrapped( row );
+        }
+
+        /**
+         * The text from `from` to `to` (both included, either first), as
+         * UTF-8, into `out`; the bytes it takes, all of them, whatever `out`
+         * holds. Scrollback lines, then the screen in use's rows, held to
+         * the lines there are. A line that wrapped runs on into the next; any
+         * other ends with LF, its trailing blanks left out. A wide
+         * character's second cell gives nothing.
+         *
+         * `out` takes whole characters, in order, until one does not fit:
+         * call it with an empty `out` for the size, then with that much.
+         * No allocation; finding the first scrollback line walks back to it.
+         */
+        std::size_t copy_text( TextPoint from, TextPoint to, std::span<char> out ) const noexcept;
 
         /** The title a program set (OSC 0 or 2), UTF-8, at most 128 bytes. */
         [[nodiscard]] std::string_view title() const noexcept

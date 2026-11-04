@@ -16,6 +16,11 @@ export namespace sq::term::detail
  *
  * `line( back )` walks back from the newest, one step a line: reading the
  * lines a scrolled-back view shows costs as many steps as it is scrolled.
+ * `visit` finds its first line the same way, then walks forward (each line's
+ * header holds its length), so a run of lines costs one walk, not one each.
+ *
+ * Every line pushed is counted (`pushed`), kept or not: the terminal numbers
+ * its lines by it, so a line's number stays with it as more scroll off.
  */
 class Scrollback
 {
@@ -47,8 +52,34 @@ class Scrollback
         /** Line `back`, 0 the newest; `back` is below `size()`. */
         [[nodiscard]] Line line( std::size_t back ) const noexcept;
 
+        /** Lines pushed since it was made, the evicted and the cleared among them. */
+        [[nodiscard]] std::uint64_t pushed() const noexcept { return pushed_; }
+
+        /**
+         * Lines `back` to `newest_back` (newest_back <= back < size()), the
+         * oldest first, each given to `visit( const Line & )`. `back` steps to
+         * the first, one for each after. `visit` by value: it is called once
+         * a line, so it is never forwarded (a lambda capturing by reference
+         * is a pointer or two).
+         */
+        template<typename F>
+        void visit( std::size_t back, std::size_t newest_back, F visit ) const
+        {
+            std::size_t start = start_of( back );
+            for( std::size_t left = back - newest_back + 1; left > 0; --left ) {
+                const std::size_t length = ring_[start].code;
+                visit( Line{ { &ring_[start + 1], length }, ring_[start].foreground.r != 0 } );
+                start += length + 2;
+                if( wrapped_ && start == wrap_end_ ) {
+                    start = 0; // the lines go on at the ring's start
+                }
+            }
+        }
+
     private:
         void evict_oldest() noexcept;
+        /// Where line `back`'s header cell is.
+        [[nodiscard]] std::size_t start_of( std::size_t back ) const noexcept;
 
         std::unique_ptr<Cell[]> ring_;
         std::size_t capacity_ = 0;
@@ -58,6 +89,7 @@ class Scrollback
         std::size_t tail_ = 0;
         std::size_t wrap_end_ = 0;
         std::size_t count_ = 0;
+        std::uint64_t pushed_ = 0;
         bool wrapped_ = false;
 };
 

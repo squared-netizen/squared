@@ -86,6 +86,14 @@ character without them and the modifiers). What does not arrive: an
 input method's composition (accents built from two keys, CJK input, emoji),
 which needs a Java `InputConnection`. The volume keys are left to Android.
 
+**The clipboard.** `entry.cpp` also hands your `App` a
+`sq::app::ClipboardService` (`set_clipboard_service`, after `create()`):
+`sq_android::Clipboard`, Android's ClipboardManager through the same JNI
+code. `text(out)` reads the whole clip (512 UTF-16 units at a time, on the
+stack) and says its size in UTF-8; `set_text` writes one, labelled with the
+app's name. An `sq::App` passes it to its Stage, where a widget reaches it as
+`stage.clipboard()`.
+
 **The Console** (`make CONSOLE=app`; see squared's `docs/programmer/console.md`).
 A three-finger tap anywhere, or `` ` `` on a keyboard, opens and closes it;
 the gesture is taken before your `App` sees it (fingers already down are

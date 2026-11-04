@@ -4,7 +4,7 @@
 
 
 
-**brief** A screen snapshot as the UI reads it: its size, each row's cells and version, the cursor, the modes, the title. A view over the bytes it was made from; nothing is copied.
+**brief** A screen snapshot as the UI reads it: its size, each row's cells and version, the cursor, the modes, the title, the lines its rows show. A view over the bytes it was made from; nothing is copied.
 
 
 
@@ -89,6 +89,14 @@
 *public std::string_view title()*
 
 *Defined at [term/screen_view.cppm:46](../../../../term/screen_view.cppm#L46)*
+
+### top_line
+
+*public std::uint64_t top_line()*
+
+*Defined at [term/screen_view.cppm:56](../../../../term/screen_view.cppm#L56)*
+
+ The terminal's number for the line row 0 shows: row r is line `top_line() + r`, what `Terminal::copy_text` takes.
 
 ### version
 

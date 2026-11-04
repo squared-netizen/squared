@@ -36,6 +36,8 @@ Developer counterpart: [../developer/term.md](../developer/term.md)
 | `ScreenPublisher` | `squared/term/screen_publisher.cppm` | A terminal's screen written as a snapshot, on the model's thread, with a version for each row |
 | `ScreenView` | `squared/term/screen_view.cppm` | A screen snapshot as the UI reads it: rows, versions, cursor, modes, title |
 | `KeyBytes`, `key_bytes`, `key_text_bytes` | `squared/term/key_bytes.cppm` | What a key sends to the program: a named key with its modifiers, or a typed character with Ctrl or Alt |
+| `TextPoint` | `squared/term/text_point.cppm` | A place in the terminal's text: a line number (kept as more lines scroll off) and a column |
+| `paste_text` | `squared/term/paste_text.cppm` | What a paste sends to the program: ESC and C1 taken out, newlines as CR, bracketed when the program asked |
 
 ## The shortest use
 
@@ -190,7 +192,7 @@ if( const auto shot = ui.snapshot( screen ) ) {
 
 | `ScreenPublisher` | Does |
 |---|---|
-| `bytes_for(terminal)` | the room a snapshot of it needs now: 152 bytes, 4 a row, 12 a cell |
+| `bytes_for(terminal)` | the room a snapshot of it needs now: 160 bytes, 4 a row, 12 a cell |
 | `write(terminal, out)` | the screen into `out`; each row changed since the last write (or every row, when the size or the view moved) gets a new version; the terminal's dirty marks cleared; the bytes written, 0 when `out` is too small |
 | `scroll_back(lines)`, `scrolled_back()` | the view `lines` back into the scrollback (0: the screen); held to what the scrollback has |
 
@@ -201,6 +203,7 @@ if( const auto shot = ui.snapshot( screen ) ) {
 | `version(r)` | moves on each time row `r` changes: redraw the rows whose version is not the one drawn |
 | `cursor()`, `cursor_shown()` | where the cursor is, and whether to draw it (the program shows it and the view is not scrolled back) |
 | `modes()`, `title()`, `history_size()`, `scrolled_back()` | as the terminal had them |
+| `top_line()` | the terminal's number for the line row 0 shows: row `r` is line `top_line() + r` (see [Copying and pasting](#copying-and-pasting)) |
 
 Each snapshot is the whole screen (24 KB at 50 x 40): the UI may skip some,
 and what it reads must stand alone. A scrolled-back view follows the bottom:
@@ -231,4 +234,58 @@ bool key_text( std::string_view text, sq::app::KeyModifiers held ) override
 | `key_bytes( key, modifiers, modes )` | arrows `ESC [ A` (`ESC O A` when the program asked for application cursor keys), Home `ESC [ H`, End `ESC [ F`, Insert `ESC [ 2 ~`, Delete `ESC [ 3 ~`, Page Up and Down `ESC [ 5 ~` and `6 ~`, F1 to F4 `ESC O P` to `S`, F5 to F12 `ESC [ 15 ~` to `24 ~`; with modifiers xterm's parameter, 1 + Shift 1 + Alt 2 + Ctrl 4 + Meta 8 (`ESC [ 1 ; 5 A` is Ctrl-Up, `ESC [ 5 ; 2 ~` Shift-Page Up). Backspace DEL (Ctrl: BS), Enter CR, Tab HT (Shift: `ESC [ Z`), Escape ESC, Alt putting ESC before these four. Empty for Space (it is text) and `unknown` |
 | `key_text_bytes( text, modifiers )` | Ctrl with `@` to `_` or a letter: its control character (Ctrl-C 0x03, Ctrl-[ ESC); with Space or `2` NUL, `3` to `7` ESC to US, `8` and `?` DEL, `/` US; any other text as it is. Alt puts ESC before it. Empty for empty text, or text over 14 bytes |
 | `KeyBytes::view()`, `empty()` | the bytes; none. 16 bytes by value, no allocation |
+
+## Copying and pasting
+
+A selection's ends are `TextPoint`s: a line, as the terminal numbers them,
+and a column. A line keeps its number as more lines scroll off the top, so
+a selection made in a view, then scrolled, still names the same text. The
+UI reads the numbers off a snapshot (`ScreenView::top_line`); the model,
+which holds the scrollback, makes the text (`Terminal::copy_text`).
+
+```cpp
+// UI: row r of the view is line view.top_line() + r.
+const sq::term::TextPoint from{ .line = view.top_line() + r0, .column = c0 };
+const sq::term::TextPoint to{ .line = view.top_line() + r1, .column = c1 };
+
+// Model: the text, sized once, then written.
+std::string text( terminal.copy_text( from, to, {} ), '\0' );
+terminal.copy_text( from, to, text );
+
+// UI: a paste, as the program should get it.
+std::string bytes( sq::term::paste_text( pasted, view.modes(), {} ), '\0' );
+sq::term::paste_text( pasted, view.modes(), bytes );
+```
+
+| `Terminal` | Gives |
+|---|---|
+| `first_line()` | the number of the oldest line the scrollback keeps |
+| `screen_line()` | the number of the screen's row 0; row `r` is `screen_line() + r` |
+| `row_wrapped(row)` | the row went on into the next by autowrap |
+| `copy_text(from, to, out)` | the text from `from` to `to` (both included, either first) as UTF-8 into `out`; the bytes the whole text takes, whatever `out` holds |
+
+`copy_text` reads the scrollback's lines, then the screen in use's rows (on
+the alternate screen, the program's rows after the main screen's
+scrollback), held to the lines there are: a point before `first_line()`
+starts at the oldest line kept, one past the last row ends there, and a
+range with no line left gives 0. A line that wrapped runs on into the next
+with no LF; any other ends with LF, its trailing blanks left out (a wrapped
+line keeps its spaces: they are the text's). The last line gets no LF. A
+wide character comes once. `out` takes whole characters in order until one
+does not fit: call it with an empty span for the size, then with that much.
+It allocates nothing; finding the first scrollback line walks back to it,
+one step a line.
+
+| Function | Gives |
+|---|---|
+| `paste_text( text, modes, out )` | `text` as the program is sent it, into `out`; the bytes it takes. ESC and the C1 controls (U+0080 to U+009F) taken out, so a paste starts no control sequence and cannot end a bracketed paste early; CR LF, LF and CR each become CR (Enter); between `ESC [ 200 ~` and `ESC [ 201 ~` when the program set bracketed paste (`modes.bracketed_paste`), so a shell takes it as text rather than running each line. Invalid UTF-8 passes as it is. No allocation |
+
+Failure modes are returned sizes: 0 from `copy_text` for nothing to copy, a
+size larger than `out` for a buffer too small (then call again with that
+much). Neither fails otherwise.
+
+sqterm's widget does both: a long press selects, its handles drag through
+the scrollback, Copy asks the Shell for the text (a snapshot back), and
+Paste sends `paste_text` of the clipboard in pieces. The clipboard is the
+Stage's ([stage.md](stage.md#the-clipboard)).
 

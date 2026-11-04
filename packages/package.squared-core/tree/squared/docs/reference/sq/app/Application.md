@@ -1,6 +1,6 @@
 # class Application
 
-*Defined at [app/application.cppm:22](../../../../app/application.cppm#L22)*
+*Defined at [app/application.cppm:23](../../../../app/application.cppm#L23)*
 
 
 
@@ -22,7 +22,7 @@ public static const std::size_t saved_state_bytes
 
 *public void background()*
 
-*Defined at [app/application.cppm:84](../../../../app/application.cppm#L84)*
+*Defined at [app/application.cppm:91](../../../../app/application.cppm#L91)*
 
 
 
@@ -56,7 +56,7 @@ public static const std::size_t saved_state_bytes
 
 *public void foreground()*
 
-*Defined at [app/application.cppm:78](../../../../app/application.cppm#L78)*
+*Defined at [app/application.cppm:85](../../../../app/application.cppm#L85)*
 
 
 
@@ -76,7 +76,7 @@ public static const std::size_t saved_state_bytes
 
 *public bool hides_bars()*
 
-*Defined at [app/application.cppm:120](../../../../app/application.cppm#L120)*
+*Defined at [app/application.cppm:127](../../../../app/application.cppm#L127)*
 
 
 
@@ -86,7 +86,7 @@ public static const std::size_t saved_state_bytes
 
 *public void low_memory()*
 
-*Defined at [app/application.cppm:123](../../../../app/application.cppm#L123)*
+*Defined at [app/application.cppm:130](../../../../app/application.cppm#L130)*
 
 
 
@@ -96,7 +96,7 @@ public static const std::size_t saved_state_bytes
 
 *public void pause()*
 
-*Defined at [app/application.cppm:69](../../../../app/application.cppm#L69)*
+*Defined at [app/application.cppm:76](../../../../app/application.cppm#L76)*
 
 
 
@@ -126,7 +126,7 @@ public static const std::size_t saved_state_bytes
 
 *public void resize(int , int )*
 
-*Defined at [app/application.cppm:126](../../../../app/application.cppm#L126)*
+*Defined at [app/application.cppm:133](../../../../app/application.cppm#L133)*
 
 
 
@@ -136,7 +136,7 @@ public static const std::size_t saved_state_bytes
 
 *public void resume()*
 
-*Defined at [app/application.cppm:72](../../../../app/application.cppm#L72)*
+*Defined at [app/application.cppm:79](../../../../app/application.cppm#L79)*
 
 
 
@@ -146,7 +146,7 @@ public static const std::size_t saved_state_bytes
 
 *public void safe_area_changed(const SafeArea & area)*
 
-*Defined at [app/application.cppm:138](../../../../app/application.cppm#L138)*
+*Defined at [app/application.cppm:145](../../../../app/application.cppm#L145)*
 
 
 
@@ -162,17 +162,25 @@ public static const std::size_t saved_state_bytes
 
 *public std::size_t save_state(std::span<std::byte> out)*
 
-*Defined at [app/application.cppm:106](../../../../app/application.cppm#L106)*
+*Defined at [app/application.cppm:113](../../../../app/application.cppm#L113)*
 
 
 
 **brief** Write what should come back with the activity into `out` (Android's save instance state); the bytes written, 0 for nothing.
 
+### set_clipboard_service
+
+*public void set_clipboard_service(ClipboardService * )*
+
+*Defined at [app/application.cppm:35](../../../../app/application.cppm#L35)*
+
+ Supply the platform's clipboard (nullptr: none). Given after create(), and nullptr again before dispose() returns.
+
 ### set_report
 
 *public void set_report(Report report)*
 
-*Defined at [app/application.cppm:34](../../../../app/application.cppm#L34)*
+*Defined at [app/application.cppm:41](../../../../app/application.cppm#L41)*
 
 
 
@@ -182,7 +190,7 @@ public static const std::size_t saved_state_bytes
 
 *public void set_saved_state(std::span<const std::byte> saved)*
 
-*Defined at [app/application.cppm:97](../../../../app/application.cppm#L97)*
+*Defined at [app/application.cppm:104](../../../../app/application.cppm#L104)*
 
 
 
@@ -192,7 +200,7 @@ public static const std::size_t saved_state_bytes
 
 *public void set_text_input_service(TextInputService * )*
 
-*Defined at [app/application.cppm:28](../../../../app/application.cppm#L28)*
+*Defined at [app/application.cppm:29](../../../../app/application.cppm#L29)*
 
  Supply the portable application-to-platform text-input service. 
 
@@ -200,7 +208,7 @@ public static const std::size_t saved_state_bytes
 
 *public void surface_created(graphics::Context & )*
 
-*Defined at [app/application.cppm:141](../../../../app/application.cppm#L141)*
+*Defined at [app/application.cppm:148](../../../../app/application.cppm#L148)*
 
 
 
@@ -210,7 +218,7 @@ public static const std::size_t saved_state_bytes
 
 *public void surface_destroyed()*
 
-*Defined at [app/application.cppm:148](../../../../app/application.cppm#L148)*
+*Defined at [app/application.cppm:155](../../../../app/application.cppm#L155)*
 
 
 
@@ -222,7 +230,7 @@ public static const std::size_t saved_state_bytes
 
 *public bool take_background_request()*
 
-*Defined at [app/application.cppm:117](../../../../app/application.cppm#L117)*
+*Defined at [app/application.cppm:124](../../../../app/application.cppm#L124)*
 
 
 
@@ -242,5 +250,5 @@ public static const std::size_t saved_state_bytes
 
 *public void ~Application()*
 
-*Defined at [app/application.cppm:25](../../../../app/application.cppm#L25)*
+*Defined at [app/application.cppm:26](../../../../app/application.cppm#L26)*
 

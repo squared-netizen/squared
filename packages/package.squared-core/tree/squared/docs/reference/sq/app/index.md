@@ -3,6 +3,7 @@
 ## Records
 
 * [Application](Application.md)
+* [ClipboardService](ClipboardService.md)
 * [Event](Event.md)
 * [KeyModifiers](KeyModifiers.md)
 * [Report](Report.md)

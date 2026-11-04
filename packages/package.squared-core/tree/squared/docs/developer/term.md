@@ -32,10 +32,11 @@ term/
   terminal.cppm terminal_config.cppm terminal_events.cppm terminal_modes.cppm module.cppm
   pty.cppm pty_config.cppm pty_error.cppm process_exit.cppm
   screen_publisher.cppm screen_view.cppm key_bytes.cppm
+  text_point.cppm paste_text.cppm
   src/   utf8_decoder.cppm parser.cppm csi_sequence.cppm char_width.cppm palette.cppm
          grid.cppm grid.cpp scrollback.cppm scrollback.cpp terminal.cpp pty.cpp
-         screen_layout.cppm screen_snapshot.cpp key_bytes.cpp
-  test/  term_test.cpp pty_test.cpp key_test.cpp
+         screen_layout.cppm screen_snapshot.cpp key_bytes.cpp text.cpp
+  test/  term_test.cpp pty_test.cpp key_test.cpp text_test.cpp
   Makefile
 ```
 
@@ -140,6 +141,15 @@ Pushing drops lines from the front until the new one fits; a line longer
 than the ring is cut to fit. `line(back)` costs `back` steps: a view
 scrolled back 1,000 lines reads 1,000 footers per frame, a few microseconds.
 
+`visit(back, newest_back, f)` (12.4, for `copy_text`) finds line `back` the
+same way, then walks forward by the headers (`start += length + 2`, back to
+0 at `wrap_end` when the ring has wrapped): a run of lines is one walk, not
+one `line()` each (which would be quadratic over a whole scrollback). A
+template in the interface, so the visitor is inlined; no `std::function`.
+
+`pushed()` counts every line ever pushed, kept or not (a 0-byte scrollback
+counts too): the terminal's line numbers. 8 bytes; the ring object is 64.
+
 Cells as the ring's unit (over bytes with lengths written in): no casts and
 no alignment to think about; costs 24 bytes a line instead of 8.
 
@@ -149,7 +159,25 @@ Members: the two grids, the scrollback, tab stops (a bit per column), the
 parser, the pen (a `Cell` whose colours and attributes the next character
 takes), the saved cursors (`ESC 7` and the one `?1049` keeps), the title
 (128 bytes) and replies (256 bytes) inline, the cursor, the region, the
-modes. 960 bytes (`static_assert`ed at most 1024).
+modes. 968 bytes (`static_assert`ed at most 1024).
+
+- **Line numbers** (12.4). `screen_line()` is the scrollback's `pushed()`:
+  every line that went up was pushed, so the screen's row 0 is that many
+  lines from the first. `first_line()` is `pushed() - size()`. Nothing to
+  keep in step: `clear` (ED 3, RIS) forgets lines and the numbers go on;
+  `resize` pushes the rows it drops. Chosen over a counter of the
+  terminal's own (the same number, kept twice) and over (history index,
+  row) pairs (they move with every line scrolled: a selection would drift).
+- **copy_text** (`src/text.cpp`): the points ordered and held to
+  `[first_line(), screen_line() + rows() - 1]`; scrollback lines through
+  `visit`, then the screen's rows; each line's part from its column range,
+  trailing blanks (`code == ' '`) trimmed unless the line wrapped and the
+  part runs to its end, LF unless wrapped, none after the last line; wide
+  tails and code 0 skipped; UTF-8 written by a small `Out` that takes whole
+  pieces until one does not fit and counts them all (a surrogate or a code
+  point past U+10FFFF becomes U+FFFD). Two calls, one to size: a copy is
+  rare, so the walk twice beats a growing buffer (priority 1, nothing
+  allocated in term).
 
 - **The pending wrap.** A character in the last column leaves the cursor
   there with `pending_wrap_` set; the next printable character wraps first.
@@ -231,10 +259,11 @@ app's to set, and the user's `.zshrc` to extend (12.5).
 
 `ScreenPublisher` (56 bytes, and a `std::vector<std::uint32_t>` of row
 versions, grown with the screen on the model's thread) and `ScreenView`
-(184 bytes: a copy of the header and two spans) share one layout,
-`src/screen_layout.cppm`: a 152-byte `ScreenHeader` (layout number, size,
-cursor, modes, title, history size, how far back), a version a row, then
-the rows' cells. Both are this module's, so writer and reader never drift;
+(192 bytes: a copy of the header and two spans) share one layout,
+`src/screen_layout.cppm`: a 160-byte `ScreenHeader` (layout number, size,
+cursor, modes, title, history size, how far back, and since layout 2
+(12.4) `top_line`, the number of the line row 0 shows), a version a row,
+then the rows' cells. Both are this module's, so writer and reader never drift;
 `ScreenView::read` refuses another layout number or too few bytes.
 
 - **Versions over dirty bits**: the UI may miss publishes, so "changed
@@ -275,7 +304,7 @@ decade).
 
 | What | When | Size |
 |---|---|---|
-| `Terminal` itself | where its owner puts it | 960 bytes |
+| `Terminal` itself | where its owner puts it | 968 bytes |
 | Each grid | constructor, `resize` | rows x columns x 12, + 2 a row (table), + 1 a row (wrapped), + 8 per 64 rows (dirty) |
 | Scrollback ring | constructor | `scrollback_bytes`, rounded down to 12 |
 | Tab stops | constructor, `resize` | 8 bytes per 64 columns |
@@ -285,9 +314,10 @@ decade).
 | `Pty::read`, `write`, `resize`, `poll_exit` | never | 0 |
 | `ScreenPublisher::write` | when the screen gets taller: its row versions | 4 bytes a row |
 | `key_bytes`, `key_text_bytes` | never | 0 (a 16-byte `KeyBytes` returned) |
+| `copy_text`, `paste_text` | never | 0 (into the caller's span; sqterm's model writes `copy_text` into a snapshot's room) |
 | The snapshot channel's three buffers (messaging's) | when a snapshot is larger than the buffer's largest before | the screen's bytes, 3 times |
 
-80 x 24 with the default scrollback: 2 x 23,112 + 1,048,572 + 16 + 960, about
+80 x 24 with the default scrollback: 2 x 23,112 + 1,048,572 + 16 + 968, about
 1.05 MB. A phone's portrait 50 x 40: about 1.1 MB. The test counts every
 allocation over 20 feeds of a mixed stream: none.
 
@@ -336,6 +366,20 @@ address,undefined -fno-sanitize-recover=undefined'`); and with
 libc++'s checks on every `span` and `array` index. A feed of 3.4 MB of
 coloured lines (every one scrolling into the scrollback) took 68 ms here.
 
+`term/test/text_test.cpp` (12.4): line numbers (lines scrolled off and out
+of a small scrollback, a scrollback of none); `copy_text` over the screen
+(whole lines, part of one, from mid-line to mid-line, either order, past
+the last line, only blanks), wrapped lines (joined, a wrapped line's spaces
+kept, in the scrollback too), wide characters (once; started on the second
+cell), across the scrollback and the screen, the alternate screen, a ring
+that has wrapped (the forward walk across its end, every line against
+`history_line`), a short buffer (whole characters); `paste_text` (newlines,
+ESC and C1 out, bracketed, tabs, wide and four-byte characters, invalid
+UTF-8, a short buffer); the snapshot's `top_line`, scrolled back too; no
+allocation in either. Run as built and under AddressSanitizer and UBSan
+(2026-11-04, `make BUILD=asan SQUARED_ABI='-fsanitize=address,undefined
+-fno-omit-frame-pointer'`).
+
 `term/test/pty_test.cpp` (12.2): a shell (`/bin/sh`, or `/system/bin/sh`
 on Android) in a `Pty`, read through a `Terminal`: output with UTF-8 and the
 exit code; a name found on this process's PATH (`argv[0]` kept), on a
@@ -355,6 +399,9 @@ sandbox's clang 21 has its sanitizer runtimes now).
 - No rewrap on resize; no combining marks; no palette changes (OSC 4); no
   origin mode, left and right margins, character sets (`ESC ( 0`), mouse
   reporting, or OSC 52 (the clipboard). Each waits for a use.
+- `copy_text` finds its first scrollback line by walking back from the
+  newest: a copy from the oldest of 40,000 lines walks 40,000 headers
+  (twice, sizing then writing), well under a millisecond.
 - `REP` repeats at most a screenful.
 - `Pty`: one program per `Pty`; no reading of the program's current
   directory or name (`/proc/<pid>` can, later); a write is synchronous up to

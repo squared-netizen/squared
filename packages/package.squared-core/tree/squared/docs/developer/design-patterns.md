@@ -141,7 +141,10 @@ at push time.
 
 **Service Locator** &mdash; absent, as the rules require. `Ui` receives its
 `TextInputService` explicitly and every subsystem takes its dependencies as
-parameters. Worth protecting.
+parameters. Worth protecting. The clipboard (12.4) goes the same way: the
+platform hands its `ClipboardService` to the App, the App to its Stage, and
+a widget asks the Stage it was made with (`stage.clipboard()`); nothing
+looks it up by name or through a global.
 
 **ECS** &mdash; absent from the GUI, correctly. A widget tree is touched as
 whole units, not iterated per component.

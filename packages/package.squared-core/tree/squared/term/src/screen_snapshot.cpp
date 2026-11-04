@@ -43,6 +43,7 @@ std::size_t ScreenPublisher::write( Terminal &terminal, std::span<std::byte> out
     std::copy_n( title.begin(), header.title_size, header.title.begin() );
     header.history_size = static_cast<std::uint32_t>( history );
     header.scrolled_back = static_cast<std::uint32_t>( back );
+    header.top_line = terminal.screen_line() - back;
     std::memcpy( out.data(), &header, sizeof header );
     std::memcpy( out.data() + sizeof header, versions_.data(),
                  std::size_t{ rows } * sizeof( std::uint32_t ) );

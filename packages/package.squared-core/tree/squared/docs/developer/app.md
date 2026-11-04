@@ -15,7 +15,8 @@ Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 ```
 app/
   application.cppm event.cppm runtime.cppm safe_area.cppm
-  src/   the nine supporting headers: key, modifiers, navigation, text input, and report
+  src/   the ten supporting headers: key, modifiers, navigation, text input, the
+         clipboard service (12.4), and report
 ```
 
 Since 7b.4 app is a built module, `sq.app`, with a `Makefile` and
@@ -96,6 +97,16 @@ dispatch path. The platform adapter owns the one live `Event`. `KeyModifiers`
 is one byte (`static_assert`ed). `TextInputArea` is four floats.
 
 Nothing in this module allocates on its own behalf.
+
+`ClipboardService` (12.4) is an interface like `TextInputService`: a
+virtual pair the platform implements, one pointer handed to the App. A
+virtual here is off the frame path (a copy or a paste, on a tap). Chosen
+over a function pointer and a context (two, one each way, for a pair of
+calls a person makes by hand) and over the Stage calling JNI (platform code
+above the porting layer). `text` reports the whole size so a caller sizes
+once and allocates once; on Android the clip is read 512 UTF-16 units at a
+time on the stack (`AndroidText::clip_read`), so the platform allocates
+nothing but what JNI does.
 
 ## One vocabulary for keys
 

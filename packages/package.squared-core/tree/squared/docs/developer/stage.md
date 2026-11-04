@@ -106,13 +106,13 @@ runner's own precondition is one to a line).
 
 ## The Stage
 
-4,080 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
+4,088 bytes (`static_assert`ed; pointers, `string_view`s and arrays of them,
 the same in both standard libraries): the screens (16 `Shown`s, two pointers
 each), 4 waiting changes (a `TapKind`, a pane slot and a `Shown`), the 16
 added C++ screens (a pointer each), the 16 custom types (a name and a
 function pointer each), the 4 pane slots (192 bytes each, below, 148 of them
 what the pane keeps), what the 16 screens keep (148 bytes each), the report,
-the text-input service, the skin's file system (a test's; below), the
+the text-input service, the clipboard service (12.4), the skin's file system (a test's; below), the
 window's files and the surface hook (12.3d, 24), the
 `Drawing` pointer, the pixel and logical sizes,
 the safe area, a depth, four counts and eight flags. `ui()`, the window's
@@ -202,7 +202,10 @@ takes any `S` with a `name` (`gui::detail::named`) and writes the same line
 `tap( how, S::name )` would.
 
 **Custom nodes.** `custom( name, make )` puts a name and a
-`CustomMaker` (`std::unique_ptr<gui::Widget> (*)( Stage & )`, given the Stage since 12.3d so a custom widget reaches the Telegraph without a global; with it, for sqterm's terminal, `files()` (the window's runtime files, kept from `attach`), `pixels_per_unit()` (computed from the sizes it keeps) and `on_surface` (a function pointer and a `void *`, called first in `surface_created`, before the screen is built again over textures the app made itself; `sizeof(Stage)` 4,056 to 4,080)) in a table of 16; the
+`CustomMaker` (`std::unique_ptr<gui::Widget> (*)( Stage & )`, given the Stage since 12.3d so a custom widget reaches the Telegraph without a global; with it, for sqterm's terminal, `files()` (the window's runtime files, kept from `attach`), `pixels_per_unit()` (computed from the sizes it keeps) and `on_surface` (a function pointer and a `void *`, called first in `surface_created`, before the screen is built again over textures the app made itself; `sizeof(Stage)` 4,056 to 4,080); and since 12.4 `clipboard()`, the
+platform's `ClipboardService` pointer the App passes on and clears in
+`dispose` (4,088, which took the App across a 64-byte step: 92,800 to
+92,864)) in a table of 16; the
 Stage's `made`, a static member, is `instantiate`'s `custom` hook and finds
 the maker by a linear scan. No maker: `instantiate` stands a label in, and
 reports the node as built short. A function pointer, not `std::function`: a
@@ -662,7 +665,7 @@ libraries, so binding allocates nothing for them. See
 
 | What | Where | When | Size |
 |---|---|---|---|
-| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,576 at the default knobs) + 4,224 (the Stage is 4,080, 2,960 of it what screens and panes keep) |
+| `App` | static storage (`.bss`) | first use | `TelegraphLine` (88,576 at the default knobs) + 4,288 (the Stage is 4,088, 2,960 of it what screens and panes keep; 92,864 in all, rounded to the line's 64) |
 | the path | heap | first start | the platform's path of `squared/model.state` |
 | the saved stack | the platform's stack, then Android's | each save instance state | 8 KB on the glue thread's stack; a `malloc` copy of what was written (a line a screen, tens of bytes) that the glue hands Android |
 | a model's save | the model thread's stack, then the file | each background, after `background` | 8 KB (`Save::capacity`) |

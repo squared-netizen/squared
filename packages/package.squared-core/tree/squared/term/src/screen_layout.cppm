@@ -16,7 +16,8 @@ export namespace sq::term::detail
  */
 struct ScreenHeader
 {
-        static constexpr std::uint32_t current = 1;
+        // 2 (12.4): top_line.
+        static constexpr std::uint32_t current = 2;
 
         std::uint32_t layout = current;
         std::uint16_t columns = 0;
@@ -28,6 +29,8 @@ struct ScreenHeader
         /** Lines scrolled off the top, and how many of them the view is back. */
         std::uint32_t history_size = 0;
         std::uint32_t scrolled_back = 0;
+        /** The number of the line the view's row 0 shows (`Terminal::screen_line`, less the view's back). */
+        std::uint64_t top_line = 0;
         std::array<char, 128> title{};
 };
 

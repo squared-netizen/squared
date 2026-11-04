@@ -35,6 +35,7 @@ void Scrollback::clear() noexcept
 
 void Scrollback::push( std::span<const Cell> line, bool wrapped ) noexcept
 {
+    ++pushed_; // counted even when not kept: the numbers stay the lines'
     if( capacity_ < 3 ) {
         return;
     }
@@ -82,20 +83,26 @@ void Scrollback::evict_oldest() noexcept
     }
 }
 
-Scrollback::Line Scrollback::line( std::size_t back ) const noexcept
+std::size_t Scrollback::start_of( std::size_t back ) const noexcept
 {
     std::size_t end = tail_;
     for( std::size_t i = 0;; ++i ) {
         if( end == 0 ) {
             end = wrap_end_;
         }
-        const std::size_t length = length_of( ring_[end - 1] );
-        const std::size_t start = end - length - 2;
+        const std::size_t start = end - length_of( ring_[end - 1] ) - 2;
         if( i == back ) {
-            return { { &ring_[start + 1], length }, ring_[start].foreground.r != 0 };
+            return start;
         }
         end = start;
     }
+}
+
+Scrollback::Line Scrollback::line( std::size_t back ) const noexcept
+{
+    const std::size_t start = start_of( back );
+    const std::size_t length = length_of( ring_[start] );
+    return { { &ring_[start + 1], length }, ring_[start].foreground.r != 0 };
 }
 
 } // namespace sq::term::detail

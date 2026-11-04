@@ -17,7 +17,8 @@ SOURCES := src/grid.cpp \
     src/pty.cpp \
     src/screen_snapshot.cpp \
     src/scrollback.cpp \
-    src/terminal.cpp
+    src/terminal.cpp \
+    src/text.cpp
 
 OBJECTS := $(patsubst %.cpp,$(OBJ_DIR)/term/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
@@ -38,7 +39,11 @@ PTY_TEST := $(BUILD_DIR)/pty_test
 # modes, text with Ctrl and Alt.
 KEY_TEST := $(BUILD_DIR)/key_test
 
-TESTS := $(TERM_TEST) $(PTY_TEST) $(KEY_TEST)
+# Text out and in (12.4): line numbers, copy_text over the scrollback and
+# the screen, paste_text, the snapshot's top line; no allocation.
+TEXT_TEST := $(BUILD_DIR)/text_test
+
+TESTS := $(TERM_TEST) $(PTY_TEST) $(KEY_TEST) $(TEXT_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -71,6 +76,16 @@ $(PTY_TEST): $(MODULE_DIR)/test/pty_test.cpp \
              $(MODULE_DIR)/src/pty.cpp \
              $(MODULE_DIR)/src/scrollback.cpp \
              $(MODULE_DIR)/src/terminal.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@
+
+$(TEXT_TEST): $(MODULE_DIR)/test/text_test.cpp \
+              $(MODULE_DIR)/src/grid.cpp \
+              $(MODULE_DIR)/src/screen_snapshot.cpp \
+              $(MODULE_DIR)/src/scrollback.cpp \
+              $(MODULE_DIR)/src/terminal.cpp \
+              $(MODULE_DIR)/src/text.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@

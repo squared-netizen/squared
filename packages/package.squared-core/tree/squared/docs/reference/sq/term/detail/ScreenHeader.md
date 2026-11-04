@@ -26,6 +26,8 @@ public std::uint32_t history_size
 
 public std::uint32_t scrolled_back
 
+public std::uint64_t top_line
+
 public array title
 
 public static const std::uint32_t current

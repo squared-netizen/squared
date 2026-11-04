@@ -84,6 +84,20 @@ public static const std::size_t scratch_numbers
 
 **brief** How many widgets on the screen and its panes show a value of the model's. 
 
+### clipboard
+
+*public app::ClipboardService * clipboard()*
+
+*Defined at [stage/stage.cppm:277](../../../stage/stage.cppm#L277)*
+
+
+
+**brief** The platform's clipboard: what a paste reads, a copy writes; nullptr where the platform gives none (a host test, until it does).
+
+
+
+ if( sq::app::ClipboardService *clip = stage.clipboard() ) { clip->set_text( "copied" ); }
+
 ### close
 
 *public bool close()*
@@ -120,7 +134,7 @@ public static const std::size_t scratch_numbers
 
 *public bool failed()*
 
-*Defined at [stage/stage.cppm:292](../../../stage/stage.cppm#L292)*
+*Defined at [stage/stage.cppm:302](../../../stage/stage.cppm#L302)*
 
 
 
@@ -148,7 +162,7 @@ public static const std::size_t scratch_numbers
 
 *public void hide_bars(bool hide)*
 
-*Defined at [stage/stage.cppm:310](../../../stage/stage.cppm#L310)*
+*Defined at [stage/stage.cppm:320](../../../stage/stage.cppm#L320)*
 
 
 
@@ -158,13 +172,13 @@ public static const std::size_t scratch_numbers
 
 *public bool hides_bars()*
 
-*Defined at [stage/stage.cppm:311](../../../stage/stage.cppm#L311)*
+*Defined at [stage/stage.cppm:321](../../../stage/stage.cppm#L321)*
 
 ### keep_screens
 
 *public void keep_screens(bool keep)*
 
-*Defined at [stage/stage.cppm:301](../../../stage/stage.cppm#L301)*
+*Defined at [stage/stage.cppm:311](../../../stage/stage.cppm#L311)*
 
 
 
@@ -174,7 +188,7 @@ public static const std::size_t scratch_numbers
 
 *public bool keeps_screens()*
 
-*Defined at [stage/stage.cppm:302](../../../stage/stage.cppm#L302)*
+*Defined at [stage/stage.cppm:312](../../../stage/stage.cppm#L312)*
 
 ### lists
 

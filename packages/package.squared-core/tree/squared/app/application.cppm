@@ -3,6 +3,7 @@ export module sq.app:application;
 export import :event;
 export import :runtime;
 export import :safe_area;
+export import :src.clipboard_service;
 export import :src.report;
 export import :src.text_input;
 export import :src.text_input_service;
@@ -26,6 +27,12 @@ class Application
 
         /** Supply the portable application-to-platform text-input service. */
         virtual void set_text_input_service( TextInputService * ) noexcept {}
+
+        /**
+         * Supply the platform's clipboard (nullptr: none). Given after
+         * create(), and nullptr again before dispose() returns.
+         */
+        virtual void set_clipboard_service( ClipboardService * ) noexcept {}
 
         /**
          * @brief Where to say what went wrong. Given before create(), and

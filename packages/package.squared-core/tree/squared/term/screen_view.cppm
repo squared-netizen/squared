@@ -8,7 +8,7 @@ export namespace sq::term
 
 /**
  * @brief A screen snapshot as the UI reads it: its size, each row's cells
- * and version, the cursor, the modes, the title. A view over the bytes it
+ * and version, the cursor, the modes, the title, the lines its rows show. A view over the bytes it
  * was made from; nothing is copied.
  *
  * @code
@@ -49,6 +49,11 @@ class ScreenView final
         }
         [[nodiscard]] std::size_t history_size() const noexcept { return header_.history_size; }
         [[nodiscard]] std::size_t scrolled_back() const noexcept { return header_.scrolled_back; }
+        /**
+         * The terminal's number for the line row 0 shows: row r is line
+         * `top_line() + r`, what `Terminal::copy_text` takes.
+         */
+        [[nodiscard]] std::uint64_t top_line() const noexcept { return header_.top_line; }
 
     private:
         ScreenView() = default;
