@@ -153,13 +153,16 @@ edit not finished ([What is kept](#what-is-kept)).
 | `Stage::find( name )` | the app's layout called `name`, from its layout files; nullptr for none |
 | `telegraph()` | the UI end of the Telegraph |
 | `files()` | the app's files, the platform's (`Internal` is what the APK bundles): what a custom widget reads its own from (`files()->internal( "fonts/a.ttf" ).map()`); nullptr before the first window (12.3d) |
-| `pixels_per_unit()` | pixels to a logical unit (the shorter side is 720 units), for a widget that draws pixel-exact, as a terminal's glyphs; 0 before the first window (12.3d) |
+| `pixels_per_unit()` | pixels to a logical unit (the shorter side is 720 units at 100% zoom), for a widget that draws pixel-exact, as a terminal's glyphs; 0 before the first window (12.3d) |
 | `on_surface( hook, context )` | `hook( context, graphics )` each time the drawing surface is made, before the screen is built again: where an app's own textures come back (`texture.restore( graphics )`). One; null removes it (12.3d) |
 | `bindings()` | how many widgets are bound now (below) |
 | `lists()` | how many lists are shown now (below) |
 | `failed()` | the skin did not load |
 | `keep_screens( false )` | in `squared_main`: the stack is not given to Android to keep ([What is kept](#what-is-kept)); `keeps_screens()` says which |
 | `hide_bars( false )` | show the status and navigation bars, which are hidden by default ([The window](#the-window)); from the next frame. `hides_bars()` says which |
+| `zoom()` | how big the UI is, in percent: 100 to start, what a pinch made it after ([Zoom](#zoom-the-pinch), 12.6b) |
+| `set_zoom( percent )` | set it (a settings screen's): brought into 50 to 300, to the nearest 5, laid out at the next frame, kept for the next launch |
+| `pinch_zoom( false )` | in `squared_main`: two fingers are touches, not a pinch, for a game's canvas; `pinch_zooms()` says which |
 | `describe( report )` | the stack, a line a screen from the root, then the panes, with what each keeps: the Console's `screens` |
 
 A layout passed to `push` or `replace` must outlive its place on the stack:
@@ -491,10 +494,43 @@ A button's tap (its `tap` in a layout file) does what it reads
 | `back` | what the back button does: the top pane, else back; at the first screen with no pane open, leave |
 | `quit` | quit |
 
+## Zoom: the pinch
+
+**Every squared app zooms with two fingers**, as Termux does (12.6b): spread
+them and the whole UI grows, pinch them and it shrinks, from 50% to 300% in
+steps of 5. Nothing to write for it. The zoom is how many logical units the
+shorter side has: 720 at 100%, 360 at 200%, so every widget, its text and its
+touch area grow together, and the layout fills the screen again. It is laid
+out once a step, not once a frame, so a pinch costs a layout every 5% and
+nothing between. Kept in the app's private files (`squared/zoom`, a number
+and a newline), written as the fingers lift; the next launch starts there.
+
+How a pinch reads: the second finger down starts it, and the first finger's
+press is cancelled (a button under it is not clicked; a drag stops). The
+fingers must move apart or together by 2.5% of the shorter side before it
+zooms, so two fingers that land and lift change nothing. From there the
+scale counts from where they were. Until every finger is up, none of them
+reach the widgets; a third is ignored (in a `CONSOLE` build three fingers are
+the Console's, which ends the pinch where it was).
+
+**A widget may take the pinch instead** (`gui::Widget::pinch`,
+[gui.md](gui.md#pinch)): the one under the fingers' middle is asked first,
+then its parents; one that says yes gets the pinch and the UI does not zoom.
+sqterm's terminal does, to scale its font.
+
+```cpp
+app.stage.set_zoom( 150 );       // a settings screen's choice
+app.stage.pinch_zoom( false );   // a game: two thumbs are two touches
+```
+
+The default skin's font is a bitmap drawn for 100%: at 300% it is scaled up,
+and softer. A widget that draws its own text (a terminal) draws it for the
+pixels it has (`pixels_per_unit()`), and stays sharp.
+
 ## The window
 
-The Stage draws in **logical units**: the drawable's shorter side is 720, the
-longer one follows its shape, so a widget is the same size on every screen
+The Stage draws in **logical units**: the drawable's shorter side is 720 (at
+100% zoom, above), the longer one follows its shape, so a widget is the same size on every screen
 and a unit is square either way up. Touches arrive in pixels and are scaled
 once, here. The safe area (the bars over the screen's edges) is kept clear.
 
@@ -558,6 +594,8 @@ Nothing stops the app; each failure is one line to the platform's report
 | `app: the model's save could not be written; the one before it stays` | when the app comes back: the model's thread could not write its save, or it was over 8 KB |
 | `app: the model's last save could not be read: ...` | at `run`: the model starts without it |
 | `app: nothing will be kept: ...` | at start: the app's private files could not be made |
+| `stage: squared/zoom holds no zoom: 100%` | at start: the kept zoom is not a number; the UI starts at 100% |
+| `stage: the zoom could not be kept: ...` | as a pinch ends, or at `set_zoom`: the file could not be written; the zoom stays for this run |
 
 ## Memory
 
@@ -569,14 +607,18 @@ paths where it keeps things (allocated once, at start). The skin's files are 46 
 from its file, not the heap. A model's runner is one allocation, at `run`.
 Each window allocates the skin's textures and tables (reading them copies
 each file once, briefly) and one block of about 24 KB (on Android
-23,864 bytes: batch, camera, painter, widgets, the 17 KB scratch C++
-screens and panes write into, the 4 KB table of bound widgets and 640 bytes
-for the lists); each screen shown allocates its widgets, and
+23,976 bytes: batch, camera, painter, widgets, the fingers a pinch follows,
+the 17 KB scratch C++ screens and panes write into, the 4 KB table of bound
+widgets and 640 bytes for the lists); each screen shown allocates its widgets, and
 each pane opened its frame (168 bytes) and widgets, freed when it closes. A
 list shown allocates its row's copy and, as it is first laid out, a row's
 widgets for each row on screen and one more, and 4 bytes a row it asks for.
 A C++ screen itself allocates nothing. **A frame allocates nothing**, a
 list scrolling included, once each part of the screen has been laid out once.
+
+A pinch allocates nothing: the zoom is a byte of the Stage, the fingers
+are in the window's block, and the zoom's file is read once a process (a
+few bytes, briefly) and written from the stack.
 
 Keeping: the background writes the stack from an 8 KB buffer on the stack;
 a model's save writes into one on its thread's stack; the model's last save

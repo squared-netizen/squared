@@ -1,6 +1,6 @@
 # class Ui
 
-*Defined at [gui/src/detail/ui.cppm:34](../../../../gui/src/detail/ui.cppm#L34)*
+*Defined at [gui/src/detail/ui.cppm:35](../../../../gui/src/detail/ui.cppm#L35)*
 
 
 
@@ -50,7 +50,7 @@
 
 *public Widget * content()*
 
-*Defined at [gui/src/detail/ui.cppm:78](../../../../gui/src/detail/ui.cppm#L78)*
+*Defined at [gui/src/detail/ui.cppm:79](../../../../gui/src/detail/ui.cppm#L79)*
 
 
 
@@ -62,7 +62,7 @@
 
 *public const Widget * content()*
 
-*Defined at [gui/src/detail/ui.cppm:84](../../../../gui/src/detail/ui.cppm#L84)*
+*Defined at [gui/src/detail/ui.cppm:85](../../../../gui/src/detail/ui.cppm#L85)*
 
 
 
@@ -86,7 +86,7 @@
 
 *public Widget * focused()*
 
-*Defined at [gui/src/detail/ui.cppm:212](../../../../gui/src/detail/ui.cppm#L212)*
+*Defined at [gui/src/detail/ui.cppm:223](../../../../gui/src/detail/ui.cppm#L223)*
 
 
 
@@ -160,13 +160,25 @@
 
 *public std::size_t pane_count()*
 
-*Defined at [gui/src/detail/ui.cppm:72](../../../../gui/src/detail/ui.cppm#L72)*
+*Defined at [gui/src/detail/ui.cppm:73](../../../../gui/src/detail/ui.cppm#L73)*
 
 
 
 **brief** Count the panes shown.
 
 **return** Number of open panes.
+
+### pinch
+
+*public bool pinch(const PinchEvent & event)*
+
+
+
+**brief** Offer a two-finger pinch to the widgets (the Stage recognises it). At `begin`, to the enabled widget under the middle, then to its parents, until one's `Widget::pinch` takes it; the rest of the pinch goes to that one, its middle made local to it.
+
+**event** The pinch, its middle in logical units from the top left.
+
+**return** true when a widget has the pinch (at `end`: had it).
 
 ### pointer
 
@@ -204,7 +216,7 @@
 
 *public Insets safe_area()*
 
-*Defined at [gui/src/detail/ui.cppm:106](../../../../gui/src/detail/ui.cppm#L106)*
+*Defined at [gui/src/detail/ui.cppm:107](../../../../gui/src/detail/ui.cppm#L107)*
 
 
 
@@ -278,7 +290,7 @@
 
 *public Skin & skin()*
 
-*Defined at [gui/src/detail/ui.cppm:262](../../../../gui/src/detail/ui.cppm#L262)*
+*Defined at [gui/src/detail/ui.cppm:273](../../../../gui/src/detail/ui.cppm#L273)*
 
 
 
@@ -290,7 +302,7 @@
 
 *public const Skin & skin()*
 
-*Defined at [gui/src/detail/ui.cppm:256](../../../../gui/src/detail/ui.cppm#L256)*
+*Defined at [gui/src/detail/ui.cppm:267](../../../../gui/src/detail/ui.cppm#L267)*
 
 
 
@@ -332,7 +344,7 @@
 
 *public std::optional<Rectangle> tooltip_bounds()*
 
-*Defined at [gui/src/detail/ui.cppm:243](../../../../gui/src/detail/ui.cppm#L243)*
+*Defined at [gui/src/detail/ui.cppm:254](../../../../gui/src/detail/ui.cppm#L254)*
 
 
 
@@ -344,7 +356,7 @@
 
 *public const TooltipConfig & tooltip_config()*
 
-*Defined at [gui/src/detail/ui.cppm:224](../../../../gui/src/detail/ui.cppm#L224)*
+*Defined at [gui/src/detail/ui.cppm:235](../../../../gui/src/detail/ui.cppm#L235)*
 
 
 
@@ -356,7 +368,7 @@
 
 *public const Widget * tooltip_owner()*
 
-*Defined at [gui/src/detail/ui.cppm:237](../../../../gui/src/detail/ui.cppm#L237)*
+*Defined at [gui/src/detail/ui.cppm:248](../../../../gui/src/detail/ui.cppm#L248)*
 
 
 
@@ -368,7 +380,7 @@
 
 *public bool tooltip_visible()*
 
-*Defined at [gui/src/detail/ui.cppm:232](../../../../gui/src/detail/ui.cppm#L232)*
+*Defined at [gui/src/detail/ui.cppm:243](../../../../gui/src/detail/ui.cppm#L243)*
 
 
 

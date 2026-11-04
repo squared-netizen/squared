@@ -4,6 +4,7 @@ export import :skin;
 export import :src.detail.actor_root;
 export import :src.detail.pane_frame;
 export import :src.insets;
+export import :src.pinch_event;
 export import :src.pointer_action;
 export import :src.rectangle;
 export import :src.tooltip_config;
@@ -152,6 +153,16 @@ class Ui
                       std::int64_t pointer_id = 0 );
 
         /**
+     * @brief Offer a two-finger pinch to the widgets (the Stage recognises
+     * it). At `begin`, to the enabled widget under the middle, then to its
+     * parents, until one's `Widget::pinch` takes it; the rest of the pinch
+     * goes to that one, its middle made local to it.
+     * @param event The pinch, its middle in logical units from the top left.
+     * @return true when a widget has the pinch (at `end`: had it).
+     */
+        bool pinch( const PinchEvent &event );
+
+        /**
      * @brief Dispatch a key-down event.
      * @param key Portable key name.
      * @param modifiers Modifier state at the time of the event.
@@ -291,6 +302,8 @@ class Ui
         Insets safe_area_{};
         Widget *focused_{ nullptr };
         std::unordered_map<std::int64_t, Widget *> captures_;
+        /// The widget a pinch goes to, from its begin to its end.
+        Widget *pinch_owner_{ nullptr };
         app::TextInputService *text_input_service_{ nullptr };
         struct Overlay
         {

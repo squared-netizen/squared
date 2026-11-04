@@ -1,6 +1,6 @@
 # class Widget
 
-*Defined at [gui/widget.cppm:27](../../../../gui/widget.cppm#L27)*
+*Defined at [gui/widget.cppm:28](../../../../gui/widget.cppm#L28)*
 
 
 
@@ -26,7 +26,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public const void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/widget.cppm:55](../../../../gui/widget.cppm#L55)*
+*Defined at [gui/widget.cppm:56](../../../../gui/widget.cppm#L56)*
 
 
 
@@ -40,7 +40,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void * actor_interface(ActorInterfaceId id)*
 
-*Defined at [gui/widget.cppm:44](../../../../gui/widget.cppm#L44)*
+*Defined at [gui/widget.cppm:45](../../../../gui/widget.cppm#L45)*
 
 
 
@@ -62,7 +62,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool enabled()*
 
-*Defined at [gui/widget.cppm:199](../../../../gui/widget.cppm#L199)*
+*Defined at [gui/widget.cppm:215](../../../../gui/widget.cppm#L215)*
 
 
 
@@ -94,7 +94,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool has_tooltip()*
 
-*Defined at [gui/widget.cppm:221](../../../../gui/widget.cppm#L221)*
+*Defined at [gui/widget.cppm:237](../../../../gui/widget.cppm#L237)*
 
 
 
@@ -162,7 +162,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public bool layout_valid()*
 
-*Defined at [gui/widget.cppm:108](../../../../gui/widget.cppm#L108)*
+*Defined at [gui/widget.cppm:109](../../../../gui/widget.cppm#L109)*
 
 
 
@@ -214,6 +214,20 @@ public static const ActorInterfaceId actor_interface_id
 
 **stage_y** Stage-space origin associated with this widget.
 
+### pinch
+
+*public bool pinch(const PinchEvent & event)*
+
+
+
+**brief** Take a two-finger pinch that starts over this widget, instead of the UI's zoom: a terminal scales its font, a map its view.
+
+ The Stage offers `begin` to the widget under the fingers' middle, then to its parents, until one returns true; that one gets the pinch's `change`s and its `end`. When none takes it, the whole UI zooms (`Stage::zoom`). Both fingers' pointer events stop while it lasts, and the first finger's press is cancelled (`PointerAction::cancel`).
+
+**event** The pinch, its middle in widget-local logical units.
+
+**return** At `begin`: true to take it (false, the default, to leave it). Ignored after.
+
 ### pointer_event
 
 *public bool pointer_event(const PointerEvent & event)*
@@ -244,7 +258,7 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void set_enabled(bool enabled)*
 
-*Defined at [gui/widget.cppm:193](../../../../gui/widget.cppm#L193)*
+*Defined at [gui/widget.cppm:209](../../../../gui/widget.cppm#L209)*
 
 
 
@@ -342,5 +356,5 @@ public static const ActorInterfaceId actor_interface_id
 
 *public void ~Widget()*
 
-*Defined at [gui/widget.cppm:36](../../../../gui/widget.cppm#L36)*
+*Defined at [gui/widget.cppm:37](../../../../gui/widget.cppm#L37)*
 

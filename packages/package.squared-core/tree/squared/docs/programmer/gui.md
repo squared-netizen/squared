@@ -86,6 +86,8 @@ as they arrived, and `squared/gui/input.cppm` and `module.cppm` include them.
 |---|---|---|
 | `PointerAction` | `squared/gui/src/pointer_action.cppm` | Pointer action delivered to widgets |
 | `PointerEvent` | `squared/gui/src/pointer_event.cppm` | Portable pointer event payload in widget-local logical units |
+| `PinchPhase` | `squared/gui/src/pinch_event.cppm` | Where a two-finger pinch is: `begin`, `change`, `end` |
+| `PinchEvent` | `squared/gui/src/pinch_event.cppm` | A pinch offered to a widget: its phase, its scale, its middle in widget-local units |
 
 A widget of your own takes keys by overriding `key_down`, with the `sq::app`
 types:
@@ -113,6 +115,32 @@ bool key_text(std::string_view text, sq::app::KeyModifiers held) override
     return true;
 }
 ```
+
+### Pinch
+
+A two-finger pinch zooms the whole UI in every squared app
+([stage.md](stage.md#zoom-the-pinch)). A widget that has a better use for it
+(a terminal's font, a map's view, an image) takes it by overriding
+`pinch`. As the second finger lands, the widget under the fingers' middle is
+offered `begin`, then its parents, until one returns true; that one gets the
+`change`s and the `end`, and the UI does not zoom. `scale` is the fingers'
+distance over what it was as they started to move (1 at `begin`, 2 with them
+twice as far apart; `end` carries the last). The first finger's press was
+cancelled before `begin` (`PointerAction::cancel`), and neither finger
+reaches `pointer_event` until both are up. The return value after `begin`
+is ignored.
+
+```cpp
+bool pinch(const sq::gui::PinchEvent& event) override
+{
+    if (event.phase == sq::gui::PinchPhase::begin) start_ = zoom_;
+    else zoom_ = std::clamp(start_ * event.scale, 0.5F, 4.0F);
+    return true;  // mine: the UI stays as it is
+}
+```
+
+A widget that leaves it (the default, false) changes nothing: the UI zooms
+over it as over anything else.
 
 ## Widget base
 

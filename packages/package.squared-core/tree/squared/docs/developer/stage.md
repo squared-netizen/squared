@@ -135,7 +135,9 @@ what the pane keeps), what the 16 screens keep (148 bytes each), the report,
 the text-input service, the clipboard service (12.4), the skin's file system (a test's; below), the
 window's files and the surface hook (12.3d, 24), the
 `Drawing` pointer, the pixel and logical sizes,
-the safe area, a depth, four counts and eight flags. `ui()`, the window's
+the safe area, a depth, four counts, eight flags, and the zoom (12.6b: seven
+bits of steps and one for `pinch_zoom( false )`, in the last byte of
+padding, so still 4,088). `ui()`, the window's
 `gui::Ui`, is private since 7.7 (the Ui is internal); the tests reach it
 through `detail::StageProbe`. Was 264 in 7.1 and 936 in
 7.2; the pane slots are 7.3's 168, the skin's pointer 7.4's 8; 7.5a's two
@@ -559,12 +561,59 @@ public `Stage::describe( Report )` (it keeps the shown screen first, so the
 lines are what a background would write) and, for `screens low-memory`,
 `App::low_memory()`, as Android's `onLowMemory` reaches it.
 
+## The pinch and the zoom (12.6b)
+
+**Recognised in the Stage**, from the platform's pointer events, before the
+`Ui` sees them, so every app gets it with nothing to write, and in pixels,
+since the logical scale changes under the fingers as it zooms.
+`Stage::pinched( event )` keeps the fingers down (`Drawing::Pinch`: up to 4,
+an id and a position each, 64 bytes; more are not tracked) and is a small
+state machine:
+
+| State | Down | Move | Up |
+|---|---|---|---|
+| one finger or none | tracked; the second starts a pinch: the first's press cancelled in the `Ui` (`PointerAction::cancel`), `begin` offered (`Ui::pinch`); else to the `Ui` | to the `Ui` | to the `Ui` |
+| pinching | a third: swallowed | a pinch finger's: past the slop, the scale; others swallowed | a pinch finger's: `end` (or the zoom kept), then swallowing while any is down |
+| swallowing | swallowed | swallowed | swallowed; the last one up ends it |
+
+The slop is 2.5% of the shorter side, in pixels; past it the span is taken
+again (`span = distance`), so the scale starts at 1 and no step is skipped
+as it starts. **The UI's zoom** is `start_steps * scale`, rounded to a step
+(5%), clamped to 10 to 60 steps; `zoom_to` acts only when the step changes:
+it calls `resize` with the same pixels, which computes the logical size
+from `720 * 100 / zoom` and sets `layout_due_`, so the layout happens once,
+at the next event or frame (`settle`), however many moves came in between.
+A step's cost is that layout and nothing else; between steps a move is a
+`hypot` and a compare. A `Pause` ends a pinch (`end` to its owner) and
+forgets the fingers, whose ups may never come.
+
+**Kept**: `squared/zoom` in the app's private files, the percent as text and
+a newline, written atomically as a pinch that changed it ends (once a pinch,
+not once a step) and by `set_zoom`; read in `attach` when the zoom is 0 (not
+read yet: once a process; a new activity keeps the value). A file that does
+not parse is said and ignored. The App makes `squared/` (`find_saves`) after
+the first `attach`; the read finds nothing on a first launch anyway, and the
+first write comes after.
+
+**Why the Stage, not the `Ui`**: the zoom is the Stage's (it owns the
+logical size and the pixel conversion), and the `Ui` has no pixels. The
+`Ui` keeps only who has the pinch ([gui.md](gui.md#the-pinchs-owner-126b)).
+**Why seven bits**: 10 to 60 fit, and the byte was padding; a `float` zoom
+would have grown the Stage by 8 and the App by 64 (its 64-byte rounding).
+Chosen over a gesture-detector object with listeners (Android's
+`ScaleGestureDetector` shape): one recogniser, one consumer, a switch.
+
+Limits: the default skin's font is a bitmap at 100%, scaled at other zooms
+(softer at 300%); `pinch_zoom( false )` turns recognition off whole, so a
+game that wants both two-finger touches and a pinch recognises its own.
+
 ## `Stage::Drawing`
 
-23,864 bytes under libc++, the one standard library since 2026-11-02 (24,048
-under libstdc++ before): 1,648 for the window's own pieces (`static_assert`ed:
-the `Ui` holds standard containers, whose sizes are the library's), the
-17,480-byte scratch, the 4,096-byte table of bound values and the 4 list
+23,976 bytes under libc++, the one standard library since 2026-11-02 (24,160
+under libstdc++ before): 1,760 for the window's own pieces (`static_assert`ed:
+the `Ui` holds standard containers, whose sizes are the library's; since
+12.6b the fingers a pinch follows, 104 bytes, and the `Ui`'s pinch owner, 8),
+the 17,480-byte scratch, the 4,096-byte table of bound values and the 4 list
 slots (160 bytes each: the list, its names, its `ListWindow`, the rows
 asked for, the kept items' vector, the 8 value names), last, so they add
 exactly. One allocation per
@@ -658,6 +707,10 @@ drawable missing) is reported and shown.
   without `save` is not wrapped. No virtual: the runner holds it by value.
 - **Visitor (static)**: `walk` with `Keeping` and `Putting`, resolved at
   compile time.
+- **State machine**: the pinch's recogniser (above): three states in flags,
+  a switch on the event; no object per state, no listeners.
+- **Chain of responsibility**: the pinch offered to the widget under it,
+  then its parents, until one takes it (`Ui::pinch`).
 
 ## Standard library
 
@@ -673,7 +726,8 @@ of what Android kept, during `create()` only; the
 `std::vector<std::byte>` of the model's last save, from `run` to the
 model's `start`; `std::atomic<bool>` for a failed save, written on the
 model's thread, read on the UI thread; `std::to_chars` and `std::from_chars`
-for the saved stack. Passed over: `std::vector` for the
+for the saved stack and the zoom's file; `std::hypot`, `std::lround` and
+`std::ranges::find` for the pinch. Passed over: `std::vector` for the
 stack and the queue (fixed at 16 and 4, no growth), `std::function` for the
 hooks, the report and the text field's commit (function pointers). The
 check box's and the slider's change callbacks are gui's `std::function`s,
@@ -692,7 +746,8 @@ libraries, so binding allocates nothing for them. See
 | the model's last save | heap | `run`, freed at the model's `start` | the file's size |
 | the default skin's files | read-only data, mapped from the `.so` | load time | 46,305 bytes, and its 128-byte table |
 | the model's runner | heap | `run` | the runner and the model |
-| `Stage::Drawing` | heap | each window | 23,864 (libc++, 64-bit), the scratch's 17,480, the bound values' 4,096 and the lists' 640 included, plus the skin's textures and tables |
+| `Stage::Drawing` | heap | each window | 23,976 (libc++, 64-bit), the scratch's 17,480, the bound values' 4,096, the lists' 640 and the pinch's fingers' 104 included, plus the skin's textures and tables |
+| the zoom's file | heap, briefly; the stack | read once a process; written as a pinch that changed it ends | its few bytes read into a vector, freed at once; written from 8 bytes on the stack |
 | a list shown | heap | each list built | its `gui::List` (400, libc++), a copy of its row's nodes (32 bytes each), the layout's words and numbers; its row tables and their widgets, for the rows on screen and one more, as it is first laid out; 4 bytes a row it asks for, once |
 | a C++ screen | read-only data | build time | a name and a function pointer |
 | a screen's widgets | heap | each navigation | as `instantiate` makes them |
@@ -915,6 +970,29 @@ pairs: a push clears the slot it fills and `back` clears the one it pops,
 and either alone keeps a stale record from a new screen (nothing else
 writes those slots), so planting one finds the other still there; both
 kept, as hygiene.
+
+**The pinch (12.6b):** a kept zoom of 150 read at the first window (480
+units across); two fingers that move less than the slop change nothing; past
+it, 1.2 times the span is 180%, laid out once at the next frame, and a move
+within the step lays out nothing; the zoom written as the first finger
+lifts, and the finger left zooms nothing; `set_zoom` to a step, to the range,
+kept; a widget that takes it (`Pincher`) gets `begin`, a `change` at scale 2
+and an `end` (its middle in its own units), the first finger's press
+cancelled, the UI not zoomed, the second finger's up far off screen as the
+Console sends it; one that leaves it, and the UI zooms to 200; `pinch_zoom(
+false )` sends both fingers to the widget and zooms nothing; two fingers
+landing and lifting on Back do not tap it, a tap after does; a new window
+keeps the zoom and a new process reads it. `gui/test/pane_frame_test.cpp`:
+the offer passes a label to its parent, which is told the middle in its own
+units; a pane closed mid-pinch takes its owner with it; a `Pause` mid-pinch
+ends it, and the next finger is a touch again. Planted bugs, 14, all caught:
+the first press not cancelled, no slop, no new span at the slop, the finger
+left not swallowed, the zoom not kept at the end or by `set_zoom`, not read,
+not applied, two fingers not a pinch, `pinch_zoom( false )` ignored, the
+owner kept past its pane, the parents not asked, the middle not made local,
+a pause forgetting nothing. Two were missed at first (the finger left, the
+pause): the test now checks the widget hears nothing of the finger left, and
+pauses mid-pinch.
 
 Not covered here: the template's `entry.cpp` (compiled on the phone; its new
 lines were compiled and run on the host against the real `App` and

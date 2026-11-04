@@ -33,6 +33,15 @@ constexpr std::string_view skin_directory = "skins/default/skin";
 /// size on every screen, and one logical unit is square either way up.
 constexpr float logical_short_side = 720.0F;
 
+/// Where the zoom is kept, in the app's private files (the App makes the
+/// directory), and 100 percent in its steps.
+constexpr std::string_view zoom_file = "squared/zoom";
+constexpr int unzoomed_steps = 100 / Stage::zoom_step;
+
+/// How far the fingers' distance changes before a pinch zooms, as a share of
+/// the drawable's shorter side: two fingers that land and lift do nothing.
+constexpr float pinch_slop = 0.025F;
+
 /// A failure (the skin did not load, a layout did not build), and the background.
 constexpr graphics::Color dark_red{ .red = 0.55F, .green = 0.05F, .blue = 0.05F, .alpha = 1.0F };
 constexpr graphics::Color slate{ .red = 0.25F, .green = 0.25F, .blue = 0.28F, .alpha = 1.0F };
@@ -333,6 +342,37 @@ struct Stage::Drawing final
         graphics::OrthographicCamera camera{ logical_short_side, logical_short_side };
         gui::BatchPainter painter{ batch, font.get() };
 
+        /// The fingers down, in pixels, and the pinch two of them make (12.6b).
+        struct Pinch final
+        {
+                struct Finger final
+                {
+                        std::int64_t id = 0;
+                        float x = 0.0F;
+                        float y = 0.0F;
+                };
+                std::array<Finger, 4> down{};
+                std::int64_t first = 0;
+                std::int64_t second = 0;
+                /// The fingers' distance, in pixels, as the pinch began, then as it started to zoom.
+                float span = 0.0F;
+                float scale = 1.0F;
+                /// Their middle, in logical units: what a widget that has the pinch is told.
+                float middle_x = 0.0F;
+                float middle_y = 0.0F;
+                std::uint8_t count = 0;
+                /// The zoom, in steps, as the pinch began.
+                std::uint8_t start_steps = 0;
+                /// Two fingers down: their pointer events are the pinch's.
+                bool pinching = false;
+                /// They moved past the slop: the scale counts.
+                bool zooming = false;
+                /// A widget took it (`gui::Widget::pinch`): the UI is not zoomed.
+                bool claimed = false;
+                /// It ended with fingers down: theirs reach nothing until all are up.
+                bool swallowing = false;
+        } pinch;
+
         /// What a C++ screen writes into, and the table it wrote. Last, so
         /// the window's size is the rest plus exactly this.
         struct Scratch final
@@ -480,6 +520,9 @@ void Stage::on_surface( SurfaceHook hook, void *context ) noexcept
 void Stage::attach( app::Runtime &runtime )
 {
     files_ = &runtime.files;
+    if( zoom_steps_ == 0 ) {
+        read_zoom(); // once a process: the last one's, or 100
+    }
     keep_shown(); // a window made again without a detach: what it showed is kept
     unbind_all();
     drawing_.reset();
@@ -488,14 +531,15 @@ void Stage::attach( app::Runtime &runtime )
     // the skin's pieces, the batch, the camera, the painter, the widgets,
     // and the scratch a C++ screen writes into. The widgets hold standard
     // containers, whose sizes are the library's: libc++'s, everywhere since
-    // 2026-11-02 (64-bit; libstdc++ made it 1832 + the tables).
+    // 2026-11-02 (64-bit; libstdc++ made it 184 more). 1760 since 12.6b: the
+    // fingers a pinch follows (104) and the Ui's pinch owner (8).
     static_assert( sizeof( Drawing::Scratch ) == 17480 );
     static_assert( sizeof( Binding ) == 32 );
     static_assert( sizeof( ListBinding ) == 160 );
     static_assert( sizeof( Kept ) == 148 );
     static_assert( max_lists <= 4, "Binding::list is two bits" );
     constexpr std::size_t tables = sizeof( Drawing::Scratch ) + max_bindings * 32 + max_lists * 160;
-    static_assert( sizeof( Drawing ) == 1648 + tables );
+    static_assert( sizeof( Drawing ) == 1760 + tables );
     // The skin is compiled in: the app's own files are not read for it.
     files::FileSystem &skin = skin_files_ != nullptr ? *skin_files_ : default_skin_files();
     std::string why;
@@ -556,15 +600,17 @@ void Stage::resize( int pixel_width, int pixel_height ) noexcept
     pixel_height_ = pixel_height;
     const float width = static_cast<float>( pixel_width );
     const float height = static_cast<float>( pixel_height );
+    // Zoomed in, the shorter side has fewer units, and each is bigger.
+    const float side = logical_short_side * 100.0F / static_cast<float>( zoom() );
     if( pixel_width <= 0 || pixel_height <= 0 ) {
-        logical_width_ = logical_short_side;
-        logical_height_ = logical_short_side * 16.0F / 9.0F;
+        logical_width_ = side;
+        logical_height_ = side * 16.0F / 9.0F;
     } else if( width <= height ) {
-        logical_width_ = logical_short_side;
-        logical_height_ = logical_short_side * height / width;
+        logical_width_ = side;
+        logical_height_ = side * height / width;
     } else {
-        logical_width_ = logical_short_side * width / height;
-        logical_height_ = logical_short_side;
+        logical_width_ = side * width / height;
+        logical_height_ = side;
     }
     if( drawing_ == nullptr ) {
         return;
@@ -643,8 +689,13 @@ bool Stage::event( const app::Event &event )
         translated.x = event.x * logical_width_ / static_cast<float>( pixel_width_ );
         translated.y = event.y * logical_height_ / static_cast<float>( pixel_height_ );
     }
+    if( event.type == Type::Pause ) {
+        end_pinch(); // the fingers' ups may never come
+        drawing_->pinch = {};
+    }
     dispatching_ = true;
-    const bool handled = widgets->event( translated );
+    // Two fingers are a pinch: the widget under them takes it, or the UI zooms.
+    const bool handled = pinched( event ) || widgets->event( translated );
     dispatching_ = false;
     flush();
     if( handled ) {
@@ -654,6 +705,189 @@ bool Stage::event( const app::Event &event )
         return back();
     }
     return false;
+}
+
+// --- the pinch (12.6b) ------------------------------------------------------
+
+int Stage::zoom() const noexcept
+{
+    return ( zoom_steps_ == 0 ? unzoomed_steps : static_cast<int>( zoom_steps_ ) ) * zoom_step;
+}
+
+void Stage::set_zoom( int percent ) noexcept
+{
+    const int clamped = std::clamp( percent, least_zoom, most_zoom );
+    zoom_to( ( clamped + zoom_step / 2 ) / zoom_step );
+    keep_zoom();
+}
+
+void Stage::zoom_to( int steps ) noexcept
+{
+    const int clamped = std::clamp( steps, least_zoom / zoom_step, most_zoom / zoom_step );
+    if( clamped == static_cast<int>( zoom_steps_ ) ) {
+        return;
+    }
+    zoom_steps_ = static_cast<std::uint8_t>( static_cast<unsigned>( clamped ) & 0x7FU );
+    // The logical size from the new zoom; laid out once, at the next event or frame.
+    resize( pixel_width_, pixel_height_ );
+}
+
+void Stage::read_zoom() noexcept
+{
+    int steps = unzoomed_steps;
+    if( files_ != nullptr ) {
+        const files::FileReadResult read = files_->read( files::FileType::Local, zoom_file );
+        if( read ) {
+            const auto *text = reinterpret_cast<const char *>( read.bytes.data() );
+            int percent = 0;
+            const auto parsed = std::from_chars( text, text + read.bytes.size(), percent );
+            if( parsed.ec == std::errc{} ) {
+                const int clamped = std::clamp( percent, least_zoom, most_zoom );
+                steps = ( clamped + zoom_step / 2 ) / zoom_step;
+            } else {
+                say( "stage: %s holds no zoom: 100%%", zoom_file.data() );
+            }
+        }
+    }
+    zoom_steps_ = static_cast<std::uint8_t>( static_cast<unsigned>( steps ) & 0x7FU );
+}
+
+void Stage::keep_zoom() noexcept
+{
+    if( files_ == nullptr ) {
+        return;
+    }
+    std::array<char, 8> text{};
+    const auto written = std::to_chars( text.data(), text.data() + text.size() - 1, zoom() );
+    *written.ptr = '\n';
+    const auto size = static_cast<std::size_t>( written.ptr + 1 - text.data() );
+    const files::FileError failed = files_->write_atomically(
+        files::FileType::Local, zoom_file, std::as_bytes( std::span( text.data(), size ) ) );
+    if( failed && failed.code != files::FileErrorCode::NotSupported ) {
+        say( "stage: the zoom could not be kept: %s", failed.message.c_str() );
+    }
+}
+
+bool Stage::pinched( const app::Event &event ) noexcept
+{
+    using Type = app::Event::Type;
+    if( no_pinch_ != 0 || drawing_ == nullptr || !is_pointer( event.type ) || pixel_width_ <= 0 ||
+        pixel_height_ <= 0 ) {
+        return false;
+    }
+    using Finger = Drawing::Pinch::Finger;
+    Drawing::Pinch &pinch = drawing_->pinch;
+    const auto down = std::span( pinch.down ).first( pinch.count );
+    const auto found = std::ranges::find( down, event.pointer_id, &Finger::id );
+    Finger *finger = found != down.end() ? &*found : nullptr;
+    const bool ours =
+        pinch.pinching && ( event.pointer_id == pinch.first || event.pointer_id == pinch.second );
+    const float to_x = logical_width_ / static_cast<float>( pixel_width_ );
+    const float to_y = logical_height_ / static_cast<float>( pixel_height_ );
+
+    if( event.type == Type::PointerDown ) {
+        if( finger == nullptr && pinch.count < pinch.down.size() ) {
+            finger = &pinch.down[pinch.count++];
+        }
+        if( finger != nullptr ) {
+            *finger = { event.pointer_id, event.x, event.y };
+        }
+        if( pinch.pinching || pinch.swallowing ) {
+            return true; // a third finger
+        }
+        if( pinch.count != 2 ) {
+            return false;
+        }
+        // The second finger: a pinch. The first one's press ends without a click.
+        const Finger first = pinch.down[0];
+        const Finger second = pinch.down[1];
+        pinch.pinching = true;
+        pinch.zooming = false;
+        pinch.first = first.id;
+        pinch.second = second.id;
+        pinch.span = std::hypot( second.x - first.x, second.y - first.y );
+        pinch.scale = 1.0F;
+        pinch.middle_x = ( first.x + second.x ) * 0.5F * to_x;
+        pinch.middle_y = ( first.y + second.y ) * 0.5F * to_y;
+        pinch.start_steps = static_cast<std::uint8_t>( zoom() / zoom_step );
+        gui::Ui &widgets = drawing_->ui;
+        static_cast<void>( widgets.pointer( gui::PointerAction::cancel, first.x * to_x,
+                                            first.y * to_y, 0, first.id ) );
+        pinch.claimed =
+            widgets.pinch( { gui::PinchPhase::begin, 1.0F, pinch.middle_x, pinch.middle_y } );
+        return true;
+    }
+
+    if( event.type == Type::PointerMove ) {
+        if( finger != nullptr ) {
+            finger->x = event.x;
+            finger->y = event.y;
+        }
+        if( !ours ) {
+            return pinch.pinching || pinch.swallowing;
+        }
+        const auto a = std::ranges::find( down, pinch.first, &Finger::id );
+        const auto b = std::ranges::find( down, pinch.second, &Finger::id );
+        if( a == down.end() || b == down.end() ) {
+            return true;
+        }
+        const float distance = std::hypot( b->x - a->x, b->y - a->y );
+        pinch.middle_x = ( a->x + b->x ) * 0.5F * to_x;
+        pinch.middle_y = ( a->y + b->y ) * 0.5F * to_y;
+        if( !pinch.zooming ) {
+            const float slop =
+                pinch_slop * static_cast<float>( std::min( pixel_width_, pixel_height_ ) );
+            if( std::abs( distance - pinch.span ) <= slop ) {
+                return true;
+            }
+            // Past the slop: the scale is from here, so it starts at 1, no jump.
+            pinch.zooming = true;
+            pinch.span = std::max( distance, 1.0F );
+            return true;
+        }
+        pinch.scale = distance / pinch.span;
+        if( pinch.claimed ) {
+            static_cast<void>( drawing_->ui.pinch(
+                { gui::PinchPhase::change, pinch.scale, pinch.middle_x, pinch.middle_y } ) );
+        } else {
+            const float steps = static_cast<float>( pinch.start_steps ) * pinch.scale;
+            zoom_to( static_cast<int>( std::lround( steps ) ) );
+        }
+        return true;
+    }
+
+    // Up: a finger leaves.
+    if( finger != nullptr ) {
+        *finger = pinch.down[pinch.count - 1];
+        --pinch.count;
+    }
+    if( ours ) {
+        end_pinch();
+        pinch.swallowing = pinch.count > 0; // the other finger drags nothing
+        return true;
+    }
+    if( pinch.swallowing ) {
+        pinch.swallowing = pinch.count > 0;
+        return true;
+    }
+    return pinch.pinching;
+}
+
+void Stage::end_pinch() noexcept
+{
+    if( drawing_ == nullptr || !drawing_->pinch.pinching ) {
+        return;
+    }
+    Drawing::Pinch &pinch = drawing_->pinch;
+    pinch.pinching = false;
+    pinch.zooming = false;
+    if( pinch.claimed ) {
+        pinch.claimed = false;
+        static_cast<void>( drawing_->ui.pinch(
+            { gui::PinchPhase::end, pinch.scale, pinch.middle_x, pinch.middle_y } ) );
+    } else if( zoom() / zoom_step != pinch.start_steps ) {
+        keep_zoom(); // once a pinch, as the fingers lift
+    }
 }
 
 void Stage::update( std::chrono::nanoseconds delta ) noexcept

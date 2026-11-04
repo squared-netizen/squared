@@ -38,6 +38,12 @@ public static const std::size_t scratch_text
 
 public static const std::size_t scratch_numbers
 
+public static const int least_zoom
+
+public static const int most_zoom
+
+public static const int zoom_step
+
 
 
 ## Functions
@@ -252,6 +258,22 @@ public static const std::size_t scratch_numbers
 
 **brief** How many panes are open, once what waits has happened. 
 
+### pinch_zoom
+
+*public void pinch_zoom(bool on)*
+
+*Defined at [stage/stage.cppm:349](../../../stage/stage.cppm#L349)*
+
+
+
+**brief** Whether a pinch zooms the UI: on by default. Off, both fingers reach the widgets as touches, as a game's canvas wants, and no widget is offered a pinch. In `squared_main`.
+
+### pinch_zooms
+
+*public bool pinch_zooms()*
+
+*Defined at [stage/stage.cppm:350](../../../stage/stage.cppm#L350)*
+
 ### pixels_per_unit
 
 *public float pixels_per_unit()*
@@ -296,6 +318,16 @@ public static const std::size_t scratch_numbers
 
 **brief** Show the C++ screen `S` instead of the screen there is (or as the first). 
 
+### set_zoom
+
+*public void set_zoom(int percent)*
+
+
+
+**brief** Set the zoom (a settings screen's): brought into the range, to the nearest step, laid out at the next frame, and kept as a pinch's is.
+
+ app.stage.set_zoom( 150 );
+
 ### showing
 
 *public bool showing()*
@@ -331,6 +363,14 @@ public static const std::size_t scratch_numbers
 
 
 **brief** The name of the screen shown; empty when there is none. 
+
+### zoom
+
+*public int zoom()*
+
+
+
+**brief** How big the UI is, in percent: at 100 the drawable's shorter side is 720 units; at 200, 360 (everything twice as big). A two-finger pinch changes it in every squared app, laid out once a step; it is kept in the app's private files (`squared/zoom`) for the next launch. A widget may take the pinch instead (`gui::Widget::pinch`): a terminal's font.
 
 ### ~Stage
 

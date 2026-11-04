@@ -282,6 +282,24 @@ middle) is the Stage's to decide.
 Cost: one call to `place_content()` per resize or content change; nothing per
 frame.
 
+## The pinch's owner (12.6b)
+
+The Stage recognises a pinch; the `Ui` only offers it. `Ui::pinch( event )`
+at `begin` walks from `widget_at` (the topmost widget under the middle, the
+top modal pane's rule included) up the parents, skipping disabled ones, and
+asks each `Widget::pinch` with the middle made local (`stage_position`, a
+walk to the root). The first to say yes is `pinch_owner_`, a plain pointer
+(8 bytes of `Ui`); `change` and `end` go to it, and `end` clears it. It is
+cleared, as a pointer capture is, wherever its widget can go: `set_content`
+(the whole tree), `close_pane` (when it is in the pane). A pane shown over
+it does not clear it: the fingers are still on that widget.
+
+`Widget::pinch` is a virtual (one vtable slot, no bytes per widget), over a
+listener on the input-event path: the pinch is not a pointer event, has no
+capture or bubble phase, and is asked at most once per widget per pinch.
+Chosen over a `PinchHandler` registered with the Ui (a table of pointers to
+keep in step with the tree: priority 1 and 4 both say no).
+
 ## BatchPainter
 
 The concrete end of the widget set: every `Painter` call becomes a quad in a

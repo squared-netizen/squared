@@ -44,6 +44,9 @@ struct sq::detail::StageProbe final
         {
             return stage.layout_due_;
         }
+
+        /// The zoom read again at the next window, as in a new process.
+        static void forget_zoom( sq::Stage &stage ) noexcept { stage.zoom_steps_ = 0; }
 };
 
 namespace
@@ -331,6 +334,70 @@ class Opener final : public sq::gui::Widget
                 opener_saw = opening->panes();
             }
             return true;
+        }
+};
+
+/// A custom widget that takes a pinch (a terminal's font, 12.6b): what it was told.
+struct Pinches final
+{
+        int begins = 0;
+        int changes = 0;
+        int ends = 0;
+        float scale = 0.0F;
+        float x = 0.0F;
+        int pressed = 0;
+        int cancelled = 0;
+        int others = 0; ///< moves and ups
+        bool take = true;
+} pinches;
+
+class Pincher final : public sq::gui::Widget
+{
+    public:
+        [[nodiscard]] sq::gui::Size preferred_size( sq::gui::Painter & /*painter*/,
+                                                    const sq::gui::Skin & /*skin*/ ) const override
+        {
+            return { 400.0F, 400.0F };
+        }
+
+        bool pointer_event( const sq::gui::PointerEvent &event ) override
+        {
+            if( event.action == sq::gui::PointerAction::down ) {
+                ++pinches.pressed;
+            } else if( event.action == sq::gui::PointerAction::cancel ) {
+                ++pinches.cancelled;
+            } else {
+                ++pinches.others;
+            }
+            return true;
+        }
+
+        bool pinch( const sq::gui::PinchEvent &event ) override
+        {
+            pinches.scale = event.scale;
+            pinches.x = event.x;
+            if( event.phase == sq::gui::PinchPhase::begin ) {
+                ++pinches.begins;
+                return pinches.take;
+            }
+            ++( event.phase == sq::gui::PinchPhase::change ? pinches.changes : pinches.ends );
+            return true;
+        }
+};
+
+std::unique_ptr<sq::gui::Widget> make_pincher( sq::Stage & /*stage*/ )
+{
+    return std::make_unique<Pincher>();
+}
+
+struct Pinchy final
+{
+        static constexpr std::string_view name = "pinchy";
+        static void build( sq::gui::LayoutWriter &root )
+        {
+            root.add_custom( "pincher" );
+            root.row();
+            root.add<sq::gui::Button>( "Back" ).tap( sq::gui::Navigate::back );
         }
 };
 
@@ -627,6 +694,7 @@ void squared_main( sq::App &app )
     CHECK( !app.stage.add<Clash>() );
     CHECK( app.stage.custom( "gauge", make_gauge ) );
     CHECK( app.stage.custom( "opener", make_opener ) );
+    CHECK( app.stage.custom( "pincher", make_pincher ) );
     app.stage.on_surface( &count_surface, &surfaces );
     app.stage.push( landing.layout );
 }
@@ -2199,6 +2267,167 @@ void keeps_running_in_the_background()
 /// Swiped away in the recent apps while the process lives on: the next
 /// activity comes with nothing Android kept, a new launch, and starts fresh,
 /// as after a quit. One Android made again keeps the run.
+/// A finger, in pixels.
+void finger( sq::App &app, sq::app::Event::Type type, std::int64_t id, float x, float y )
+{
+    sq::app::Event event;
+    event.type = type;
+    event.pointer_id = id;
+    event.x = x;
+    event.y = y;
+    app.handle_event( event );
+}
+
+void a_pinch_zooms_the_ui()
+{
+    using Type = sq::app::Event::Type;
+    const auto near = []( float a, float b ) { return std::abs( a - b ) < 0.01F; };
+    start = Start::inline_model;
+    reports.clear();
+    const std::string local = private_files( "zoom" );
+    const std::string kept = local + "/squared/zoom";
+    std::filesystem::create_directories( local + "/squared" );
+    write_file( kept, "150\n" ); // the last run's
+    sq::detail::StageProbe::forget_zoom( the_app.stage );
+    Platform platform( assets_directory(), local );
+    sq::App &app = the_app;
+    platform.open( app );
+    platform.frame( app );
+    CHECK( app.stage.zoom() == 150 && app.stage.pinch_zooms() );
+    CHECK( app.stage.pixels_per_unit() == 1080.0F / 480.0F ); // the short side is 480 units
+
+    // Two fingers 400 pixels apart; a little nearer or further is not a zoom
+    // (the slop is 27 pixels of 1,080).
+    finger( app, Type::PointerDown, 1, 300.0F, 1000.0F );
+    finger( app, Type::PointerDown, 2, 700.0F, 1000.0F );
+    finger( app, Type::PointerMove, 2, 720.0F, 1000.0F );
+    platform.frame( app );
+    CHECK( app.stage.zoom() == 150 && !sq::detail::StageProbe::layout_due( app.stage ) );
+    // Past the slop: the scale counts from 460 pixels. 1.2 times that is 180%.
+    finger( app, Type::PointerMove, 2, 760.0F, 1000.0F );
+    CHECK( app.stage.zoom() == 150 );
+    finger( app, Type::PointerMove, 2, 852.0F, 1000.0F );
+    CHECK( app.stage.zoom() == 180 && sq::detail::StageProbe::layout_due( app.stage ) );
+    CHECK( app.stage.pixels_per_unit() == 1080.0F / 400.0F );
+    platform.frame( app ); // laid out once
+    CHECK( !sq::detail::StageProbe::layout_due( app.stage ) );
+    finger( app, Type::PointerMove, 1, 296.0F, 1000.0F ); // 1.21: still the 180 step
+    CHECK( app.stage.zoom() == 180 && !sq::detail::StageProbe::layout_due( app.stage ) );
+    CHECK( !std::filesystem::exists( kept ) || read_file( kept ) == "150\n" ); // kept as they lift
+    finger( app, Type::PointerUp, 1, 296.0F, 1000.0F );
+    CHECK( read_file( kept ) == "180\n" );
+    // The finger left drags nothing, and zooms nothing.
+    finger( app, Type::PointerMove, 2, 1000.0F, 1000.0F );
+    CHECK( app.stage.zoom() == 180 );
+    finger( app, Type::PointerUp, 2, 1000.0F, 1000.0F );
+
+    // Set by the app: to the range, to a step, kept.
+    app.stage.set_zoom( 103 );
+    CHECK( app.stage.zoom() == 105 && read_file( kept ) == "105\n" );
+    app.stage.set_zoom( 1000 );
+    CHECK( app.stage.zoom() == sq::Stage::most_zoom );
+    app.stage.set_zoom( 0 );
+    CHECK( app.stage.zoom() == 50 );
+    app.stage.set_zoom( 100 );
+    CHECK( app.stage.zoom() == 100 && read_file( kept ) == "100\n" );
+    platform.frame( app );
+
+    // A widget that takes the pinch gets it, and the UI is not zoomed. Its
+    // first finger's press is cancelled: nothing under it is clicked.
+    CHECK( app.stage.push<Pinchy>() );
+    platform.frame( app );
+    sq::gui::Widget *root = widgets_of( app )->content();
+    sq::gui::Actor *pincher = root->child_at( 0 );
+    float x = 0.0F;
+    float y = 0.0F;
+    stage_position( *pincher, x, y );
+    const float ppu = app.stage.pixels_per_unit();
+    const float left = ( x + 100.0F ) * ppu;
+    const float middle = ( y + 200.0F ) * ppu;
+    pinches = {};
+    finger( app, Type::PointerDown, 7, left, middle );
+    CHECK( pinches.pressed == 1 );
+    finger( app, Type::PointerDown, 8, left + 200.0F * ppu, middle );
+    CHECK( pinches.cancelled == 1 && pinches.begins == 1 && near( pinches.x, 200.0F ) );
+    finger( app, Type::PointerMove, 8, left + 300.0F * ppu, middle ); // past the slop
+    finger( app, Type::PointerMove, 8, left + 600.0F * ppu, middle ); // twice as far
+    CHECK( pinches.changes == 1 && near( pinches.scale, 2.0F ) && app.stage.zoom() == 100 );
+    finger( app, Type::PointerUp, 8, -1.0e6F, -1.0e6F ); // as the Console releases it
+    CHECK( pinches.ends == 1 && near( pinches.scale, 2.0F ) && near( pinches.x, 400.0F ) );
+    // The finger left reaches nothing until it is up.
+    finger( app, Type::PointerMove, 7, left + 50.0F, middle );
+    finger( app, Type::PointerUp, 7, left + 50.0F, middle );
+    CHECK( pinches.pressed == 1 && pinches.others == 0 && read_file( kept ) == "100\n" );
+
+    // The app paused mid-pinch (the fingers' ups may never come): the pinch
+    // ends, and the next finger is a touch again, not a pinch's second.
+    pinches = {};
+    finger( app, Type::PointerDown, 7, left, middle );
+    finger( app, Type::PointerDown, 8, left + 200.0F * ppu, middle );
+    CHECK( pinches.begins == 1 );
+    sq::app::Event pause;
+    pause.type = Type::Pause;
+    app.handle_event( pause );
+    CHECK( pinches.ends == 1 );
+    finger( app, Type::PointerDown, 9, left, middle );
+    finger( app, Type::PointerUp, 9, left, middle );
+    CHECK( pinches.pressed == 2 && pinches.begins == 1 && pinches.others == 1 );
+
+    // One that leaves it: the UI zooms, as over anything else.
+    pinches = {};
+    pinches.take = false;
+    finger( app, Type::PointerDown, 7, left, middle );
+    finger( app, Type::PointerDown, 8, left + 200.0F * ppu, middle );
+    finger( app, Type::PointerMove, 8, left + 300.0F * ppu, middle );
+    finger( app, Type::PointerMove, 8, left + 600.0F * ppu, middle );
+    CHECK( pinches.begins == 1 && pinches.changes == 0 && app.stage.zoom() == 200 );
+    finger( app, Type::PointerUp, 8, left + 600.0F * ppu, middle );
+    finger( app, Type::PointerUp, 7, left, middle );
+    CHECK( read_file( kept ) == "200\n" );
+    app.stage.set_zoom( 100 );
+    platform.frame( app );
+
+    // Off (a game's canvas): both fingers are touches, and nothing zooms.
+    app.stage.pinch_zoom( false );
+    pinches = {};
+    pinches.take = false;
+    finger( app, Type::PointerDown, 7, left, middle );
+    finger( app, Type::PointerDown, 8, left + 200.0F * ppu, middle );
+    finger( app, Type::PointerMove, 8, left + 600.0F * ppu, middle );
+    CHECK( pinches.pressed == 2 && pinches.begins == 0 && app.stage.zoom() == 100 );
+    finger( app, Type::PointerUp, 8, left + 600.0F * ppu, middle );
+    finger( app, Type::PointerUp, 7, left, middle );
+    app.stage.pinch_zoom( true );
+
+    // Two fingers that land and lift, and the Back button under the first is
+    // not tapped; a tap after is.
+    sq::gui::Button *back = button( app, "Back" );
+    CHECK( back != nullptr );
+    stage_position( *back, x, y );
+    const float bx = ( x + back->width() * 0.5F ) * ppu;
+    const float by = ( y + back->height() * 0.5F ) * ppu;
+    finger( app, Type::PointerDown, 3, bx, by );
+    finger( app, Type::PointerDown, 4, bx + 300.0F, by - 600.0F );
+    finger( app, Type::PointerUp, 3, bx, by );
+    finger( app, Type::PointerUp, 4, bx + 300.0F, by - 600.0F );
+    CHECK( app.stage.showing<Pinchy>() );
+    finger( app, Type::PointerDown, 3, bx, by );
+    finger( app, Type::PointerUp, 3, bx, by );
+    CHECK( !app.stage.showing<Pinchy>() );
+
+    // A window made again (a new activity) keeps the zoom; a new process reads it.
+    app.stage.set_zoom( 125 );
+    app.dispose();
+    sq::detail::StageProbe::forget_zoom( app.stage );
+    Platform again( assets_directory(), local );
+    again.open( app );
+    CHECK( app.stage.zoom() == 125 );
+    app.stage.set_zoom( 100 );
+    app.quit();
+    app.dispose();
+    std::filesystem::remove_all( local );
+}
+
 void a_swipe_starts_fresh()
 {
     start = Start::inline_model;
@@ -2374,6 +2603,7 @@ int main()
     back_tap_at_the_root_goes_to_the_background();
     a_swipe_starts_fresh();
     keeps_running_in_the_background();
+    a_pinch_zooms_the_ui();
     frames_after_a_build_allocate_nothing();
     no_skin_draws_red();
     a_bad_layout_is_said();

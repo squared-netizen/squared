@@ -24,6 +24,7 @@ Widget &Ui::set_content( std::unique_ptr<Widget> content )
     reset_tooltip_candidates();
     clear_focus();
     captures_.clear();
+    pinch_owner_ = nullptr;
     overlays_.clear();
     root_.root().clear();
     content_ = content.get();
@@ -104,6 +105,9 @@ void Ui::close_pane( PaneFrame &pane )
     }
     if( is_descendant_of( focused_, &pane ) ) {
         clear_focus();
+    }
+    if( is_descendant_of( pinch_owner_, &pane ) ) {
+        pinch_owner_ = nullptr;
     }
     for( auto capture = captures_.begin(); capture != captures_.end(); ) {
         if( is_descendant_of( capture->second, &pane ) ) {
@@ -368,6 +372,40 @@ bool Ui::pointer( PointerAction action, float x, float y, int button, std::int64
         captures_.erase( pointer_id );
     }
     return handled;
+}
+
+bool Ui::pinch( const PinchEvent &event )
+{
+    const auto offer = [&event]( Widget &widget ) {
+        float x = 0.0F;
+        float y = 0.0F;
+        stage_position( widget, x, y );
+        PinchEvent local = event;
+        local.x -= x;
+        local.y -= y;
+        return widget.pinch( local );
+    };
+    if( event.phase == PinchPhase::begin ) {
+        pinch_owner_ = nullptr;
+        hide_tooltip();
+        for( Widget *widget = widget_at( event.x, event.y ); widget != nullptr;
+             widget = actor_cast<Widget>( widget->parent() ) ) {
+            if( widget->enabled() && offer( *widget ) ) {
+                pinch_owner_ = widget;
+                return true;
+            }
+        }
+        return false;
+    }
+    Widget *owner = pinch_owner_;
+    if( event.phase == PinchPhase::end ) {
+        pinch_owner_ = nullptr;
+    }
+    if( owner == nullptr ) {
+        return false;
+    }
+    static_cast<void>( offer( *owner ) );
+    return true;
 }
 
 bool Ui::key_down( app::Key key, app::KeyModifiers modifiers )

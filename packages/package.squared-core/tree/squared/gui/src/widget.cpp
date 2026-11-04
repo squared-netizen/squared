@@ -71,6 +71,11 @@ bool Widget::pointer_event( const PointerEvent & )
     return false;
 }
 
+bool Widget::pinch( const PinchEvent & )
+{
+    return false;
+}
+
 bool Widget::key_down( app::Key, app::KeyModifiers )
 {
     return false;

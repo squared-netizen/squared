@@ -16,6 +16,7 @@ export namespace sq::gui
 
 class Painter;
 class Skin;
+struct PinchEvent;
 struct PointerEvent;
 
 /**
@@ -130,6 +131,21 @@ class Widget : public Group
      * @return true when the event was handled and should stop propagating.
      */
         virtual bool pointer_event( const PointerEvent &event );
+
+        /**
+     * @brief Take a two-finger pinch that starts over this widget, instead of
+     * the UI's zoom: a terminal scales its font, a map its view.
+     *
+     * The Stage offers `begin` to the widget under the fingers' middle, then
+     * to its parents, until one returns true; that one gets the pinch's
+     * `change`s and its `end`. When none takes it, the whole UI zooms
+     * (`Stage::zoom`). Both fingers' pointer events stop while it lasts, and
+     * the first finger's press is cancelled (`PointerAction::cancel`).
+     * @param event The pinch, its middle in widget-local logical units.
+     * @return At `begin`: true to take it (false, the default, to leave it).
+     * Ignored after.
+     */
+        virtual bool pinch( const PinchEvent &event );
 
         /**
      * @brief Handle a key-down event.

@@ -319,6 +319,35 @@ class Stage final
          */
         void hide_bars( bool hide ) noexcept { hide_bars_ = hide; }
         [[nodiscard]] bool hides_bars() const noexcept { return hide_bars_; }
+        /** @brief The UI's zoom, in percent: the least, the most, and its steps. */
+        static constexpr int least_zoom = 50;
+        static constexpr int most_zoom = 300;
+        static constexpr int zoom_step = 5;
+        /**
+         * @brief How big the UI is, in percent: at 100 the drawable's
+         * shorter side is 720 units; at 200, 360 (everything twice as big).
+         * A two-finger pinch changes it in every squared app, laid out once
+         * a step; it is kept in the app's private files (`squared/zoom`)
+         * for the next launch. A widget may take the pinch instead
+         * (`gui::Widget::pinch`): a terminal's font.
+         */
+        [[nodiscard]] int zoom() const noexcept;
+        /**
+         * @brief Set the zoom (a settings screen's): brought into the range,
+         * to the nearest step, laid out at the next frame, and kept as a
+         * pinch's is.
+         * @code
+         * app.stage.set_zoom( 150 );
+         * @endcode
+         */
+        void set_zoom( int percent ) noexcept;
+        /**
+         * @brief Whether a pinch zooms the UI: on by default. Off, both
+         * fingers reach the widgets as touches, as a game's canvas wants, and
+         * no widget is offered a pinch. In `squared_main`.
+         */
+        void pinch_zoom( bool on ) noexcept { no_pinch_ = !on; }
+        [[nodiscard]] bool pinch_zooms() const noexcept { return !no_pinch_; }
 
         /**
          * @brief The stack, a line a screen from the root, then the panes over
@@ -457,6 +486,12 @@ class Stage final
         [[nodiscard]] std::size_t save( std::span<char> out ) noexcept;
         bool restore( std::string_view saved ) noexcept;
         void settle() noexcept;
+        // The pinch (12.6b): recognised from the platform's pointer events.
+        [[nodiscard]] bool pinched( const app::Event &event ) noexcept;
+        void end_pinch() noexcept;
+        void zoom_to( int step ) noexcept;
+        void read_zoom() noexcept;
+        void keep_zoom() noexcept;
 
         // What screens and panes keep while they are not built.
         void keep_shown() noexcept;
@@ -586,13 +621,18 @@ class Stage final
         bool hide_bars_ = true;
         /// The size or the safe area changed: laid out once, at the next event or frame.
         bool layout_due_ = false;
+        /// The zoom in steps (`zoom_step` percent); 0 until the kept one is read.
+        std::uint8_t zoom_steps_ : 7 = 0;
+        /// `pinch_zoom( false )`.
+        std::uint8_t no_pinch_ : 1 = 0;
 };
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
 // custom types, as a pointer and a name each; 4 pane slots of 192 bytes; 16
 // screens' and 4 panes' kept scrolls and edits (148 bytes each); the files
-// and the surface hook (12.3d, 24); the clipboard (12.4, 8). The bindings
-// are the window's, in its Drawing.
+// and the surface hook (12.3d, 24); the clipboard (12.4, 8); the zoom and
+// whether a pinch makes it, in the last byte of padding (12.6b). The
+// bindings, and the fingers a pinch follows, are the window's, in its Drawing.
 static_assert( sizeof( Stage ) == 4088 );
 
 } // namespace sq

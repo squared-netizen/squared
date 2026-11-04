@@ -2,6 +2,8 @@
 // window style's background inside which its table sits at the style's
 // insets; a modal one dims what is beneath and takes every tap; a tap on the
 // frame between its widgets stays there; closing one gives the focus back.
+// And a pinch (12.6b): offered to the widget under it, then its parents; a
+// closed pane's widget is told no more of it.
 
 #include <stdio.h>
 
@@ -89,6 +91,30 @@ constexpr sq::graphics::Color dim{ .red = 0.0F, .green = 0.0F, .blue = 0.0F, .al
     return false;
 }
 
+/// A widget that takes a pinch, and how many of its parts it was told.
+class Pinched final : public Widget
+{
+    public:
+        Pinched()
+        {
+            // A label over all of it, which leaves the pinch to this.
+            Actor &label = add_actor( std::make_unique<Label>( "pinch here" ) );
+            label.set_bounds( 0.0F, 0.0F, 200.0F, 100.0F );
+        }
+        [[nodiscard]] Size preferred_size( Painter &, const Skin & ) const override
+        {
+            return { 200.0F, 100.0F };
+        }
+        int told = 0;
+        float x = 0.0F;
+        bool pinch( const PinchEvent &event ) override
+        {
+            ++told;
+            x = event.x;
+            return true;
+        }
+};
+
 } // namespace
 
 int main()
@@ -161,6 +187,37 @@ int main()
     static_cast<void>( ui.pointer( PointerAction::down, bx, by ) );
     static_cast<void>( ui.pointer( PointerAction::up, bx, by ) );
     CHECK( screen_taps == 2 && pane_taps == 0 );
+
+    // A pinch over a label in a pane: the label leaves it, its table takes
+    // it, told where the middle is in its own units.
+    auto pinchable = std::make_unique<PaneFrame>( "pane" );
+    auto inner = std::make_unique<Pinched>();
+    Pinched &taker = *inner;
+    pinchable->content_table().add( std::move( inner ) );
+    PaneFrame &zoomed = ui.show_pane( std::move( pinchable ) );
+    zoomed.set_bounds( 100.0F, 300.0F, 400.0F, 200.0F );
+    zoomed.invalidate_layout();
+    ui.layout( painter );
+    float tx = 0.0F;
+    float ty = 0.0F;
+    for( const Actor *at = static_cast<const Widget *>( &taker ); at != nullptr;
+         at = at->parent() ) {
+        tx += at->x();
+        ty += at->y();
+    }
+    const float px = tx + 4.0F;
+    const float py = ty + 4.0F;
+    CHECK( ui.pinch( { PinchPhase::begin, 1.0F, px, py } ) );
+    CHECK( taker.told == 1 && near( taker.x, 4.0F ) );
+    CHECK( ui.pinch( { PinchPhase::change, 1.5F, px + 10.0F, py } ) );
+    CHECK( taker.told == 2 && near( taker.x, 14.0F ) );
+    // Closed mid-pinch: the rest goes nowhere.
+    ui.close_pane( zoomed );
+    CHECK( !ui.pinch( { PinchPhase::change, 2.0F, px, py } ) );
+    CHECK( !ui.pinch( { PinchPhase::end, 2.0F, px, py } ) );
+    // Over the screen's button, which leaves it, and its parents do too.
+    CHECK( !ui.pinch( { PinchPhase::begin, 1.0F, bx, by } ) );
+    CHECK( !ui.pinch( { PinchPhase::end, 1.0F, bx, by } ) );
 
     std::printf( "pane_frame_test: ok  sizeof(PaneFrame)=%zu\n", sizeof( PaneFrame ) );
     return 0;

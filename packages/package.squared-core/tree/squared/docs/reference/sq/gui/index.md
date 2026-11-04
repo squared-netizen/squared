@@ -57,6 +57,7 @@
 * [PaneShape](PaneShape.md)
 * [PanelStyle](PanelStyle.md)
 * [Panel](Panel.md)
+* [PinchEvent](PinchEvent.md)
 * [PointerEvent](PointerEvent.md)
 * [ProgressBarStyle](ProgressBarStyle.md)
 * [ProgressBar](ProgressBar.md)
@@ -524,6 +525,21 @@
 
 
 **brief** Where a pane sits on its screen. `center` at the size it asks for; `left` and `right` the screen's height, `top` and `bottom` its width. Always inside the safe area.
+
+| enum class PinchPhase |
+
+--
+
+| begin |
+| change |
+| end |
+
+
+*Defined at [gui/src/pinch_event.cppm:9](../../../../gui/src/pinch_event.cppm#L9)*
+
+
+
+**brief** Where a two-finger pinch is: its start, a change, or its end. 
 
 | enum class PointerAction |
 

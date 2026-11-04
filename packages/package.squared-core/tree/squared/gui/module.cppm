@@ -58,6 +58,7 @@ export import :src.nine_patch_drawable;
 export import :src.nine_patch_splits;
 export import :src.painter;
 export import :src.panel_style;
+export import :src.pinch_event;
 export import :src.pointer_action;
 export import :src.pointer_event;
 export import :src.progress_bar_style;
