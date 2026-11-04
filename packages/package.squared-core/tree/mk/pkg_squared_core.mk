@@ -332,6 +332,17 @@ SQ_SQUARED_LIBS := \
 SQ_CPPFLAGS += $(SQ_SQUARED_INC)
 SQ_LDLIBS   += $(SQ_SQUARED_LIBS)
 
+# FreeType, inside libsquared_font.a, marks its API visibility("default")
+# itself, which -fvisibility=hidden does not override. Compiled as Android's
+# clang compiles by default (position-independent executable code), its calls
+# to those functions cannot go into a shared library as they are: lld refuses
+# them ("relocation R_AARCH64_ADR_PREL_PG_HI21 cannot be used against symbol
+# TT_RunIns; recompile with -fPIC"). --exclude-libs hides that archive's
+# symbols in the app's .so, so the calls bind inside it, and FreeType is not
+# exported either (2026-11-04, sqterm's first link). An app that does not
+# import sq.font links nothing of it, and the flag does nothing.
+SQ_LDFLAGS  += -Wl,--exclude-libs,libsquared_font.a
+
 # The model's thread (messaging's ModelRunner). Android's C library and glibc
 # 2.34 on have threads in libc and take this as a no-op; an older glibc needs it.
 SQ_LDLIBS   += -pthread

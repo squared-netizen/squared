@@ -48,6 +48,18 @@ third_party/freetype/   (pinned: tools/pin_freetype.sh; README.md, PINNED)
   module's one-file build (`truetype/truetype.c` and so on) and the base
   layer's files, 16 objects, as C11 with squared's warnings off (`-w`:
   FreeType's code is FreeType's to keep clean), through the build cache.
+- **Not exported from an app.** FreeType marks its API
+  `visibility("default")` itself (`config/public-macros.h`), which
+  `-fvisibility=hidden` does not override, and Android's clang compiles
+  position-independent executable code by default; so linked into an app's
+  `.so`, its calls to its own API were refused by lld (`relocation
+  R_AARCH64_ADR_PREL_PG_HI21 cannot be used against symbol TT_RunIns;
+  recompile with -fPIC`, sqterm's first link, 2026-11-04). The package mk
+  links with `-Wl,--exclude-libs,libsquared_font.a`: the archive's symbols
+  are hidden in the `.so`, the calls bind inside it, and nothing of
+  FreeType is exported. Chosen over `-fPIC` for FreeType (its 400-odd API
+  functions exported and called through the PLT) and over a copy of
+  `public-macros.h` of squared's (an edit of a pinned file in all but name).
 - **Cost.** A program that renders one glyph, stripped, x86-64: 531 KB,
   nearly all FreeType (an empty program is 14 KB). Nothing for an app that
   never makes a `Face`: the archive's objects are only linked when called.
