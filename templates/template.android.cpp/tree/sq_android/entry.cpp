@@ -47,6 +47,7 @@
 #include <unistd.h>
 
 #include "android_text.hpp"
+#include "background.hpp"
 
 import sq.app;
 import sq.assets;
@@ -501,6 +502,8 @@ enum class UiJob : std::uint8_t {
     hide_bars = 1,
     show_bars = 2,
     to_back = 3,
+    /// What the App asked of the background service (sq_android::Background::apply).
+    background = 4,
 };
 
 /// One activity's way to its UI thread.
@@ -580,6 +583,9 @@ int on_ui_jobs(int fd, int events, void* data) {
                 case UiJob::to_back:
                     move_task_to_back(activity->env, activity->clazz);
                     break;
+                case UiJob::background:
+                    sq_android::background().apply(activity->env);
+                    break;
             }
         }
     }
@@ -597,11 +603,26 @@ bool post_ui_job(const ANativeActivity* activity, UiJob job) {
     return false;
 }
 
+/// sq_android::Background's way to the UI thread: the activity's pipe.
+bool post_background(void* activity) noexcept {
+    return post_ui_job(static_cast<const ANativeActivity*>(activity), UiJob::background);
+}
+
+/// sq_android::Background's lines, on the glue thread: the Console's mirror
+/// (Android's log has them already).
+void background_log(const char* line) noexcept {
+    static_cast<void>(line);
+    SQ_MIRROR(ANDROID_LOG_INFO, "%s", line);
+}
+
 /// After the glue's own: its thread has ended, so nothing writes any more.
 void squared_on_destroy(ANativeActivity* activity) {
     if (glue_on_destroy != nullptr) glue_on_destroy(activity);
     for (UiThread& thread : ui_threads) {
         if (thread.activity.load(std::memory_order_acquire) != activity) continue;
+        // Jobs the glue thread posted as it ended (a quit stops the
+        // background service) run now, before the pipe closes.
+        static_cast<void>(on_ui_jobs(thread.read_fd, ALOOPER_EVENT_INPUT, &thread));
         ALooper_removeFd(ALooper_forThread(), thread.read_fd);
         close(thread.read_fd);
         close(thread.write_fd);
@@ -1332,6 +1353,8 @@ struct Platform {
         app.set_report({.write = report_line, .context = this});
         // Once: an `app start` later in this activity is a new launch.
         app.set_saved_state({static_cast<const std::byte*>(saved_state.get()), saved_state_size});
+        // Before create: squared_main may ask to keep running at once.
+        app.set_background_service(&sq_android::background());
         const bool made = app.create(runtime);
         app.set_saved_state({});
         saved_state.reset();
@@ -1936,6 +1959,8 @@ void android_main(android_app* app) {
     }
     app->onAppCmd = on_command;
     app->onInputEvent = on_input;
+    // Exit in the background service's notification wakes this thread.
+    sq_android::background().set_glue(app->looper, &post_background, app->activity);
 
     // Releases everything the platform owns, once, on the way out. One place
     // rather than two copies in the loop below, so they cannot drift apart.
@@ -1943,6 +1968,8 @@ void android_main(android_app* app) {
         SQ_LOGI("shutting down");
         platform->detach();
         if (platform->created) platform->app.dispose();
+        // After dispose: a quit stops the background service, through the pipe.
+        sq_android::background().set_glue(nullptr, nullptr, nullptr);
         platform->text.destroy();
         platform->release_jni();
         app->userData = nullptr;
@@ -1960,6 +1987,13 @@ void android_main(android_app* app) {
         // then runs the ordinary teardown - pause, window gone, stop, destroy -
         // and the glue reports destroyRequested at the end of it. Only then is
         // it safe to return. Called once; finishing guards it.
+        sq_android::background().drain_log(&background_log);
+        // Exit, tapped in the background service's notification: a quit.
+        if (sq_android::background().take_exit() && platform->created) {
+            Event quit;
+            quit.type = Event::Type::QuitRequested;
+            platform->send(quit);
+        }
         if (!platform->finishing &&
             (platform->quit_asked || (platform->created && platform->app.quit_requested()))) {
             SQ_LOGI("finishing");
@@ -2041,6 +2075,9 @@ extern "C" JNIEXPORT void squared_on_create(ANativeActivity* activity, void* sav
         thread.activity.store(activity, std::memory_order_release);
         break;
     }
+    // Running in the background (BACKGROUND=1): the service's natives, once
+    // a process, through this activity's class loader.
+    static_cast<void>(sq_android::background().attach(activity));
     ANativeActivity_onCreate(activity, saved_state, saved_state_size);
     glue_on_destroy = activity->callbacks->onDestroy;
     activity->callbacks->onDestroy = squared_on_destroy;

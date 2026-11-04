@@ -56,8 +56,41 @@ SQ_AAPT2_LINK_FLAGS := $(if $(strip $(SQ_DEBUGGABLE)),--debug-mode,)
 #     SQ_STORED := ttf otf ttc zst
 # In the link stamp too: a change relinks the APK.
 SQ_STORED ?= ttf otf ttc
+
+# ---------------------------------------------------------------------------
+# Running in the background (12.6): BACKGROUND=1 in the Makefile (or on the
+# command line) for an app that calls app.keep_running(...).
+#
+# The APK then gets a copy of the manifest the build uses (yours, or a dev
+# build's) with what squared's foreground service needs: the permissions
+# (FOREGROUND_SERVICE, WAKE_LOCK, POST_NOTIFICATIONS), the service
+# (dev.squared.ModelService, not exported) and android:hasCode="true"; and
+# squared's shim dex (tools/dexgen/shims.dex, 812 bytes) as its classes.dex.
+# Your manifest is not edited. Without it, keep_running returns false and
+# says why in the log. In the link stamp: switching it relinks the APK.
+BACKGROUND ?= 0
+ifeq ($(BACKGROUND),1)
+SQ_SHIM_DEX := $(SQ_SQUARED_DIR)/tools/dexgen/shims.dex
+SQ_MANIFEST_PLAIN := $(SQ_MANIFEST)
+SQ_MANIFEST := $(BUILD)/background/AndroidManifest.xml
+
+$(SQ_MANIFEST): $(SQ_MANIFEST_PLAIN)
+	@mkdir -p $(dir $@)
+	@sed -e 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n\1<uses-permission android:name="android.permission.WAKE_LOCK" />\n\1<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n\1<application\2|' \
+	     -e 's|android:hasCode="false"|android:hasCode="true"|' \
+	     -e 's|^\([[:space:]]*\)</application>|\1    <service android:name="dev.squared.ModelService" android:exported="false" />\n\1</application>|' \
+	     $< > $@
+	@grep -q 'permission.FOREGROUND_SERVICE' $@ && grep -q 'dev.squared.ModelService' $@ && \
+	  grep -q 'android:hasCode="true"' $@ || { \
+	  echo "BACKGROUND=1: could not add the service to $(SQ_MANIFEST_PLAIN): it needs a line '<application', android:hasCode, and a line '</application>'" >&2; \
+	  rm -f $@; exit 1; }
+else
+SQ_SHIM_DEX :=
+endif
+
 SQ_LINK_STAMP := $(SQ_APK_DIR)/.link-flags
-$(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = 'link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED)' ] || printf '%s' 'link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED)' > '$(SQ_LINK_STAMP)')
+SQ_LINK_SETTINGS := link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED) background $(BACKGROUND)
+$(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = '$(SQ_LINK_SETTINGS)' ] || printf '%s' '$(SQ_LINK_SETTINGS)' > '$(SQ_LINK_STAMP)')
 
 $(SQ_APK_DIR)/resources.zip: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null)
 	@mkdir -p $(SQ_APK_DIR)
@@ -192,11 +225,12 @@ $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so: $(SQ_SO)
 # A libc++_shared.so left in lib/ by a build from before the runtime was linked
 # in is removed, so the zip below cannot pick it up.
 $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
-                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so
+                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so $(SQ_SHIM_DEX)
 	@rm -f $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
 	@cp $(SQ_APK_DIR)/base.apk $@
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) lib/$(SQ_ABI)/*.so
+	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) classes.dex && echo "  shims          classes.dex ($$(wc -c < $(SQ_APK_DIR)/classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
 
 keystore: $(SQ_KEYSTORE)
 
@@ -272,6 +306,7 @@ android-status:
 	@printf '  %-14s %s\n' "apksigner" "$$(command -v $(SQ_APKSIGNER) || echo 'NOT FOUND')"
 	@printf '  %-14s %s\n' "keystore" "$(if $(wildcard $(SQ_KEYSTORE)),$(SQ_KEYSTORE),will be generated)"
 	@printf '  %-14s %s\n' "debuggable" "$(if $(SQ_AAPT2_LINK_FLAGS),yes (a DEV_LOG or Console build; SQ_DEBUGGABLE= for no),no)"
+	@printf '  %-14s %s\n' "background" "$(if $(SQ_SHIM_DEX),yes: the service and classes.dex (BACKGROUND=1),no (BACKGROUND=1 for app.keep_running))"
 	@printf '  %-14s %s\n' "adb" "$$(command -v $(SQ_ADB) || echo 'not found (make devices)')"
 	@echo "target"
 	@printf '  %-14s %s\n' "abi" "$(SQ_ABI) ($(SQ_TRIPLE))"
@@ -303,6 +338,8 @@ android-help:
 	@echo "  DEVICE=<serial>     install, run or read the log on that device (make devices)"
 	@echo "  SQ_ADB=termux-adb   another adb, e.g. for a device on USB"
 	@echo "  SQ_DEBUGGABLE=      a DEV_LOG or Console build that is not debuggable"
+	@echo "  BACKGROUND=1        keep running in the background: the service, its"
+	@echo "                      notification and wake lock (app.keep_running)"
 	@echo
 	@echo "This host builds one ABI: $(SQ_ABI). Termux's clang targets aarch64"
 	@echo "only. A desktop NDK can build others by overriding SQ_ABI, one"

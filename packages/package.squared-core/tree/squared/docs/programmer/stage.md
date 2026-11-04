@@ -59,7 +59,8 @@ it: when Android destroys the activity and makes another in the same process,
 the new one reattaches to the same App, the model keeps running, and the
 screens come back as they were. A new launch in that process (the app was
 swiped away from the recent apps, and Android kept nothing for it) starts
-fresh instead, as after a quit.
+fresh instead, as after a quit, unless the app keeps running in the
+background ([Running in the background](#running-in-the-background)).
 
 | Member | Does |
 |---|---|
@@ -68,6 +69,8 @@ fresh instead, as after a quit.
 | `run<M>( sq::messaging::on_ui_thread, args... )` | the same model on the UI thread, one turn a frame: for tests and debugging |
 | `running()` | whether a model runs |
 | `quit()` | quit: the model saves and stops, the platform closes the app |
+| `keep_running({ .title, .text })` | keep running while off the screen, with a notification saying so (below); false where the platform cannot, or the app did not declare it |
+| `stop_running()`, `keeps_running()` | stop that; whether it runs |
 | `telegraph()` | the UI end of the Telegraph (`sq::messaging::TelegraphUi`): send to the model, read what it said |
 
 A model is a plain struct with `receive`, and optionally `start`, `tick`,
@@ -92,6 +95,36 @@ quit).
 The rest of `App` (`create`, `handle_event`, `render`, ...) is the
 platform's `sq::app::Application` ([app.md](app.md)): the platform calls it,
 an app does not.
+
+### Running in the background
+
+For a model whose work goes on with the app off the screen: a shell, a
+download, a long build. Android otherwise freezes a cached app's processes
+soon after it leaves the screen, and may end them.
+
+```cpp
+void squared_main( sq::App &app )
+{
+    app.run<Shell>();
+    app.keep_running( { .title = "sqterm", .text = "1 session" } );
+    app.stage.push<Terminal>();
+}
+```
+
+| While it runs | |
+|---|---|
+| the notification | the title and text (each at most 63 bytes of UTF-8, cut at a character); tapped, it opens the app. Called again, the text changes |
+| Exit (in it) | the app gets `QuitRequested`, a quit: the model saves and stops, the service with it |
+| Acquire / Release wakelock (in it) | the CPU stays on with the screen off, until released or the service stops: the platform's own, the app is not told |
+| a swipe from the recent apps | the activity goes, the process and the model stay; the app opened again comes back to them (not a new launch) |
+| a quit, or `stop_running()` | the notification goes, and the wake lock |
+
+On Android it needs `BACKGROUND=1` in the app's Makefile (the service is
+squared's `dev.squared.ModelService`; the template's `sq_android/README.md`).
+Without it, or on a host build, `keep_running` returns false and does
+nothing else. Failure modes: false from `keep_running`; Android 13 and later
+ask for the notification permission the first time, and without it the
+service still runs with its notification hidden. Not bound to Lua.
 
 ## `sq::Stage`
 

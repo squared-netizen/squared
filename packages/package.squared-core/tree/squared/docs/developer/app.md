@@ -15,8 +15,8 @@ Programmer counterpart: [../programmer/app.md](../programmer/app.md)
 ```
 app/
   application.cppm event.cppm runtime.cppm safe_area.cppm
-  src/   the ten supporting headers: key, modifiers, navigation, text input, the
-         clipboard service (12.4), and report
+  src/   the eleven supporting headers: key, modifiers, navigation, text input,
+         the clipboard service (12.4), the background service (12.6), and report
 ```
 
 Since 7b.4 app is a built module, `sq.app`, with a `Makefile` and
@@ -107,6 +107,13 @@ above the porting layer). `text` reports the whole size so a caller sizes
 once and allocates once; on Android the clip is read 512 UTF-16 units at a
 time on the stack (`AndroidText::clip_read`), so the platform allocates
 nothing but what JNI does.
+
+`BackgroundService` (12.6) is the same shape, with one difference in its
+lifetime: the platform's object is the process's, not an activity's (a
+foreground service outlives the activity that started it), so it is given
+before `create()` and never taken back. Its title and text are copied into
+two 64-byte arrays on the platform's side; nothing is allocated on the
+application's.
 
 ## One vocabulary for keys
 

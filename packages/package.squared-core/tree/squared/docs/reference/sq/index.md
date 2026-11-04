@@ -22,6 +22,7 @@
 ## Records
 
 * [App](App.md)
+* [RunningNotice](RunningNotice.md)
 * [Save](Save.md)
 * [Stage](Stage.md)
 

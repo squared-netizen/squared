@@ -1,6 +1,6 @@
 # class App
 
-*Defined at [stage/app.cppm:97](../../../stage/app.cppm#L97)*
+*Defined at [stage/app.cppm:108](../../../stage/app.cppm#L108)*
 
 
 
@@ -34,13 +34,13 @@ public Stage stage
 
 *public void App(App && )*
 
-*Defined at [stage/app.cppm:111](../../../stage/app.cppm#L111)*
+*Defined at [stage/app.cppm:122](../../../stage/app.cppm#L122)*
 
 ### App
 
 *public void App(const App & )*
 
-*Defined at [stage/app.cppm:109](../../../stage/app.cppm#L109)*
+*Defined at [stage/app.cppm:120](../../../stage/app.cppm#L120)*
 
 ### background
 
@@ -66,7 +66,29 @@ public Stage stage
 
 *public bool hides_bars()*
 
-*Defined at [stage/app.cppm:173](../../../stage/app.cppm#L173)*
+*Defined at [stage/app.cppm:208](../../../stage/app.cppm#L208)*
+
+### keep_running
+
+*public bool keep_running(const RunningNotice & notice)*
+
+
+
+**brief** Keep running while the app is off the screen, with a notification saying so (Android: a foreground service, so the system neither freezes nor ends the process): for a model whose work goes on, a shell, a download. Again to change the text.
+
+ While it runs, a new launch (a swipe from the recent apps, then the app opened again) comes back to the model that runs, rather than starting afresh. Quitting stops it, and so does `stop_running`. Exit in the notification is a quit.
+
+ False when the platform cannot (a host build), or the app has not declared it (Android: dev.squared.ModelService in the manifest; see the template's README). Nothing is allocated.
+
+
+
+ app.keep_running( { .title = "sqterm", .text = "1 session" } );
+
+### keeps_running
+
+*public bool keeps_running()*
+
+*Defined at [stage/app.cppm:183](../../../stage/app.cppm#L183)*
 
 ### low_memory
 
@@ -76,19 +98,19 @@ public Stage stage
 
 *public App & operator=(App && )*
 
-*Defined at [stage/app.cppm:112](../../../stage/app.cppm#L112)*
+*Defined at [stage/app.cppm:123](../../../stage/app.cppm#L123)*
 
 ### operator=
 
 *public App & operator=(const App & )*
 
-*Defined at [stage/app.cppm:110](../../../stage/app.cppm#L110)*
+*Defined at [stage/app.cppm:121](../../../stage/app.cppm#L121)*
 
 ### quit
 
 *public void quit()*
 
-*Defined at [stage/app.cppm:149](../../../stage/app.cppm#L149)*
+*Defined at [stage/app.cppm:160](../../../stage/app.cppm#L160)*
 
 
 
@@ -110,7 +132,7 @@ public Stage stage
 
 *public bool run(Args &&... args)*
 
-*Defined at [stage/app.cppm:128](../../../stage/app.cppm#L128)*
+*Defined at [stage/app.cppm:139](../../../stage/app.cppm#L139)*
 
 
 
@@ -124,7 +146,7 @@ public Stage stage
 
 *public bool running()*
 
-*Defined at [stage/app.cppm:146](../../../stage/app.cppm#L146)*
+*Defined at [stage/app.cppm:157](../../../stage/app.cppm#L157)*
 
 
 
@@ -137,6 +159,10 @@ public Stage stage
 ### save_state
 
 *public std::size_t save_state(std::span<std::byte> out)*
+
+### set_background_service
+
+*public void set_background_service(app::BackgroundService * service)*
 
 ### set_clipboard_service
 
@@ -156,6 +182,10 @@ public Stage stage
 
  sq::app::Application, for the platform.
 
+### stop_running
+
+*public void stop_running()*
+
 ### surface_created
 
 *public void surface_created(graphics::Context & graphics)*
@@ -168,7 +198,7 @@ public Stage stage
 
 *public messaging::TelegraphUi & telegraph()*
 
-*Defined at [stage/app.cppm:152](../../../stage/app.cppm#L152)*
+*Defined at [stage/app.cppm:186](../../../stage/app.cppm#L186)*
 
 
 

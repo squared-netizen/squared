@@ -3,6 +3,7 @@ export module sq.app:application;
 export import :event;
 export import :runtime;
 export import :safe_area;
+export import :src.background_service;
 export import :src.clipboard_service;
 export import :src.report;
 export import :src.text_input;
@@ -33,6 +34,13 @@ class Application
          * create(), and nullptr again before dispose() returns.
          */
         virtual void set_clipboard_service( ClipboardService * ) noexcept {}
+
+        /**
+         * Supply the platform's way of running in the background (nullptr:
+         * none). Given before create(), the same one for the whole process:
+         * it outlives each activity.
+         */
+        virtual void set_background_service( BackgroundService * ) noexcept {}
 
         /**
          * @brief Where to say what went wrong. Given before create(), and

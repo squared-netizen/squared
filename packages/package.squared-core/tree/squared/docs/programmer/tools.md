@@ -77,8 +77,11 @@ The archive leaves out Obsidian state (`.obsidian/`, `.trash/`), editor scratch 
 
 ## dexgen.sh
 
-Maintainer tool: checks, rewrites or prints the shim dex the console's monitor
-process is built with. You do not need it to build an app.
+Maintainer tool: checks, rewrites or prints the shim dex: squared's classes
+Android calls into (`dev.squared.ModelService`, which `BACKGROUND=1` packs
+into an app; the Console's monitor activity). You do not need it to build an
+app. It builds `dexgen` through the framework's make (`make dexgen`, as the
+tests are built: it imports `std`).
 
     squared/tools/dexgen.sh             # the committed dex regenerates byte for byte
     squared/tools/dexgen.sh --dump      # print it

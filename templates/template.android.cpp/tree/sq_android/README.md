@@ -9,6 +9,7 @@ This is the expert escape hatch. You should not normally need it.
 AndroidManifest.xml    package id, activity, launcher entry, the entry function
 entry.cpp              native_app_glue loop → your App
 android_text.hpp/.cpp  the keyboard, what a key types, the clipboard (JNI)
+background.hpp/.cpp    running in the background: the service, its notification, the wake lock
 res/values/            label and icon colour
 res/drawable/          the icon, as a vector path
 res/mipmap-*/          adaptive icon and legacy fallback
@@ -85,6 +86,28 @@ it types something, a `TextInput` event (with Ctrl, Alt or Meta held, the
 character without them and the modifiers). What does not arrive: an
 input method's composition (accents built from two keys, CJK input, emoji),
 which needs a Java `InputConnection`. The volume keys are left to Android.
+
+**Running in the background** (`BACKGROUND=1` in the Makefile;
+`background.hpp/.cpp`). For an app whose work goes on with the app off the
+screen (a shell, a download): `app.keep_running({.title = ..., .text = ...})`
+in `squared_main` starts a foreground service, `dev.squared.ModelService`,
+with a notification saying so, so Android neither freezes nor ends the
+process; and a swipe from the recent apps no longer starts the app afresh.
+The notification opens the app when tapped, and has **Exit** (the app gets
+`QuitRequested` and quits; with no activity left, the service stops and the
+process ends) and **Acquire / Release wakelock** (the CPU stays on with the
+screen off). Quitting stops it, as does `app.stop_running()`.
+
+The service is a shim from squared's `tools/dexgen` (a constructor and three
+native methods, 812 bytes with the Console's): `BACKGROUND=1` packs it as the
+APK's `classes.dex`, and gives the APK a copy of your manifest with the
+service, `android:hasCode="true"` and the permissions it needs
+(`FOREGROUND_SERVICE`, `WAKE_LOCK`, `POST_NOTIFICATIONS`); your manifest is not
+edited. The natives are registered as the activity is made, through its class
+loader. Android 13 and later ask for the notification permission the first
+time, while the app is on screen; without it the service still runs, its
+notification hidden. Without `BACKGROUND=1`, `keep_running` returns false and
+the log says why.
 
 **The clipboard.** `entry.cpp` also hands your `App` a
 `sq::app::ClipboardService` (`set_clipboard_service`, after `create()`):

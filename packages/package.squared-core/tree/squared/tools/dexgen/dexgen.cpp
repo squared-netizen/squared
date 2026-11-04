@@ -56,16 +56,19 @@ struct ShimClass
 // ConsoleActivity: the monitor process (CONSOLE=monitor). Only a constructor:
 // NativeActivity reads android.app.lib_name from the activity's own manifest
 // entry, so a second entry with its own process and library needs no code.
+//
+// ModelService (12.6): running in the background, a foreground service. Its
+// three methods are native, registered by the template's C++ through the
+// app's class loader when the activity is made (sq_android/background.cpp):
+// no System.loadLibrary, so the dex names no app's library and stays the
+// same for every app.
 const std::vector<ShimClass> &shims()
 {
     static const std::vector<ShimClass> classes = {
         { "Ldev/squared/ConsoleActivity;",
           "Landroid/app/NativeActivity;",
           { { MethodKind::constructor, "<init>", "V", {} } } },
-#ifdef DEXGEN_SELF_TEST
-        // Built only by tools/dexgen.sh --self-test: exercises native methods,
-        // parameter lists and a second class, which no shipped shim uses yet.
-        { "Ldev/squared/TestService;",
+        { "Ldev/squared/ModelService;",
           "Landroid/app/Service;",
           { { MethodKind::constructor, "<init>", "V", {} },
             { MethodKind::native, "onStartCommand", "I", { "Landroid/content/Intent;", "I", "I" } },
@@ -74,6 +77,16 @@ const std::vector<ShimClass> &shims()
               "Landroid/os/IBinder;",
               { "Landroid/content/Intent;" } },
             { MethodKind::native, "onDestroy", "V", {} } } },
+#ifdef DEXGEN_SELF_TEST
+        // Built only by tools/dexgen.sh --self-test: a third class, with a
+        // parameter list no shipped shim has, read back.
+        { "Ldev/squared/TestReceiver;",
+          "Landroid/content/BroadcastReceiver;",
+          { { MethodKind::constructor, "<init>", "V", {} },
+            { MethodKind::native,
+              "onReceive",
+              "V",
+              { "Landroid/content/Context;", "Landroid/content/Intent;" } } } },
 #endif
     };
     return classes;

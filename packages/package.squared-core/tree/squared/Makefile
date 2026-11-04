@@ -107,6 +107,27 @@ sqgen: all
 sqconsole: all
 	$(MAKE) -C console $(BUILD_DIR)/sqconsole
 
+# dexgen (tools/dexgen.sh, docs/developer/shims.md): the shim dex's writer, a
+# host tool that imports std and nothing of squared's. Built as the tests are
+# (TEST_CXX: the std module), since C++23 made it `import std;` (12.6: until
+# then tools/dexgen.sh compiled it alone, without the module, and failed).
+DEXGEN := $(BUILD_DIR)/tools/dexgen
+DEXGEN_SELF_TEST := $(BUILD_DIR)/tools/dexgen-self-test
+dexgen: all
+	@$(MAKE) --no-print-directory $(DEXGEN) $(DEXGEN_SELF_TEST)
+
+-include $(DEXGEN).d $(DEXGEN_SELF_TEST).d
+
+$(DEXGEN): tools/dexgen/dexgen.cpp $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(call say,bin,tools/dexgen)
+	$(TEST_CXX) $(TESTFLAGS) $< -o $@
+
+$(DEXGEN_SELF_TEST): tools/dexgen/dexgen.cpp $(SQUARED_FLAGS_STAMP)
+	@mkdir -p $(dir $@)
+	$(call say,bin,tools/dexgen-self-test)
+	$(TEST_CXX) $(TESTFLAGS) -DDEXGEN_SELF_TEST $< -o $@
+
 # After `all`: graphics and gui tests link the archives.
 test: all
 	@for module in $(TESTED); do $(MAKE) --no-print-directory -C $$module test || exit 1; done

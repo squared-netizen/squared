@@ -55,6 +55,28 @@ void App::set_clipboard_service( app::ClipboardService *service ) noexcept
     stage.set_clipboard( service );
 }
 
+void App::set_background_service( app::BackgroundService *service ) noexcept
+{
+    background_ = service;
+}
+
+bool App::keep_running( const RunningNotice &notice ) noexcept
+{
+    if( background_ == nullptr || !background_->available() ) {
+        return false;
+    }
+    keeping_ = background_->keep_running( notice.title, notice.text );
+    return keeping_;
+}
+
+void App::stop_running() noexcept
+{
+    if( keeping_ && background_ != nullptr ) {
+        background_->stop_running();
+    }
+    keeping_ = false;
+}
+
 void App::set_report( app::Report report ) noexcept
 {
     report_ = report;
@@ -68,7 +90,9 @@ bool App::create( app::Runtime &runtime )
     // A run held, and a new launch (Android kept nothing for this activity:
     // a swipe from the recent apps, with the process left alive): it starts
     // fresh, as after a quit. The model saved when the app left the screen.
-    if( started_ && saved.empty() ) {
+    // Not while it keeps running in the background (12.6): that is what the
+    // notification says, and the shell or the download is still at work.
+    if( started_ && saved.empty() && !keeping_ ) {
         shut_down();
     }
     stage.attach( runtime );
@@ -266,6 +290,7 @@ bool App::take_background_request() noexcept
 
 void App::shut_down() noexcept
 {
+    stop_running(); // the notification goes with the model
     model_.reset();
     // A line is made for one model: it keeps that model's quit, its values
     // and its rings. The next start gets a new one, in the same storage, so

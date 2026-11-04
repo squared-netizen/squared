@@ -3,6 +3,7 @@
 ## Records
 
 * [Application](Application.md)
+* [BackgroundService](BackgroundService.md)
 * [ClipboardService](ClipboardService.md)
 * [Event](Event.md)
 * [KeyModifiers](KeyModifiers.md)

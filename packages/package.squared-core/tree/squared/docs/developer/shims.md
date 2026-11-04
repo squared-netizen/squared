@@ -16,29 +16,30 @@ A shim method is one of two kinds, and `dexgen` can express nothing else:
 | constructor | `invoke-direct {v0}, Parent.<init>()V` then `return-void`: 4 code units | every shim |
 | native | none; bound by `RegisterNatives` from C++ | every behaviour a shim has |
 
-A shim that would need a branch, a loop or a field is the wrong shim: its logic moves into C++ behind a native method. Sprint 9b's service will need a third kind, a static initializer that calls `System.loadLibrary` (three instructions); it is added with its first user, not before.
+A shim that would need a branch, a loop or a field is the wrong shim: its logic moves into C++ behind a native method. The service was expected to need a third kind, a static initializer that calls `System.loadLibrary`; it does not (12.6): its natives are registered from C++ as the activity is made, through the activity's class loader (the app's; `FindClass` there would ask NativeActivity's, the system's). The dex then names no app's library, and stays one dex for every app. The cost: a service Android started by itself, in a process where no activity has registered them, would find no natives; so it is never sticky (`START_NOT_STICKY`), and only the app starts it.
 
 ## The shims
 
 | Class | Extends | Methods | For |
 |---|---|---|---|
 | `dev.squared.ConsoleActivity` | `android.app.NativeActivity` | the constructor | the monitor process, `CONSOLE=monitor` (4.7). `NativeActivity` reads `android.app.lib_name` from the activity's own manifest entry, so a second entry with its own `android:process` and library needs no code |
+| `dev.squared.ModelService` (12.6) | `android.app.Service` | the constructor; native `onStartCommand(Intent, int, int)`, `onBind(Intent)`, `onDestroy()` | running in the background (`app.keep_running`): the template's `sq_android/background.cpp` registers the three and does everything (the notification, the wake lock, Exit). Packed by `BACKGROUND=1`, with the manifest entry |
 
 The names are fixed and do not depend on the app's package, so the dex is the same for every app: generated once, committed as `tools/dexgen/shims.dex`.
 
 ## The file
 
-`tools/dexgen/shims.dex`: 432 bytes, dex version 035, which every Android release from 5.0 reads. sha256 `48dc3e6068141e0ac8980cd527bd0b3547cf9d0b0a64d4718b50bb7e759c74b9`.
+`tools/dexgen/shims.dex`: 812 bytes since 12.6 (432 with the Console's activity alone), dex version 035, which every Android release from 5.0 reads. sha256 `079d5dae1775a6335813898224e8926bb94930fce2b08cd300b6380ef79113cd`.
 
 | Section | Contents |
 |---|---|
 | header | 0x70 bytes: magic `dex\n035\0`, Adler-32 of everything after it, SHA-1 of everything after the signature, sizes and offsets |
-| string ids | 4: `<init>`, `Landroid/app/NativeActivity;`, `Ldev/squared/ConsoleActivity;`, `V` |
-| type ids | 3: the two classes and `V` |
-| proto ids | 1: `()V`, shorty `V` |
-| method ids | 2: the parent's `<init>` and the shim's |
-| class defs | 1: public, no interfaces, no source file, no annotations |
-| data | one code item (registers 1, ins 1, outs 1), the string data, the class data, the map |
+| string ids | the method names, the class and parameter descriptors, the shorties |
+| type ids | the classes, their parents, the parameter and return types |
+| proto ids | `()V`, `(Intent)IBinder`, `(Intent, int, int)int`, ordered as the format requires |
+| method ids | the parents' `<init>` and the shims' methods |
+| class defs | 2: public, no interfaces, no source file, no annotations |
+| data | two code items (the constructors: registers 1, ins 1, outs 1), a type list, the string data, the class data (the natives have no code), the map |
 
 ## How `dexgen` writes it
 
@@ -53,18 +54,18 @@ The names are fixed and do not depend on the app's package, so the dex is the sa
 
 ## How it is checked
 
-- **Byte for byte.** `tools/dexgen.sh` regenerates the dex and compares it with the committed file. Identical from clang 18 and g++ 13 here, and expected from clang 21 on the phone: nothing in it depends on the compiler.
-- **Independently.** The checksum and signature were recomputed with Python's `zlib` and `hashlib`, and the file was parsed by androguard 3.3.5's `DalvikVMFormat`, a dex reader that shares no code with `dexgen`: one class, the right parent, flags `0x10001` (public constructor), registers 1, `invoke-direct` then `return-void`. androguard is not part of the tree; it was the sandbox's check.
+- **Byte for byte.** `tools/dexgen.sh` regenerates the dex and compares it with the committed file. Identical from clang 18 and g++ 13 here, and expected from clang 21 on the phone: nothing in it depends on the compiler. Since C++23 `dexgen.cpp` is `import std;`: the script builds it through the framework's make (`make dexgen`, as the tests are), which gives it the std module; until 12.6 it compiled it alone, and failed.
+- **Independently.** The checksum and signature were recomputed with Python's `zlib` and `hashlib`, and the file was parsed by androguard 3.3.5's `DalvikVMFormat`, a dex reader that shares no code with `dexgen`: one class, the right parent, flags `0x10001` (public constructor), registers 1, `invoke-direct` then `return-void`. androguard is not part of the tree; it was the sandbox's check. The 12.6 dex was read back by a second small reader written for it in Python (no network for androguard that day): the checksums, sorted string and method tables, both classes and their parents, the constructors' code items, the three natives with `0x101` (public native) and no code.
 - **The paths no shipped shim uses yet.** `tools/dexgen.sh --self-test` builds `dexgen` with a test service (three native methods, parameter lists, a second class), writes it and reads it back; androguard parsed that file too.
-- **On the device** (4.0, pending): `tools/shim_spike.sh` builds the project's APK with `ConsoleActivity` added in its own process. Android's verifier is the last word on the file.
+- **On the device**: Android's verifier is the last word on the file. 12.6 is the first time a dex reaches one (sqterm, `BACKGROUND=1`): the 4.0 spike with `ConsoleActivity` was never run, the Console having moved into the app's own process first.
 
 ## What it costs
 
-Nothing in a build without a shim: `CONSOLE=0` ships no dex and keeps `android:hasCode="false"`. With one: 432 bytes in the APK; ART compiles the dex on install (a few KB); the APK gets a class loader, as every Java app has. The C++ is untouched: Android does nothing more to machine code.
+Nothing in a build without a shim: a build without `BACKGROUND=1` ships no dex and keeps `android:hasCode="false"`. With it: 812 bytes in the APK; ART compiles the dex on install (a few KB); the APK gets a class loader, as every Java app has. The C++ is untouched: Android does nothing more to machine code.
 
 ## Adding a shim
 
 1. Add it to `shims()` in `tools/dexgen/dexgen.cpp`, as a constructor plus native methods.
 2. `tools/dexgen.sh --write`, then `tools/dexgen.sh --dump` to read what you wrote.
 3. Commit the dex with the change. The byte-for-byte check then guards it.
-4. Register its natives from C++ (`RegisterNatives`), on the thread that loads the library.
+4. Register its natives from C++ (`RegisterNatives`) before Android can call them: through the activity's class loader, as `sq_android/background.cpp` does for `ModelService`.

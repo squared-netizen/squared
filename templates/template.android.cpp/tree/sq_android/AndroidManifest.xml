@@ -19,7 +19,10 @@
 
   There is no Java in this project. android.app.NativeActivity is a framework
   class, so the APK carries no classes.dex and the build needs no JDK for
-  compilation — only for signing.
+  compilation — only for signing. With BACKGROUND=1 (running in the
+  background, app.keep_running) the build gives the APK a copy of this file
+  with squared's service in it, and squared's 812-byte shim dex; this file
+  stays as it is (sq_android/README.md).
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="{{package_name}}"

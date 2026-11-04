@@ -21,7 +21,6 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 src=$root/tools/dexgen/dexgen.cpp
 dex=$root/tools/dexgen/shims.dex
 out=$root/build/${BUILD:-release}/tools
-cxx=${CXX:-c++}
 
 mode=check
 target=$dex
@@ -34,15 +33,11 @@ case ${1:-} in
     *) echo "dexgen.sh: unknown option: $1 (see --help)" >&2; exit 2 ;;
 esac
 
-build() { # build <binary> [defines...]
-    local bin=$1
-    shift
-    mkdir -p "$out"
-    if [ ! -x "$bin" ] || [ "$src" -nt "$bin" ] || [ $# -gt 0 ]; then
-        echo "  building $(basename "$bin") with $($cxx --version 2>/dev/null | head -1)"
-        "$cxx" -std=c++23 -O2 -Wall -Wextra -Wpedantic "$@" "$src" -o "$bin" ||
-            { echo "dexgen.sh: dexgen did not build" >&2; exit 2; }
-    fi
+# dexgen imports std (C++23): built by the framework's make, as the tests
+# are, so it gets the std module (make dexgen). Quiet unless it fails.
+build() {
+    make -C "$root" --no-print-directory -s dexgen BUILD="${BUILD:-release}" >"$out.log" 2>&1 ||
+        { cat "$out.log" >&2; echo "dexgen.sh: dexgen did not build (make dexgen)" >&2; exit 2; }
 }
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/dexgen.XXXXXX")
@@ -50,7 +45,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 case $mode in
     check)
-        build "$out/dexgen"
+        build
         "$out/dexgen" "$tmp/shims.dex" >/dev/null
         if [ ! -f "$dex" ]; then
             echo "dexgen.sh: no committed dex at ${dex#"$root"/}; run tools/dexgen.sh --write" >&2
@@ -66,16 +61,16 @@ case $mode in
         fi
         ;;
     write)
-        build "$out/dexgen"
+        build
         "$out/dexgen" "$dex"
         "$out/dexgen" --dump "$dex" | sed -n '2,6p'
         ;;
     dump)
-        build "$out/dexgen"
+        build
         "$out/dexgen" --dump "$target"
         ;;
     self-test)
-        build "$out/dexgen-self-test" -DDEXGEN_SELF_TEST
+        build
         "$out/dexgen-self-test" "$tmp/test.dex"
         "$out/dexgen-self-test" --dump "$tmp/test.dex" >"$tmp/dump" ||
             { cat "$tmp/dump"; echo "dexgen.sh: the self-test dex does not read back" >&2; exit 1; }

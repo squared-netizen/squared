@@ -11,7 +11,8 @@
 // edit kept beneath the top and through a lost context; the stack written
 // in the background, shown again after the process ends, forgotten by a
 // quit; the model's own save given back; the Console's `screens` lines; a
-// new activity that forgets the old one's keyboard; and the clipboard (12.4).
+// new activity that forgets the old one's keyboard; the clipboard (12.4); and
+// running in the background (12.6).
 
 #include <stdio.h>
 
@@ -2100,6 +2101,101 @@ void back_tap_at_the_root_goes_to_the_background()
     CHECK( !app.quit_requested() && app.stage.depth() == 0 );
 }
 
+struct Background final : sq::app::BackgroundService
+{
+        bool declared = true;
+        bool running = false;
+        int asked = 0;
+        int stopped = 0;
+        std::string title;
+        std::string text;
+        [[nodiscard]] bool available() const noexcept override { return declared; }
+        bool keep_running( std::string_view t, std::string_view x ) override
+        {
+            ++asked;
+            title = t;
+            text = x;
+            running = declared;
+            return declared;
+        }
+        void stop_running() override
+        {
+            ++stopped;
+            running = false;
+        }
+};
+
+/// Running in the background (12.6): only with a service the app declared;
+/// while it runs, a new launch (a swipe from the recent apps) comes back to
+/// the running model instead of starting afresh; Exit in the notification
+/// (QuitRequested) quits, and quitting stops it.
+void keeps_running_in_the_background()
+{
+    start = Start::inline_model;
+    // No service (a host build): nothing to keep running.
+    {
+        Platform platform( assets_directory() );
+        sq::App &app = the_app;
+        app.set_background_service( nullptr );
+        platform.open( app );
+        CHECK( !app.keep_running( { .title = "t", .text = "x" } ) && !app.keeps_running() );
+        app.quit();
+        app.dispose();
+    }
+    // A service the app did not declare: refused, nothing asked of it.
+    Background background;
+    background.declared = false;
+    {
+        Platform platform( assets_directory() );
+        sq::App &app = the_app;
+        app.set_background_service( &background );
+        platform.open( app );
+        CHECK( !app.keep_running( { .title = "t", .text = "x" } ) && background.asked == 0 );
+        app.quit();
+        app.dispose();
+    }
+    background.declared = true;
+    Platform platform( assets_directory() );
+    sq::App &app = the_app;
+    app.set_background_service( &background );
+    platform.open( app );
+    const int mains_before = mains;
+    const int made = counts.made;
+    CHECK( app.keep_running( { .title = "demo", .text = "1 session" } ) );
+    CHECK( background.running && background.title == "demo" && background.text == "1 session" );
+    CHECK( app.keep_running( { .title = "demo", .text = "2 sessions" } ) );
+    CHECK( background.text == "2 sessions" && app.keeps_running() );
+    app.background();
+    app.dispose(); // not a quit: the activity goes, the process stays
+
+    // Swiped away and opened again: Android kept nothing, but the app keeps
+    // running in the background: the same model, its screens as they were.
+    Platform again( assets_directory() );
+    app.set_background_service( &background );
+    again.open( app );
+    CHECK( mains == mains_before && counts.made == made );
+    CHECK( background.running && background.stopped == 0 );
+
+    // Stopped by the app: the next new launch starts afresh, as before 12.6.
+    app.stop_running();
+    CHECK( !background.running && background.stopped == 1 && !app.keeps_running() );
+    app.dispose();
+    Platform third( assets_directory() );
+    third.open( app );
+    CHECK( mains == mains_before + 1 && counts.made == made + 1 );
+
+    // Exit in the notification: the platform sends QuitRequested; a quit
+    // stops the service with the model.
+    CHECK( app.keep_running( { .title = "demo", .text = "1 session" } ) );
+    sq::app::Event exit;
+    exit.type = sq::app::Event::Type::QuitRequested;
+    app.handle_event( exit );
+    CHECK( app.quit_requested() );
+    app.dispose();
+    CHECK( !background.running && background.stopped == 2 && !app.keeps_running() );
+    app.set_background_service( nullptr );
+}
+
 /// Swiped away in the recent apps while the process lives on: the next
 /// activity comes with nothing Android kept, a new launch, and starts fresh,
 /// as after a quit. One Android made again keeps the run.
@@ -2277,6 +2373,7 @@ int main()
     a_new_activity_forgets_the_old_one();
     back_tap_at_the_root_goes_to_the_background();
     a_swipe_starts_fresh();
+    keeps_running_in_the_background();
     frames_after_a_build_allocate_nothing();
     no_skin_draws_red();
     a_bad_layout_is_said();

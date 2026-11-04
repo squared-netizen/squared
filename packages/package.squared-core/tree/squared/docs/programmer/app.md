@@ -87,7 +87,7 @@ private:
 
 `create`, `handle_event`, `update`, `render`, `dispose` and `quit_requested`
 are required. `pause`, `resume`, `resize`, `surface_created`,
-`surface_destroyed`, `set_text_input_service`, `set_clipboard_service`, `set_report`, `foreground`,
+`surface_destroyed`, `set_text_input_service`, `set_clipboard_service`, `set_background_service`, `set_report`, `foreground`,
 `background`, `low_memory`, `set_saved_state`, `save_state`,
 `take_background_request` and `hides_bars` have empty defaults, so a desktop-only
 application can ignore them &mdash; but on Android `surface_destroyed` and
@@ -97,6 +97,7 @@ ignoring them is a bug that only shows on device.
 | Call | When the platform makes it |
 |---|---|
 | `set_report(report)` | before `create()`: `report(line)` says something went wrong (Android: the system log, and the Console when built in) |
+| `set_background_service(service)` | before `create()`: the platform's way to keep running off the screen (`BackgroundService`, below), the same one for the whole process |
 | `set_clipboard_service(service)` | after `create()`: the system clipboard (`ClipboardService`, below), or nullptr where the platform has none; nullptr again in `dispose()` (`sq::App` clears its Stage's) |
 | `foreground()` | the app is visible again (Android's start); not before the first `create()` |
 | `background()` | the app is no longer visible (Android's stop): it may never come back, so state is made safe here |
@@ -137,6 +138,22 @@ if( sq::app::ClipboardService *clipboard = stage.clipboard() ) {
 
 Failure modes: nullptr for no clipboard (a host build, a platform without
 one); 0 from `text` for no text; false from `set_text`. Not bound to Lua.
+
+## Running in the background
+
+`sq::app::BackgroundService` (`squared/app/src/background_service.cppm`) keeps
+the process running with the app off the screen (Android: the template's
+`sq_android::Background`, a foreground service with a notification). An app
+using `sq::App` calls `app.keep_running(...)` ([stage.md](stage.md#running-in-the-background));
+this is the platform's side.
+
+| Member | Does |
+|---|---|
+| `available()` | the app declared it and the platform can do it (Android: `BACKGROUND=1`) |
+| `keep_running(title, text)` | keep running, the notification titled `title` saying `text` (each at most 63 bytes); again to change the text; false when not available |
+| `stop_running()` | stop: the notification goes, and the wake lock; idempotent |
+
+Exit in the notification reaches the application as `Event::Type::QuitRequested`.
 
 ## The safe area
 

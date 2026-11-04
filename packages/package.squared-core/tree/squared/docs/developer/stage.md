@@ -91,6 +91,26 @@ the last run is left in it (no model, a new line, an empty stack), so the
 next launch starts clean. Calling `exit` from the glue's thread was not worth
 the risk.
 
+## Running in the background (12.6)
+
+`App::keep_running(RunningNotice)` forwards to the platform's
+`app::BackgroundService` (a pointer, given before `create`, the process's)
+and remembers that it runs (`keeping_`, a bool: the pointer and the flag fit
+the App's padding, 92,864 bytes as before). Two rules follow from it:
+
+- **A new launch keeps the run** while it keeps running. `create` starts
+  afresh after a swipe from the recent apps (`started_` with nothing kept)
+  only when `keeping_` is false: the notification says the app is at work,
+  and its model (the shell) is.
+- **A quit stops it**: `shut_down` calls `stop_running` first, so Exit in the
+  notification (`QuitRequested`, a quit) and `app.quit()` both take the
+  notification down with the model.
+
+`RunningNotice` is two `string_view`s, read during the call: the platform
+copies them (63 bytes each, cut at a character). Chosen over the App keeping
+the strings (a `std::string` pair, 64 bytes of App and a heap block, for a
+notification the platform has already copied: priority 1).
+
 ## `App::run` and `detail::ModelHolder`
 
 `ModelRunner<M>` is a template on the model's type, which the App cannot

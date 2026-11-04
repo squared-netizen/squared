@@ -6,6 +6,7 @@ export import :application;
 export import :event;
 export import :runtime;
 export import :safe_area;
+export import :src.background_service;
 export import :src.clipboard_service;
 export import :src.key;
 export import :src.key_modifiers;

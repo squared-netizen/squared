@@ -72,6 +72,17 @@ template<typename S, typename... Args>
 } // namespace detail
 
 /**
+ * @brief What the notification says while the app keeps running in the
+ * background (`App::keep_running`): a title and a line of text, each at most
+ * 63 bytes of UTF-8 (longer is cut at a character).
+ */
+struct RunningNotice
+{
+        std::string_view title;
+        std::string_view text;
+};
+
+/**
  * @brief The app: the Telegraph, the model at its far end, and the Stage at
  * its near one. One for the whole process.
  *
@@ -148,12 +159,36 @@ class App final : public app::Application
         /** @brief Quit: the model saves and stops, and the platform closes the app. */
         void quit() noexcept { quit_ = true; }
 
+        /**
+         * @brief Keep running while the app is off the screen, with a
+         * notification saying so (Android: a foreground service, so the
+         * system neither freezes nor ends the process): for a model whose
+         * work goes on, a shell, a download. Again to change the text.
+         *
+         * While it runs, a new launch (a swipe from the recent apps, then
+         * the app opened again) comes back to the model that runs, rather
+         * than starting afresh. Quitting stops it, and so does
+         * `stop_running`. Exit in the notification is a quit.
+         *
+         * False when the platform cannot (a host build), or the app has not
+         * declared it (Android: dev.squared.ModelService in the manifest;
+         * see the template's README). Nothing is allocated.
+         *
+         * @code
+         * app.keep_running( { .title = "sqterm", .text = "1 session" } );
+         * @endcode
+         */
+        bool keep_running( const RunningNotice &notice ) noexcept;
+        void stop_running() noexcept;
+        [[nodiscard]] bool keeps_running() const noexcept { return keeping_; }
+
         /** @brief The UI end of the Telegraph (the Stage's). */
         [[nodiscard]] messaging::TelegraphUi &telegraph() noexcept { return line_.ui(); }
 
         // sq::app::Application, for the platform.
         void set_text_input_service( app::TextInputService *service ) noexcept override;
         void set_clipboard_service( app::ClipboardService *service ) noexcept override;
+        void set_background_service( app::BackgroundService *service ) noexcept override;
         void set_report( app::Report report ) noexcept override;
         [[nodiscard]] bool create( app::Runtime &runtime ) override;
         void handle_event( const app::Event &event ) override;
@@ -189,7 +224,10 @@ class App final : public app::Application
         /// The model's thread could not write its save: said when the app comes back.
         std::atomic<bool> save_failed_{ false };
         bool started_ = false;
+        /// The platform's, for the process (outlives each activity).
+        app::BackgroundService *background_ = nullptr;
         bool quit_ = false;
+        bool keeping_ = false;
         bool visible_ = true;
         bool to_background_ = false;
 };
