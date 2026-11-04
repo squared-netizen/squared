@@ -1285,6 +1285,8 @@ struct Platform {
     bool bars_asked{false};
     /// The keyboard was up at the last frame: measured while it is.
     bool keyboard_up{false};
+    /// Fingers on the screen now: the keyboard a widget asks for waits for none.
+    int fingers{0};
 
     /// The device's API level, read once from the configuration NativeActivity
     /// already holds. What the device lacks is decided from this, by comparing
@@ -1580,6 +1582,8 @@ struct Platform {
 
         sync_size(false);
         sync_bars();
+        // The keyboard a text widget asked for, once every finger is up.
+        text_input.frame(fingers > 0);
         // The keyboard shown or hidden: it slides, so measure for a while.
         bool keyboard = text_input.active();
 #ifdef SQUARED_CONSOLE
@@ -1745,6 +1749,25 @@ int32_t on_motion(Platform& platform, AInputEvent* input) {
     event.pointer_id = AMotionEvent_getPointerId(input, index);
     event.input_device_id = AInputEvent_getDeviceId(input);
 
+    // Fingers down, counted before anything takes the touch.
+    switch (action) {
+        case AMOTION_EVENT_ACTION_DOWN:
+            platform.fingers = 1;
+            break;
+        case AMOTION_EVENT_ACTION_POINTER_DOWN:
+            ++platform.fingers;
+            break;
+        case AMOTION_EVENT_ACTION_POINTER_UP:
+            platform.fingers = platform.fingers > 1 ? platform.fingers - 1 : 0;
+            break;
+        case AMOTION_EVENT_ACTION_UP:
+        case AMOTION_EVENT_ACTION_CANCEL:
+            platform.fingers = 0;
+            break;
+        default:
+            break;
+    }
+
 #ifdef SQUARED_CONSOLE
     // The Console first: the three-finger tap, and gestures that start on it.
     if (platform.console_motion(input, action, index)) return 1;
@@ -1821,6 +1844,7 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
     // types something else with them held (AltGr's @ on a German keyboard)
     // sends that, as plain text.
     if (event.type == Event::Type::KeyDown && platform.text_input.active()) {
+        if (event.key == Key::enter) platform.text_input.entered();
         constexpr std::int32_t held = AMETA_CTRL_ON | AMETA_CTRL_LEFT_ON | AMETA_CTRL_RIGHT_ON |
                                       AMETA_ALT_ON | AMETA_ALT_LEFT_ON | AMETA_ALT_RIGHT_ON |
                                       AMETA_META_ON | AMETA_META_LEFT_ON | AMETA_META_RIGHT_ON;

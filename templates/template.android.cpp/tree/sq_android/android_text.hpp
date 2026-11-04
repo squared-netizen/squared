@@ -120,6 +120,11 @@ private:
 /// shown while that touch is still going is put away again by Android when it
 /// ends (sqterm's terminal on the phone, 2026-11-04; the Console's keyboard,
 /// shown as its three-finger tap ends, stayed).
+///
+/// Some keyboards put themselves away after Enter when there is no text view
+/// behind them (CleverKeys does): entered() asks for it again a few frames
+/// later, as the Console does for its own input row. Asking for a keyboard
+/// already up does nothing.
 class TextInput final : public sq::app::TextInputService {
 public:
     explicit TextInput(AndroidText& text) noexcept : text_(text) {}
@@ -132,6 +137,7 @@ public:
     void stop() override {
         active_ = false;
         show_due_ = false;
+        again_frames_ = 0;
         text_.hide_keyboard();
     }
     [[nodiscard]] bool active() const noexcept override { return active_; }
@@ -139,16 +145,24 @@ public:
     /// Each frame, with whether a finger is on the screen: the keyboard
     /// start() asked for, once none is.
     void frame(bool touching) noexcept {
+        if (again_frames_ > 0 && --again_frames_ == 0 && active_) show_due_ = true;
         if (show_due_ && !touching) {
             show_due_ = false;
             text_.show_keyboard();
         }
     }
 
+    /// Enter was typed while a widget wants text: the keyboard asked for
+    /// again in about 100 ms, in case it put itself away.
+    void entered() noexcept {
+        if (active_) again_frames_ = 6;
+    }
+
 private:
     AndroidText& text_;
     bool active_{false};
     bool show_due_{false};
+    std::uint8_t again_frames_{0};
 };
 
 }  // namespace sq_android
