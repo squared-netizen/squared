@@ -230,7 +230,7 @@ $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
 	@cp $(SQ_APK_DIR)/base.apk $@
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) lib/$(SQ_ABI)/*.so
-	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) classes.dex && echo "  shims          classes.dex ($$(wc -c < $(SQ_APK_DIR)/classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
+	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) classes.dex && echo "  shims          classes.dex ($$(wc -c < classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
 
 keystore: $(SQ_KEYSTORE)
 
