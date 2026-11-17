@@ -69,20 +69,6 @@ jobs:
         shell: bash
         run: ./tools/lint.sh --jobs 4
 
-      - name: Where the findings are
-        if: always()
-        working-directory: ${{ env.SQUARED }}
-        shell: bash
-        run: |
-          # Which files the findings point at (clang-tidy's own output), and
-          # in which check: a header every unit includes shows up once per
-          # unit.
-          out=build/release/lint/tidy
-          [ -d "$out" ] || { echo "no clang-tidy output"; exit 0; }
-          grep -rhoE '^[^ :]+:[0-9]+:[0-9]+: (warning|error): .*\[[a-z-]+[a-z.-]*\]$' "$out" |
-            sed -E 's/^([^:]+):([0-9]+):[0-9]+: [a-z]+: .*\[([^]]+)\]$/\1:\2 \3/' |
-            sort | uniq -c | sort -rn | awk 'NR <= 40'   # awk reads it all: no broken pipe
-
       - name: Lint report
         if: always()
         uses: actions/upload-artifact@v4
