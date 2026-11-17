@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Check out project
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: clang, libc++, clang-format and clang-tidy ${{ env.LLVM }}
         shell: bash
@@ -70,7 +70,7 @@ jobs:
 
       - name: Lint report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lint-report
           path: ${{ env.SQUARED }}/build/release/lint/
