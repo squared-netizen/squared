@@ -61,8 +61,11 @@ Checks: >
   clang-analyzer-unix.*
 
 # Report problems in squared's own headers, never in third_party/ or system
-# headers. [a-z]+ cannot match third_party: the underscore stops it.
-HeaderFilterRegex: '/squared/[a-z]+/'
+# headers. [a-z]+ cannot match third_party: the underscore stops it. The
+# match runs to the file name: a checkout path with /squared/<word>/ in it
+# (GitHub's /home/runner/work/squared/squared/...) would otherwise match on
+# its own and report every header beneath, third_party/ included.
+HeaderFilterRegex: '/squared/[a-z]+/([a-z_]+/)*[^/]+$'
 
 # Findings are reported, not fatal, until Sprint 2 task 2.3 triages the
 # baseline; tools/lint.sh still exits 1 while any remain.

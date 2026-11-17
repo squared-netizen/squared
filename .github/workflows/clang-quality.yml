@@ -1,5 +1,17 @@
 name: Clang Quality Audit
 
+# squared's own build and checks, as its README gives them: the framework is
+# under packages/package.squared-core/tree/squared/ and builds with make (no
+# CMake). It needs clang and libc++ of the major version third_party/libcxx
+# is pinned to (21: `import std` is built from those sources, and the build
+# refuses other libc++ headers), so the toolchain comes from apt.llvm.org;
+# Ubuntu 24.04's own clang is 18.
+#
+#   build and test   must pass
+#   lint             tools/lint.sh (format, source rules, clang-tidy): reported,
+#                    with its report kept as an artifact; findings do not fail
+#                    the run (as before: the audit is advisory)
+
 'on':
   push:
   pull_request:
@@ -8,39 +20,59 @@ name: Clang Quality Audit
 permissions:
   contents: read
 
+env:
+  LLVM: 21
+  SQUARED: packages/package.squared-core/tree/squared
+
 jobs:
   clang-quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out project
         uses: actions/checkout@v5
 
-      - name: Install Clang workflow tools
+      - name: clang, libc++, clang-format and clang-tidy ${{ env.LLVM }}
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes clang clang-format clang-tidy clang-tools fish fd-find ninja-build
-          sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-$LLVM main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update -q
+          sudo apt-get install --yes --no-install-recommends make \
+            clang-$LLVM clang-format-$LLVM clang-tidy-$LLVM lld-$LLVM \
+            libc++-$LLVM-dev libc++abi-$LLVM-dev
+          # Unversioned names (clang++, clang-format, clang-tidy) are what the
+          # build and tools/lint.sh call.
+          echo "/usr/lib/llvm-$LLVM/bin" >> "$GITHUB_PATH"
 
-      - name: Configure compilation database
+      - name: Third-party sources
+        working-directory: ${{ env.SQUARED }}
         shell: bash
         run: |
-          set -euo pipefail
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          clang++ --version | head -n 1
+          ./tools/vendor_third_party.sh
 
       - name: Build and test
+        working-directory: ${{ env.SQUARED }}
         shell: bash
         run: |
           set -euo pipefail
-          cmake --build build --parallel 2
-          ctest --test-dir build --output-on-failure
+          make -j4 CXX=clang++
+          make test CXX=clang++
 
-      - name: Run full Clang quality audit
+      - name: Lint (format, source rules, clang-tidy)
+        id: lint
         continue-on-error: true
+        working-directory: ${{ env.SQUARED }}
         shell: bash
-        run: fish tools/clang-check.fish --full
+        run: ./tools/lint.sh --jobs 4
+
+      - name: Lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: ${{ env.SQUARED }}/build/release/lint/
+          if-no-files-found: ignore
