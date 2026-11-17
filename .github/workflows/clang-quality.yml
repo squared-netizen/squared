@@ -8,9 +8,9 @@ name: Clang Quality Audit
 # Ubuntu 24.04's own clang is 18.
 #
 #   build and test   must pass
-#   lint             tools/lint.sh (format, source rules, clang-tidy): reported,
-#                    with its report kept as an artifact; findings do not fail
-#                    the run (as before: the audit is advisory)
+#   lint             tools/lint.sh (format, source rules, clang-tidy) must
+#                    pass too: a finding fails the run (decided 2026-11-17,
+#                    with 0 findings); its report is kept as an artifact
 
 'on':
   push:
@@ -64,7 +64,6 @@ jobs:
 
       - name: Lint (format, source rules, clang-tidy)
         id: lint
-        continue-on-error: true
         working-directory: ${{ env.SQUARED }}
         shell: bash
         run: ./tools/lint.sh --jobs 4
