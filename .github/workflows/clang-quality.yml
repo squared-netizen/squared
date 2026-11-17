@@ -81,7 +81,7 @@ jobs:
           [ -d "$out" ] || { echo "no clang-tidy output"; exit 0; }
           grep -rhoE '^[^ :]+:[0-9]+:[0-9]+: (warning|error): .*\[[a-z-]+[a-z.-]*\]$' "$out" |
             sed -E 's/^([^:]+):([0-9]+):[0-9]+: [a-z]+: .*\[([^]]+)\]$/\1:\2 \3/' |
-            sort | uniq -c | sort -rn | head -40
+            sort | uniq -c | sort -rn | awk 'NR <= 40'   # awk reads it all: no broken pipe
 
       - name: Lint report
         if: always()
