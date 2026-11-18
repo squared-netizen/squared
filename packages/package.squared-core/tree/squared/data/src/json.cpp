@@ -41,6 +41,20 @@ JsonError make_parse_error( std::string_view input, const yyjson_read_err &sourc
     return error;
 }
 
+/**
+ * @brief 2^53 - 1: the largest integer I-JSON allows (RFC 7493 section 2.2),
+ * and the largest every double above it cannot be told apart from its
+ * neighbour.
+ */
+constexpr std::uint64_t EXACT_INTEGER_LIMIT = ( std::uint64_t{ 1 } << 53U ) - 1;
+
+/** @brief Whether a signed integer is within +/-(2^53 - 1). */
+constexpr bool exact_integer( std::int64_t number ) noexcept
+{
+    return number >= -static_cast<std::int64_t>( EXACT_INTEGER_LIMIT ) &&
+           number <= static_cast<std::int64_t>( EXACT_INTEGER_LIMIT );
+}
+
 bool convert_value( yyjson_val *source, std::size_t depth, const JsonParseOptions &options,
                     JsonValue &destination, JsonError &error )
 {
@@ -59,11 +73,23 @@ bool convert_value( yyjson_val *source, std::size_t depth, const JsonParseOption
         return true;
     }
     if( yyjson_is_uint( source ) ) {
-        destination = JsonValue{ yyjson_get_uint( source ) };
+        const std::uint64_t number = yyjson_get_uint( source );
+        if( options.ijson && number > EXACT_INTEGER_LIMIT ) {
+            error = make_error( JsonErrorCode::IntegerOutOfRange,
+                                "JSON integer beyond 2^53 - 1 (I-JSON: write it as a string)" );
+            return false;
+        }
+        destination = JsonValue{ number };
         return true;
     }
     if( yyjson_is_sint( source ) ) {
-        destination = JsonValue{ yyjson_get_sint( source ) };
+        const std::int64_t number = yyjson_get_sint( source );
+        if( options.ijson && !exact_integer( number ) ) {
+            error = make_error( JsonErrorCode::IntegerOutOfRange,
+                                "JSON integer beyond -(2^53 - 1) (I-JSON: write it as a string)" );
+            return false;
+        }
+        destination = JsonValue{ number };
         return true;
     }
     if( yyjson_is_real( source ) ) {
@@ -189,6 +215,223 @@ yyjson_mut_val *convert_for_writing( yyjson_mut_doc *document, const JsonValue &
     return nullptr;
 }
 
+/** @brief Append a string as RFC 8785 writes it: the fewest escapes. */
+void append_canonical_string( std::string &out, std::string_view text )
+{
+    out += '"';
+    for( const char character : text ) {
+        const auto code = static_cast<unsigned char>( character );
+        switch( code ) {
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\b':
+                out += "\\b";
+                break;
+            case '\f':
+                out += "\\f";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if( code < 0x20U ) {
+                    out += std::format( "\\u{:04x}", code );
+                } else {
+                    out += character;
+                }
+        }
+    }
+    out += '"';
+}
+
+/**
+ * @brief Append a double as ECMAScript's Number.prototype.toString writes it
+ * (RFC 8785 section 3.2.2.3): the shortest digits that read back as it.
+ */
+void append_canonical_number( std::string &out, double number )
+{
+    if( number == 0.0 ) {
+        out += '0';
+        return;
+    }
+    if( number < 0.0 ) {
+        out += '-';
+        number = -number;
+    }
+    std::array<char, 64> buffer{};
+    const auto written = std::to_chars( buffer.data(), buffer.data() + buffer.size(), number,
+                                        std::chars_format::scientific );
+    // d[.ddd]e(+|-)XX
+    const std::string_view scientific( buffer.data(),
+                                       static_cast<std::size_t>( written.ptr - buffer.data() ) );
+    const std::size_t exponent_at = scientific.find( 'e' );
+    std::string digits;
+    for( const char character : scientific.substr( 0, exponent_at ) ) {
+        if( character != '.' ) {
+            digits += character;
+        }
+    }
+    const char *exponent_first = scientific.data() + exponent_at + 1;
+    if( *exponent_first == '+' ) {
+        ++exponent_first;
+    }
+    int exponent = 0;
+    std::from_chars( exponent_first, scientific.data() + scientific.size(), exponent );
+    const int count = static_cast<int>( digits.size() );
+    // The value is 0.digits times 10^point.
+    const int point = exponent + 1;
+    if( count <= point && point <= 21 ) {
+        out += digits;
+        out.append( static_cast<std::size_t>( point - count ), '0' );
+    } else if( 0 < point && point <= 21 ) {
+        out += digits.substr( 0, static_cast<std::size_t>( point ) );
+        out += '.';
+        out += digits.substr( static_cast<std::size_t>( point ) );
+    } else if( -6 < point && point <= 0 ) {
+        out += "0.";
+        out.append( static_cast<std::size_t>( -point ), '0' );
+        out += digits;
+    } else {
+        out += digits.front();
+        if( count > 1 ) {
+            out += '.';
+            out += digits.substr( 1 );
+        }
+        out += std::format( "e{}{}", point - 1 >= 0 ? '+' : '-', std::abs( point - 1 ) );
+    }
+}
+
+/** @brief A member name's UTF-16 code units, the order RFC 8785 sorts by. */
+std::u16string utf16_units( std::string_view text )
+{
+    std::u16string units;
+    std::size_t at = 0;
+    while( at < text.size() ) {
+        const auto lead = static_cast<unsigned char>( text[at] );
+        std::size_t length = 1;
+        char32_t point = lead;
+        if( lead >= 0xF0U ) {
+            length = 4;
+            point = lead & 0x07U;
+        } else if( lead >= 0xE0U ) {
+            length = 3;
+            point = lead & 0x0FU;
+        } else if( lead >= 0xC0U ) {
+            length = 2;
+            point = lead & 0x1FU;
+        }
+        for( std::size_t next = 1; next < length && at + next < text.size(); ++next ) {
+            point = ( point << 6U ) | ( static_cast<unsigned char>( text[at + next] ) & 0x3FU );
+        }
+        at += length;
+        if( point >= 0x10000U ) {
+            point -= 0x10000U;
+            units.push_back( static_cast<char16_t>( 0xD800U + ( point >> 10U ) ) );
+            units.push_back( static_cast<char16_t>( 0xDC00U + ( point & 0x3FFU ) ) );
+        } else {
+            units.push_back( static_cast<char16_t>( point ) );
+        }
+    }
+    return units;
+}
+
+/** @brief Append a value in RFC 8785 form; false, with error set, if it cannot be. */
+bool append_canonical( std::string &out, const JsonValue &value, JsonError &error )
+{
+    switch( value.type() ) {
+        case JsonValue::Type::Null:
+            out += "null";
+            return true;
+        case JsonValue::Type::Boolean:
+            out += *value.boolean_if() ? "true" : "false";
+            return true;
+        case JsonValue::Type::SignedInteger: {
+            const std::int64_t number = *value.signed_integer_if();
+            if( !exact_integer( number ) ) {
+                error = make_error( JsonErrorCode::IntegerOutOfRange,
+                                    "cannot write an integer beyond -2^53 canonically" );
+                return false;
+            }
+            append_canonical_number( out, static_cast<double>( number ) );
+            return true;
+        }
+        case JsonValue::Type::UnsignedInteger: {
+            const std::uint64_t number = *value.unsigned_integer_if();
+            if( number > EXACT_INTEGER_LIMIT ) {
+                error = make_error( JsonErrorCode::IntegerOutOfRange,
+                                    "cannot write an integer beyond 2^53 canonically" );
+                return false;
+            }
+            append_canonical_number( out, static_cast<double>( number ) );
+            return true;
+        }
+        case JsonValue::Type::Real: {
+            const double number = *value.real_if();
+            if( !std::isfinite( number ) ) {
+                error = make_error( JsonErrorCode::NonFiniteNumber,
+                                    "cannot write a non-finite JSON number" );
+                return false;
+            }
+            append_canonical_number( out, number );
+            return true;
+        }
+        case JsonValue::Type::String:
+            append_canonical_string( out, *value.string_if() );
+            return true;
+        case JsonValue::Type::Array: {
+            out += '[';
+            bool first = true;
+            for( const JsonValue &item : *value.array_if() ) {
+                if( !first ) {
+                    out += ',';
+                }
+                first = false;
+                if( !append_canonical( out, item, error ) ) {
+                    return false;
+                }
+            }
+            out += ']';
+            return true;
+        }
+        case JsonValue::Type::Object: {
+            // Bytewise UTF-8 order (the map's) differs from UTF-16 order only
+            // past U+FFFF against U+E000..U+FFFF; sort to be exact.
+            std::vector<std::pair<std::u16string, const JsonValue::Object::value_type *>> members;
+            for( const auto &member : *value.object_if() ) {
+                members.emplace_back( utf16_units( member.first ), &member );
+            }
+            std::ranges::sort( members, {}, &decltype( members )::value_type::first );
+            out += '{';
+            bool first = true;
+            for( const auto &[order, member] : members ) {
+                if( !first ) {
+                    out += ',';
+                }
+                first = false;
+                append_canonical_string( out, member->first );
+                out += ':';
+                if( !append_canonical( out, member->second, error ) ) {
+                    return false;
+                }
+            }
+            out += '}';
+            return true;
+        }
+    }
+    error = make_error( JsonErrorCode::InvalidValue, "cannot write an unknown JSON value type" );
+    return false;
+}
+
 } // namespace
 
 JsonParseResult parse_json( std::string_view text, const JsonParseOptions &options ) noexcept
@@ -232,6 +475,12 @@ JsonParseResult parse_json( std::string_view text, const JsonParseOptions &optio
 JsonWriteResult write_json( const JsonValue &value, const JsonWriteOptions &options ) noexcept
 {
     JsonWriteResult result;
+    if( options.canonical ) {
+        if( !append_canonical( result.text, value, result.error ) ) {
+            result.text.clear();
+        }
+        return result;
+    }
     yyjson_mut_doc *document = yyjson_mut_doc_new( nullptr );
     if( !document ) {
         result.error = make_error( JsonErrorCode::AllocationFailure,

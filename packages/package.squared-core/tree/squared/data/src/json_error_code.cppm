@@ -14,7 +14,8 @@ enum class JsonErrorCode : std::uint8_t {
     NestingTooDeep,
     NonFiniteNumber,
     AllocationFailure,
-    InvalidValue
+    InvalidValue,
+    IntegerOutOfRange
 };
 
 } // namespace sq::data
