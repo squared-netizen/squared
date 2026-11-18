@@ -63,8 +63,10 @@ SQ_STORED ?= ttf otf ttc
 #
 # The APK then gets a copy of the manifest the build uses (yours, or a dev
 # build's) with what squared's foreground service needs: the permissions
-# (FOREGROUND_SERVICE, WAKE_LOCK, POST_NOTIFICATIONS), the service
-# (dev.squared.ModelService, not exported) and android:hasCode="true"; and
+# (FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, WAKE_LOCK,
+# POST_NOTIFICATIONS), the service (dev.squared.ModelService, not exported,
+# foregroundServiceType specialUse with the subtype property Android 14
+# asks for) and android:hasCode="true"; and
 # squared's shim dex (tools/dexgen/shims.dex, 812 bytes) as its classes.dex.
 # Your manifest is not edited. Without it, keep_running returns false and
 # says why in the log. In the link stamp: switching it relinks the APK.
@@ -76,11 +78,12 @@ SQ_MANIFEST := $(BUILD)/background/AndroidManifest.xml
 
 $(SQ_MANIFEST): $(SQ_MANIFEST_PLAIN)
 	@mkdir -p $(dir $@)
-	@sed -e 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n\1<uses-permission android:name="android.permission.WAKE_LOCK" />\n\1<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n\1<application\2|' \
+	@sed -e 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n\1<uses-permission android:name="android.permission.WAKE_LOCK" />\n\1<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n\1<application\2|' \
 	     -e 's|android:hasCode="false"|android:hasCode="true"|' \
-	     -e 's|^\([[:space:]]*\)</application>|\1    <service android:name="dev.squared.ModelService" android:exported="false" />\n\1</application>|' \
+	     -e 's|^\([[:space:]]*\)</application>|\1    <service android:name="dev.squared.ModelService" android:exported="false" android:foregroundServiceType="specialUse">\n\1        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Keeps the app running in the background when the user asks it to (app.keep_running)" />\n\1    </service>\n\1</application>|' \
 	     $< > $@
-	@grep -q 'permission.FOREGROUND_SERVICE' $@ && grep -q 'dev.squared.ModelService' $@ && \
+	@grep -q 'permission.FOREGROUND_SERVICE_SPECIAL_USE' $@ && grep -q 'foregroundServiceType="specialUse"' $@ && \
+	  grep -q 'dev.squared.ModelService' $@ && \
 	  grep -q 'android:hasCode="true"' $@ || { \
 	  echo "BACKGROUND=1: could not add the service to $(SQ_MANIFEST_PLAIN): it needs a line '<application', android:hasCode, and a line '</application>'" >&2; \
 	  rm -f $@; exit 1; }
