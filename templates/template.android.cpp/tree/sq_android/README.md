@@ -102,8 +102,14 @@ The service is a shim from squared's `tools/dexgen` (a constructor and three
 native methods, 812 bytes with the Console's): `BACKGROUND=1` packs it as the
 APK's `classes.dex`, and gives the APK a copy of your manifest with the
 service, `android:hasCode="true"` and the permissions it needs
-(`FOREGROUND_SERVICE`, `WAKE_LOCK`, `POST_NOTIFICATIONS`); your manifest is not
-edited. The natives are registered as the activity is made, through its class
+(`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `WAKE_LOCK`,
+`POST_NOTIFICATIONS`); your manifest is not edited. The service is declared
+`android:foregroundServiceType="specialUse"`, with the subtype property
+Android 14 asks for: an app that targets SDK 34 or later (the template's
+default) is stopped with `MissingForegroundServiceTypeException` when it
+starts a foreground service whose type the manifest does not declare. A
+specialUse service has no time limit, unlike dataSync from Android 15; an app
+published on Google Play explains its use in the Play Console. The natives are registered as the activity is made, through its class
 loader. Android 13 and later ask for the notification permission the first
 time, while the app is on screen; without it the service still runs, its
 notification hidden. Without `BACKGROUND=1`, `keep_running` returns false and
