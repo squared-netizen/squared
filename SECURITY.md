@@ -1,22 +1,23 @@
-Security Policy
+# Security policy
 
-Supported Versions
+## Supported versions
 
-Squared is currently undergoing a ground-up rewrite.
+squared is in active development. Only the `main` branch is supported:
+fixes land there, and nothing older is patched.
 
-Only the current "main" branch is considered active development. The "legacy-toy" branch is historical and is not supported.
+## Reporting a vulnerability
 
-Reporting a Security Issue
+Please report security issues privately, by email to
+**S.O.Teric1@proton.me**. Do not open a public issue, pull request or
+discussion for a vulnerability before it has been fixed.
 
-Please do not publicly disclose sensitive security issues before they have been addressed.
+Include, as far as you can:
 
-For security vulnerabilities, contact the project owner privately through GitHub rather than opening a public issue.
+- what the problem is, and what an attacker could do with it;
+- how to reproduce it: steps, inputs, or a proof of concept;
+- the affected component, and the commit or version you tested;
+- the platform (Android version and device, or Linux distribution).
 
-Please include:
-
-- A description of the vulnerability.
-- Steps to reproduce it.
-- The affected component or version/commit.
-- Any relevant proof-of-concept information.
-
-Security reports will be reviewed on a best-effort basis.
+You will get a reply when the report has been read. Reports are handled
+on a best-effort basis by the project's one maintainer; a fix is made on
+`main`, and the report's author is credited unless they ask not to be.
