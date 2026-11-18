@@ -28,6 +28,27 @@ Developer counterpart: [../developer/data.md](../developer/data.md)
 Both are `noexcept` and report failure through the returned result, so this
 module already follows the framework's no-exceptions rule.
 
+## I-JSON, and the canonical form
+
+Two options for JSON that is hashed, signed or exchanged between programs
+that must agree on it (sqcart's 3.0 cartridges, for one):
+
+- `JsonParseOptions::ijson`: accept only I-JSON (RFC 7493). Duplicate keys,
+  invalid UTF-8 and lone surrogates are refused anyway; this also refuses an
+  integer beyond ±(2^53 − 1), which a double cannot hold exactly
+  (`JsonErrorCode::IntegerOutOfRange`). Write such a number as a string.
+- `JsonWriteOptions::canonical`: write the canonical form of RFC 8785 (JSON
+  Canonicalization Scheme): members ordered by their names' UTF-16 code
+  units, numbers as ECMAScript writes them (`1e+21`, `0.000001`, `5e-324`),
+  the fewest escapes, no whitespace. The same value always gives the same
+  bytes. `pretty` and `newline_at_end` are ignored, and an integer beyond
+  ±(2^53 − 1) is an error.
+
+```cpp
+const auto parsed = sq::data::parse_json(text, {.ijson = true});
+const auto canonical = sq::data::write_json(parsed.value, {.canonical = true});
+```
+
 ## Reading a value
 
 Accessors return a pointer that is null when the value holds a different type,
