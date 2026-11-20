@@ -21,7 +21,12 @@
 #                              (the build's -Wconversion already says it) and
 #                              invalid-enum-default-initialization (clang-tidy
 #                              22: every finding was `ec != std::errc{}`, the
-#                              standard's own "no error" for from_chars)
+#                              standard's own "no error" for from_chars) and
+#                              signed-bitwise (clang-tidy 23, hicpp-signed-bitwise
+#                              before, never chosen: what it found was C APIs'
+#                              signed flags (POSIX, FreeType), FreeType's 26.6
+#                              rounding shifts, defined since C++20, and
+#                              uint8_t promotions; casts there would hide intent)
 #   ODR and includes           definitions-in-headers, header-include-cycle, and
 #                              unused declarations
 #   modern spelling (2)        nullptr, override, using, = default / = delete
@@ -43,6 +48,7 @@ Checks: >
   -bugprone-easily-swappable-parameters,
   -bugprone-narrowing-conversions,
   -bugprone-invalid-enum-default-initialization,
+  -bugprone-signed-bitwise,
   misc-definitions-in-headers,
   misc-header-include-cycle,
   misc-redundant-expression,
@@ -92,12 +98,6 @@ CheckOptions:
   # strings are literals, checked when compiled, so it cannot be thrown.
   - key: bugprone-exception-escape.IgnoredExceptions
     value: 'bad_array_new_length,length_error,out_of_range,format_error'
-  # bugprone-signed-bitwise (clang-tidy 23; hicpp-signed-bitwise before): a
-  # positive literal mask (`byte & 0xC0`, `0xC0 | (code >> 6)`) is signed
-  # only by the language's promotion, and means what it says. Signed
-  # variables in bitwise operations stay flagged.
-  - key: bugprone-signed-bitwise.IgnorePositiveIntegerLiterals
-    value: true
   # performance-enum-size suggests the smallest underlying type that fits;
   # Android RAM is the constraint, so it stays on.
 ...
