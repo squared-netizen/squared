@@ -73,6 +73,11 @@ SQ_LIB_ARCH             := $(SQ_LIB_ARCH_$(SQ_ABI))
 # meant it.
 # ---------------------------------------------------------------------------
 
+# The NDK's paths, unless the SDK's own toolchain builds (SQ_TOOLCHAIN=1,
+# below): its own variables of the same names come from toolchain.mk, and an
+# NDK path must not reach it through the environment.
+SQ_TOOLCHAIN ?= 0
+ifneq ($(SQ_TOOLCHAIN),1)
 SQ_NDK ?= $(firstword $(strip $(ANDROID_NDK_HOME)) \
                       $(shell ls -d "$(PREFIX)/opt/android-sdk/ndk"/* \
                                     "$(ANDROID_HOME)/ndk"/* \
@@ -110,12 +115,61 @@ SQ_CXX_RUNTIME := $(SQ_NDK_LIB_ABI)/libc++_static.a $(SQ_NDK_LIB_ABI)/libc++abi.
 
 SQ_GLUE_DIR := $(SQ_NDK)/sources/android/native_app_glue
 SQ_GLUE_SRC := $(SQ_GLUE_DIR)/android_native_app_glue.c
+endif
+
+# ---------------------------------------------------------------------------
+# The SDK's own toolchain, instead of the NDK: SQ_TOOLCHAIN=1
+#
+# clang 23, libc++ 23 and bionic, from sqterm's llvm, runtimes and sysroot
+# packages (on a desktop or CI: apt.llvm.org's clang 23 with the same two
+# packages), as squared/build/toolchain.mk defines them ("One C++23
+# toolchain", phase 4). The compilers are toolchain.sh's wrappers, which give
+# the target, the sysroot, libc++'s headers and every flag that changes a
+# compiled module. The stub libraries are the sysroot's, the C++ runtime the
+# runtimes package's archives, and native_app_glue squared's own copy
+# (squared/third_party/native_app_glue). arm64 and API 28 only: what the
+# packages are built for.
+# ---------------------------------------------------------------------------
+
+ifeq ($(SQ_TOOLCHAIN),1)
+  ifneq ($(SQ_ABI),arm64-v8a)
+    $(error SQ_TOOLCHAIN=1 builds arm64-v8a only, not $(SQ_ABI))
+  endif
+  ifneq ($(SQ_MIN_SDK),28)
+    $(error SQ_TOOLCHAIN=1 builds for API 28 (the sysroot package's), not SQ_MIN_SDK=$(SQ_MIN_SDK))
+  endif
+  sq_ndk_triple := $(SQ_TRIPLE)
+  sq_squared_tree := $(or $(SQ_SQUARED_DIR),squared)
+  SQ_TOOLCHAIN_DIR = $(CURDIR)/build/toolchain-$(SQ_TOOLCHAIN_FINGERPRINT)
+  include $(sq_squared_tree)/build/toolchain.mk
+  ifeq ($(wildcard $(SQ_TOOLCHAIN_DIR)/clang++),)
+    $(shell bash '$(SQ_TOOLCHAIN_SH)' wrappers '$(SQ_TOOLCHAIN_DIR)' >&2)
+  endif
+  SQ_TOOLCHAIN_TRIPLE := $(SQ_TRIPLE)
+  SQ_TRIPLE      := $(sq_ndk_triple)
+  CXX            := $(SQ_TOOLCHAIN_DIR)/clang++
+  CC             := $(SQ_TOOLCHAIN_DIR)/clang
+  SQ_NDK_INC     := $(SQ_SYSROOT)/usr/include
+  SQ_NDK_LIB     := $(SQ_SYSROOT)/usr/lib/$(SQ_LIB_TRIPLE)/$(SQ_MIN_SDK)
+  SQ_NDK_LIB_ABI := $(SQ_RUNTIMES)/lib/$(SQ_TOOLCHAIN_TRIPLE)
+  SQ_CXX_RUNTIME := $(SQ_NDK_LIB_ABI)/libc++.a $(SQ_NDK_LIB_ABI)/libc++abi.a $(SQ_NDK_LIB_ABI)/libunwind.a
+  SQ_GLUE_DIR    := $(CURDIR)/$(sq_squared_tree)/third_party/native_app_glue
+  SQ_GLUE_SRC    := $(SQ_GLUE_DIR)/android_native_app_glue.c
+  export SQ_STD_CPPM
+endif
 
 # With no NDK, every path above degrades into something like
 # "/sources/android/native_app_glue" and the compiler reports a missing header
 # five levels deep in an include chain. `all` depends on this target so the
 # build says what is actually wrong, once, at the top.
 .PHONY: require-ndk
+ifeq ($(SQ_TOOLCHAIN),1)
+# toolchain.mk has checked clang, the sysroot and the runtimes already.
+require-ndk:
+	@for f in $(SQ_GLUE_SRC) $(SQ_CXX_RUNTIME) $(SQ_NDK_LIB)/libandroid.so; do \
+	  if [ ! -f "$$f" ]; then echo "SQ_TOOLCHAIN=1: no $$f" >&2; exit 1; fi; \
+	done
+else
 require-ndk:
 	@if [ -z "$(strip $(SQ_NDK))" ] || [ ! -d "$(SQ_NDK)" ]; then 	  echo "" >&2; 	  echo "No Android NDK found." >&2; 	  echo "  Searched: \$$ANDROID_NDK_HOME, \$$PREFIX/opt/android-sdk/ndk/*," >&2; 	  echo "            \$$ANDROID_HOME/ndk/*, \$$ANDROID_SDK_ROOT/ndk/*" >&2; 	  echo "  Termux:   pkg install ndk-sysroot   (or set SQ_NDK=/path/to/ndk)" >&2; 	  echo "  See 'make android-status' for everything the build looked for." >&2; 	  exit 1; 	fi
 	@if [ ! -f "$(SQ_GLUE_SRC)" ]; then 	  echo "" >&2; 	  echo "The NDK at $(SQ_NDK) has no native-app-glue source." >&2; 	  echo "  Expected: $(SQ_GLUE_SRC)" >&2; 	  echo "  This project needs it; it is not vendored, so that a stale copy" >&2; 	  echo "  cannot drift from the NDK it was taken from." >&2; 	  exit 1; 	fi
@@ -139,6 +193,7 @@ require-ndk:
 	  echo "  The C++ runtime needs it, and it ships with the NDK's clang." >&2; \
 	  exit 1; \
 	fi
+endif
 
 # ---------------------------------------------------------------------------
 # Compiler and link flags
@@ -172,8 +227,14 @@ require-ndk:
 # Only the native-app-glue directory is added to the include path, and it
 # holds one header.
 
+ifeq ($(SQ_TOOLCHAIN),1)
+# The wrappers give the target, the sysroot and libc++'s headers.
+SQ_TARGET   :=
+SQ_CXX_INC  :=
+else
 SQ_TARGET   := --target=$(SQ_TRIPLE)$(SQ_MIN_SDK) --sysroot=$(SQ_SYSROOT)
 SQ_CXX_INC  := -stdlib++-isystem $(SQ_SYSROOT)/usr/include/c++/v1
+endif
 CPPFLAGS    += $(SQ_CXX_INC)
 
 SQ_CPPFLAGS := $(SQ_TARGET) -I$(SQ_WORKING_DIR)/include -I$(SQ_GLUE_DIR) -DANDROID
