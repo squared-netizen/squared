@@ -29,9 +29,13 @@
 # Exit status: 0 pinned, 1 not pinned (nothing changed), 2 usage.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "pin_freetype.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -ne 1 ] || [ "$1" = -h ] || [ "$1" = --help ]; then
-    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
+    "$SQEDIT" lines 2..29 "$0" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'
     [ $# -eq 1 ] && exit 0
     exit 2
 fi
@@ -53,7 +57,7 @@ for module in "${modules[@]}"; do
         exit 1
     fi
 done
-part() { sed -n "s/^#define FREETYPE_$1 *\\([0-9][0-9]*\\).*/\\1/p" "$header" | head -n 1; }
+part() { { "$SQEDIT" pick -x "'#define FREETYPE_$1' ' '* {%d+} .*" "$header" || [ $? = 1 ]; } | head -n 1; }
 version="$(part MAJOR).$(part MINOR).$(part PATCH)"
 case $version in
     [0-9]*.[0-9]*.[0-9]*) ;;
@@ -103,6 +107,6 @@ mv "$work" "$to"
 rm -rf "$to.old.$$"
 trap - EXIT
 
-count=$(grep -cE '^[0-9a-f]{64}  ' "$to/PINNED")
+count=$("$SQEDIT" match -cx '[0-9a-f]+ "  " .*' "$to/PINNED")
 echo "pin_freetype: FreeType $version: $count files from $shown"
 echo "pin_freetype: into third_party/freetype/ (commit it with PINNED)"

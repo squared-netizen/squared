@@ -16,6 +16,10 @@
 #
 # Exit codes: 0 good, 1 a check failed, 2 usage or build failure.
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "dexgen.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 src=$root/tools/dexgen/dexgen.cpp
@@ -29,7 +33,7 @@ case ${1:-} in
     --write) mode=write ;;
     --dump) mode=dump; target=${2:-$dex} ;;
     --self-test) mode=self-test ;;
-    -h | --help) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
+    -h | --help) "$SQEDIT" lines '2.."set -euo"' "$0" | "$SQEDIT" match -vx '"set -euo" .*'; exit 0 ;;
     *) echo "dexgen.sh: unknown option: $1 (see --help)" >&2; exit 2 ;;
 esac
 
@@ -53,7 +57,7 @@ case $mode in
         fi
         if cmp -s "$tmp/shims.dex" "$dex"; then
             echo "  shims.dex      regenerates byte for byte ($(wc -c <"$dex" | tr -d ' ') bytes, sha256 $(sha256sum "$dex" | cut -c1-16))"
-            "$out/dexgen" --dump "$dex" | sed -n '/^class /p'
+            "$out/dexgen" --dump "$dex" | "$SQEDIT" match -x '"class " .*'
         else
             echo "dexgen.sh: the committed shims.dex differs from what dexgen writes now" >&2
             echo "  if the shim table changed on purpose: tools/dexgen.sh --write, then commit" >&2
@@ -63,7 +67,7 @@ case $mode in
     write)
         build
         "$out/dexgen" "$dex"
-        "$out/dexgen" --dump "$dex" | sed -n '2,6p'
+        "$out/dexgen" --dump "$dex" | "$SQEDIT" lines 2..6
         ;;
     dump)
         build
@@ -74,8 +78,8 @@ case $mode in
         "$out/dexgen-self-test" "$tmp/test.dex"
         "$out/dexgen-self-test" --dump "$tmp/test.dex" >"$tmp/dump" ||
             { cat "$tmp/dump"; echo "dexgen.sh: the self-test dex does not read back" >&2; exit 1; }
-        grep -c 'native' "$tmp/dump" | sed 's/^/  native lines   /'
-        sed -n '/^class /p' "$tmp/dump"
+        echo "  native lines   $("$SQEDIT" match -cF native "$tmp/dump")"
+        "$SQEDIT" match -x '"class " .*' "$tmp/dump"
         echo "  self-test      ok"
         ;;
 esac

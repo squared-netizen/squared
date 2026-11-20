@@ -26,6 +26,10 @@
 # Exit status: 0 written (or current), 1 --check found it out of date,
 # 2 usage or environment error (clang-doc missing, or it failed).
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "docs: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 root="$(cd "$(dirname "$0")/.." && pwd)" # squared/
 tree="$(dirname "$root")"
@@ -37,7 +41,7 @@ for argument in "$@"; do
     case "$argument" in
         --check) check=1 ;;
         --missing) missing=1 ;;
-        -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) "$SQEDIT" lines 2..26 "$0" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'; exit 0 ;;
         *) echo "docs: unknown option: $argument" >&2; exit 2 ;;
     esac
 done
@@ -55,7 +59,7 @@ if [ -z "$clang_doc" ]; then
     echo "docs: no clang-doc found (Termux: pkg install clang; Debian: clang-tools)" >&2
     exit 2
 fi
-version=$("$clang_doc" --version 2>/dev/null | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p' | head -1)
+version=$("$clang_doc" --version 2>/dev/null | "$SQEDIT" pick '"version " {%d+}' | head -1)
 version=${version:-0}
 
 # The compiler the translation units name. clang-doc finds the C++ standard
@@ -81,7 +85,7 @@ dots_end() {
 }
 
 if [ "$check" = 1 ] && [ -f "$out/README.md" ]; then
-    made_by=$(sed -n 's/.*made by clang-doc \([0-9][0-9]*\).*/\1/p' "$out/README.md" | head -1)
+    made_by=$("$SQEDIT" pick '"made by clang-doc " {%d+}' "$out/README.md" | head -1)
     if [ -n "$made_by" ] && [ "$made_by" != "$version" ]; then
         echo "docs: docs/reference/ was made by clang-doc $made_by, this is $version; not compared (tools/docs.sh writes it again with $version)"
         exit 0
@@ -100,11 +104,20 @@ printf '[{"directory":"%s","file":"%s","arguments":["%s","-std=c++23","-stdlib=l
     > "$work/probe/compile_commands.json"
 if ! "$clang_doc" --format=md --output="$work/probe/out" --executor=all-TUs --extra-arg=-v \
     "$work/probe/compile_commands.json" > "$work/probe/clang-doc.log" 2>&1 ||
-    grep -q 'error:' "$work/probe/clang-doc.log"; then
+    "$SQEDIT" match -qF 'error:' "$work/probe/clang-doc.log"; then
     echo "docs: clang-doc cannot compile #include <cstdint> (compiler named as $cxx)" >&2
     echo "docs: where it looked, and what it said:" >&2
-    sed -n '/search starts here/,/End of search list/p; /error:/p' "$work/probe/clang-doc.log" |
-        head -20 | sed 's/^/  /' >&2
+    # The include search list, from its start to its end, and every error line.
+    in_list=0
+    while IFS= read -r l; do
+        if [ "$in_list" = 1 ]; then
+            printf '%s\n' "$l"
+            case $l in *"End of search list"*) in_list=0 ;; esac
+        else
+            case $l in *"search starts here"*) printf '%s\n' "$l"; in_list=1 ;; esac
+        fi
+        case $l in *error:*) printf '%s\n' "$l" ;; esac
+    done <"$work/probe/clang-doc.log" | head -20 | "$SQEDIT" sub -x '{.*}' '  {1}' >&2
     echo "docs: the whole log: ${work#"$root/"}/probe/clang-doc.log" >&2
     exit 2
 fi
@@ -136,21 +149,13 @@ fi
 view="$work/view"
 as_text() { # as_text <module> <in> <out>
     mkdir -p "$(dirname "$3")"
-    awk -v module="$1" '
-        /^module;$/ { print ""; next }
-        /^export module [^;]*;$/ { print "#pragma once"; next }
-        /^(export )?import std;$/ { print "#include \"build/std.hpp\""; next }
-        /^(export )?import sq\.[a-z0-9_]+;$/ {
-            name = $0; sub( /^(export )?import sq\./, "", name ); sub( /;$/, "", name )
-            print "#include \"" name "/module.cppm\""; next
-        }
-        /^(export )?import :[a-z0-9_.]+;$/ {
-            part = $0; sub( /^(export )?import :/, "", part ); sub( /;$/, "", part )
-            gsub( /\./, "/", part )
-            print "#include \"" module "/" part ".cppm\""; next
-        }
-        /^export (namespace|extern) / { sub( /^export /, "" ); print; next }
-        { print }' "$2" > "$3"
+    "$SQEDIT" sub -x "{~ $(printf '%s' "\
+        ('module;' !.) -> ''
+      / ('export module ' [^;]* ';' !.) -> '#pragma once'
+      / (('export ')? 'import std;' !.) -> '#include \"build/std.hpp\"'
+      / ('export ')? -> '' 'import sq.' -> '#include \"' [a-z0-9_]+ (';' !.) -> '/module.cppm\"'
+      / ('export ')? -> '' 'import :' -> '#include \"$1/' ([a-z0-9_] / '.' -> '/')+ (';' !.) -> '.cppm\"'
+      / 'export ' -> '' &('namespace ' / 'extern ') .*") ~}" '{1}' "$2" > "$3" || [ $? = 1 ]
 }
 rm -rf "$view"
 mkdir -p "$view/build"
@@ -160,14 +165,15 @@ mkdir -p "$view/build"
 std_dir=$(bash "$root/tools/libcxx_modules.sh" "$cxx" -std=c++23 -stdlib=libc++) || exit 2
 {
     echo '#pragma once'
-    sed -n 's/^#[ ]*include <\([a-z][a-z0-9_.]*\)>.*/#include <\1>/p' "$std_dir/std.cppm"
+    "$SQEDIT" pick -x '"#" " "* "include <" {[a-z] [a-z0-9_.]*} ">" .*' "$std_dir/std.cppm" |
+        "$SQEDIT" sub -x '{.*}' '#include <{1}>'
 } > "$view/build/std.hpp"
 while IFS= read -r unit; do
     as_text "${unit%%/*}" "$root/$unit" "$view/$unit"
 done < <(
     cd "$root" && find . -mindepth 2 -name '*.cppm' -not -path './build/*' \
         -not -path './third_party/*' -not -path './docs/*' -not -path '*/test/*' |
-        sed 's|^\./||' | LC_ALL=C sort)
+        "$SQEDIT" pick -x '"./" {.*}' | LC_ALL=C sort)
 
 # ---- one translation unit per public interface ------------------------------
 # The partitions at a module's root, not its primary (module.cppm re-exports,
@@ -177,7 +183,7 @@ headers=()
 while IFS= read -r header; do headers+=("$header"); done < <(
     cd "$root" && find . -mindepth 2 -maxdepth 2 -name '*.cppm' -not -name module.cppm \
         -not -path './build/*' -not -path './third_party/*' -not -path './docs/*' |
-        sed 's|^\./||' | LC_ALL=C sort)
+        "$SQEDIT" pick -x '"./" {.*}' | LC_ALL=C sort)
 {
     printf '['
     first=1
@@ -219,7 +225,7 @@ clang_doc_status=0
     done
     dots_end "$n" "${#headers[@]}"
 } || clang_doc_status=$?
-errors=$(grep -cE ' (fatal )?error: ' "$work/clang-doc.log" || true)
+errors=$("$SQEDIT" match -c '" " ("fatal ")? "error: "' "$work/clang-doc.log" || true)
 if [ "$clang_doc_status" != 0 ] || [ "$errors" != 0 ]; then
     how="exit $clang_doc_status"
     if [ "$clang_doc_status" -gt 128 ]; then
@@ -229,13 +235,77 @@ if [ "$clang_doc_status" != 0 ] || [ "$errors" != 0 ]; then
     echo "docs: clang-doc failed ($how; $errors error line(s)); nothing written" >&2
     # Units run in parallel, so lines interleave; whole error lines only, the
     # fatal ones (a header not found: usually the cause of the rest) first.
-    grep -oE '[^ ]+:[0-9]+:[0-9]+: (fatal )?error: .*' "$work/clang-doc.log" |
-        sed "s|$root/||" | LC_ALL=C sort -u |
-        awk '/fatal error/ { print; next } { rest[++n] = $0 } END { for( i = 1; i <= n; i++ ) print rest[i] }' |
-        head -8 | sed 's/^/  /' >&2 || true # no error lines (a crash alone) is not a second failure
+    found=$("$SQEDIT" pick '{[^ :]+ ":" %d+ ":" %d+ ": " ("fatal ")? "error: " .*}' "$work/clang-doc.log" |
+        "$SQEDIT" sub -F "$root/" '' | LC_ALL=C sort -u)
+    # no error lines (a crash alone) is not a second failure
+    [ -z "$found" ] || {
+        printf '%s\n' "$found" | "$SQEDIT" match -F 'fatal error'
+        printf '%s\n' "$found" | "$SQEDIT" match -vF 'fatal error'
+    } | head -8 | "$SQEDIT" sub -x '{.*}' '  {1}' >&2
     echo "docs: the whole log: ${work#"$root/"}/clang-doc.log" >&2
     exit 2
 fi
+
+# ---- the page tidying, as functions ---------------------------------------------
+# tidy_page <page> <root/> <view/> <up> <1 on a namespace page>
+tidy_page() {
+    local root_prefix=$2 view_prefix=$3 up=$4 namespace_page=$5
+    local n=0 sections=0 line path number before after list=()
+    flush_list() { [ ${#list[@]} -eq 0 ] || printf '%s\n' "${list[@]}" | LC_ALL=C sort; list=(); }
+    while IFS= read -r line || [ -n "$line" ]; do
+        n=$((n + 1))
+        # A namespace has no comment of its own in squared; clang-doc gives it
+        # whatever comment sits above a `namespace a::b::c` line in any header.
+        if [ "$namespace_page" = 1 ] && [ "$n" -gt 1 ] && [ "$sections" = 0 ]; then
+            case $line in '## '*) ;; *) continue ;; esac
+        fi
+        case $line in '## '*) [ "$namespace_page" = 1 ] && [ "$sections" = 0 ] && { flush_list; echo ""; }; sections=1 ;; esac
+        # "*Defined at <path>#<line>*", the path in the view (which mirrors
+        # squared/): absolute, or from squared/ when clang-doc runs there
+        if [[ $line =~ \*Defined\ at\ ([^#*]+)#([0-9]+)\* ]]; then
+            path=${BASH_REMATCH[1]} number=${BASH_REMATCH[2]}
+            before=${line%%"${BASH_REMATCH[0]}"*}
+            after=${line#*"${BASH_REMATCH[0]}"}
+            [ "${path#"$root_prefix"}" = "$path" ] || path=${path#"$root_prefix"}
+            [ "${path#"$view_prefix"}" = "$path" ] || path=${path#"$view_prefix"}
+            line="$before*Defined at [$path:$number]($up$path#L$number)*$after"
+        fi
+        line=${line//_Bool/bool}
+        line=${line//basic_string_view/$'\001'}
+        line=${line//basic_string/std::string}
+        line=${line//$'\001'/std::string_view}
+        # a namespace link names a directory; GitHub wants its page
+        if [[ $line =~ ^\*\ Namespace:\ \[[^]]*\]\([^\).]*\)$ ]]; then line="${line%)}/index.md)"; fi
+        # lists come in no fixed order (clang-doc merges in parallel): sorted
+        case $line in '* ['*) list+=("$line"); continue ;; esac
+        flush_list
+        printf '%s\n' "$line"
+    done < "$1"
+    flush_list
+}
+# sort_blocks: each block, from a "### " or "| enum " line to the next block or
+# "## " line, sorted among its neighbours; a block keeps no blank lines at its
+# end, and gets one.
+sort_blocks() {
+    local line current= blocks=() have=0
+    keep() {
+        while [ "${current%$'\001'}" != "$current" ]; do current=${current%$'\001'}; done
+        blocks+=("$current"$'\001'); current=; have=0
+    }
+    emit() {
+        [ "$have" = 0 ] || keep
+        [ ${#blocks[@]} -eq 0 ] || printf '%s\n' "${blocks[@]}" | LC_ALL=C sort | tr '\001' '\n'
+        blocks=()
+    }
+    while IFS= read -r line || [ -n "$line" ]; do
+        case $line in
+            '## '*) emit; printf '%s\n' "$line" ;;
+            '### '* | '| enum '*) [ "$have" = 0 ] || keep; current=$line; have=1 ;;
+            *) if [ "$have" = 1 ]; then current=$current$'\001'$line; else printf '%s\n' "$line"; fi ;;
+        esac
+    done
+    emit
+}
 
 # ---- tidy the pages --------------------------------------------------------------
 # Kept: the namespace pages and the pages of named types under sq/.
@@ -251,69 +321,11 @@ while IFS= read -r page; do
     depth=$(printf '%s' "docs/reference/$rel" | tr -cd '/' | wc -c | tr -d ' ')
     up=""
     for (( i = 0; i < depth; i++ )); do up="../$up"; done
-    awk -v root="$view/" -v view="${view#"$root/"}/" -v up="$up" -v namespace_page="$([ "${rel##*/}" = index.md ] && echo 1 || echo 0)" '
-        # A namespace has no comment of its own in squared; clang-doc gives it
-        # whatever comment sits above a `namespace a::b::c` line in any header.
-        namespace_page && NR > 1 && !sections && !/^## / { next }
-        namespace_page && /^## / && !sections { print "" }
-        /^## / { sections = 1 }
-        {
-            line = $0
-            # "*Defined at <path>#<line>*", the path in the view (which mirrors
-            # squared/): absolute, or from squared/ when clang-doc runs there
-            if( match( line, /\*Defined at [^#*]+#[0-9]+\*/ ) ) {
-                inner = substr( line, RSTART + 12, RLENGTH - 13 )
-                hash = index( inner, "#" )
-                path = substr( inner, 1, hash - 1 )
-                number = substr( inner, hash + 1 )
-                if( index( path, root ) == 1 ) { path = substr( path, length( root ) + 1 ) }
-                if( index( path, view ) == 1 ) { path = substr( path, length( view ) + 1 ) }
-                line = substr( line, 1, RSTART - 1 ) "*Defined at [" path ":" number "](" up path "#L" number ")*" substr( line, RSTART + RLENGTH )
-            }
-            gsub( /_Bool/, "bool", line )
-            gsub( /basic_string_view/, "\001", line )
-            gsub( /basic_string/, "std::string", line )
-            gsub( /\001/, "std::string_view", line )
-            # a namespace link names a directory; GitHub wants its page
-            if( line ~ /^\* Namespace: \[[^]]*\]\([^).]*\)$/ ) { sub( /\)$/, "/index.md)", line ) }
-            # lists come in no fixed order (clang-doc merges in parallel): sorted
-            if( line ~ /^\* \[/ ) {
-                if( !listing ) { fflush() } # what came before goes first
-                print line | "LC_ALL=C sort"; listing = 1; next
-            }
-            if( listing ) { close( "LC_ALL=C sort" ); listing = 0 }
-            print line
-        }
-        END { if( listing ) { close( "LC_ALL=C sort" ) } }' "$page" > "$work/reference/$rel"
+    tidy_page "$page" "$view/" "${view#"$root/"}/" "$up" "$([ "${rel##*/}" = index.md ] && echo 1 || echo 0)" > "$work/reference/$rel"
     # Enums and functions come in no fixed order either, on a namespace page
     # and, since every unit reads a type as text (7b.4), on a type's page
     # too: each block (from its "| enum" or "###" line to the next) is sorted.
-    awk '
-        # A block keeps no blank lines at its end, and gets one: where a
-        # block falls, so do the blank lines after it.
-        function keep() {
-            sub( /(\001)+$/, "", current )
-            blocks[++count] = current "\001"
-            current = ""
-        }
-        function emit(   i, command ) {
-            if( current != "" ) { keep() }
-            if( count == 0 ) { return }
-            fflush()
-            command = "LC_ALL=C sort | tr \"\\001\" \"\\n\""
-            for( i = 1; i <= count; i++ ) { print blocks[i] | command }
-            close( command )
-            count = 0
-        }
-        /^## / { emit(); print; next }
-        /^### / || /^\| enum / {
-            if( current != "" ) { keep() }
-            current = $0
-            next
-        }
-        current != "" { current = current "\001" $0; next }
-        { print }
-        END { emit() }' "$work/reference/$rel" > "$work/reference/$rel.sorted"
+    sort_blocks < "$work/reference/$rel" > "$work/reference/$rel.sorted"
     mv "$work/reference/$rel.sorted" "$work/reference/$rel"
     pages=$((pages + 1))
     dot "$pages" "$page_total"
@@ -321,9 +333,12 @@ done < <(find "$work/raw/sq" -name '*.md' | LC_ALL=C sort)
 dots_end "$pages" "$page_total"
 # A link into the copy would be committed and lead nowhere: a path form the
 # tidying above does not know.
-if grep -rlF "${view#"$root/"}" "$work/reference" > "$work/stray.txt"; then
+find "$work/reference" -type f | LC_ALL=C sort | while IFS= read -r f; do
+    if "$SQEDIT" match -qF "${view#"$root/"}" "$f"; then echo "$f"; fi
+done > "$work/stray.txt"
+if [ -s "$work/stray.txt" ]; then
     echo "docs: $(wc -l < "$work/stray.txt" | tr -d ' ') page(s) link into ${view#"$root/"}/, not to the interfaces; nothing written" >&2
-    sed "s|$work/reference/|  |" "$work/stray.txt" | head -5 >&2
+    "$SQEDIT" sub -F "$work/reference/" '  ' "$work/stray.txt" | head -5 >&2
     exit 2
 fi
 
@@ -349,29 +364,34 @@ while IFS= read -r page; do type_pages+=("$page"); done < <(
 # with nothing under its heading but its signature and where it is defined,
 # leaving out constructors, destructors and assignments.
 # (clang-doc does not show members' comments, so members are not counted.)
-awk '
-    function flush() {
-        if( zone == "type" && !type_described ) { print file ": " type }
+for page in "${type_pages[@]}"; do
+    file=${page#*/reference/} n=0 zone= type= name= type_described=0 function_described=0
+    missing_flush() {
+        if [ "$zone" = type ] && [ "$type_described" = 0 ]; then echo "$file: $type"; fi
         # constructors, destructors and assignments say what they do by their kind
-        special = name == type || name == "~" type || name == "operator="
-        if( zone == "function" && !function_described && !special ) { print file ": " type "::" name }
+        if [ "$zone" = function ] && [ "$function_described" = 0 ] &&
+            [ "$name" != "$type" ] && [ "$name" != "~$type" ] && [ "$name" != "operator=" ]; then
+            echo "$file: $type::$name"
+        fi
     }
-    FNR == 1 {
-        flush()
-        file = FILENAME; sub( /.*\/reference\//, "", file )
-        type = $0; sub( /^# [a-z]* */, "", type )
-        zone = "type"; type_described = 0
-        next
-    }
-    /^### / { flush(); zone = "function"; name = substr( $0, 5 ); function_described = 0; next }
-    /^## / { flush(); zone = "section"; next }
-    /^[ \t]*$/ || /^\*.*\*$/ || /^Inherits from/ { next }
-    {
-        if( zone == "type" ) { type_described = 1 }
-        if( zone == "function" ) { function_described = 1 }
-    }
-    END { flush() }
-' "${type_pages[@]}" | LC_ALL=C sort -u > "$work/missing.txt"
+    while IFS= read -r line || [ -n "$line" ]; do
+        n=$((n + 1))
+        if [ "$n" = 1 ]; then
+            type=${line#\# }
+            [[ $type =~ ^[a-z]*\ * ]] && type=${type#"${BASH_REMATCH[0]}"}
+            zone=type type_described=0
+            continue
+        fi
+        case $line in
+            '### '*) missing_flush; zone=function name=${line:4} function_described=0; continue ;;
+            '## '*) missing_flush; zone=section; continue ;;
+        esac
+        [[ $line =~ ^[[:space:]]*$ || $line =~ ^\*.*\*$ || $line == 'Inherits from'* ]] && continue
+        [ "$zone" = type ] && type_described=1
+        [ "$zone" = function ] && function_described=1
+    done < "$page"
+    missing_flush
+done | LC_ALL=C sort -u > "$work/missing.txt"
 undocumented=$(wc -l < "$work/missing.txt" | tr -d ' ')
 
 # ---- write, or compare --------------------------------------------------------------
@@ -381,7 +401,8 @@ if [ "$check" = 1 ]; then
         status=0
     else
         echo "docs: docs/reference/ is out of date; squared/tools/docs.sh writes it:"
-        sed 's|'"$work/reference"'|(new)|; s|'"$out"'|docs/reference|' "$work/diff.txt" | head -20 | sed 's/^/  /'
+        "$SQEDIT" sub -F "$work/reference" '(new)' "$work/diff.txt" | "$SQEDIT" sub -F "$out" 'docs/reference' |
+            head -20 | "$SQEDIT" sub -x '{.*}' '  {1}'
         status=1
     fi
 else
@@ -392,6 +413,6 @@ else
     status=0
 fi
 if [ "$missing" = 1 ]; then
-    sed 's/^/  /' "$work/missing.txt"
+    "$SQEDIT" sub -x '{.*}' '  {1}' "$work/missing.txt"
 fi
 exit "$status"
