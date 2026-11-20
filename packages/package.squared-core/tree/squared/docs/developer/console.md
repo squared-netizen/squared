@@ -1,6 +1,6 @@
 # console &mdash; internals
 
-The Console module (Sprint 4). Programmer counterpart: [../programmer/console.md](../programmer/console.md). Design: the app-model spec, "The Console: the escape hatch".
+The Console module (Sprint 4). Programmer counterpart: [../programmer/console.md](../programmer/console.md). Design: [console-design.md](console-design.md) (what it is for, and the rules a change is weighed against); the app-model spec, "The Console: the escape hatch".
 
 ## Where it lives, and why there
 
