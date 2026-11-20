@@ -28,6 +28,9 @@ documentation is in [../programmer/README.md](../programmer/README.md).
   baseline, and the planned frame-allocation counter
 - [Refactor notes](refactor-notes.md) &mdash; how the split was done and how it
   was verified (history: written before the Sprint 1 layout move)
+- [The SDK's tools](sdk-tools.md) &mdash; Lua for what people write, JSON for
+  what tools say to each other: `TOOL call`, `TOOL describe`, cartridges'
+  `consumers`
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/` and the workspace
   wrappers
 - [Shims](shims.md) &mdash; the generated classes Android calls into, and
