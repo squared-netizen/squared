@@ -297,12 +297,12 @@ uninstall:
 
 android-status:
 	@echo "toolchain"
-	@printf '  %-14s %s\n' "ndk" "$(if $(SQ_NDK),$(SQ_NDK),NOT FOUND)"
+	@printf '  %-14s %s\n' "ndk" "$(if $(filter 1,$(SQ_TOOLCHAIN)),not used (SQ_TOOLCHAIN=1: $(SQ_TOOLCHAIN_DIR)/clang++),$(if $(SQ_NDK),$(SQ_NDK),NOT FOUND))"
 	@printf '  %-14s %s\n' "sysroot" "$(if $(wildcard $(SQ_NDK_INC)),$(SQ_NDK_INC),NOT FOUND)"
 	@printf '  %-14s %s\n' "stub libs" "$(if $(wildcard $(SQ_NDK_LIB)),$(SQ_NDK_LIB),NOT FOUND)"
 	@printf '  %-14s %s\n' "glue" "$(if $(wildcard $(SQ_GLUE_SRC)),$(SQ_GLUE_SRC),NOT FOUND)"
-	@printf '  %-14s %s\n' "C++ runtime" "$(if $(wildcard $(SQ_NDK_LIB_ABI)/libc++_static.a),$(SQ_NDK_LIB_ABI)/libc++_static.a (linked in),NOT FOUND)"
-	@printf '  %-14s %s\n' "unwinder" "$(if $(SQ_NDK_UNWIND),$(SQ_NDK_UNWIND),NOT FOUND)"
+	@printf '  %-14s %s\n' "C++ runtime" "$(if $(wildcard $(firstword $(SQ_CXX_RUNTIME))),$(firstword $(SQ_CXX_RUNTIME)) (linked in),NOT FOUND)"
+	@printf '  %-14s %s\n' "unwinder" "$(if $(wildcard $(lastword $(SQ_CXX_RUNTIME))),$(lastword $(SQ_CXX_RUNTIME)),NOT FOUND)"
 	@echo "packaging"
 	@printf '  %-14s %s\n' "android.jar" "$(if $(SQ_ANDROID_JAR),$(SQ_ANDROID_JAR),NOT FOUND)"
 	@printf '  %-14s %s\n' "aapt2" "$$(command -v $(SQ_AAPT2) || echo 'NOT FOUND')"
