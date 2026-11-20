@@ -12,12 +12,14 @@
 # $(SQ_TOOLCHAIN_DIR)/clang++ (and clang), made by toolchain.sh wrappers.
 # It fails at once, saying what is missing, when the toolchain is not there.
 
+SQEDIT ?= sqedit
+
 SQ_TOOLCHAIN_SH := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/toolchain.sh
 SQ_TOOLCHAIN_ENV := $(shell bash '$(SQ_TOOLCHAIN_SH)' env 2>&1 || echo 'SQ_TOOLCHAIN_FAILED=1')
 ifneq ($(findstring SQ_TOOLCHAIN_FAILED,$(SQ_TOOLCHAIN_ENV)),)
   $(error $(SQ_TOOLCHAIN_ENV))
 endif
-sq_toolchain = $(shell bash '$(SQ_TOOLCHAIN_SH)' env | sed -n 's/^$(1)=//p')
+sq_toolchain = $(shell bash '$(SQ_TOOLCHAIN_SH)' env | $(SQEDIT) pick -x '"$(1)=" {.*}')
 SQ_LLVM_BIN := $(call sq_toolchain,SQ_LLVM_BIN)
 SQ_SYSROOT := $(call sq_toolchain,SQ_SYSROOT)
 SQ_RUNTIMES := $(call sq_toolchain,SQ_RUNTIMES)

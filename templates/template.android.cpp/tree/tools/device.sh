@@ -31,6 +31,10 @@
 # is plugged in); `connect` and a named DEVICE do, because you asked. No
 # network beyond adb's own connection to the device.
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "device.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 ADB=${SQ_ADB:-adb}
 DEVICE=${DEVICE:-}
@@ -49,7 +53,7 @@ have_adb() { command -v "$ADB" >/dev/null 2>&1; }
 server_up() { (exec 3<>"/dev/tcp/127.0.0.1/$SERVER_PORT") 2>/dev/null; }
 
 # Serials in the "device" state (not offline, not unauthorized).
-attached() { "$ADB" devices 2>/dev/null | awk 'NR > 1 && $2 == "device" { print $1 }'; }
+attached() { "$ADB" devices 2>/dev/null | { "$SQEDIT" pick -x '{%S+} %s+ "device" %s*' || [ $? = 1 ]; }; }
 
 getprop_cmd() {
   if command -v getprop >/dev/null 2>&1; then
@@ -75,7 +79,7 @@ pick() {
   if [ -n "$DEVICE" ]; then
     have_adb || die "DEVICE=$DEVICE, but there is no $ADB (pkg install android-tools)"
     list=$(attached)
-    grep -qxF -- "$DEVICE" <<<"$list" ||
+    "$SQEDIT" match -qxF -- "$DEVICE" <<<"$list" ||
       die "DEVICE=$DEVICE is not attached and ready. Attached:" "${list:-  (none)}" \
         "See: bash tools/device.sh devices"
     printf '%s\n' "$DEVICE"
@@ -145,7 +149,7 @@ cmd_devices() {
   local any=0
   while IFS= read -r line; do
     serial=${line%%[[:space:]]*}
-    state=$(awk '{ print $2 }' <<<"$line")
+    state=$("$SQEDIT" pick -x '%S+ %s+ {%S+} .*' <<<"$line" || [ $? = 1 ])
     [ -n "$serial" ] || continue
     any=1
     local note=""
@@ -154,7 +158,7 @@ cmd_devices() {
     fi
     [ "$serial" = "$chosen" ] && note="${note:+$note, }used by make install"
     say "$state" "$serial${note:+  ($note)}"
-  done < <("$ADB" devices 2>/dev/null | awk 'NR > 1 && NF >= 2')
+  done < <("$ADB" devices 2>/dev/null | "$SQEDIT" lines 2.. | "$SQEDIT" match -x '%s* %S+ %s+ %S .*')
   if [ "$any" = 0 ]; then
     say "devices" "none"
     connect_help
@@ -173,7 +177,8 @@ cmd_connect() {
       [ -n "$address" ] || continue
       found=1
       "$ADB" connect "$address" || true
-    done < <("$ADB" mdns services 2>/dev/null | awk '/_adb-tls-connect/ { print $NF }')
+    done < <("$ADB" mdns services 2>/dev/null | "$SQEDIT" match -F '_adb-tls-connect' |
+             "$SQEDIT" pick -x '(%S* %s+)* {%S+} %s*')
     [ "$found" = 1 ] || die "adb found no Wireless debugging service on the network." \
       "Give the port from its screen: bash tools/device.sh connect <port>"
   fi
@@ -262,7 +267,7 @@ cmd_console_only() {
   fi
 }
 
-usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { "$SQEDIT" lines 2..16 "$0" | "$SQEDIT" pick -x '"#" " "? {.*}'; }
 
 [ $# -ge 1 ] || {
   usage

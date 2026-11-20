@@ -25,6 +25,10 @@
 # libc++ major version than the compiler's.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "libcxx_modules.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -lt 1 ]; then
     echo "usage: libcxx_modules.sh <compiler> <flags>..." >&2
@@ -45,7 +49,7 @@ case $version in
     *) fail "$cxx does not compile against libc++ with these flags (-stdlib=libc++)" ;;
 esac
 config=$(printf '#include <version>\n' | "$cxx" "$@" -x c++ -M - 2>/dev/null |
-    tr -d '\\' | tr ' ' '\n' | grep '/c++/v1/__config$' | head -n 1) || true
+    tr -d '\\' | tr ' ' '\n' | "$SQEDIT" match -x '(!("/c++/v1/__config" !.) .)* "/c++/v1/__config"' | head -n 1) || true
 
 candidates=()
 [ -n "${SQ_STD_CPPM:-}" ] && candidates+=("$(dirname "$SQ_STD_CPPM")")
@@ -75,7 +79,7 @@ done
     fail "no libc++ module sources (share/libc++/v1/std.cppm) beside libc++ $version's headers or $cxx: set SQ_STD_CPPM (in sqterm: pkg install runtimes; Debian and Ubuntu: apt install libc++-dev)"
 
 # Sources beside headers of their own: the same major version, or refused.
-beside=$(sed -n 's/^#[[:space:]]*define[[:space:]]*_LIBCPP_VERSION[[:space:]]*\([0-9]*\).*/\1/p' \
+beside=$("$SQEDIT" pick -x '"#" %s* "define" %s* "_LIBCPP_VERSION" %s* {%d*} .*' \
     "${found%/share/libc++/v1}/include/c++/v1/__config" 2>/dev/null | head -n 1) || true
 if [ -n "$beside" ] && [ "$((beside / 10000))" != "$((version / 10000))" ]; then
     fail "libc++ $version's headers, but module sources from libc++ $beside ($found): build against that libc++, or set SQ_STD_CPPM"

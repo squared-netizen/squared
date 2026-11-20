@@ -17,6 +17,10 @@
 # error here, before clang meets it.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "module_deps.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -lt 4 ]; then
     echo "usage: module_deps.sh <module> <module dir> <object dir> <BMI dir> <interface>..." >&2
@@ -37,7 +41,7 @@ for unit in "$@"; do
     else
         want="sq.$module:$(printf '%s' "$name" | tr '/' '.')"
     fi
-    declared=$(sed -n 's/^export module \([^;]*\);.*/\1/p' "$dir/$unit" | head -n 1)
+    declared=$({ "$SQEDIT" pick -x '"export module " {[^;]*} ";" .*' "$dir/$unit" || [ $? = 1 ]; } | head -n 1)
     if [ "$declared" != "$want" ]; then
         echo "module_deps: $module/$unit declares '${declared:-no module}', its path says '$want'" >&2
         status=1
@@ -49,7 +53,7 @@ for unit in "$@"; do
             :*) needs+=("$bmis/sq.$module-${imported#:}.pcm") ;;
             sq.*) needs+=("$bmis/$imported.pcm") ;;
         esac
-    done < <(sed -n 's/^\(export \)\{0,1\}import \([^;<"]*\);.*/\2/p' "$dir/$unit")
+    done < <("$SQEDIT" pick -x '("export ")? "import " {[^;<"]*} ";" .*' "$dir/$unit")
     if [ ${#needs[@]} -gt 0 ]; then
         printf '%s/%s.cppm.o: %s\n' "$objects" "$name" "${needs[*]}"
     fi

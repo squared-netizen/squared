@@ -86,9 +86,10 @@ SQ_MANIFEST  := $(BUILD)/dev/AndroidManifest.xml
 
 $(SQ_MANIFEST): sq_android/AndroidManifest.xml
 	@mkdir -p $(dir $@)
-	@sed 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.INTERNET" />\n\1<application\2|' \
-	    $< > $@
-	@grep -q 'permission.INTERNET' $@ || { \
+	@$(SQEDIT) sub -x '{%s*} "<application" {%s*}' \
+	    '{1}<uses-permission android:name="android.permission.INTERNET" />\n{1}<application{2}' \
+	    $< > $@ || [ $$? = 1 ]
+	@$(SQEDIT) match -qF 'permission.INTERNET' $@ || { \
 	  echo "dev build: could not add the INTERNET permission: no '<application' line" >&2; \
 	  rm -f $@; exit 1; }
 endif
@@ -169,7 +170,7 @@ $(SQ_SO): $(OBJ) $(SQ_SQUARED_LIBS)
 # supplied a path for it — which would mean something reintroduced -lEGL.
 .PHONY: verify-link
 verify-link:
-	@needed=$$(readelf -d $(SQ_SO) 2>/dev/null | sed -n 's/.*NEEDED.*\[\(.*\)\]/\1/p' | tr '\n' ' '); \
+	@needed=$$(readelf -d $(SQ_SO) 2>/dev/null | $(SQEDIT) pick '"Shared library: [" {[^]]+} "]"' | tr '\n' ' '); \
 	case "$$needed" in \
 	  *libEGL*|*libGLES*) \
 	    if [ -z "$(strip $(SQ_GL_LIBS))" ]; then \
@@ -187,14 +188,14 @@ verify-link:
 	    echo "  The C++ runtime should be linked in; is SQ_CXX_RUNTIME empty? (make android-status)" >&2; \
 	    exit 1 ;; \
 	esac; \
-	if [ "$(SQ_MIN_SDK)" -lt 23 ] && ! readelf -d $(SQ_SO) 2>/dev/null | grep -q '(HASH)'; then \
+	if [ "$(SQ_MIN_SDK)" -lt 23 ] && ! readelf -d $(SQ_SO) 2>/dev/null | $(SQEDIT) match -qF '(HASH)'; then \
 	  echo "" >&2; \
 	  echo "link check: lib$(SQ_PROJECT).so has no DT_HASH table; Android before 6.0 cannot load it." >&2; \
 	  echo "  The link needs -Wl,--hash-style=both (SQ_LDFLAGS in mk/squared_generated.mk)." >&2; \
 	  exit 1; \
 	fi; \
 	echo "  link check     $$needed"; \
-	echo "                 built for API $(SQ_MIN_SDK); C++ runtime linked in$$(readelf -d $(SQ_SO) 2>/dev/null | grep -q '(HASH)' && echo '; DT_HASH present')"
+	echo "                 built for API $(SQ_MIN_SDK); C++ runtime linked in$$(readelf -d $(SQ_SO) 2>/dev/null | $(SQEDIT) match -qF '(HASH)' && echo '; DT_HASH present')"
 
 $(BUILD)/%.o: %.cpp $(SQ_FLAGS_STAMP)
 	@mkdir -p $(dir $@)

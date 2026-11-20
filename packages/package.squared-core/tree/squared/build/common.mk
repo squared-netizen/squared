@@ -16,6 +16,14 @@ BUILD ?= release
 
 SQUARED_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))..)
 
+# sqedit (github.com/squared-netizen/sqedit) does the build's text work: what
+# sed, grep and awk did. Checked here, once, so a build without it stops
+# with this rather than with an empty value later.
+SQEDIT ?= sqedit
+ifeq ($(shell command -v $(firstword $(SQEDIT)) 2>/dev/null),)
+  $(error squared: sqedit is not on PATH (or SQEDIT): build it from github.com/squared-netizen/sqedit, or pkg install sqedit in sqterm)
+endif
+
 # The public include root is the directory that holds squared/. Every header,
 # workhorse or supporting, is reached as <squared/<module>/...> through it, so a
 # module no longer lists the include directories of the modules it uses. That

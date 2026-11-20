@@ -16,6 +16,14 @@
 # kit.opengl would mean the project could not build without a kit — which is
 # exactly what this template promises it can do.
 
+# sqedit (github.com/squared-netizen/sqedit) does the build's text work: what
+# sed, grep and awk did. Checked once, here, so a build without it stops with
+# this rather than with an empty value later.
+SQEDIT ?= sqedit
+ifeq ($(shell command -v $(firstword $(SQEDIT)) 2>/dev/null),)
+  $(error sqedit is not on PATH (or SQEDIT): build it from github.com/squared-netizen/sqedit, or pkg install sqedit in sqterm)
+endif
+
 SQ_PROJECT           := {{project_name}}
 SQ_PACKAGE           := {{package_name}}
 SQ_GENERATOR         := squared-pg
@@ -176,7 +184,7 @@ require-ndk:
 	@if [ ! -d "$(SQ_NDK_LIB)" ]; then \
 	  echo "" >&2; \
 	  echo "The NDK at $(SQ_NDK) has no system libraries for API $(SQ_MIN_SDK)." >&2; \
-	  echo "  It has: $$(ls '$(SQ_NDK_LIB_ABI)' 2>/dev/null | grep -E '^[0-9]+$$' | sort -n | tr '\n' ' ')" >&2; \
+	  echo "  It has: $$(ls '$(SQ_NDK_LIB_ABI)' 2>/dev/null | $(SQEDIT) match -x '%d+' | sort -n | tr '\n' ' ')" >&2; \
 	  echo "  Build for one of those: make SQ_MIN_SDK=<level>" >&2; \
 	  exit 1; \
 	fi

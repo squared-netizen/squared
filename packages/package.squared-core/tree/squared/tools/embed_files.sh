@@ -20,9 +20,13 @@
 # (byte order), 16 bytes to a line. Writes OUT.cpp only when it changes.
 # POSIX tools only (od, sed, sort): runs in Termux.
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "embed_files.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ "$#" -ne 5 ]; then
-  sed -n '2,10p' "$0" >&2
+  "$SQEDIT" lines 2..10 "$0" >&2
   exit 2
 fi
 source_dir=$1
@@ -59,8 +63,8 @@ fi
     printf '\n// %s/%s\n' "$source_dir" "$name"
     if [ -s "$source_dir/$name" ]; then
       printf 'constexpr unsigned char bytes_%d[] = {\n' "$index"
-      od -An -v -t x1 "$source_dir/$name" | sed -e 's/^ *//' -e 's/ *$//' \
-          -e 's/\([0-9a-f][0-9a-f]\)/0x\1,/g' -e 's/, */, /g' -e 's/^/    /' -e 's/ *$//'
+      od -An -v -t x1 "$source_dir/$name" |
+          "$SQEDIT" sub -x '%s* {~ ((%x %x) -> "0x%0," / %s+ &%x -> " ")* ~} %s*' '    {1}'
       printf '};\n'
     else
       printf 'constexpr std::span<const unsigned char> bytes_%d{};\n' "$index"

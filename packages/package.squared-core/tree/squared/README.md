@@ -34,8 +34,11 @@ squared;` or `import sq.<module>;`
 ## Build
 
 squared needs clang and libc++ (Termux has both; Debian and Ubuntu: `apt
-install clang libc++-dev libc++abi-dev`). Unpack the vendored third-party
-sources once after checkout:
+install clang libc++-dev libc++abi-dev`), and
+[sqedit](https://github.com/squared-netizen/sqedit) on PATH (or as
+`SQEDIT`), which does the build's text work in place of sed, grep and awk
+(sqterm: `pkg install sqedit`; elsewhere: `make -C sqedit build/sqedit`).
+Unpack the vendored third-party sources once after checkout:
 
 ```sh
 ./tools/vendor_third_party.sh
@@ -52,7 +55,7 @@ make lint                        # format, source-rule and clang-tidy checks
 ```
 
 That is the whole setup. yyjson is compiled into `libsquared_data.a` by the
-build; there is nothing external to install. `local.mk` is optional,
+build; there is nothing else external to install. `local.mk` is optional,
 per-checkout, and picked up automatically by `build/common.mk`.
 
 ## Documentation

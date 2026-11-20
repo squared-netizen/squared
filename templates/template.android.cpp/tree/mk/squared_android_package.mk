@@ -78,13 +78,16 @@ SQ_MANIFEST := $(BUILD)/background/AndroidManifest.xml
 
 $(SQ_MANIFEST): $(SQ_MANIFEST_PLAIN)
 	@mkdir -p $(dir $@)
-	@sed -e 's|^\([[:space:]]*\)<application\([[:space:]]*\)$$|\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n\1<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n\1<uses-permission android:name="android.permission.WAKE_LOCK" />\n\1<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n\1<application\2|' \
-	     -e 's|android:hasCode="false"|android:hasCode="true"|' \
-	     -e 's|^\([[:space:]]*\)</application>|\1    <service android:name="dev.squared.ModelService" android:exported="false" android:foregroundServiceType="specialUse">\n\1        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Keeps the app running in the background when the user asks it to (app.keep_running)" />\n\1    </service>\n\1</application>|' \
-	     $< > $@
-	@grep -q 'permission.FOREGROUND_SERVICE_SPECIAL_USE' $@ && grep -q 'foregroundServiceType="specialUse"' $@ && \
-	  grep -q 'dev.squared.ModelService' $@ && \
-	  grep -q 'android:hasCode="true"' $@ || { \
+	@$(SQEDIT) sub -x '{%s*} "<application" {%s*}' \
+	    '{1}<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n{1}<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n{1}<uses-permission android:name="android.permission.WAKE_LOCK" />\n{1}<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n{1}<application{2}' $< \
+	  | $(SQEDIT) sub -F 'android:hasCode="false"' 'android:hasCode="true"' \
+	  | $(SQEDIT) sub -x '{%s*} "</application>" {.*}' \
+	    '{1}    <service android:name="dev.squared.ModelService" android:exported="false" android:foregroundServiceType="specialUse">\n{1}        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Keeps the app running in the background when the user asks it to (app.keep_running)" />\n{1}    </service>\n{1}</application>{2}' \
+	    > $@ || [ $$? = 1 ]
+	@$(SQEDIT) match -qF 'permission.FOREGROUND_SERVICE_SPECIAL_USE' $@ && \
+	  $(SQEDIT) match -qF 'foregroundServiceType="specialUse"' $@ && \
+	  $(SQEDIT) match -qF 'dev.squared.ModelService' $@ && \
+	  $(SQEDIT) match -qF 'android:hasCode="true"' $@ || { \
 	  echo "BACKGROUND=1: could not add the service to $(SQ_MANIFEST_PLAIN): it needs a line '<application', android:hasCode, and a line '</application>'" >&2; \
 	  rm -f $@; exit 1; }
 else
@@ -186,7 +189,7 @@ $(SQ_ASSET_INDEX): FORCE
 	@if [ -n "$(strip $(SQ_ASSET_FILES))" ]; then \
 	  mkdir -p $(dir $@); \
 	  new=$$(cd $(SQ_ASSETS_DIR) && find . -type f ! -path './SQ-INF/*' \
-	         | sed 's|^\./||' | LC_ALL=C sort); \
+	         | $(SQEDIT) pick -x '"./" {.*}' | LC_ALL=C sort); \
 	  old=$$(cat $@ 2>/dev/null || true); \
 	  if [ "$$old" != "$$new" ]; then \
 	    printf '%s\n' "$$new" > $@; \

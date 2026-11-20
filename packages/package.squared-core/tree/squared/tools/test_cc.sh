@@ -28,6 +28,10 @@
 # every link ends with (std's object, the app module's: build/common.mk).
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "test_cc.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -lt 1 ]; then
     echo "usage: test_cc.sh <compiler> <arguments...>" >&2
@@ -76,7 +80,7 @@ fresh() {
     done
     # The .d's words: the target, a colon, then the files; -MP's empty rules
     # repeat them. Backslashes join lines.
-    for dep in $(tr -d '\\' <"$2" | tr ' ' '\n' | grep -v ':$' || true); do
+    for dep in $(tr -d '\\' <"$2" | tr ' ' '\n' | "$SQEDIT" match -vx '(!(":" !.) .)* ":"' || true); do
         [ -e "$dep" ] || return 1
         [ "$dep" -nt "$1" ] && return 1
     done
@@ -101,7 +105,7 @@ for source in "${sources[@]}"; do
         mv -f "$depfile.$$" "$depfile"
     fi
     # The binary depends on what each object depends on: its .d, retargeted.
-    sed "s|^SQUARED_OBJECT:|$out:|" "$depfile" >>"$deps"
+    "$SQEDIT" sub -x '"SQUARED_OBJECT:" {.*}' "$out:{1}" "$depfile" >>"$deps" || [ $? = 1 ]
     objects+=("$object")
 done
 # shellcheck disable=SC2086 # a list of archives
