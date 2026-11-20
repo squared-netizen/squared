@@ -26,6 +26,23 @@ endif
 PUBLIC_ROOT := $(abspath $(SQUARED_ROOT)/..)
 SQUARED_INCLUDE := -I$(PUBLIC_ROOT)
 
+# The SDK's toolchain (build/toolchain.mk: clang 23, libc++ 23 and bionic,
+# for Android), when asked for: `make SQ_TOOLCHAIN=1`. Its compilers are
+# toolchain.sh's wrappers, made when missing; std is built from its libc++'s
+# module sources (SQ_STD_CPPM); the build goes in a folder named by its
+# fingerprint, so its BMIs never meet another toolchain's.
+ifeq ($(SQ_TOOLCHAIN),1)
+  SQ_TOOLCHAIN_DIR = $(SQUARED_ROOT)/build/toolchain-$(SQ_TOOLCHAIN_FINGERPRINT)
+  include $(SQUARED_ROOT)/build/toolchain.mk
+  ifeq ($(wildcard $(SQ_TOOLCHAIN_DIR)/clang++),)
+    $(shell bash '$(SQ_TOOLCHAIN_SH)' wrappers '$(SQ_TOOLCHAIN_DIR)' >&2)
+  endif
+  CXX := $(SQ_TOOLCHAIN_DIR)/clang++
+  CC := $(SQ_TOOLCHAIN_DIR)/clang
+  AR := $(if $(wildcard $(SQ_LLVM_BIN)/llvm-ar),$(SQ_LLVM_BIN)/llvm-ar,$(AR))
+  BUILD_DIR ?= $(SQUARED_ROOT)/build/$(BUILD)-$(SQ_TOOLCHAIN_FINGERPRINT)
+  export SQ_STD_CPPM
+endif
 BUILD_DIR ?= $(SQUARED_ROOT)/build/$(BUILD)
 LIB_DIR := $(BUILD_DIR)/lib
 OBJ_DIR := $(BUILD_DIR)/obj
@@ -37,8 +54,8 @@ OBJ_DIR := $(BUILD_DIR)/obj
 # Telegraph's threads; on Android it changes nothing but the check).
 #
 # C++23, with libc++ (decided 2026-11-02): `import std;` is libc++'s own
-# module (third_party/libcxx/), and libc++ is the standard library everywhere,
-# Android's, Termux's and a desktop's alike (libstdc++ ships no std module
+# module, built from that libc++'s own sources (tools/libcxx_modules.sh), and
+# libc++ is the standard library everywhere, Android's, Termux's and a desktop's alike (libstdc++ ships no std module
 # before GCC 15). -D__BIONIC_CTYPE_INLINE=inline: Android's <ctype.h> makes
 # isalpha and the rest static inline, which a module cannot export; with it
 # they are plain inline, in the std module and in a file that includes
@@ -113,15 +130,14 @@ SQUARED_MODULE_USE := -fprebuilt-module-path=$(SQUARED_MODULE_DIR)
 # made in another workspace, reads nothing of that one (build/modules.mk).
 SQUARED_EMBED := -Xclang -fmodules-embed-all-files
 
-# std, the standard library as a module (C++23, libc++'s, pinned in
-# third_party/libcxx/), made by tools/std_bmi.sh once per compiler, flags and
-# libc++, and shared: modules/std.pcm links to it. std.ready is made with it,
-# and is what everything that imports std waits for (std.pcm's own date is the
-# shared BMI's, older than this build's). std.inputs lists PINNED for the
-# build cache's key. libsquared_std.a holds its object: every program that
-# imports a squared module links it. The root Makefile makes them first.
-SQUARED_LIBCXX := $(SQUARED_ROOT)/third_party/libcxx
-SQUARED_STD_PINNED := $(SQUARED_LIBCXX)/PINNED
+# std, the standard library as a module (C++23, libc++'s own module sources,
+# beside the libc++ compiled against), made by tools/std_bmi.sh once per
+# compiler, flags and libc++, and shared: modules/std.pcm links to it.
+# std.ready is made with it, and is what everything that imports std waits
+# for (std.pcm's own date is the shared BMI's, older than this build's).
+# std.inputs lists std.key (the module sources' sums are in it) for the build
+# cache's key. libsquared_std.a holds its object: every program that imports
+# a squared module links it. The root Makefile makes them first.
 SQUARED_STD_READY := $(SQUARED_MODULE_DIR)/std.ready
 SQUARED_STD_INPUTS := $(SQUARED_MODULE_DIR)/std.inputs
 SQUARED_STD_LIB := $(LIB_DIR)/libsquared_std.a
@@ -275,12 +291,12 @@ $(SQUARED_FLAGS_STAMP):
 # tools/std_bmi.sh makes it, or finds it made (by this build before, or by
 # another project with the same compiler, flags and libc++), and prints one
 # `mod std` line either way; then std.sum, what std.inputs names holds
-# (tools/inputs_sum.sh, for the build cache). It runs when the flags or
-# PINNED change, when a libc++ header it read changes (std.d), and when the
+# (tools/inputs_sum.sh, for the build cache). It runs when the flags change,
+# when a libc++ header or module source it read changes (std.d), and when the
 # shared BMI went (the link dangles: pruned, or ~/sqsysroot/.sqpg wiped).
 squared_std_gone := $(if $(wildcard $(SQUARED_STD_READY)),$(if $(realpath $(SQUARED_MODULE_DIR)/std.pcm),,squared-std-gone))
 .PHONY: squared-std-gone
-$(SQUARED_STD_READY) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB) &: $(SQUARED_STD_PINNED) $(SQUARED_FLAGS_STAMP) \
+$(SQUARED_STD_READY) $(SQUARED_STD_INPUTS) $(SQUARED_STD_LIB) &: $(SQUARED_FLAGS_STAMP) \
                                                             $(SQUARED_ROOT)/tools/std_bmi.sh \
                                                             $(SQUARED_ROOT)/tools/inputs_sum.sh $(squared_std_gone)
 	@mkdir -p $(SQUARED_MODULE_DIR) $(LIB_DIR)

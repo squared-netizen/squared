@@ -125,7 +125,7 @@ $(SQUARED_MODULE_ORDER): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_ROO
 -include $(INTERFACE_OBJECTS:.o=.d)
 
 # The interface sources whose BMIs an importer of this module reads: its own
-# and every used module's (std's PINNED among them), one path a line; and,
+# and every used module's (std's std.key among them), one path a line; and,
 # beside it, sq.<module>.sum, what they hold (tools/inputs_sum.sh), which the
 # build cache's keys read instead of the files.
 $(SQUARED_MODULE_INPUTS_FILE): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_USED_INPUTS) \

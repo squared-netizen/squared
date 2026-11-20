@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# tools/std_bmi.sh: `import std;` for one build, from the libc++ module
-# sources pinned in third_party/libcxx/ (C++23; build/common.mk runs it).
+# tools/std_bmi.sh: `import std;` for one build, from the module sources of
+# the libc++ it compiles against (C++23; build/common.mk runs it).
 #
 #   std_bmi.sh <module dir> <archive> <compiler> <flags>...
 #
@@ -8,27 +8,31 @@
 # same for every project built with the same compiler, flags and libc++. So
 # it is made once for each of those, in
 #
-#   $SQUARED_STD_HOME/<key>/       src/ (the pinned sources, copied: the BMI
+#   $SQUARED_STD_HOME/<key>/       src/ (libc++'s sources, copied: the BMI
 #                                  names its sources' paths), std.pcm, std.o,
 #                                  std.d (what it read), done
 #
 # where <key> is a hash of the compiler's version line, the flags (less the
-# path maps, which name the workspace), the PINNED record and the libc++
-# headers' sizes and dates. SQUARED_STD_HOME is ~/sqsysroot/.sqpg/std when
-# squared-pg is set up, else this build's modules/std. The build then gets:
+# path maps, which name the workspace), the module sources' sums and the
+# libc++ headers' sizes and dates.
+#
+# The sources are libc++'s own, share/libc++/v1/std.cppm and std/*.inc, of
+# the libc++ compiled against (tools/libcxx_modules.sh finds them).
+# SQUARED_STD_HOME is ~/sqsysroot/.sqpg/std when squared-pg is set up, else
+# this build's modules/std. The build then gets:
 #
 #   <module dir>/std.pcm      a link to <key>/std.pcm, where every compile
 #                             finds it (-fprebuilt-module-path)
 #   <module dir>/std.d        <key>/std.d, for make: a libc++ header that
 #                             changes makes the BMI again
-#   <module dir>/std.inputs   for the build cache's key: PINNED, and
-#                             <module dir>/std.key (this BMI's key), so an
+#   <module dir>/std.inputs   for the build cache's key: <module dir>/std.key
+#                             (this BMI's key, its sources' sums in it), so an
 #                             object or BMI made against another std module
 #                             (a libc++ updated in place) is never taken
 #   <archive>                 <key>/std.o, which every program links
 #
-# The copy, not the pinned files, is made to fit the headers it is built
-# against (seen on the phone, 2026-11-02: the sources pinned from the NDK r29,
+# The copy, not libc++'s files, is made to fit the headers it is built
+# against (seen on the phone, 2026-11-02: module sources from the NDK r29,
 # Termux's headers from r30, both "libc++ 210000"):
 #
 #   - libc++'s "headers not yet available" checks go: `#error "please update
@@ -47,8 +51,8 @@
 # SQUARED_STD_KEEP (6) most lately used keys are kept, older ones removed (a
 # build whose link then dangles makes it again: build/common.mk).
 #
-# Refuses, with what to do: a standard library that is not libc++; libc++
-# headers of another major version than PINNED.
+# Refuses, with what to do: a standard library that is not libc++; no module
+# sources for it (tools/libcxx_modules.sh).
 #
 # SQUARED_SAY: empty for make V=1 (the commands print instead).
 
@@ -64,9 +68,6 @@ cxx=$3
 shift 3
 flags=("$@")
 
-root="$(cd "$(dirname "$0")/.." && pwd)" # squared/
-pinned_dir="$root/third_party/libcxx"
-pinned="$pinned_dir/PINNED"
 home=${SQUARED_STD_HOME:-$modules/std}
 keep=${SQUARED_STD_KEEP:-6}
 say=${SQUARED_SAY-1}
@@ -75,9 +76,6 @@ fail() {
     echo "std_bmi: $*" >&2
     exit 1
 }
-
-[ -f "$pinned" ] && [ -f "$pinned_dir/std.cppm" ] ||
-    fail "no pinned libc++ module sources in third_party/libcxx/: tools/pin_libcxx_modules.sh <share/libc++/v1> (third_party/libcxx/README.md)"
 
 # --- which libc++ the flags compile against ---------------------------------
 # The version, and the headers it read (their sizes and dates go in the key:
@@ -89,13 +87,13 @@ case $probe in
     [0-9][0-9][0-9][0-9][0-9]*) ;;
     *) fail "the standard library is not libc++ (squared builds import std from libc++ only: -stdlib=libc++; Debian and Ubuntu: apt install libc++-dev libc++abi-dev)" ;;
 esac
-want=$(sed -n 's/^libc++: \([0-9]*\).*/\1/p' "$pinned")
-if [ "$((probe / 10000))" != "$((want / 10000))" ]; then
-    fail "libc++ headers $probe, module sources pinned from libc++ $want: pin again from this libc++ (tools/pin_libcxx_modules.sh, third_party/libcxx/README.md)"
-fi
 headers=$(printf '#include <version>\n' | "$cxx" "${flags[@]}" -x c++ -M - 2>/dev/null |
     tr -d '\\' | tr ' ' '\n' | grep '^/' | LC_ALL=C sort -u) || true
 [ -n "$headers" ] || fail "$cxx could not list the headers <version> reads"
+
+# --- libc++'s module sources -------------------------------------------------------
+module_dir=$(bash "$(dirname "$0")/libcxx_modules.sh" "$cxx" "${flags[@]}") || exit 1
+sources_sum=$(cd "$module_dir" && find std.cppm std -type f | LC_ALL=C sort | xargs sha256sum)
 
 # --- the key --------------------------------------------------------------------
 kept_flags=()
@@ -108,7 +106,7 @@ done
 key=$({
     "$cxx" --version 2>/dev/null | head -n 1
     printf '%s\n' "$cxx" "${kept_flags[@]}"
-    cat "$pinned"
+    printf '%s\n' "$sources_sum"
     sha256sum < "$0" # how the copy is fitted (below) is part of what it is
     # shellcheck disable=SC2086 # one path a line, none with spaces
     stat -c '%n %s %Y' $headers
@@ -159,7 +157,7 @@ else
     if [ ! -d "$dir/src" ]; then
         rm -rf "$dir/src.$$"
         mkdir -p "$dir/src.$$"
-        cp -R "$pinned_dir/std.cppm" "$pinned_dir/std" "$dir/src.$$/"
+        cp -R "$module_dir/std.cppm" "$module_dir/std" "$dir/src.$$/"
         fit "$dir/src.$$"
         mv -T "$dir/src.$$" "$dir/src" 2>/dev/null || rm -rf "$dir/src.$$"
     fi
@@ -191,7 +189,7 @@ ln -sfn "$dir/std.pcm" "$modules/std.pcm"
     printf '%s:\n' "$dir/src/std.cppm"
 } > "$modules/std.d"
 printf '%s\n' "$key" > "$modules/std.key"
-printf '%s\n%s\n' "$pinned" "$modules/std.key" > "$modules/std.inputs"
+printf '%s\n' "$modules/std.key" > "$modules/std.inputs"
 rm -f "$archive"
 "${AR:-ar}" rcs "$archive" "$dir/std.o"
 

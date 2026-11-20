@@ -69,7 +69,7 @@ with no comment (constructors, destructors and assignments are left out).
   interfaces, `build/release/docs/view/`, not the modules. In the copy,
   `export module` is `#pragma once`, each import is an `#include` of the
   partition's or module's file (`import std;` includes the standard headers
-  the pinned `third_party/libcxx/std.cppm` includes, read with
+  libc++'s `std.cppm` includes (`tools/libcxx_modules.sh` finds it), read with
   `-stdlib=libc++`), and `export namespace`/`export extern` lose `export`. The rewrite
   keeps every line on its line, so "Defined at" points at the real file.
   Why: clang never writes comments into a named module's BMI (ASTWriter.cpp:
@@ -139,17 +139,15 @@ with no comment (constructors, destructors and assignments are left out).
   on the namespace page.
 - Memory: a tool, so priority 1 does not apply. About 25 s for 92 headers here.
 
-## pin_libcxx_modules.sh
+## libcxx_modules.sh
 
-`tools/pin_libcxx_modules.sh <share/libc++/v1>`: copies libc++'s std module
-sources (`std.cppm`, `std/*.inc`) from a libc++ installation into
-`third_party/libcxx/`, replacing what was pinned, and writes `PINNED`: where
-from (with `~` and `$PREFIX`), the `_LIBCPP_VERSION` of the headers beside
-them (the NDK's `sysroot/usr/include/c++/v1`, or an installation's
-`include/c++/v1`), the date, and a sha256 for each file. Refuses a directory
-without them, or without headers beside it. `make headers` checks the sums.
-Run when the NDK's libc++ moves; then build, test, commit. Why pinned, and
-from where: [modules.md](modules.md#std).
+`tools/libcxx_modules.sh <compiler> <flags>...`: prints the folder of
+libc++'s own std module sources (`std.cppm`, `std/*.inc`) for the libc++
+that compiler and flags compile against: `$SQ_STD_CPPM`'s folder, else
+`share/libc++/v1` beside the headers, else beside the compiler. Refuses
+none found, or sources beside headers of another major version.
+`std_bmi.sh` builds std from it; `docs.sh` reads its list of headers. Why:
+[modules.md](modules.md#std).
 
 ## pin_freetype.sh
 

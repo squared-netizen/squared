@@ -2,10 +2,10 @@ name: Clang Quality Audit
 
 # squared's own build and checks, as its README gives them: the framework is
 # under packages/package.squared-core/tree/squared/ and builds with make (no
-# CMake). It needs clang and libc++ of the major version third_party/libcxx
-# is pinned to (21: `import std` is built from those sources, and the build
-# refuses other libc++ headers), so the toolchain comes from apt.llvm.org;
-# Ubuntu 24.04's own clang is 18.
+# CMake). It needs the SDK's toolchain version, clang 23 with libc++ 23
+# (build/toolchain.sh; `import std` is built from that libc++'s own module
+# sources), so the toolchain comes from apt.llvm.org; Ubuntu 24.04's own clang
+# is 18.
 #
 #   build and test   must pass
 #   lint             tools/lint.sh (format, source rules, clang-tidy) must
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  LLVM: 21
+  LLVM: 23
   SQUARED: packages/package.squared-core/tree/squared
 
 jobs:

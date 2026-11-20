@@ -132,6 +132,22 @@ make android-status       # the NDK, the API level, the C++ runtime it found
 The NDK must have libraries for the level you ask for; `make` says which levels
 it has if not. NDK r29 has 21 to 35.
 
+### The SDK's own toolchain
+
+The framework also builds for Android with the SDK's own toolchain: clang 23,
+libc++ 23 and bionic, from sqterm's `llvm`, `runtimes` and `sysroot` packages
+(on CI, apt.llvm.org's clang 23 with the same two packages). No NDK is
+involved ("One C++23 toolchain", phase 3; the template moves in phase 4).
+
+```sh
+make SQ_TOOLCHAIN=1       # in squared/: build/toolchain.mk's compilers and flags
+```
+
+`build/toolchain.sh` finds the packages under `$PREFIX`. On another machine,
+name them with `SQ_LLVM_BIN`, `SQ_SYSROOT` and `SQ_RUNTIMES`. The build goes
+in `build/<BUILD>-<fingerprint>/`, so its modules never meet another
+toolchain's.
+
 ### Installing, starting, the log
 
 ```sh
@@ -167,13 +183,12 @@ The tree builds warning-free at that level.
 **Every module is compiled before what imports it** (7b.4): `mod
 sq.gui-label` is an interface becoming its BMI, in
 `build/<BUILD>/modules/`. The standard library is a module too, `std`
-(C++23; libc++'s own sources, pinned in `third_party/libcxx/`), made first,
+(C++23; built from libc++'s own sources, those of the libc++ installed), made first,
 and only once for each compiler, flag set and libc++ on the device: in
 `~/sqsysroot/.sqpg/std/` when squared-pg is set up, shared by every project
 (`mod  std (libc++ 210000, made before: ...)` when another project made
-it), else in the build. Every file reads from it only what it uses. When
-the NDK's libc++ moves to another major version, the build says to pin
-again: `tools/pin_libcxx_modules.sh` (`third_party/libcxx/README.md`).
+it), else in the build. Every file reads from it only what it uses. A new
+libc++ makes a new std module, with nothing to pin.
 (Until 7b.4 the standard headers were precompiled; until 2026-11-02 squared
 had its own module of them, `sq.std`.)
 

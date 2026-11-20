@@ -28,9 +28,8 @@ squared/<module>/
 `squared/third_party/`, `squared/docs/`, `squared/tools/` and
 `squared/build/` sit beside the modules and follow none of this.
 `squared/squared.cppm` is the one import for an app (`export module squared;`,
-re-exporting `std`, app, gui, messaging and stage), and
-`squared/third_party/libcxx/` holds the pinned sources of `std`
-([modules.md](modules.md#std)).
+re-exporting `std`, app, gui, messaging and stage). `std` is built from the
+installed libc++'s own sources ([modules.md](modules.md#std)).
 
 **A partition is named for its path**, the slashes as dots:
 `gui/src/detail/ui.cppm` is `sq.gui:src.detail.ui`. `tools/module_deps.sh`

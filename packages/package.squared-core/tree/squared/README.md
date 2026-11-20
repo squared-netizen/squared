@@ -19,8 +19,7 @@ clang.
 squared.cppm                 `import squared;`: what an app is written against
 build/common.mk              shared build settings
 build/modules.mk             how a module is built
-third_party/                 vendored sources: yyjson, stb, and libcxx/ (libc++'s
-                             std module, pinned: `import std;`)
+third_party/                 vendored sources: yyjson, stb, freetype
 tools/                       build, check, format, lint and docs scripts
 docs/programmer/             using squared
 docs/developer/              maintaining squared

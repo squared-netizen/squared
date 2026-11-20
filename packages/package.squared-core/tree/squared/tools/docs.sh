@@ -154,16 +154,13 @@ as_text() { # as_text <module> <in> <out>
 }
 rm -rf "$view"
 mkdir -p "$view/build"
-# std: the standard headers the pinned std.cppm includes (third_party/libcxx/),
-# by their names: not libc++'s own (<__config>), nor its #if around some.
-# libc++'s, as the build's (-stdlib=libc++ below, the probe's too).
-if [ ! -f "$root/third_party/libcxx/std.cppm" ]; then
-    echo "docs: no third_party/libcxx/std.cppm: pin libc++'s std module sources (tools/pin_libcxx_modules.sh)" >&2
-    exit 2
-fi
+# std: the standard headers libc++'s std.cppm includes, by their names: not
+# libc++'s own (<__config>), nor its #if around some. libc++'s, as the
+# build's (-stdlib=libc++ below, the probe's too).
+std_dir=$(bash "$root/tools/libcxx_modules.sh" "$cxx" -std=c++23 -stdlib=libc++) || exit 2
 {
     echo '#pragma once'
-    sed -n 's/^#[ ]*include <\([a-z][a-z0-9_.]*\)>.*/#include <\1>/p' "$root/third_party/libcxx/std.cppm"
+    sed -n 's/^#[ ]*include <\([a-z][a-z0-9_.]*\)>.*/#include <\1>/p' "$std_dir/std.cppm"
 } > "$view/build/std.hpp"
 while IFS= read -r unit; do
     as_text "${unit%%/*}" "$root/$unit" "$view/$unit"
