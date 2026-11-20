@@ -55,19 +55,19 @@ every `import sq.<other>;` in its files.
 ## std
 
 `import std;`, C++23's module of the whole standard library, libc++'s own:
-its sources (`std.cppm`, `std/*.inc`) are pinned in `third_party/libcxx/`
-(decided 2026-11-02: "pinned in third_party/", "libc++ only").
+built from the module sources (`std.cppm`, `std/*.inc`) of the libc++ the
+build compiles against, never from a copy ("One C++23 toolchain",
+2026-11-20; pinned in `third_party/libcxx/` from 2026-11-02 until then).
 
-- **Pinned.** `tools/pin_libcxx_modules.sh <share/libc++/v1>` copies them
-  from a libc++ installation, the NDK's on the phone
-  (`toolchains/llvm/prebuilt/<host>/share/libc++/v1`, libc++ 21.0.0), and
-  writes `PINNED`: where from, the libc++ version of the headers beside
-  them, a sha256 for each file. They must match the headers squared compiles
-  against: the std module names every standard type, and one the headers
-  lack stops its build. The NDK's headers and Termux's are the same version
-  (21.0.0, 2026-11-02), so one pin serves the Android build and the phone's
-  own tools. `make headers` checks the sums; the build refuses headers of
-  another major version than `PINNED` (pin again).
+- **Found, not pinned.** `tools/libcxx_modules.sh <compiler> <flags>` finds
+  them: `$SQ_STD_CPPM`'s folder (`build/toolchain.sh env` names it), else
+  `<prefix>/share/libc++/v1` beside the headers' `<prefix>/include/c++/v1`
+  (sqterm's `runtimes` package, apt.llvm.org's `libc++-dev`, Termux), else
+  `share/libc++/v1` beside the compiler (the NDK's). Sources beside headers
+  of another libc++ major version are refused. So the module always matches
+  the headers, and one toolchain has one std module: a pinned copy from one
+  libc++ could meet another's headers (the conflict the toolchain plan ends).
+  Their sums are part of the BMI's key.
 - **libc++ only.** A standard library that is not libc++ is refused when the
   std module is made: libstdc++ ships no std module before GCC 15. A desktop
   installs libc++ (Debian and Ubuntu: `libc++-dev libc++abi-dev`);
@@ -105,7 +105,7 @@ its sources (`std.cppm`, `std/*.inc`) are pinned in `third_party/libcxx/`
   headers have `<flat_set>`, r29's sources do not export it), and `tmpfile`,
   which Termux's `<stdio.h>` patch defines `static inline` (a module cannot
   export a name with internal linkage; no macro turns the patch off). So
-  `std_bmi.sh` fits its copy (`src/`), not `third_party/libcxx/`: the
+  `std_bmi.sh` fits its copy (`src/`), not libc++'s files: the
   header-availability checks go (bookkeeping for libc++'s developers; the
   module just does not export that header's names), and a checking compile
   (`-fsyntax-only`) finds every `using` the compiler refuses for internal

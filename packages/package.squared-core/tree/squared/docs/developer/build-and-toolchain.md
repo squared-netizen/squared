@@ -342,7 +342,8 @@ docs-check` after `make docs`, which has just written the pages it checks.
 Not done then: `import std`. Termux's libc++ ships no `std.cppm`; the NDK's
 does (`toolchains/llvm/prebuilt/linux-arm64/share/libc++/v1/`), and it failed
 to build against the NDK's headers as tried (`std/cctype.inc:11`). Done on
-2026-11-02: the NDK's sources pinned in `third_party/libcxx/`, and
+2026-11-02: the NDK's sources pinned in `third_party/libcxx/` (until
+2026-11-20: now the installed libc++'s own, [modules.md](modules.md#std)), and
 `-D__BIONIC_CTYPE_INLINE=inline` for the ctype functions
 ([modules.md](modules.md#std)).
 
@@ -546,9 +547,10 @@ Since 7b.4 there are no headers to compile alone: an interface compiles
 alone by construction, and the self-containment check went (the user's call,
 2026-10-27). What `make headers` checks now, in seconds, with no compile:
 
-1. **The pinned std sources are what `PINNED` says**: each file of
-   `third_party/libcxx/` against its sha256 (since 2026-11-02; until then,
-   that sq.std named every `std::` name the sources used).
+1. **The pinned FreeType sources are what `PINNED` says**: each file of
+   `third_party/freetype/` against its sha256. (libc++'s std sources were
+   checked the same way from 2026-11-02 until 2026-11-20, when they stopped
+   being pinned.)
 2. **The build order covers every import**: each module that a module's files
    import is built before it, by the top Makefile's order lines. Under `make
    -j` a missing line would race the BMI it needs.

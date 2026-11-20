@@ -254,7 +254,7 @@ Kind kind_of( std::string_view name, std::string_view self ) noexcept
     if( name.ends_with( ".so" ) || contains( name, ".so." ) || contains( name, ".so " ) ) {
         return Kind::libs;
     }
-    if( name.starts_with( "/" ) ) {
+    if( name.starts_with( '/' ) ) {
         return Kind::files;
     }
     return Kind::other;
