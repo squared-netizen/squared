@@ -783,7 +783,7 @@ struct Platform {
         console_sink = &console;
 #endif
         console.print("console: the log, as it is written. Three fingers or ` open and close it;");
-        console.print("tap it to type, drag it to scroll, hold the input row to paste");
+        console.print("tap it to type, drag it to scroll; paste: the clipboard");
         // Crash reports: the last run's is shown now; this run's is kept for
         // the next, in the app's private files.
         if (const char* private_files = native->activity->internalDataPath;
@@ -1089,16 +1089,8 @@ struct Platform {
         if (!console_touch.moved && action != AMOTION_EVENT_ACTION_CANCEL) {
             const int sx = static_cast<int>(console_touch.x);
             const int sy = static_cast<int>(console_touch.y);
-            const sq::console::GridSize cells = sq::console::grid(frame);
-            const bool on_input_row = cells.rows > 0 && sy >= frame.y + (cells.rows - 1) * frame.cell;
-            constexpr std::int64_t hold_nanoseconds = 500'000'000;
-            const bool held = AMotionEvent_getEventTime(input) - AMotionEvent_getDownTime(input) >=
-                              hold_nanoseconds;
             if (sq::console::touches_close(frame, sx, sy)) {
                 close_console();
-            } else if (on_input_row && held) {
-                focus_console();
-                paste_into_console();
             } else {
                 focus_console();
             }
@@ -1142,6 +1134,11 @@ struct Platform {
                                "screens [low-memory]: the screen stack, its panes and what each "
                                "keeps; low-memory: what the system sends when memory is short",
                                screens_command, this) != Added::added ? 1 : 0;
+        refused += console.add("paste", "paste: the clipboard into the input line, to read before Enter",
+                               [](sq::console::Console&, const sq::console::Args&, void* self) {
+                                   static_cast<Platform*>(self)->paste_into_console();
+                               },
+                               this) != Added::added ? 1 : 0;
         refused += console.add("quit", "quit: close the application and the console",
                                [](sq::console::Console&, const sq::console::Args&, void* self) {
                                    static_cast<Platform*>(self)->quit_asked = true;
