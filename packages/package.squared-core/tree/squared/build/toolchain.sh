@@ -44,6 +44,10 @@
 #   C++ alone: -std=c++23 -stdlib=libc++ -nostdinc++, the runtimes' libc++
 #   headers (its __config_site first)
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "toolchain.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 SQ_API=${SQ_API:-28}
 TRIPLE=aarch64-unknown-linux-android$SQ_API
@@ -74,7 +78,7 @@ LINK="-fuse-ld=lld -static-libstdc++ -Wl,-z,max-page-size=16384"
 std_cppm() { ls "$SQ_RUNTIMES"/share/libc++/v*/std.cppm 2>/dev/null | head -n 1; }
 
 libcxx_version() {
-  sed -n 's/^#[[:space:]]*define[[:space:]]*_LIBCPP_VERSION[[:space:]]*\([0-9]*\).*/\1/p' "$SQ_RUNTIMES/include/c++/v1/__config" | head -n 1
+  { "$SQEDIT" pick -x '"#" %s* "define" %s* "_LIBCPP_VERSION" %s* {%d*} .*' "$SQ_RUNTIMES/include/c++/v1/__config" || [ $? = 1 ]; } | head -n 1
 }
 
 fingerprint() {
@@ -121,7 +125,7 @@ case ${1:-} in
     fingerprint
     ;;
   *)
-    sed -n '2,24p' "$0" >&2
+    "$SQEDIT" lines 2..24 "$0" >&2
     exit 2
     ;;
 esac

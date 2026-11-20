@@ -69,6 +69,10 @@
 # cp, mv and touch.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "cached_cc.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -lt 1 ]; then
     echo "usage: cached_cc.sh <compiler> <flags...> -c <source> -o <object>" >&2
@@ -170,7 +174,9 @@ files_of() {
                 cat "$inputs"
             fi
         done
-    } | grep -v -e ':$' -e '^$' -e '\.pcm$' | awk '!seen[$0]++'
+    } | { "$SQEDIT" match -vx '(!(":" !.) .)* ":" / (!(".pcm" !.) .)* ".pcm" / ""' || [ $? = 1 ]; } |
+        { local -A seen=(); local line
+          while IFS= read -r line; do [ -n "${seen[$line]+x}" ] || { seen[$line]=1; printf '%s\n' "$line"; }; done; }
 }
 
 # STATE: what the files of a list hold now, squared's own by content, the

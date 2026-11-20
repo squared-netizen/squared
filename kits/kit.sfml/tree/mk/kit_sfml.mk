@@ -12,6 +12,8 @@
 # The archives are prebuilt for one ABI at one API level. sq_kit/BUILD-INFO
 # records which. Nothing in this workspace can rebuild them.
 
+SQEDIT ?= sqedit
+
 # --- headers ---------------------------------------------------------------
 #
 # Two include roots, for two reasons.
@@ -103,7 +105,7 @@ SQ_KITS_PRESENT += kit.sfml
 .PHONY: sfml-status
 sfml-status:
 	@echo "kit.sfml"
-	@if [ -f sq_kit/BUILD-INFO ]; then sed 's/^/  /' sq_kit/BUILD-INFO; \
+	@if [ -f sq_kit/BUILD-INFO ]; then $(SQEDIT) sub -x '{.*}' '  {1}' sq_kit/BUILD-INFO; \
 	 else echo "  BUILD-INFO    MISSING -- the payload was not installed."; \
 	      echo "                A fresh clone carries this fragment and the"; \
 	      echo "                manifest, but not the archives."; fi
@@ -121,7 +123,7 @@ sfml-status:
 	  done; \
 	fi
 	@printf '  %-15s %s\n' "entry point" \
-	  "$$(nm --defined-only sq_kit/lib/libsfml-main.a 2>/dev/null | grep -c ANativeActivity_onCreate) definition(s) of ANativeActivity_onCreate"
+	  "$$(nm --defined-only sq_kit/lib/libsfml-main.a 2>/dev/null | $(SQEDIT) match -cF ANativeActivity_onCreate) definition(s) of ANativeActivity_onCreate"
 	@echo "  ndk libraries"
 	@for l in $(SQ_SFML_GL_LIBS); do \
 	  if [ -f "$$l" ]; then printf '    %-30s ok\n' "$$(basename $$l)"; \

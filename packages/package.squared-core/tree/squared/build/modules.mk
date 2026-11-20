@@ -47,10 +47,13 @@ ifeq ($(strip $(SQUARED_MODULE_DIR)),)
 endif
 
 INTERFACES ?= $(shell cd $(MODULE_DIR) && find . -name '*.cppm' -not -path './test/*' | \
-    sed 's|^\./||' | LC_ALL=C sort)
+    $(SQEDIT) pick -x '"./" {.*}' | LC_ALL=C sort)
 USES_MODULES ?= $(filter-out std $(MODULE),$(shell cd $(MODULE_DIR) && \
-    grep -rhoE '^(export )?import sq\.[a-z_]+;' --include=*.cppm --include=*.cpp --include=*.hpp . | \
-    sed 's/.*import sq\.\([a-z_]*\);/\1/' | LC_ALL=C sort -u))
+    find . -type f \( -name '*.cppm' -o -name '*.cpp' -o -name '*.hpp' \) \
+        -exec $(SQEDIT) pick -x '("export ")? "import sq." {[a-z_]+} ";" .*' {} + | LC_ALL=C sort -u))
+
+# Words, each once, in the order they first come (what awk '!seen[$0]++' did).
+squared_uniq = $(if $(1),$(firstword $(1)) $(call squared_uniq,$(filter-out $(firstword $(1)),$(1))))
 
 squared_pcm_name = $(if $(filter module,$(1)),sq.$(MODULE),sq.$(MODULE)-$(subst /,.,$(1)))
 squared_pcm_of = $(SQUARED_MODULE_DIR)/$(call squared_pcm_name,$(1)).pcm
@@ -131,8 +134,8 @@ $(SQUARED_MODULE_ORDER): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_ROO
 $(SQUARED_MODULE_INPUTS_FILE): $(addprefix $(MODULE_DIR)/,$(INTERFACES)) $(SQUARED_USED_INPUTS) \
                                $(MODULE_DIR)/Makefile $(SQUARED_ROOT)/tools/inputs_sum.sh
 	@mkdir -p $(dir $@)
-	{ printf '%s\n' $(addprefix $(MODULE_DIR)/,$(INTERFACES)); cat $(SQUARED_USED_INPUTS); } \
-	    | awk '!seen[$$0]++' > $@.new
+	printf '%s\n' $(call squared_uniq,$(addprefix $(MODULE_DIR)/,$(INTERFACES)) \
+	    $(foreach f,$(SQUARED_USED_INPUTS),$(file < $(f)))) > $@.new
 	bash $(SQUARED_ROOT)/tools/inputs_sum.sh $@.new $(@:.inputs=.sum) $(PUBLIC_ROOT)
 	mv -f $@.new $@
 endif

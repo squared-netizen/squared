@@ -18,6 +18,10 @@
 # never newer than its .sum.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "inputs_sum.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -ne 3 ]; then
     echo "usage: inputs_sum.sh <list> <sum> <public root>" >&2
@@ -29,9 +33,5 @@ root=${3%/}
 
 # shellcheck disable=SC2046 # one path a line, none with spaces
 { [ ! -s "$list" ] || md5sum $(cat "$list"); } |
-    awk -v r="$root/" '{
-        i = index($0, r)
-        if (i) $0 = substr($0, 1, i - 1) "@ROOT@/" substr($0, i + length(r))
-        print
-    }' >"$sum.$$"
+    { "$SQEDIT" sub -F "$root/" '@ROOT@/' || [ $? = 1 ]; } >"$sum.$$"
 mv -f "$sum.$$" "$sum"

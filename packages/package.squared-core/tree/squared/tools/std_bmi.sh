@@ -57,6 +57,10 @@
 # SQUARED_SAY: empty for make V=1 (the commands print instead).
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed and grep did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "std_bmi.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 if [ $# -lt 3 ]; then
     echo "usage: std_bmi.sh <module dir> <archive> <compiler> <flags>..." >&2
@@ -88,7 +92,7 @@ case $probe in
     *) fail "the standard library is not libc++ (squared builds import std from libc++ only: -stdlib=libc++; Debian and Ubuntu: apt install libc++-dev libc++abi-dev)" ;;
 esac
 headers=$(printf '#include <version>\n' | "$cxx" "${flags[@]}" -x c++ -M - 2>/dev/null |
-    tr -d '\\' | tr ' ' '\n' | grep '^/' | LC_ALL=C sort -u) || true
+    tr -d '\\' | tr ' ' '\n' | "$SQEDIT" match -x '"/" .*' | LC_ALL=C sort -u) || true
 [ -n "$headers" ] || fail "$cxx could not list the headers <version> reads"
 
 # --- libc++'s module sources -------------------------------------------------------
@@ -122,24 +126,28 @@ shown=${shown/#"$HOME"/\~}
 # other error is left for the real compile, which shows it.
 fit() {
     local src=$1 round out found file line name
-    awk '
-        /^#[ \t]*if __has_include\(<[^>]*>\)[ \t]*$/ { held = $0; next }
-        held != "" {
-            if( $0 ~ /please update the header information/ ) { held = ""; dropping = 1; next }
-            print held
-            held = ""
-        }
-        dropping && /^#[ \t]*endif/ { dropping = 0; next }
-        { print }
-        END { if( held != "" ) print held }' "$src/std.cppm" > "$src/std.cppm.new"
+    # An `#if __has_include(<h>)` whose next line asks to update the header
+    # information: that line, the #if and its #endif left out, what is between
+    # them kept.
+    { "$SQEDIT" sub --whole '
+        block  <- {~ check -> "" asks -> "" (!endif line)* endif -> "" ~}
+        check  <- "#" sp "if __has_include(<" [^>%nl]* ">)" sp %nl
+        asks   <- (!"please update the header information" [^%nl])* "please update the header information" line
+        endif  <- "#" sp "endif" [^%nl]* (%nl / !.)
+        line   <- [^%nl]* %nl
+        sp     <- (!%nl %s)*' '{1}' "$src/std.cppm" || [ $? = 1 ]; } > "$src/std.cppm.new"
     mv -f "$src/std.cppm.new" "$src/std.cppm"
     : > "$src/LEFT_OUT"
     for round in 1 2 3; do
         out=$("$cxx" "${flags[@]}" -w -Wno-reserved-module-identifier -fsyntax-only "$src/std.cppm" 2>&1) && return 0
-        found=$(printf '%s\n' "$out" | sed -n "s/^\\(.*\\):\\([0-9][0-9]*\\):[0-9][0-9]*: error: using declaration referring to '\\([^']*\\)' with internal linkage cannot be exported.*/\\1 \\2 \\3/p")
+        found=$(printf '%s\n' "$out" | { "$SQEDIT" pick -x $'{(!(":" %d+ ":" %d+ ": error:") .)*} ":" {%d+} ":" %d+ ": error: using declaration referring to \'" {[^\']*} "\' with internal linkage cannot be exported" .*' || [ $? = 1 ]; })
         [ -n "$found" ] || return 0
         while read -r file line name; do
-            sed -i "${line}s|^|// squared: left out, static in this C library: |" "$file"
+            # The line by its number: bash, not a pattern.
+            local -a text
+            mapfile -t text < "$file"
+            text[line - 1]="// squared: left out, static in this C library: ${text[line - 1]}"
+            printf '%s\n' "${text[@]}" > "$file"
             printf '%s\n' "$name" >> "$src/LEFT_OUT"
         done <<< "$found"
     done
@@ -185,7 +193,7 @@ ln -sfn "$dir/std.pcm" "$modules/std.pcm"
 # file compiled): a shared copy pruned or wiped makes make run this again,
 # not stop at "No rule to make target".
 {
-    sed "1s|^std\\.pcm:|$modules/std.ready:|" "$dir/std.d"
+    "$SQEDIT" sub -x '"std.pcm:" {.*}' "$modules/std.ready:{1}" "$dir/std.d" || [ $? = 1 ]
     printf '%s:\n' "$dir/src/std.cppm"
 } > "$modules/std.d"
 printf '%s\n' "$key" > "$modules/std.key"
