@@ -66,13 +66,17 @@ SQ_STORED ?= ttf otf ttc
 # (FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE, WAKE_LOCK,
 # POST_NOTIFICATIONS), the service (dev.squared.ModelService, not exported,
 # foregroundServiceType specialUse with the subtype property Android 14
-# asks for) and android:hasCode="true"; and
-# squared's shim dex (tools/dexgen/shims.dex, 812 bytes) as its classes.dex.
-# Your manifest is not edited. Without it, keep_running returns false and
-# says why in the log. In the link stamp: switching it relinks the APK.
+# asks for). Your manifest is not edited. Without it, keep_running returns
+# false and says why in the log. In the link stamp: switching it relinks the
+# APK.
+#
+# Every APK carries squared's shim dex (tools/dexgen/shims.dex, about 1 KB)
+# as its classes.dex: the activity is dev.squared.SquaredActivity, a
+# NativeActivity that takes the text a keyboard sends whole (a paste), which
+# the NDK cannot read (sq_android/entry.cpp); and ModelService is in it too.
+SQ_SHIM_DEX := $(SQ_SQUARED_DIR)/tools/dexgen/shims.dex
 BACKGROUND ?= 0
 ifeq ($(BACKGROUND),1)
-SQ_SHIM_DEX := $(SQ_SQUARED_DIR)/tools/dexgen/shims.dex
 SQ_MANIFEST_PLAIN := $(SQ_MANIFEST)
 SQ_MANIFEST := $(BUILD)/background/AndroidManifest.xml
 
@@ -90,8 +94,6 @@ $(SQ_MANIFEST): $(SQ_MANIFEST_PLAIN)
 	  $(SQEDIT) match -qF 'android:hasCode="true"' $@ || { \
 	  echo "BACKGROUND=1: could not add the service to $(SQ_MANIFEST_PLAIN): it needs a line '<application', android:hasCode, and a line '</application>'" >&2; \
 	  rm -f $@; exit 1; }
-else
-SQ_SHIM_DEX :=
 endif
 
 # ---------------------------------------------------------------------------
@@ -272,7 +274,7 @@ $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
                     $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so $(SQ_SHIM_DEX)
 	@rm -f $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
 	@cp $(SQ_APK_DIR)/base.apk $@
-	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && echo "  shims          classes.dex ($$(wc -c < $(SQ_APK_DIR)/classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
+	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && echo "  shims          classes.dex ($$(wc -c < $(SQ_APK_DIR)/classes.dex) bytes: squared's shims, SquaredActivity and ModelService)")
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@$(SQ_APKPACK) add $@ -C $(SQ_APK_DIR) lib/$(SQ_ABI)/lib$(SQ_PROJECT).so $(if $(SQ_SHIM_DEX),classes.dex,) >/dev/null
 
@@ -296,7 +298,7 @@ $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
 	@cp $(SQ_APK_DIR)/base.apk $@
 	@echo "  packaging      lib/$(SQ_ABI)/"
 	@cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) lib/$(SQ_ABI)/*.so
-	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) classes.dex && echo "  shims          classes.dex ($$(wc -c < classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
+	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && cd $(SQ_APK_DIR) && zip -q -X $(notdir $@) classes.dex && echo "  shims          classes.dex ($$(wc -c < classes.dex) bytes: squared's shims, SquaredActivity and ModelService)")
 
 keystore: $(SQ_KEYSTORE)
 
@@ -379,7 +381,7 @@ else
 	@printf '  %-14s %s\n' "keystore" "$(if $(wildcard $(SQ_KEYSTORE)),$(SQ_KEYSTORE),will be generated)"
 endif
 	@printf '  %-14s %s\n' "debuggable" "$(if $(SQ_AAPT2_LINK_FLAGS),yes (a DEV_LOG or Console build; SQ_DEBUGGABLE= for no),no)"
-	@printf '  %-14s %s\n' "background" "$(if $(SQ_SHIM_DEX),yes: the service and classes.dex (BACKGROUND=1),no (BACKGROUND=1 for app.keep_running))"
+	@printf '  %-14s %s\n' "background" "$(if $(filter 1,$(BACKGROUND)),yes: the service (BACKGROUND=1),no (BACKGROUND=1 for app.keep_running))"
 	@printf '  %-14s %s\n' "adb" "$$(command -v $(SQ_ADB) || echo 'not found (make devices)')"
 	@echo "target"
 	@printf '  %-14s %s\n' "abi" "$(SQ_ABI) ($(SQ_TRIPLE))"

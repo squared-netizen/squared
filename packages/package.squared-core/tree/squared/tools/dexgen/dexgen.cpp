@@ -62,9 +62,20 @@ struct ShimClass
 // app's class loader when the activity is made (sq_android/background.cpp):
 // no System.loadLibrary, so the dex names no app's library and stays the
 // same for every app.
+//
+// SquaredActivity: every app's activity, a NativeActivity whose
+// dispatchKeyEvent is native, registered by the template's C++ on the
+// activity's own class when it is made (sq_android/entry.cpp). It takes what
+// the NDK cannot read, text a keyboard sends whole (KeyEvent.ACTION_MULTIPLE:
+// CleverKeys' clipboard and paste keys) and the Paste key, and hands every
+// other event to NativeActivity's own.
 const std::vector<ShimClass> &shims()
 {
     static const std::vector<ShimClass> classes = {
+        { "Ldev/squared/SquaredActivity;",
+          "Landroid/app/NativeActivity;",
+          { { MethodKind::constructor, "<init>", "V", {} },
+            { MethodKind::native, "dispatchKeyEvent", "Z", { "Landroid/view/KeyEvent;" } } } },
         { "Ldev/squared/ConsoleActivity;",
           "Landroid/app/NativeActivity;",
           { { MethodKind::constructor, "<init>", "V", {} } } },

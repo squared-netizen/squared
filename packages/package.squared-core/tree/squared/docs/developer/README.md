@@ -40,6 +40,7 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 
 - [app](app.md)
 - [assets](assets.md)
+- [console design](console-design.md) &mdash; what the Console is for: a light, embedded debugger for models and GUIs, launched first; what it is not (sqterm); the rules for changes
 - [console](console.md) &mdash; the Console (Sprint 4): where it lives, its sizes, the built-in commands, the font, layout and renderer, the template's hook, the scrollback ring
 - [data](data.md)
 - [dev](dev.md) &mdash; loopback log sink and its listener, crash reporter and frame-allocation counter (development only)

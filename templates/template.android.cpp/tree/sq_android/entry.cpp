@@ -608,6 +608,103 @@ bool post_background(void* activity) noexcept {
     return post_ui_job(static_cast<const ANativeActivity*>(activity), UiJob::background);
 }
 
+// ---------------------------------------------------------------------------
+// Text a keyboard sends whole, on the UI thread. A keyboard that commits more
+// than one character at once (a paste: CleverKeys' clipboard and paste keys,
+// a clipboard strip) reaches a NativeActivity as one KeyEvent,
+// ACTION_MULTIPLE with KEYCODE_UNKNOWN, whose characters the NDK cannot read;
+// and a Paste key (KEYCODE_PASTE) has no character at all. on_key leaves both
+// unhandled, so Android takes them on to the activity's dispatchKeyEvent.
+// The activity is dev.squared.SquaredActivity (squared's shim dex), which
+// declares that method native: this, which keeps those two for the glue's
+// thread, wakes it, and hands every other event to NativeActivity's own.
+// ---------------------------------------------------------------------------
+
+/// What the UI thread took from the keyboard, until the glue's thread types it.
+struct KeyboardText {
+    std::mutex lock;
+    std::string text;   ///< Text sent whole, in the order it came.
+    bool paste{false};  ///< The Paste key: the clipboard.
+};
+KeyboardText keyboard_text;
+
+/// NativeActivity and its dispatchKeyEvent: SquaredActivity's parent's, for
+/// every event this does not take.
+jclass native_activity_class = nullptr;
+jmethodID native_dispatch_key_event = nullptr;
+
+/// KeyEvent's constants.
+constexpr jint kKeyActionDown = 0, kKeyActionMultiple = 2, kKeycodeUnknown = 0, kKeycodePaste = 279;
+
+/// The glue's thread of the activity `self`, woken from its poll.
+void wake_glue(JNIEnv* env, jobject self) {
+    for (UiThread& thread : ui_threads) {
+        ANativeActivity* activity = thread.activity.load(std::memory_order_acquire);
+        if (activity == nullptr || env->IsSameObject(activity->clazz, self) == JNI_FALSE) continue;
+        auto* glue = static_cast<android_app*>(activity->instance);
+        if (glue != nullptr && glue->looper != nullptr) ALooper_wake(glue->looper);
+    }
+}
+
+/// SquaredActivity.dispatchKeyEvent(KeyEvent), on the UI thread.
+jboolean JNICALL dispatch_key_event(JNIEnv* env, jobject self, jobject event) {
+    jclass type = env->GetObjectClass(event);
+    const jint action = env->CallIntMethod(event, env->GetMethodID(type, "getAction", "()I"));
+    const jint code = env->CallIntMethod(event, env->GetMethodID(type, "getKeyCode", "()I"));
+    bool taken = false;
+    if (action == kKeyActionMultiple && code == kKeycodeUnknown) {
+        auto chars = static_cast<jstring>(
+            env->CallObjectMethod(event, env->GetMethodID(type, "getCharacters", "()Ljava/lang/String;")));
+        if (chars != nullptr) {
+            const auto units = static_cast<std::size_t>(env->GetStringLength(chars));
+            if (const jchar* utf16 = env->GetStringChars(chars, nullptr); utf16 != nullptr) {
+                std::string utf8(units * 3, '\0');
+                utf8.resize(sq_android::utf16_to_utf8({reinterpret_cast<const char16_t*>(utf16), units}, utf8));
+                env->ReleaseStringChars(chars, utf16);
+                const std::lock_guard hold(keyboard_text.lock);
+                keyboard_text.text += utf8;
+                taken = true;
+            }
+            env->DeleteLocalRef(chars);
+        }
+    } else if (code == kKeycodePaste) {
+        if (action == kKeyActionDown) {
+            const std::lock_guard hold(keyboard_text.lock);
+            keyboard_text.paste = true;
+        }
+        taken = true;
+    }
+    env->DeleteLocalRef(type);
+    if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+    if (taken) {
+        wake_glue(env, self);
+        return JNI_TRUE;
+    }
+    if (native_activity_class == nullptr || native_dispatch_key_event == nullptr) return JNI_FALSE;
+    return env->CallNonvirtualBooleanMethod(self, native_activity_class, native_dispatch_key_event, event);
+}
+
+/// Binds SquaredActivity.dispatchKeyEvent, on the activity's own class. A
+/// manifest that names android.app.NativeActivity has nothing to bind, and
+/// then nothing is: a paste does nothing, as before.
+void attach_keyboard(ANativeActivity* activity) {
+    JNIEnv* env = activity->env;
+    if (native_activity_class == nullptr) {
+        if (jclass base = env->FindClass("android/app/NativeActivity"); base != nullptr) {
+            native_dispatch_key_event =
+                env->GetMethodID(base, "dispatchKeyEvent", "(Landroid/view/KeyEvent;)Z");
+            native_activity_class = static_cast<jclass>(env->NewGlobalRef(base));
+            env->DeleteLocalRef(base);
+        }
+        if (env->ExceptionCheck() != JNI_FALSE) env->ExceptionClear();
+    }
+    jclass type = env->GetObjectClass(activity->clazz);
+    const JNINativeMethod method{"dispatchKeyEvent", "(Landroid/view/KeyEvent;)Z",
+                                 reinterpret_cast<void*>(&dispatch_key_event)};
+    if (env->RegisterNatives(type, &method, 1) != JNI_OK) env->ExceptionClear();
+    env->DeleteLocalRef(type);
+}
+
 /// sq_android::Background's lines, on the glue thread: the Console's mirror
 /// (Android's log has them already).
 void background_log(const char* line) noexcept {
@@ -686,7 +783,7 @@ struct Platform {
         console_sink = &console;
 #endif
         console.print("console: the log, as it is written. Three fingers or ` open and close it;");
-        console.print("tap it to type, drag it to scroll, hold the input row to paste");
+        console.print("tap it to type, drag it to scroll; paste: the clipboard");
         // Crash reports: the last run's is shown now; this run's is kept for
         // the next, in the app's private files.
         if (const char* private_files = native->activity->internalDataPath;
@@ -992,16 +1089,8 @@ struct Platform {
         if (!console_touch.moved && action != AMOTION_EVENT_ACTION_CANCEL) {
             const int sx = static_cast<int>(console_touch.x);
             const int sy = static_cast<int>(console_touch.y);
-            const sq::console::GridSize cells = sq::console::grid(frame);
-            const bool on_input_row = cells.rows > 0 && sy >= frame.y + (cells.rows - 1) * frame.cell;
-            constexpr std::int64_t hold_nanoseconds = 500'000'000;
-            const bool held = AMotionEvent_getEventTime(input) - AMotionEvent_getDownTime(input) >=
-                              hold_nanoseconds;
             if (sq::console::touches_close(frame, sx, sy)) {
                 close_console();
-            } else if (on_input_row && held) {
-                focus_console();
-                paste_into_console();
             } else {
                 focus_console();
             }
@@ -1045,6 +1134,11 @@ struct Platform {
                                "screens [low-memory]: the screen stack, its panes and what each "
                                "keeps; low-memory: what the system sends when memory is short",
                                screens_command, this) != Added::added ? 1 : 0;
+        refused += console.add("paste", "paste: the clipboard into the input line, to read before Enter",
+                               [](sq::console::Console&, const sq::console::Args&, void* self) {
+                                   static_cast<Platform*>(self)->paste_into_console();
+                               },
+                               this) != Added::added ? 1 : 0;
         refused += console.add("quit", "quit: close the application and the console",
                                [](sq::console::Console&, const sq::console::Args&, void* self) {
                                    static_cast<Platform*>(self)->quit_asked = true;
@@ -1345,6 +1439,43 @@ struct Platform {
 
     void send(const Event& event) {
         if (created) app.handle_event(event);
+    }
+
+    /// Text for the application's text field that asked for the keyboard, as
+    /// one TextInput event. The Console is not the application's: while it
+    /// has the keyboard, nothing (its own `paste` command reads the clipboard).
+    void type_text(std::string_view typed) {
+        if (typed.empty()) return;
+#ifdef SQUARED_CONSOLE
+        if (console_focused && console.shown()) return;
+#endif
+        if (!text_input.active()) return;
+        Event event;
+        event.type = Event::Type::TextInput;
+        event.text.assign(typed);
+        send(event);
+    }
+
+    /// What a paste reads the clipboard into; a longer clip is cut there.
+    std::array<char, 65536> paste_buffer{};
+
+    /// The clipboard, where typing goes: Ctrl+V and the Paste key.
+    void paste() {
+        const std::size_t length = text.clip_text(paste_buffer);
+        type_text({paste_buffer.data(), length});
+    }
+
+    /// What the UI thread took from the keyboard (dispatch_key_event), typed.
+    void take_keyboard_text() {
+        std::string typed;
+        bool paste_asked = false;
+        {
+            const std::lock_guard hold(keyboard_text.lock);
+            typed.swap(keyboard_text.text);
+            paste_asked = std::exchange(keyboard_text.paste, false);
+        }
+        type_text(typed);
+        if (paste_asked) paste();
     }
 
     /// Create the application and hand it the text-input service. False, and
@@ -1840,6 +1971,11 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
     const std::int32_t meta = AKeyEvent_getMetaState(input);
     const std::int32_t device = AInputEvent_getDeviceId(input);
 
+    // Text a keyboard sends whole (a paste) and the Paste key: the NDK cannot
+    // read the one and has no character for the other. Left unhandled, both
+    // go on to SquaredActivity.dispatchKeyEvent, which takes them (above).
+    if (action == AKEY_EVENT_ACTION_MULTIPLE || code == AKEYCODE_PASTE) return 0;
+
 #ifdef SQUARED_CONSOLE
     if (platform.console_key(code, action, meta, device, AKeyEvent_getRepeatCount(input) > 0)) {
         return 1;
@@ -1868,7 +2004,15 @@ int32_t on_key(Platform& platform, AInputEvent* input) {
     // leaves it, a terminal makes Ctrl-C of it (Widget::key_text). A key that
     // types something else with them held (AltGr's @ on a German keyboard)
     // sends that, as plain text.
-    if (event.type == Event::Type::KeyDown && platform.text_input.active()) {
+    // Ctrl+V pastes (Ctrl+Shift+V too), in a terminal as everywhere else: the
+    // clipboard as typed text, not the ^V a terminal would otherwise send.
+    constexpr std::int32_t ctrl_held = AMETA_CTRL_ON | AMETA_CTRL_LEFT_ON | AMETA_CTRL_RIGHT_ON;
+    constexpr std::int32_t alt_meta_held = AMETA_ALT_ON | AMETA_ALT_LEFT_ON | AMETA_ALT_RIGHT_ON |
+                                           AMETA_META_ON | AMETA_META_LEFT_ON | AMETA_META_RIGHT_ON;
+    const bool paste_keys = code == AKEYCODE_V && (meta & ctrl_held) != 0 && (meta & alt_meta_held) == 0;
+    if (event.type == Event::Type::KeyDown && platform.text_input.active() && paste_keys) {
+        platform.paste();
+    } else if (event.type == Event::Type::KeyDown && platform.text_input.active()) {
         if (event.key == Key::enter) platform.text_input.entered();
         constexpr std::int32_t held = AMETA_CTRL_ON | AMETA_CTRL_LEFT_ON | AMETA_CTRL_RIGHT_ON |
                                       AMETA_ALT_ON | AMETA_ALT_LEFT_ON | AMETA_ALT_RIGHT_ON |
@@ -2046,6 +2190,10 @@ void android_main(android_app* app) {
 #endif
 #endif
 
+        // A paste the UI thread took (SquaredActivity.dispatchKeyEvent),
+        // typed before the frame that shows it.
+        platform->take_keyboard_text();
+
         // Nothing is drawn once finishing: the application has said it is
         // done, and its last frame should be the one it chose.
         if (!platform->finishing) platform->frame();
@@ -2078,6 +2226,8 @@ extern "C" JNIEXPORT void squared_on_create(ANativeActivity* activity, void* sav
     // Running in the background (BACKGROUND=1): the service's natives, once
     // a process, through this activity's class loader.
     static_cast<void>(sq_android::background().attach(activity));
+    // A paste, and the Paste key: SquaredActivity's dispatchKeyEvent.
+    attach_keyboard(activity);
     ANativeActivity_onCreate(activity, saved_state, saved_state_size);
     glue_on_destroy = activity->callbacks->onDestroy;
     activity->callbacks->onDestroy = squared_on_destroy;
