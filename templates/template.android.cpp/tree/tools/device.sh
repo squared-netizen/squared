@@ -267,7 +267,7 @@ cmd_console_only() {
   fi
 }
 
-usage() { "$SQEDIT" lines 2..16 "$0" | "$SQEDIT" pick -x '"#" " "? {.*}'; }
+usage() { "$SQEDIT" lines 2..16 "$0" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'; }
 
 [ $# -ge 1 ] || {
   usage

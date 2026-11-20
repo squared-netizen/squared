@@ -16,6 +16,10 @@
 # 2 usage or environment error.
 
 set -uo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "format.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root=$(cd "$script_dir/.." && pwd)
@@ -27,7 +31,7 @@ for argument in "$@"; do
         --check) check=1 ;;
         --force) force=1 ;;
         -h|--help)
-            sed -n '3,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            "$SQEDIT" lines 3..17 "${BASH_SOURCE[0]}" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'
             exit 0 ;;
         *)
             echo "format: unknown option $argument" >&2
@@ -40,7 +44,7 @@ command -v clang-format >/dev/null 2>&1 \
 [ -f "$root/.clang-format" ] \
     || { echo "format: no $root/.clang-format" >&2; exit 2; }
 
-version=$(clang-format --version | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p')
+version=$(clang-format --version | "$SQEDIT" pick '"version " {%d+}')
 if [ -z "$version" ] || [ "$version" -lt 18 ]; then
     echo "format: clang-format 18 or newer is needed (found: $(clang-format --version))" >&2
     exit 2

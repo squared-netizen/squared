@@ -18,6 +18,10 @@
 #
 # Exit codes: 0 built, 1 a step failed, 2 usage.
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "shim_spike.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 proj=$(cd "${1:-.}" && pwd)
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -42,9 +46,11 @@ mkdir -p "$out"
 echo "== 2/4 the manifest: the console activity added, hasCode dropped"
 src=$build/dev/AndroidManifest.xml
 [ -f "$src" ] || src=$proj/sq_android/AndroidManifest.xml
-grep -q '</application>' "$src" || { echo "shim_spike: no </application> in $src" >&2; exit 1; }
+"$SQEDIT" match -qF '</application>' "$src" || { echo "shim_spike: no </application> in $src" >&2; exit 1; }
 {
-    sed -e 's/[[:space:]]*android:hasCode="false"//' -e '/<\/application>/,$d' "$src"
+    # Up to the line of </application>, hasCode="false" taken out.
+    { "$SQEDIT" sub --whole '(!%nl %s)* "</application>" .*' '' "$src" || [ $? = 1 ]; } |
+        { "$SQEDIT" sub "%s* 'android:hasCode=\"false\"'" '' || [ $? = 1 ]; }
     cat <<EOF
         <!-- Added by squared/tools/shim_spike.sh: the generated shim class, in
              its own process and task, loading lib${project}.so. -->
@@ -62,9 +68,9 @@ grep -q '</application>' "$src" || { echo "shim_spike: no </application> in $src
             </intent-filter>
         </activity>
 EOF
-    sed -n '/<\/application>/,$p' "$src"
+    "$SQEDIT" lines '%s* "</application>"..$' "$src"
 } >"$out/AndroidManifest.xml"
-grep -q 'hasCode="false"' "$out/AndroidManifest.xml" && { echo "shim_spike: hasCode=\"false\" is still there" >&2; exit 1; }
+"$SQEDIT" match -qF 'hasCode="false"' "$out/AndroidManifest.xml" && { echo "shim_spike: hasCode=\"false\" is still there" >&2; exit 1; }
 echo "  $out/AndroidManifest.xml"
 
 echo "== 3/4 link, add classes.dex and the library"

@@ -2,6 +2,10 @@
 # Print sizeof/alignof for the core types, for docs/developer/memory-profile.md.
 # Imports the modules: build first (make), with the same CXX.
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "measure_sizes.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 : "${CXX:=clang++}"
@@ -12,15 +16,15 @@ cd "$root"
 # see the same external modules.
 if [ -z "$SQUARED_EXTERNAL_INCLUDES" ] && [ -f local.mk ]; then
   SQUARED_EXTERNAL_INCLUDES="$(
-    sed -n 's/^[[:space:]]*SQUARED_EXTERNAL_INCLUDES[[:space:]]*[:?]\{0,1\}=[[:space:]]*//p' \
-      local.mk | tr '\n' ' ' | sed 's/\\//g'
+    { "$SQEDIT" pick -x '%s* "SQUARED_EXTERNAL_INCLUDES" %s* [:?]? "=" %s* {.*}' local.mk || [ $? = 1 ]; } \
+      | tr '\n' ' ' | { "$SQEDIT" sub -F '\' '' || [ $? = 1 ]; }
   )"
   # local.mk is make syntax, so it may contain $(PREFIX). Rewrite make's
   # $(NAME) to shell's ${NAME} before expanding: passing $(...) through eval
   # makes the shell try to run the name as a command.
   SQUARED_EXTERNAL_INCLUDES="$(
     printf '%s' "$SQUARED_EXTERNAL_INCLUDES" \
-      | sed 's/\$(\([A-Za-z_][A-Za-z_0-9]*\))/${\1}/g'
+      | { "$SQEDIT" sub '"$(" {[A-Za-z_] [A-Za-z_0-9]*} ")"' '${{{1}}}' || [ $? = 1 ]; }
   )"
   eval "SQUARED_EXTERNAL_INCLUDES=\"$SQUARED_EXTERNAL_INCLUDES\""
 fi

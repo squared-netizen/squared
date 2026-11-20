@@ -5,8 +5,12 @@
 # line, the key ending at the first space.
 #   rule   name, used in reports and in tools/lint-baseline.txt
 #   why    the reason, printed with every finding
-#   match  an extended regular expression (POSIX ERE, plus \b), matched against
-#          each line of code with comments removed and string contents blanked
+#   match  a sqedit pattern (a parsing expression grammar, as LPeg's re
+#          writes it) that the whole line must match (sqedit match -x),
+#          against each line of code with comments removed and string
+#          contents blanked. Each walks the line a word at a time, so every
+#          place it tries is a word's start: (!H [%w_]* (![%w_] .))* H .*
+#          finds H at a word boundary.
 #   files  optional: space-separated shell globs relative to squared/; default
 #          every .hpp and .cpp outside third_party/, build/, docs/ and any
 #          test/ directory (tests may do what the framework may not)
@@ -19,20 +23,20 @@
 
 rule  std-function
 why   std::function heap-allocates captures and calls through type erasure: keep it off per-frame paths (priorities 1 and 3). Existing uses are input and callback paths (priority-audit.md item 5).
-match \bstd::function\b
+match (!("std::function" ![%w_]) [%w_]* (![%w_] .))* ("std::function" ![%w_]) .*
 
 rule  exceptions
 why   squared is moving to -fno-exceptions (priority-audit.md items 1 and 3): no new throw, try or catch. Return a result, or assert for a programmer error.
-match \b(throw|try|catch)\b
+match (!(("throw" / "try" / "catch") ![%w_]) [%w_]* (![%w_] .))* (("throw" / "try" / "catch") ![%w_]) .*
 
 rule  rtti
 why   squared builds clean with -fno-rtti (priority-audit.md item 2) and must stay that way: use actor_cast (gui) or asset_type_id (assets).
-match \b(dynamic_cast|typeid)\b
+match (!(("dynamic_cast" / "typeid") ![%w_]) [%w_]* (![%w_] .))* (("dynamic_cast" / "typeid") ![%w_]) .*
 
 rule  raw-new
 why   no hand-written new: use std::make_unique, a container, or the owning pool (priority 1). clang-tidy catches owning raw pointers; this catches new expressions anywhere, placement new included. A pool's own placement new belongs in the baseline, with its reason after '#' on that entry's line.
-match (^|[^_[:alnum:]])new\b[[:space:]]*[(_[:alpha:]:]
+match (!("new" ![%w_] %s* [(_a-zA-Z:]) [%w_]* (![%w_] .))* ("new" ![%w_] %s* [(_a-zA-Z:]) .*
 
 rule  raw-delete
 why   no hand-written delete; ownership types free their memory (priority 1). "= delete" on a function is fine and is not matched.
-match (^|[^=[:space:]])[[:space:]]*\bdelete\b[[:space:]]*(\[[[:space:]]*\])?[[:space:]]*[_[:alpha:]*(]
+match ("=" %s* [%w_]* / !("delete" ![%w_] %s* ("[" %s* "]")? %s* [_a-zA-Z*(]) [%w_]* (![%w_] .))* ("delete" ![%w_] %s* ("[" %s* "]")? %s* [_a-zA-Z*(]) .*

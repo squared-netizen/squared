@@ -26,6 +26,10 @@
 # Bash 3.2 compatible.
 
 set -uo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "docs-archive.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 framework=$(cd "$script_dir/.." && pwd)
@@ -42,7 +46,7 @@ while [ $# -gt 0 ]; do
             workspace=$2
             shift ;;
         -h|--help)
-            sed -n '3,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            "$SQEDIT" lines 3..28 "${BASH_SOURCE[0]}" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'
             exit 0 ;;
         -*)
             echo "docs-archive: unknown option $1" >&2
@@ -69,7 +73,7 @@ command -v zip >/dev/null 2>&1 \
 # package manifest carries it. Otherwise "unversioned" rather than a guess.
 
 read_make_var() { # read_make_var <file> <name>
-    awk -v k="$2" '$1 == k && $2 == ":=" { print $3; exit }' "$1" 2>/dev/null
+    "$SQEDIT" pick -x "%s* '$2' %s+ ':=' %s+ {%S+} .*" "$1" 2>/dev/null | head -n 1
 }
 
 framework_version() {
@@ -79,7 +83,7 @@ framework_version() {
     elif [ -f "$root_of_framework/../mk/squared_generated.mk" ]; then
         v=$(read_make_var "$root_of_framework/../mk/squared_generated.mk" SQ_FRAMEWORK_VERSION)
     elif [ -f "$root_of_framework/../../SQ-INF/manifest.json" ]; then
-        v=$(sed -n 's/^  "version": "\([^"]*\)".*/\1/p' "$root_of_framework/../../SQ-INF/manifest.json" | head -n 1)
+        v=$("$SQEDIT" json version "$root_of_framework/../../SQ-INF/manifest.json")
     fi
     echo "${v:-unversioned}"
 }
@@ -188,7 +192,7 @@ fi
 
 mv "$scratch/$name" "$target" || { echo "docs-archive: could not move into place" >&2; exit 1; }
 
-files=$(unzip -l "$target" 2>/dev/null | tail -n 1 | awk '{print $2}')
+files=$(unzip -l "$target" 2>/dev/null | tail -n 1 | "$SQEDIT" pick -x '%s* %S+ %s+ {%S+} .*')
 size=$(du -h "$target" | cut -f1)
 
 echo "$target"

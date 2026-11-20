@@ -19,6 +19,10 @@
 # Exit status: 0 when all pass, 1 when one fails, 2 on a usage error.
 
 set -euo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "check_modules.sh: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
@@ -29,13 +33,13 @@ pinned=third_party/freetype/PINNED
 if [ ! -f "$pinned" ]; then
     echo "check_modules: no third_party/freetype/PINNED: pin FreeType's sources (tools/pin_freetype.sh)" >&2
     status=1
-elif ! bad=$(cd third_party/freetype && grep -E '^[0-9a-f]{64}  ' PINNED | sha256sum -c --quiet 2>&1); then
-    printf '%s\n' "$bad" | head -5 | sed 's/^/  /' >&2
+elif ! bad=$(cd third_party/freetype && "$SQEDIT" match -x '[0-9a-f]+ "  " .*' PINNED | sha256sum -c --quiet 2>&1); then
+    printf '%s\n' "$bad" | head -5 | "$SQEDIT" sub -x '{.*}' '  {1}' >&2
     echo "check_modules: third_party/freetype/ is not what PINNED says: pin again (tools/pin_freetype.sh), never edit it" >&2
     status=1
 else
-    files=$(grep -cE '^[0-9a-f]{64}  ' "$pinned")
-    echo "check_modules: freetype: $files pinned files as PINNED says ($(sed -n 's/^freetype: //p' "$pinned"))"
+    files=$("$SQEDIT" match -cx '[0-9a-f]+ "  " .*' "$pinned")
+    echo "check_modules: freetype: $files pinned files as PINNED says ($("$SQEDIT" pick -x '"freetype: " {.*}' "$pinned"))"
 fi
 
 # --- 2 -----------------------------------------------------------------------
@@ -45,15 +49,17 @@ print-modules:
 EOF
 )
 # The top Makefile's order lines, `<module>: <modules>`, as "module dep" pairs.
-pairs=$(sed -n 's/^\([a-z_]*\): \([a-z_ ]*\)$/\1 \2/p' Makefile |
-    awk -v mods=" $modules " '{ if (index(mods, " " $1 " ") == 0) next; for (i = 2; i <= NF; i++) print $1, $i }')
+pairs=$({ "$SQEDIT" pick -x '{[a-z_]*} ": " {[a-z_ ]*}' Makefile || [ $? = 1 ]; } |
+    while IFS=$'\t' read -r from deps; do
+        case " $modules " in *" $from "*) for d in $deps; do printf '%s %s\n' "$from" "$d"; done ;; esac
+    done)
 # reaches <from> <to>: whether the order puts <to> before <from>.
 reaches() {
     local seen=" $1 " todo="$1" next m d
     while [ -n "$todo" ]; do
         next=""
         for m in $todo; do
-            for d in $(printf '%s\n' "$pairs" | awk -v m="$m" '$1 == m { print $2 }'); do
+            for d in $(printf '%s\n' "$pairs" | while read -r a b; do if [ "$a" = "$m" ]; then echo "$b"; fi; done); do
                 [ "$d" = "$2" ] && return 0
                 case $seen in *" $d "*) ;; *) seen="$seen$d " next="$next $d" ;; esac
             done
@@ -65,8 +71,8 @@ reaches() {
 order_bad=0
 for m in $modules; do
     [ -d "$m" ] || continue
-    imported=$(grep -rhoE '^(export )?import sq\.[a-z_]+;' --include=*.cppm --include=*.cpp --include=*.hpp "$m" |
-        sed 's/.*import sq\.\([a-z_]*\);/\1/' | LC_ALL=C sort -u || true)
+    imported=$(find "$m" -type f \( -name '*.cppm' -o -name '*.cpp' -o -name '*.hpp' \) \
+        -exec "$SQEDIT" pick -x '("export ")? "import sq." {[a-z_]+} ";" .*' {} + | LC_ALL=C sort -u || true)
     for i in $imported; do
         [ "$i" = std ] || [ "$i" = "$m" ] && continue
         if ! reaches "$m" "$i"; then
@@ -88,7 +94,7 @@ for m in $modules; do
     [ -d "$m" ] || continue
     # One run a module, all its units at once: a process a unit took minutes
     # on the phone.
-    mapfile -t list < <(cd "$m" && find . -name '*.cppm' -not -path './test/*' | sed 's|^\./||' | LC_ALL=C sort)
+    mapfile -t list < <(cd "$m" && find . -name '*.cppm' -not -path './test/*' | "$SQEDIT" pick -x '"./" {.*}' | LC_ALL=C sort)
     [ ${#list[@]} -gt 0 ] || continue
     units=$((units + ${#list[@]}))
     printf '  %s: %s units\n' "$m" "${#list[@]}"

@@ -33,6 +33,10 @@
 # lint-rules.txt, so the engine can be replaced without touching either.
 
 set -uo pipefail
+# sqedit (github.com/squared-netizen/sqedit) does what sed, grep and awk did here.
+SQEDIT=${SQEDIT:-sqedit}
+command -v "$SQEDIT" >/dev/null ||
+    { echo "lint: needs sqedit, on PATH or as $SQEDIT (github.com/squared-netizen/sqedit)" >&2; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root=$(cd "$script_dir/.." && pwd)
@@ -67,7 +71,7 @@ while [ $# -gt 0 ]; do
             jobs=$2
             shift ;;
         -h|--help)
-            sed -n '3,29p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            "$SQEDIT" lines 3..29 "${BASH_SOURCE[0]}" | "$SQEDIT" sub -x '"#" " "? {.*}' '{1}'
             exit 0 ;;
         -*) echo "lint: unknown option $1" >&2; exit 2 ;;
         *) named+=("${1#./}") ;;
@@ -98,7 +102,7 @@ SECONDS=0
 
 all_sources() {
     (cd "$root" && find . \( -path ./third_party -o -path ./build -o -path ./docs \) -prune \
-        -o -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.cppm' \) -print | sed 's|^\./||' | LC_ALL=C sort)
+        -o -type f \( -name '*.hpp' -o -name '*.cpp' -o -name '*.cppm' \) -print | "$SQEDIT" pick -x '"./" {.*}' | LC_ALL=C sort)
 }
 if [ ${#named[@]} -gt 0 ]; then
     printf '%s\n' "${named[@]}" >"$TMP/files"
@@ -111,7 +115,8 @@ elif [ "$changed" -eq 1 ]; then
     # header has nothing of it left to check.
     { git -C "$root" diff --name-only --relative --diff-filter=d "$base" -- .
       git -C "$root" ls-files --others --exclude-standard -- . ; } \
-        | grep -E '\.(hpp|cpp|cppm)$' | grep -vE '^(third_party|build|docs)/' | LC_ALL=C sort -u >"$TMP/files"
+        | "$SQEDIT" match -x '(!("." ("hpp" / "cppm" / "cpp") !.) .)* "." ("hpp" / "cppm" / "cpp")' \
+        | "$SQEDIT" match -vx '("third_party" / "build" / "docs") "/" .*' | LC_ALL=C sort -u >"$TMP/files"
 else
     all_sources >"$TMP/files"
 fi
@@ -133,14 +138,14 @@ if run format; then
     else
         # The tree is formatted with clang-format 21 (docs/developer/code-style.md);
         # an older one can disagree about a few files.
-        echo "  $(clang-format --version | sed -n 's/.*version \([0-9.]*\).*/clang-format \1/p')"
+        echo "  clang-format $(clang-format --version | "$SQEDIT" pick '"version " {[0-9.]+}')"
         # 40 files per clang-format run: few processes, and a progress line per run.
         split -l 40 "$TMP/files" "$TMP/chunk."
         : >"$TMP/unformatted"
         done_n=0
         for chunk in "$TMP"/chunk.*; do
             (cd "$root" && xargs clang-format --style=file --dry-run --Werror <"$chunk") 2>&1 \
-                | grep -oE '^[^ :]+:[0-9]+:[0-9]+: (error|warning)' | cut -d: -f1 \
+                | "$SQEDIT" pick -x '{[^ :]+} ":" %d+ ":" %d+ ": " ("error" / "warning") .*' \
                 | LC_ALL=C sort -u >>"$TMP/unformatted"
             done_n=$((done_n + $(wc -l <"$chunk")))
             [ "$nfiles" -le 40 ] || echo "  checked $done_n/$nfiles"
@@ -159,55 +164,36 @@ fi
 
 # Copies of the source files with comments removed and the contents of string
 # and character literals blanked, line for line, so a match's line number is
-# the source's. One awk run for every file. Raw string literals are not
-# understood; squared has none.
-cat >"$TMP/strip.awk" <<'AWK'
-FNR == 1 { if (dest != "") close(dest); dest = out "/" FILENAME; block = 0 }
-{
-    line = $0; o = ""; i = 1; n = length(line)
-    while (i <= n) {
-        c = substr(line, i, 1); d = substr(line, i, 2)
-        if (block) {
-            if (d == "*/") { block = 0; o = o "  "; i += 2 } else { o = o " "; i++ }
-        } else if (d == "//") {
-            break
-        } else if (d == "/*") {
-            block = 1; o = o "  "; i += 2
-        } else if (c == "\"" || c == "'") {
-            q = c; o = o c; i++
-            while (i <= n) {
-                c = substr(line, i, 1)
-                if (c == "\\") { o = o "  "; i += 2; continue }
-                if (c == q) { o = o c; i++; break }
-                o = o " "; i++
-            }
-        } else {
-            o = o c; i++
-        }
-    }
-    print o > dest
-}
-AWK
+# the source's: a block comment's characters become spaces (its line breaks
+# stay), a line comment goes, a literal keeps its quotes and blanks the rest
+# (an escape is two spaces). One sqedit run for every file, each changed in
+# place in a copy. Raw string literals are not understood; squared has none.
+cat >"$TMP/strip.peg" <<'PEG'
+strip   <- {~ (block / line / dq / sq / .)* ~}
+block   <- '/*' -> '  ' (!'*/' (%nl / . -> ' '))* ('*/' -> '  ')?
+line    <- '//' [^%nl]* -> ''
+dq      <- '"' (escape / [^"%nl] -> ' ')* '"'?
+sq      <- "'" (escape / [^'%nl] -> ' ')* "'"?
+escape  <- '\' [^%nl]? -> '  '
+PEG
 strip_all() {
     mkdir -p "$TMP/stripped"
-    while IFS= read -r f; do
-        case "$f" in */*) echo "${f%/*}" ;; esac
-    done <"$TMP/files" | LC_ALL=C sort -u | (cd "$TMP/stripped" && xargs mkdir -p)
-    (cd "$root" && xargs awk -v out="$TMP/stripped" -f "$TMP/strip.awk" <"$TMP/files")
+    (cd "$root" && tar -cf - -T "$TMP/files") | (cd "$TMP/stripped" && tar -xf -)
+    (cd "$TMP/stripped" && xargs "$SQEDIT" sub --whole --in-place -g "$TMP/strip.peg" 'strip' '{1}' <"$TMP/files") || true
 }
 
 # Rules, one per block: rule / why / match / files.
 parse_rules() {
-    awk '
-    function flush() { if (r != "") print r "\037" m "\037" f "\037" w; r = m = f = w = "" }
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*$/ { flush(); next }
-    {
-        key = $1; val = $0; sub(/^[^[:space:]]+[[:space:]]+/, "", val)
-        if (key == "rule") r = val; else if (key == "match") m = val
-        else if (key == "files") f = val; else if (key == "why") w = val
-    }
-    END { flush() }' "$RULES"
+    local key val r= m= f= w=
+    flush() { [ -z "$r" ] || printf '%s\037%s\037%s\037%s\n' "$r" "$m" "$f" "$w"; r= m= f= w=; }
+    while IFS=$' \t' read -r key val; do
+        case $key in
+            '#'*) ;;
+            '') flush ;;
+            rule) r=$val ;; match) m=$val ;; files) f=$val ;; why) w=$val ;;
+        esac
+    done <"$RULES"
+    flush
 }
 
 if run rules; then
@@ -219,7 +205,9 @@ if run rules; then
         echo "  $(wc -l <"$TMP/rules" | tr -d ' ') rule(s) from tools/lint-rules.txt"
         strip_all
         : >"$TMP/counts"
-        [ -f "$BASELINE" ] && grep -v '^#' "$BASELINE" >"$TMP/baseline" || : >"$TMP/baseline"
+        [ -f "$BASELINE" ] && "$SQEDIT" match -vx '"#" .*' "$BASELINE" >"$TMP/baseline" || : >"$TMP/baseline"
+        declare -A allowed=()
+        while read -r br bf bc _; do [ -z "$bf" ] || allowed["$br $bf"]=$bc; done <"$TMP/baseline"
         n=0
         # \037 (unit separator), not a tab: read collapses repeated whitespace
         # separators, which would drop an empty files field.
@@ -228,7 +216,7 @@ if run rules; then
             if [ -z "$globs" ]; then
                 # Framework code only: tests may use what the framework may not
                 # (an NDK stub returns raw pointers, a test may catch).
-                grep -v '/test/' "$TMP/files" >"$TMP/rulefiles" || true
+                "$SQEDIT" match -vF '/test/' "$TMP/files" >"$TMP/rulefiles" || true
             else
                 while IFS= read -r f; do
                     for g in $globs; do
@@ -238,21 +226,24 @@ if run rules; then
                 done <"$TMP/files" >"$TMP/rulefiles"
             fi
             : >"$TMP/hits"
-            [ -s "$TMP/rulefiles" ] && (cd "$TMP/stripped" && xargs grep -nHE -- "$match" <"$TMP/rulefiles") \
+            # /dev/null too: sqedit names the file with each line when it reads more than one.
+            [ -s "$TMP/rulefiles" ] && (cd "$TMP/stripped" && xargs "$SQEDIT" match -nx -- "$match" /dev/null <"$TMP/rulefiles") \
                 >"$TMP/hits" 2>/dev/null
             # rule file count, then the files over the baseline: file count allowed
             cut -d: -f1 "$TMP/hits" | LC_ALL=C sort | uniq -c \
-                | awk -v r="$rule" '{ print r, $2, $1 }' >"$TMP/rulecounts"
+                | while read -r count file; do echo "$rule $file $count"; done >"$TMP/rulecounts"
             cat "$TMP/rulecounts" >>"$TMP/counts"
-            awk 'FILENAME == ARGV[1] { allowed[$1 " " $2] = $3; next }
-                 { a = allowed[$1 " " $2] + 0; if ($3 > a) print $2, $3, a }' \
-                "$TMP/baseline" "$TMP/rulecounts" >"$TMP/over"
+            while read -r cr cf cc; do
+                ca=${allowed["$cr $cf"]:-0}
+                if [ "$cc" -gt "$ca" ]; then echo "$cf $cc $ca"; fi
+            done <"$TMP/rulecounts" >"$TMP/over"
             total=$(wc -l <"$TMP/hits" | tr -d ' ')
             if [ "$record" -eq 1 ]; then
                 printf '  %-14s %s match(es)\n' "$rule" "$total"
                 continue
             fi
-            over=$(awk '{ s += $2 - $3 } END { print s + 0 }' "$TMP/over")
+            over=0
+            while read -r _ oc oa; do over=$((over + oc - oa)); done <"$TMP/over"
             printf '  %-14s %s match(es), %s over the baseline\n' "$rule" "$total" "$over"
             [ "$over" -eq 0 ] || echo "[$rule] $why" >>"$REPORT"
             shown=0
@@ -260,10 +251,13 @@ if run rules; then
                 shown=$((shown + 1))
                 [ "$shown" -gt 10 ] || echo "    $f: $count (baseline $allowed)"
                 # Each matching line, quoted from the real source.
-                awk -F: -v f="$f" -v r="$rule" '
-                    FILENAME == ARGV[1] { if ($1 == f) want[$2] = 1; next }
-                    FNR in want { s = $0; sub(/^[[:space:]]+/, "", s); print "  " f ":" FNR ": [" r "] " substr(s, 1, 90) }' \
-                    "$TMP/hits" "$root/$f" >>"$REPORT"
+                mapfile -t source <"$root/$f"
+                while IFS=: read -r hf hn _; do
+                    [ "$hf" = "$f" ] || continue
+                    s=${source[hn - 1]}
+                    s=${s#"${s%%[![:space:]]*}"}
+                    echo "  $f:$hn: [$rule] ${s:0:90}"
+                done <"$TMP/hits" >>"$REPORT"
             done <"$TMP/over"
             [ "$shown" -le 10 ] || echo "    ... and $((shown - 10)) more file(s); see the report"
             n=$((n + over))
@@ -275,20 +269,27 @@ if run rules; then
                 echo "# tools/lint-baseline.txt — accepted rule matches: rule, file, count."
                 echo "# Written by tools/lint.sh --record-baseline; counts may only go down."
                 echo "# Add a reason after '#' on an entry's line; re-recording keeps it."
-                LC_ALL=C sort "$TMP/counts" | awk '
-                    FILENAME == ARGV[1] {
-                        if ($0 !~ /^#/ && (h = index($0, "#")) > 0) note[$1 " " $2] = substr($0, h)
-                        next
-                    }
-                    { k = $1 " " $2; print $0 ((k in note) ? "  " note[k] : "") }' "$TMP/oldbaseline" -
+                declare -A note=()
+                while IFS= read -r line; do
+                    case $line in '#'*) continue ;; *'#'*) read -r na nb _ <<<"$line"; note["$na $nb"]="#${line#*#}" ;; esac
+                done <"$TMP/oldbaseline"
+                LC_ALL=C sort "$TMP/counts" | while IFS= read -r line; do
+                    read -r na nb _ <<<"$line"
+                    if [ -n "${note["$na $nb"]+x}" ]; then echo "$line  ${note["$na $nb"]}"; else echo "$line"; fi
+                done
             } >"$TMP/newbaseline"
             # Say what rose: raising a count is accepting new matches, which a
             # reviewer should see in the commit and here. (Not on a first record:
             # everything rose from nothing.)
-            [ ! -s "$TMP/oldbaseline" ] || awk 'FILENAME == ARGV[1] { if ($0 !~ /^#/) old[$1 " " $2] = $3; next }
-                 /^#/ { next }
-                 { o = old[$1 " " $2] + 0; if ($3 > o) printf "  accepted %s %s: %d -> %d\n", $1, $2, o, $3 }' \
-                "$TMP/oldbaseline" "$TMP/newbaseline"
+            if [ -s "$TMP/oldbaseline" ]; then
+                declare -A old=()
+                while read -r oa ob oc _; do case $oa in '#'*) ;; *) old["$oa $ob"]=$oc ;; esac; done <"$TMP/oldbaseline"
+                while read -r na nb nc _; do
+                    case $na in '#'*) continue ;; esac
+                    o=${old["$na $nb"]:-0}
+                    if [ "$nc" -gt "$o" ]; then printf '  accepted %s %s: %d -> %d\n' "$na" "$nb" "$o" "$nc"; fi
+                done <"$TMP/newbaseline"
+            fi
             cat "$TMP/newbaseline" >"$BASELINE"
             echo "  baseline recorded: $(wc -l <"$TMP/counts" | tr -d ' ') entr(ies) in tools/lint-baseline.txt"
         else
@@ -332,7 +333,7 @@ ndk_include() {
     case "$(uname -m)" in aarch64 | arm64) host=linux-arm64 ;; *) host=linux-x86_64 ;; esac
     find "${PREFIX:-/usr}/opt/android-sdk/ndk" ${ANDROID_NDK_HOME:+"$ANDROID_NDK_HOME"} \
         -path '*sysroot/usr/include/GLES3/gl3.h' 2>/dev/null | sort -V >"$TMP/ndk"
-    gl3=$(grep "/$host/" "$TMP/ndk" | tail -n 1)
+    gl3=$("$SQEDIT" match -F "/$host/" "$TMP/ndk" | tail -n 1)
     [ -n "$gl3" ] || gl3=$(tail -n 1 "$TMP/ndk")
     [ -n "$gl3" ] && printf '%s\n' "${gl3%/GLES3/gl3.h}"
 }
@@ -345,10 +346,10 @@ plan_config() { # plan_config <name>; uses ${overrides[@]}
     for m in $mods; do
         [ -f "$root/$m/Makefile" ] || continue
         out=$(mk_print "$root/$m" SOURCES INTERFACES STANDARD OPTIMISE SQUARED_ABI INCLUDES SQUARED_MODULE_USE)
-        srcs=$(printf '%s\n' "$out" | sed -n '1,2p' | tr '\n' ' ')
-        flags=$(printf '%s\n' "$out" | sed 1,2d | tr '\n' ' ')
+        srcs=$(printf '%s\n' "$out" | "$SQEDIT" lines 1..2 | tr '\n' ' ')
+        flags=$(printf '%s\n' "$out" | "$SQEDIT" lines 3.. | tr '\n' ' ')
         for src in $srcs; do
-            grep -qF "$m/$src"$'\037' "$TMP/plan" || printf '%s\037%s\037%s\n' "$m/$src" "$cfg" "$flags" >>"$TMP/plan"
+            "$SQEDIT" match -qF "$m/$src"$'\037' "$TMP/plan" || printf '%s\037%s\037%s\n' "$m/$src" "$cfg" "$flags" >>"$TMP/plan"
         done
     done
 }
@@ -358,7 +359,7 @@ tidy_one() { # tidy_one <file> <config> <flags> <i/n>; writes $TMP/tidy/<file>.l
     mkdir -p "$(dirname "$log")"
     # shellcheck disable=SC2086
     (cd "$root" && clang-tidy --quiet "$f" -- $3) >"$log" 2>&1
-    k=$(grep -cE '^[^ ]+:[0-9]+:[0-9]+: (warning|error):' "$log" || true)
+    k=$("$SQEDIT" match -cx '[^ :]+ ":" %d+ ":" %d+ ": " ("warning" / "error") ":" .*' "$log" || true)
     printf '  [%s] %-50s %-8s %s\n' "$4" "$f" "$2" "$([ "$k" -gt 0 ] && echo "$k finding(s)" || echo ok)"
 }
 
@@ -386,7 +387,7 @@ if run tidy; then
         fi
         if [ ! -s "$TMP/plan" ]; then
             # No Makefiles to ask: every .cpp under <module>/src/, layout defaults.
-            grep -E '^[a-z][a-z0-9_]*/src/.*\.cpp$' "$TMP/files" | while IFS= read -r f; do
+            "$SQEDIT" match -x '[a-z] [a-z0-9_]* "/src/" (!(".cpp" !.) .)* ".cpp"' "$TMP/files" | while IFS= read -r f; do
                 printf '%s\037layout\037-std=c++23 -I%s -I%s/%s/src\n' "$f" "$(dirname "$root")" "$root" "${f%%/*}"
             done >"$TMP/plan"
         fi
@@ -394,12 +395,19 @@ if run tidy; then
         # the sources that include it directly, so --changed on a header-only
         # change still analyses it.
         cp "$TMP/files" "$TMP/want"
-        grep -E '\.hpp$' "$TMP/files" | sed 's|^|squared/|' >"$TMP/headers" || true
+        "$SQEDIT" match -x '(!(".hpp" !.) .)* ".hpp"' "$TMP/files" | "$SQEDIT" sub -x '{.*}' 'squared/{1}' >"$TMP/headers" || true
         if [ -s "$TMP/headers" ]; then
-            cut -d$'\037' -f1 "$TMP/plan" | (cd "$root" && xargs grep -lF -f "$TMP/headers") >>"$TMP/want" 2>/dev/null || true
+            # A source that names any of them: one pattern, "a" / "b" / ...
+            headers=$(while IFS= read -r h; do printf '"%s" / ' "$h"; done <"$TMP/headers")
+            cut -d$'\037' -f1 "$TMP/plan" | while IFS= read -r src; do
+                if "$SQEDIT" match -q "${headers% / }" "$root/$src" 2>/dev/null; then echo "$src"; fi
+            done >>"$TMP/want"
         fi
-        awk -F'\037' 'FILENAME == ARGV[1] { want[$0] = 1; next } $1 in want' "$TMP/want" "$TMP/plan" \
-            | LC_ALL=C sort >"$TMP/tidyplan"
+        declare -A want=()
+        while IFS= read -r w; do want["$w"]=1; done <"$TMP/want"
+        while IFS= read -r line; do
+            if [ -n "${want["${line%%$'\037'*}"]+x}" ]; then printf '%s\n' "$line"; fi
+        done <"$TMP/plan" | LC_ALL=C sort >"$TMP/tidyplan"
         total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
         # The BMIs every unit imports: the host build, and the Android one in
         # build/lint-android (its objects come from the build cache when the
@@ -411,19 +419,19 @@ if run tidy; then
                 tail -n 20 "$TMP/build-host.log" >&2
                 exit 2
             fi
-            if grep -q $'\037android\037' "$TMP/tidyplan" &&
+            if "$SQEDIT" match -qF $'\037android\037' "$TMP/tidyplan" &&
                 ! make -s --no-print-directory -C "$root" -j"$jobs" "${overrides[@]}" all >"$TMP/build-android.log" 2>&1; then
                 echo "  the Android build for tidy failed; its units are skipped:" >&2
                 tail -n 10 "$TMP/build-android.log" >&2
-                grep -v $'\037android\037' "$TMP/tidyplan" >"$TMP/tidyplan.host" || true
+                "$SQEDIT" match -vF $'\037android\037' "$TMP/tidyplan" >"$TMP/tidyplan.host" || true
                 mv -f "$TMP/tidyplan.host" "$TMP/tidyplan"
                 total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
             fi
         fi
-        echo "  $(clang-tidy --version | sed -n 's/.*version \([0-9.]*\).*/clang-tidy \1/p'), $total translation unit(s) ($([ -n "$ndk" ] && echo "host and android" || echo "host only: no NDK headers found")); a module's interfaces are units of their own"
+        echo "  clang-tidy $(clang-tidy --version | "$SQEDIT" pick '"version " {[0-9.]+}'), $total translation unit(s) ($([ -n "$ndk" ] && echo "host and android" || echo "host only: no NDK headers found")); a module's interfaces are units of their own"
         # Selected sources no configuration compiles are named, not analysed.
         cut -d$'\037' -f1 "$TMP/plan" | LC_ALL=C sort >"$TMP/planned"
-        grep -E '^[a-z][a-z0-9_]*/src/.*\.cpp$' "$TMP/files" | LC_ALL=C sort | LC_ALL=C comm -23 - "$TMP/planned" \
+        "$SQEDIT" match -x '[a-z] [a-z0-9_]* "/src/" (!(".cpp" !.) .)* ".cpp"' "$TMP/files" | LC_ALL=C sort | LC_ALL=C comm -23 - "$TMP/planned" \
             | while IFS= read -r f; do echo "  skipped $f: not compiled in $([ -n "$ndk" ] && echo "either configuration" || echo "this configuration (no NDK headers)")"; done
         mkdir -p "$TMP/tidy"
         i=0
@@ -441,15 +449,15 @@ if run tidy; then
         wait
         # One finding per place and check: a header included by ten files is reported once.
         find "$TMP/tidy" -name '*.log' -exec cat {} + 2>/dev/null \
-            | grep -E '^[^ ]+:[0-9]+:[0-9]+: (warning|error):' \
-            | sed "s|^$root/||" | LC_ALL=C sort -u >"$TMP/tidy.found" || true
+            | "$SQEDIT" match -x '[^ :]+ ":" %d+ ":" %d+ ": " ("warning" / "error") ":" .*' \
+            | "$SQEDIT" sub -x "'$root/' {.*}" '{1}' | LC_ALL=C sort -u >"$TMP/tidy.found" || true
         cat "$TMP/tidy.found" >>"$REPORT"
         # Full clang-tidy output, notes and fix-it hints included, per file.
         rm -rf "$OUT/tidy" && cp -R "$TMP/tidy" "$OUT/tidy"
         n=$(wc -l <"$TMP/tidy.found" | tr -d ' ')
         [ "$n" -eq 0 ] && echo "  no findings" || echo "  $n finding(s); by check:"
-        grep -oE '\[[a-z][a-z0-9.,-]*[A-Za-z0-9.]*\]$' "$TMP/tidy.found" | sort | uniq -c | sort -rn | head -25 \
-            | sed 's/^/    /'
+        "$SQEDIT" pick -x '(!(check !.) .)* {check}  check <- "[" [a-z] [a-z0-9.,-]* [A-Za-z0-9.]* "]"' "$TMP/tidy.found" \
+            | sort | uniq -c | sort -rn | head -25 | "$SQEDIT" sub -x '{.*}' '    {1}'
         findings=$((findings + n))
     fi
 fi
