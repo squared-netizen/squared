@@ -1,6 +1,6 @@
 {
   "format": "squared-cartridge",
-  "format_version": 2,
+  "format_version": 3,
   "kind": "template",
   "id": "template.term.edu.cpp",
   "version": "0.1.0",
