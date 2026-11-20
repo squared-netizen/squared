@@ -1441,21 +1441,13 @@ struct Platform {
         if (created) app.handle_event(event);
     }
 
-    /// Text where typing goes: the Console's input line when it has the
-    /// keyboard (newlines as spaces), else the text field that asked for the
-    /// keyboard, as one TextInput event. Nothing when nothing asked.
+    /// Text for the application's text field that asked for the keyboard, as
+    /// one TextInput event. The Console is not the application's: while it
+    /// has the keyboard, nothing (its own `paste` command reads the clipboard).
     void type_text(std::string_view typed) {
         if (typed.empty()) return;
 #ifdef SQUARED_CONSOLE
-        if (console_focused && console.shown()) {
-            std::string line(typed);
-            for (char& c : line) {
-                if (c == '\n' || c == '\r' || c == '\t') c = ' ';
-            }
-            console.text(line);
-            console_scroll = 0;
-            return;
-        }
+        if (console_focused && console.shown()) return;
 #endif
         if (!text_input.active()) return;
         Event event;
