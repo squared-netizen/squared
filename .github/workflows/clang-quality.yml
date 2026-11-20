@@ -72,7 +72,8 @@ jobs:
         if: failure() && steps.lint.outcome == 'failure'
         working-directory: ${{ env.SQUARED }}
         shell: bash
-        run: grep -E '(warning|error): ' build/release/lint/report.txt | sort -u | head -n 200 || true
+        run: |
+          grep -E '(warning|error): ' build/release/lint/report.txt | sort -u | head -n 200 || true
 
       - name: Lint report
         if: always()
