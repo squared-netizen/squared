@@ -68,6 +68,12 @@ jobs:
         shell: bash
         run: ./tools/lint.sh --jobs 4
 
+      - name: Lint findings, in the log
+        if: failure() && steps.lint.outcome == 'failure'
+        working-directory: ${{ env.SQUARED }}
+        shell: bash
+        run: grep -E '(warning|error): ' build/release/lint/report.txt | sort -u | head -n 200 || true
+
       - name: Lint report
         if: always()
         uses: actions/upload-artifact@v6

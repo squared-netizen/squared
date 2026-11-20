@@ -12,7 +12,8 @@
 #   $SQ_STD_CPPM's folder          named outright (build/toolchain.sh env)
 #   <prefix>/share/libc++/v1       where the headers are <prefix>/include/c++/v1
 #                                  (sqterm's runtimes package, apt.llvm.org,
-#                                  Termux)
+#                                  Termux), or <prefix>/sysroot/usr/include/c++/v1
+#                                  (an NDK's)
 #   <compiler>/../share/libc++/v1  beside the compiler (the NDK's)
 #   the NDK's, for Termux's clang  $SQ_NDK, $ANDROID_NDK_HOME, else the newest
 #                                  in $PREFIX/opt/android-sdk/ndk/: Termux's
@@ -48,7 +49,14 @@ config=$(printf '#include <version>\n' | "$cxx" "$@" -x c++ -M - 2>/dev/null |
 
 candidates=()
 [ -n "${SQ_STD_CPPM:-}" ] && candidates+=("$(dirname "$SQ_STD_CPPM")")
-[ -n "$config" ] && candidates+=("${config%/include/c++/v1/__config}/share/libc++/v1")
+if [ -n "$config" ]; then
+    candidates+=("${config%/include/c++/v1/__config}/share/libc++/v1")
+    # The NDK's headers are in <ndk prebuilt>/sysroot/usr/include/c++/v1, its
+    # module sources in <ndk prebuilt>/share/libc++/v1.
+    case $config in
+        */sysroot/usr/include/c++/v1/__config) candidates+=("${config%/sysroot/usr/include/c++/v1/__config}/share/libc++/v1") ;;
+    esac
+fi
 compiler=$(command -v "$cxx" 2>/dev/null || true)
 [ -n "$compiler" ] && candidates+=("$(dirname "$(readlink -f "$compiler")")/../share/libc++/v1")
 for ndk in "${SQ_NDK:-}" "${ANDROID_NDK_HOME:-}" \
