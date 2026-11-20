@@ -91,14 +91,34 @@ else
 SQ_SHIM_DEX :=
 endif
 
+# ---------------------------------------------------------------------------
+# The packer: SQ_PACKER=apkpack builds, aligns and signs the APK with
+# apkpack (squared-netizen/apkpack), one native tool with no Java and no
+# Android SDK, in place of aapt2, zip, keytool and apksigner. Its key is
+# SQ_APKPACK_KEY, made by apkpack keygen when missing: ECDSA P-256, one for
+# all your projects, as the debug keystore is. An app installed with
+# another key is uninstalled once before the first apkpack build is
+# installed (Android refuses an update signed by another key). Every entry
+# is stored, and assets/ goes in whole with its index checked (apkpack's
+# README). SQ_PACKER=sdk, the default for now, is the Android SDK's tools.
+SQ_PACKER      ?= sdk
+SQ_APKPACK     ?= apkpack
+SQ_APKPACK_KEY ?= $(HOME)/.android/apkpack.pem
+ifeq ($(filter sdk apkpack,$(SQ_PACKER)),)
+  $(error SQ_PACKER must be sdk or apkpack, not '$(SQ_PACKER)')
+endif
+
 SQ_LINK_STAMP := $(SQ_APK_DIR)/.link-flags
-SQ_LINK_SETTINGS := link $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED) background $(BACKGROUND)
+SQ_LINK_SETTINGS := link $(SQ_PACKER) $(SQ_AAPT2_LINK_FLAGS) stored $(SQ_STORED) background $(BACKGROUND)
 $(shell mkdir -p '$(SQ_APK_DIR)'; [ -f '$(SQ_LINK_STAMP)' ] && [ "$$(cat '$(SQ_LINK_STAMP)')" = '$(SQ_LINK_SETTINGS)' ] || printf '%s' '$(SQ_LINK_SETTINGS)' > '$(SQ_LINK_STAMP)')
 
+ifeq ($(SQ_PACKER),apkpack)
+else
 $(SQ_APK_DIR)/resources.zip: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null)
 	@mkdir -p $(SQ_APK_DIR)
 	@echo "  aapt2 compile  $(SQ_RES_DIR)"
 	@$(SQ_AAPT2) compile --dir $(SQ_RES_DIR) -o $@
+endif
 
 # ---------------------------------------------------------------------------
 # Assets
@@ -183,6 +203,22 @@ $(SQ_ASSET_STAMP): $(SQ_ASSET_INDEX) FORCE
 	 old=$$(cat $(SQ_ASSET_STAMP) 2>/dev/null || true); \
 	 if [ "$$old" != "$$list" ]; then printf '%s\n' "$$list" > $@; fi
 
+ifeq ($(SQ_PACKER),apkpack)
+# apkpack link: the manifest and res/ compiled, assets/ in whole (its index
+# checked), no android.jar. A debuggable build is checked, not assumed, by
+# reading the manifest back.
+$(SQ_APK_DIR)/base.apk: $(shell find $(SQ_RES_DIR) -type f 2>/dev/null) $(SQ_MANIFEST) $(SQ_ASSET_STAMP) $(SQ_LINK_STAMP)
+	@mkdir -p $(SQ_APK_DIR)
+	@echo "  apkpack link   $(notdir $@)$(if $(strip $(SQ_DEBUGGABLE)), (debuggable),)"
+	@$(SQ_APKPACK) link -o $@ --manifest $(SQ_MANIFEST) --res $(SQ_RES_DIR) --assets $(SQ_ASSETS_DIR) \
+	    --min-sdk $(SQ_MIN_SDK) --target-sdk $(SQ_TARGET_SDK) $(if $(strip $(SQ_DEBUGGABLE)),--debuggable,) >/dev/null
+	@if [ -n "$(strip $(SQ_DEBUGGABLE))" ]; then \
+	  case "$$($(SQ_APKPACK) dump $@)" in \
+	    *"android:debuggable(0x0101000f)=true"*) echo "  debuggable     yes: run-as reaches it (SQ_DEBUGGABLE= for a build that is not)" ;; \
+	    *) echo "apkpack link --debuggable left android:debuggable out of the manifest" >&2; rm -f $@; exit 1 ;; \
+	  esac; \
+	fi
+else
 # A debuggable link is checked, not assumed: the line below reads the linked
 # manifest back. An aapt2 that cannot print it says so and the build goes on;
 # one that prints a manifest without the attribute fails the build.
@@ -209,6 +245,7 @@ $(SQ_APK_DIR)/base.apk: $(SQ_APK_DIR)/resources.zip $(SQ_MANIFEST) $(SQ_ASSET_ST
 	    *) echo "aapt2 link --debug-mode left android:debuggable out of the manifest" >&2; rm -f $@; exit 1 ;; \
 	  esac; \
 	fi
+endif
 
 # The one library the APK carries. The C++ runtime is linked into it (see
 # SQ_CXX_RUNTIME in mk/squared_generated.mk), so there is no libc++_shared.so to
@@ -225,6 +262,29 @@ $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so: $(SQ_SO)
 	@$(SQ_STRIP) --strip-unneeded $@ 2>/dev/null || true
 	@echo "  bundled        lib$(SQ_PROJECT).so ($$(wc -c < $@) bytes, stripped; C++ runtime inside)"
 
+ifeq ($(SQ_PACKER),apkpack)
+# The library (and the shims' classes.dex) added with apkpack add: stored,
+# and a .so aligned to 16 KB so Android can map it in place.
+$(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
+                    $(SQ_APK_DIR)/lib/$(SQ_ABI)/lib$(SQ_PROJECT).so $(SQ_SHIM_DEX)
+	@rm -f $(SQ_APK_DIR)/lib/$(SQ_ABI)/libc++_shared.so
+	@cp $(SQ_APK_DIR)/base.apk $@
+	$(if $(SQ_SHIM_DEX),@cp $(SQ_SHIM_DEX) $(SQ_APK_DIR)/classes.dex && echo "  shims          classes.dex ($$(wc -c < $(SQ_APK_DIR)/classes.dex) bytes: dev.squared.ModelService for BACKGROUND=1)")
+	@echo "  packaging      lib/$(SQ_ABI)/"
+	@$(SQ_APKPACK) add $@ -C $(SQ_APK_DIR) lib/$(SQ_ABI)/lib$(SQ_PROJECT).so $(if $(SQ_SHIM_DEX),classes.dex,) >/dev/null
+
+keystore: $(SQ_APKPACK_KEY)
+
+$(SQ_APKPACK_KEY):
+	@echo "  apkpack keygen $@ (ECDSA P-256; for every project)"
+	@mkdir -p $(dir $@)
+	@$(SQ_APKPACK) keygen $@ --name "squared debug" >/dev/null
+
+$(SQ_APK): $(SQ_APK_UNSIGNED) $(SQ_APKPACK_KEY)
+	@echo "  apkpack sign   $(notdir $@)"
+	@$(SQ_APKPACK) sign $(SQ_APKPACK_KEY) $(SQ_APK_UNSIGNED) $@ >/dev/null
+	@$(SQ_APKPACK) verify $@ >/dev/null && echo "  verified       $@ ($$(wc -c < $@) bytes)"
+else
 # A libc++_shared.so left in lib/ by a build from before the runtime was linked
 # in is removed, so the zip below cannot pick it up.
 $(SQ_APK_UNSIGNED): $(SQ_APK_DIR)/base.apk \
@@ -251,6 +311,7 @@ $(SQ_APK): $(SQ_APK_UNSIGNED) $(SQ_KEYSTORE)
 	    --ks-pass pass:$(SQ_KEY_PASS) --key-pass pass:$(SQ_KEY_PASS) \
 	    --ks-key-alias $(SQ_KEY_ALIAS) --out $@ $(SQ_APK_UNSIGNED)
 	@$(SQ_APKSIGNER) verify $@ >/dev/null && echo "  verified       $@ ($$(wc -c < $@) bytes)"
+endif
 
 # ---------------------------------------------------------------------------
 # Installing, starting, reading the log
@@ -297,17 +358,23 @@ uninstall:
 
 android-status:
 	@echo "toolchain"
-	@printf '  %-14s %s\n' "ndk" "$(if $(SQ_NDK),$(SQ_NDK),NOT FOUND)"
+	@printf '  %-14s %s\n' "ndk" "$(if $(filter 1,$(SQ_TOOLCHAIN)),not used (SQ_TOOLCHAIN=1: $(SQ_TOOLCHAIN_DIR)/clang++),$(if $(SQ_NDK),$(SQ_NDK),NOT FOUND))"
 	@printf '  %-14s %s\n' "sysroot" "$(if $(wildcard $(SQ_NDK_INC)),$(SQ_NDK_INC),NOT FOUND)"
 	@printf '  %-14s %s\n' "stub libs" "$(if $(wildcard $(SQ_NDK_LIB)),$(SQ_NDK_LIB),NOT FOUND)"
 	@printf '  %-14s %s\n' "glue" "$(if $(wildcard $(SQ_GLUE_SRC)),$(SQ_GLUE_SRC),NOT FOUND)"
-	@printf '  %-14s %s\n' "C++ runtime" "$(if $(wildcard $(SQ_NDK_LIB_ABI)/libc++_static.a),$(SQ_NDK_LIB_ABI)/libc++_static.a (linked in),NOT FOUND)"
-	@printf '  %-14s %s\n' "unwinder" "$(if $(SQ_NDK_UNWIND),$(SQ_NDK_UNWIND),NOT FOUND)"
+	@printf '  %-14s %s\n' "C++ runtime" "$(if $(wildcard $(firstword $(SQ_CXX_RUNTIME))),$(firstword $(SQ_CXX_RUNTIME)) (linked in),NOT FOUND)"
+	@printf '  %-14s %s\n' "unwinder" "$(if $(wildcard $(lastword $(SQ_CXX_RUNTIME))),$(lastword $(SQ_CXX_RUNTIME)),NOT FOUND)"
 	@echo "packaging"
+ifeq ($(SQ_PACKER),apkpack)
+	@printf '  %-14s %s\n' "packer" "apkpack (SQ_PACKER=apkpack): no Java, no Android SDK"
+	@printf '  %-14s %s\n' "apkpack" "$$(command -v $(SQ_APKPACK) || echo 'NOT FOUND (in sqterm: pkg install apkpack)')"
+	@printf '  %-14s %s\n' "key" "$(if $(wildcard $(SQ_APKPACK_KEY)),$(SQ_APKPACK_KEY),will be generated: $(SQ_APKPACK_KEY))"
+else
 	@printf '  %-14s %s\n' "android.jar" "$(if $(SQ_ANDROID_JAR),$(SQ_ANDROID_JAR),NOT FOUND)"
 	@printf '  %-14s %s\n' "aapt2" "$$(command -v $(SQ_AAPT2) || echo 'NOT FOUND')"
 	@printf '  %-14s %s\n' "apksigner" "$$(command -v $(SQ_APKSIGNER) || echo 'NOT FOUND')"
 	@printf '  %-14s %s\n' "keystore" "$(if $(wildcard $(SQ_KEYSTORE)),$(SQ_KEYSTORE),will be generated)"
+endif
 	@printf '  %-14s %s\n' "debuggable" "$(if $(SQ_AAPT2_LINK_FLAGS),yes (a DEV_LOG or Console build; SQ_DEBUGGABLE= for no),no)"
 	@printf '  %-14s %s\n' "background" "$(if $(SQ_SHIM_DEX),yes: the service and classes.dex (BACKGROUND=1),no (BACKGROUND=1 for app.keep_running))"
 	@printf '  %-14s %s\n' "adb" "$$(command -v $(SQ_ADB) || echo 'not found (make devices)')"
