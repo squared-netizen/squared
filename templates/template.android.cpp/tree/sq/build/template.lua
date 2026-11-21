@@ -39,9 +39,8 @@ local t = toolchain.sdk(sq .. "/build/toolchain.lua")
 squared_settings = {root = sq, platform = "android", graphics = "gles", debug = a.debug, flags = a.shared or {}}
 local squared = include(sq .. "/build/squared.lua")
 
--- The app's sources: its own, the platform side, the C it carries, and
--- native-app-glue (squared's copy), linked as objects so its entry point,
--- which nothing else names, is kept.
+-- The app's sources: its own, the platform side, the C it carries; and
+-- native-app-glue (squared's copy), whose entry point nothing else names.
 local excluded = {}
 for _, f in ipairs(a.exclude or {}) do excluded[f] = true end
 local srcs = {}
@@ -54,7 +53,9 @@ add(glob("sq_app/src/**/*.cpp"))
 add(glob("sq_android/*.cpp"))
 add(glob("sq_app/third_party/**/*.c"))
 local glue = sq .. "/third_party/native_app_glue"
-srcs[#srcs + 1] = glue .. "/android_native_app_glue.c"
+-- Google's code, with its own warnings: compiled without the app's (make's
+-- build compiles it so too), and linked as an object, not from an archive.
+local glue_obj = rules.cc(glue .. "/android_native_app_glue.c", {a.debug and {"-O0", "-g"} or {"-O2"}, "-fPIC", "-w", "-I" .. glue})
 
 -- sqgen (squared/tools/sqgen): sq_app/names.json and sq_app/layouts/*.json
 -- into C++ (names.hpp, layouts.hpp, layouts.cpp in build/gen), for an app
@@ -93,6 +94,7 @@ local platform = t.sysroot .. "/usr/lib/aarch64-linux-android/" .. api
 local so = shlib{
   name = name,
   srcs = srcs,
+  objs = {glue_obj},
   deps = {squared.all},
   after = after,
   flags = {gen_flags, a.debug and {"-O0", "-g"} or {"-O2"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, a.flags or {}},
