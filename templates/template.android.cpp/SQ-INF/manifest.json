@@ -36,7 +36,9 @@
         ],
         "build": [
           "Makefile",
-          "mk"
+          "mk",
+          "build.lua",
+          "sq/build"
         ],
         "resource": [
           "sq_android/res"
@@ -106,6 +108,7 @@
         "generated": [
           "mk/squared_generated.mk",
           "mk/squared_android_package.mk",
+          "sq/build/template.lua",
           "tools/docs-archive.sh"
         ],
         "user": [],

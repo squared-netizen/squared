@@ -20,6 +20,17 @@ make console      # a CONSOLE build's Console, here in Termux (no adb);
                   # dump sys (every system command; dump lists the groups)
 ```
 
+Or with sqmake, the SDK's build tool (`pkg install sqmake`), from
+`build.lua`, with no make and no shell:
+
+```sh
+sqmake            # build/{{project_name}}.apk, signed and verified
+```
+
+The two build the same APK; `sq/build/template.lua` says what each setting
+of `build.lua` does. An app with `sq_app/names.json` or `sq_app/layouts/`
+needs sqgen on PATH for it.
+
 No Gradle, no Android Studio, no `classes.dex`, no Java in the build. A
 compiler, `make`, and the NDK and SDK command-line pieces. It works on a phone.
 
