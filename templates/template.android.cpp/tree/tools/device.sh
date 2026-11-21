@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tools/device.sh: put this project's APK on an Android device, start it,
-# read its log, through adb. `make install`, `run`, `logcat`, `devices` and
-# `uninstall` call it; you can too.
+# read its log, through adb. make's and sqmake's `install`, `run`, `logcat`,
+# `devices` and `uninstall` call it; you can too.
 #
 #   tools/device.sh devices                 what adb reaches, and which is this phone
 #   tools/device.sh connect [PORT]          adb to this phone over Wireless Debugging
@@ -156,14 +156,14 @@ cmd_devices() {
     if [ "$state" = device ] && [ -n "$mine" ] && [ "$(remote_fingerprint "$serial")" = "$mine" ]; then
       note="this phone"
     fi
-    [ "$serial" = "$chosen" ] && note="${note:+$note, }used by make install"
+    [ "$serial" = "$chosen" ] && note="${note:+$note, }used by install"
     say "$state" "$serial${note:+  ($note)}"
   done < <("$ADB" devices 2>/dev/null | "$SQEDIT" lines 2.. | "$SQEDIT" match -x '%s* %S+ %s+ %S .*')
   if [ "$any" = 0 ]; then
     say "devices" "none"
     connect_help
   elif [ -z "$chosen" ]; then
-    say "make install" "the package installer (no device is this phone; DEVICE=<serial> for one)"
+    say "install" "the package installer (no device is this phone; DEVICE=<serial> for one)"
   fi
 }
 
@@ -187,14 +187,14 @@ cmd_connect() {
 
 cmd_install() {
   local apk=$1 serial
-  [ -f "$apk" ] || die "no APK at $apk (make apk)"
+  [ -f "$apk" ] || die "no APK at $apk (build it first)"
   serial=$(pick)
   if [ -n "$serial" ]; then
     say "adb install" "$(basename "$apk") -> $serial"
     "$ADB" -s "$serial" install -r "$apk"
   elif command -v termux-open >/dev/null 2>&1; then
     say "installer" "handing $apk to the package installer"
-    say "" "(no prompt with adb connected: make devices)"
+    say "" "(no prompt with adb connected: see devices)"
     termux-open "$apk"
   elif have_adb; then
     "$ADB" install -r "$apk"
@@ -205,8 +205,8 @@ cmd_install() {
 
 cmd_run() {
   local apk=$1 package=$2 serial out
-  serial=$(need_device "make run")
-  [ -f "$apk" ] || die "no APK at $apk (make apk)"
+  serial=$(need_device "run")
+  [ -f "$apk" ] || die "no APK at $apk (build it first)"
   say "adb install" "$(basename "$apk") -> $serial"
   "$ADB" -s "$serial" install -r "$apk"
   # The launcher's own intent, so it starts whichever activity is the launcher.
@@ -219,7 +219,7 @@ cmd_run() {
 
 cmd_logcat() {
   local tag=$1 serial
-  serial=$(need_device "make logcat")
+  serial=$(need_device "logcat")
   say "logcat" "$serial: $tag, AndroidRuntime, DEBUG, libc (Ctrl-C to stop)"
   exec "$ADB" -s "$serial" logcat -v time -s "$tag:V" AndroidRuntime:E DEBUG:F libc:F
 }
@@ -241,7 +241,7 @@ cmd_uninstall() {
   elif have_adb && [ -z "$(local_fingerprint)" ]; then
     "$ADB" uninstall "$package"
   else
-    die "uninstalling needs adb (make devices); or long-press the app's icon, or" \
+    die "uninstalling needs adb (see devices); or long-press the app's icon, or" \
       "Settings > Apps > $package > Uninstall."
   fi
 }
