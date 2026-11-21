@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch "$SQMAKE_VERSION" https://github.com/squared-netizen/sqmake "$RUNNER_TEMP/sqmake"
-          make -C "$RUNNER_TEMP/sqmake" -j4 CXX=clang++ CC=clang AR=llvm-ar build/sqmake
+          make -C "$RUNNER_TEMP/sqmake" -j4 CXX=clang++ CC=clang AR=ar build/sqmake
           bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
       - name: Third-party sources
