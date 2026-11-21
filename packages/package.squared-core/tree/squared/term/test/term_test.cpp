@@ -549,11 +549,12 @@ void scrollback_ring()
         return std::span<const Cell>{ line };
     };
     ring.push( make( "abc" ), false );
-    ring.push( make( "de" ), true );
+    ring.push( make( "de" ).first( 2 ), true ); // a wrapped line: its blanks are text, kept
     CHECK( ring.size() == 2 );
     CHECK( line_text( ring.line( 0 ).cells ) == "de" && ring.line( 0 ).wrapped );
     CHECK( line_text( ring.line( 1 ).cells ) == "abc" && !ring.line( 1 ).wrapped );
-    CHECK( ring.line( 0 ).cells.size() == 2 ); // trimmed
+    CHECK( ring.line( 0 ).cells.size() == 2 );
+    CHECK( ring.line( 1 ).cells.size() == 3 ); // trimmed: the line ended
     // 5 + 4 used of 10: a third line of 2 (4 cells) wraps round and pushes out "abc".
     ring.push( make( "fg" ), false );
     CHECK( ring.size() == 2 );
@@ -578,6 +579,10 @@ void scrollback_ring()
     CHECK( ring.size() == 1 && ring.line( 0 ).cells.size() == 8 );
     ring.clear();
     CHECK( ring.size() == 0 );
+    // A wrapped line keeps its trailing blanks: spaces where it went on.
+    ring.push( make( "de" ), true );
+    CHECK( ring.size() == 1 && ring.line( 0 ).cells.size() == 6 && ring.line( 0 ).wrapped );
+    ring.clear();
 
     // None at all.
     Terminal t = small( 10, 2, 0 );

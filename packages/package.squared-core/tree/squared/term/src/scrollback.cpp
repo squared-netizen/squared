@@ -39,8 +39,11 @@ void Scrollback::push( std::span<const Cell> line, bool wrapped ) noexcept
     if( capacity_ < 3 ) {
         return;
     }
+    // A line that ended keeps no trailing blanks; a wrapped one keeps them
+    // all: a blank in its last columns is a space of the text, where the
+    // line went on into the next (copy_text joins them).
     std::size_t length = line.size();
-    while( length > 0 && line[length - 1] == Cell{} ) {
+    while( !wrapped && length > 0 && line[length - 1] == Cell{} ) {
         --length;
     }
     length = std::min( length, capacity_ - 2 );
