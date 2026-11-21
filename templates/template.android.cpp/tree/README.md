@@ -25,10 +25,15 @@ Or with sqmake, the SDK's build tool (`pkg install sqmake`), from
 
 ```sh
 sqmake            # build/{{project_name}}.apk, signed and verified
+sqmake install    # install it (with adb on this phone: no prompt)
+sqmake run        # install, then start it (adb)
+sqmake logcat     # its log, and Android's crash lines (adb)
+sqmake devices    # what adb reaches, and how to connect
 ```
 
-The two build the same APK; `sq/build/template.lua` says what each setting
-of `build.lua` does. An app with `sq_app/names.json` or `sq_app/layouts/`
+The two build the same APK and reach the device the same way
+(`tools/device.sh`, or what `app.device` names); `sq/build/template.lua`
+says what each setting of `build.lua` does. An app with `sq_app/names.json` or `sq_app/layouts/`
 needs sqgen on PATH for it.
 
 No Gradle, no Android Studio, no `classes.dex`, no Java in the build. A

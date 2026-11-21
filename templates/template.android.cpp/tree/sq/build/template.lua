@@ -1,6 +1,7 @@
--- sq/build/template.lua: template.android.cpp's build, for sqmake (0.6.0 or
+-- sq/build/template.lua: template.android.cpp's build, for sqmake (0.7.0 or
 -- later): squared, the app's native library and its APK, as the template's
--- make files build them (Makefile, mk/), with no shell. A project's
+-- make files build them (Makefile, mk/), with no shell (the device
+-- actions, at the end, run whatever app.device names). A project's
 -- build.lua says what is its own and includes this:
 --
 --   app = {name = "mygame"}
@@ -21,6 +22,9 @@
 --     shared = {},                -- what the app and squared must agree on:
 --                                 -- -DSQUARED_TELEGRAPH_...=, -DSQUARED_CONSOLE=1
 --     key = nil,                  -- apkpack's key (~/.android/apkpack.pem)
+--     package = nil,              -- the manifest's package: for run, uninstall
+--     device = {"bash", "tools/device.sh"},
+--                                 -- what talks to the device (below)
 --     sqgen = "sqgen",            -- for sq_app/names.json, sq_app/layouts/
 --   }
 --
@@ -148,7 +152,7 @@ end
 table.sort(listed)
 if #listed > 0 then write_file(assets .. "/SQ-INF/index", table.concat(listed, "\n") .. "\n") end
 
-return apk{
+local built = apk{
   name = name,
   manifest = manifest,
   res = "sq_android/res",
@@ -159,3 +163,21 @@ return apk{
   key = a.key,
   files = {{"lib/arm64-v8a/lib" .. name .. ".so", stripped}, {"classes.dex", sq .. "/tools/dexgen/shims.dex"}},
 }
+
+-- Actions (sqmake 0.7.0): `sqmake install`, `run`, `logcat`, `devices`,
+-- `uninstall`, each handed to app.device, which says where the APK goes
+-- and how. The device tool's commands are the interface (tools/device.sh's,
+-- which make's build calls too): install APK, run APK PACKAGE, logcat TAG,
+-- devices, uninstall PACKAGE; DEVICE=<serial> and SQ_ADB reach it from the
+-- environment. Another tool that answers them (one of the SDK's, or the
+-- app's own) is one setting away; neither sqmake nor this file changes.
+local device = a.device or {"bash", "tools/device.sh"}
+action{name = "install", needs = {built}, desc = "install " .. name .. ".apk", cmd = {device, "install", built}}
+action{name = "logcat", desc = "logcat " .. name, cmd = {device, "logcat", name}}
+action{name = "devices", desc = "devices", cmd = {device, "devices"}}
+if a.package then
+  action{name = "run", needs = {built}, desc = "run " .. a.package, cmd = {device, "run", built, a.package}}
+  action{name = "uninstall", desc = "uninstall " .. a.package, cmd = {device, "uninstall", a.package}}
+end
+
+return built
