@@ -148,6 +148,13 @@ name them with `SQ_LLVM_BIN`, `SQ_SYSROOT` and `SQ_RUNTIMES`. The build goes
 in `build/<BUILD>-<fingerprint>/`, so its modules never meet another
 toolchain's.
 
+The same toolchain, as data, is `build/toolchain.lua`: sqmake (0.4.0 and
+later) reads it and finds each part itself, with no shell, and
+`sqmake toolchain build/toolchain.lua` says what it found, where, and why,
+or exactly what is missing and how to get it. The two must agree:
+`tools/check_toolchain.sh` compares them (the same paths, the same
+fingerprint), and is run after changing either.
+
 ### Installing, starting, the log
 
 ```sh
