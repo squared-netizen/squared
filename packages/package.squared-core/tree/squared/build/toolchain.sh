@@ -8,6 +8,10 @@
 # language or the target, so nothing here is a project's or a target's to
 # choose.
 #
+# make's. sqmake reads the same toolchain as data, build/toolchain.lua, and
+# resolves it with no shell; until make goes the two are kept one by
+# tools/check_toolchain.sh (the same paths and fingerprint): change both.
+#
 #   toolchain.sh env              KEY=value lines: what follows, resolved
 #   toolchain.sh wrappers DIR     DIR/clang and DIR/clang++ for the target,
 #                                 every flag below on every call, and
