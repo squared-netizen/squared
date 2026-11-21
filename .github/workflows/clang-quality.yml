@@ -25,6 +25,9 @@ env:
   SQUARED: packages/package.squared-core/tree/squared
   # sqedit does the build's text work (build/common.mk): built from its tag.
   SQEDIT_VERSION: v0.1.0
+  # sqmake reads build/toolchain.lua; tools/check_toolchain.sh holds it to
+  # build/toolchain.sh (make's): built from its tag.
+  SQMAKE_VERSION: v0.4.0
 
 jobs:
   clang-quality:
@@ -56,6 +59,14 @@ jobs:
           git clone --quiet --depth 1 --branch "$SQEDIT_VERSION" https://github.com/squared-netizen/sqedit "$RUNNER_TEMP/sqedit"
           make -C "$RUNNER_TEMP/sqedit" -j4 CXX=clang++ CC=clang build/sqedit
           echo "$RUNNER_TEMP/sqedit/build" >> "$GITHUB_PATH"
+
+      - name: sqmake ${{ env.SQMAKE_VERSION }}, and the toolchain's two descriptions agree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 --branch "$SQMAKE_VERSION" https://github.com/squared-netizen/sqmake "$RUNNER_TEMP/sqmake"
+          make -C "$RUNNER_TEMP/sqmake" -j4 CXX=clang++ CC=clang AR=ar build/sqmake
+          bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
       - name: Third-party sources
         working-directory: ${{ env.SQUARED }}
