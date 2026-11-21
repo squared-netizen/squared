@@ -166,6 +166,14 @@ void wrapped_lines()
     CHECK( history.history_size() >= 1 );
     CHECK_EQ( copy( history, { history.first_line(), 0 }, { history.screen_line() + 1, 4 } ),
               "0123456789ab\nz" );
+    // A space in a wrapped line's last column, scrolled into the scrollback:
+    // still the text's ("abcd " + "efgh"; on the phone, copied curl output
+    // lost the space at each wrap, 2026-11-21).
+    Terminal spaced{ { .columns = 5, .rows = 2 } };
+    spaced.feed( "abcd efgh\r\nx\r\ny" );
+    CHECK( spaced.history_size() >= 2 );
+    CHECK_EQ( copy( spaced, { spaced.first_line(), 0 }, { spaced.screen_line() + 1, 4 } ),
+              "abcd efgh\nx\ny" );
 }
 
 void wide_characters()
