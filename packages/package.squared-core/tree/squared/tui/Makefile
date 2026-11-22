@@ -17,6 +17,7 @@ INCLUDES := $(SQUARED_INCLUDE) $(SQUARED_EXTERNAL_INCLUDES) -I$(MODULE_DIR)/src
 SOURCES := src/input_decoder.cpp \
     src/renderer.cpp \
     src/screen.cpp \
+    src/simple.cpp \
     src/terminal.cpp \
     src/test_bench.cpp
 
@@ -47,6 +48,7 @@ $(TUI_TEST): $(MODULE_DIR)/test/tui_test.cpp \
              $(MODULE_DIR)/src/input_decoder.cpp \
              $(MODULE_DIR)/src/renderer.cpp \
              $(MODULE_DIR)/src/screen.cpp \
+             $(MODULE_DIR)/src/simple.cpp \
              $(MODULE_DIR)/src/terminal.cpp \
              $(MODULE_DIR)/src/test_bench.cpp \
              $(TERM_DIR)/src/grid.cpp \

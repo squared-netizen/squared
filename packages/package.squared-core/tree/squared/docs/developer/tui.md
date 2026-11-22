@@ -1,9 +1,9 @@
 # tui &mdash; internals
 
-2026-11-22: squared-tui's first two layers and its test bench, built in
+2026-11-22: squared-tui's first two layers, its test bench and the teaching layer, built in
 squared-core's tree as `term` was (`sq.tui`, `tui/`), to move to a repository
 of its own, `squared-tui`, once they have settled. The design, and what comes
-after (the teaching layer `sq.tui.simple`, widgets on sqgui's layout model):
+after (widgets on sqgui's layout model):
 [squared-tui's design](../../../../../../docs/design/squared-tui.md) in the
 squared repository.
 
@@ -18,6 +18,7 @@ squared repository.
 | `InputDecoder` | bytes into `Event`s: `Key`, `Mouse`, `Paste`, `Resize`, `Focus` |
 | `Terminal` | the program's terminal in raw mode, put back however the program ends; `next(timeout)` and `show(screen)` |
 | `Test` | a Screen rendered into `sq::term::Terminal`, read back as a person sees it |
+| `Simple` | the terminal for a first program: `clear`, `put`, `show`, `key()`; a resize handled, other events passed over; a Screen and a Terminal underneath |
 
 ## Decided (2026-11-22, the user)
 
@@ -117,3 +118,16 @@ reads the new size (TIOCGWINSZ), invalidates the renderer and returns
   keys and a lone escape read through `next`, a frame shown, and after it
   closes the mode as it was and the alternate screen turned off after the
   frame.
+- `Simple` on a pty: a coordinate off the screen ignored, a frame shown, no
+  key within a wait, a key read, and the terminal put back.
+
+## Simple
+
+What a first program needs and nothing else: it opens the Terminal, sizes a
+Screen to it, and its `key()` waits for a key, handling a resize itself
+(the screen takes the new size and is shown again) and passing over what is
+not a key. Coordinates are `int`, so a learner's -1 is off the screen rather
+than 65535. When the terminal cannot be opened it says why and exits with
+status 1 instead of returning an error: a first program has nowhere to put
+one. `screen()` and `terminal()` are the real types underneath, so moving on
+from it is using them directly.

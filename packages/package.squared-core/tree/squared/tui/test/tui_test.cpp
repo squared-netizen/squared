@@ -299,6 +299,31 @@ void terminal_in_a_pty()
     ::close( master );
 }
 
+/** Simple on a pty: a key read, a frame shown, the terminal put back. */
+void simple_in_a_pty()
+{
+    const int master = ::posix_openpt( O_RDWR | O_NOCTTY );
+    CHECK( master >= 0 && ::grantpt( master ) == 0 && ::unlockpt( master ) == 0 );
+    const int slave = ::open( ::ptsname( master ), O_RDWR | O_NOCTTY );
+    CHECK( slave >= 0 );
+    {
+        sq::tui::Simple screen( { .input = slave, .output = slave } );
+        CHECK( screen.width() > 0 && screen.height() > 0 );
+        screen.put( -1, 0, "off the screen" );
+        screen.put( 1, 0, "@" );
+        screen.show();
+        CHECK( screen.screen().cell( 1, 0 ).code == U'@' );
+        CHECK( !screen.key( std::chrono::milliseconds{ 10 } ) );
+        CHECK( ::write( master, "l", 1 ) == 1 );
+        CHECK( screen.key() == U'l' );
+    }
+    termios after{};
+    CHECK( ::tcgetattr( slave, &after ) == 0 );
+    CHECK( ( after.c_lflag & ECHO ) != 0 );
+    ::close( slave );
+    ::close( master );
+}
+
 } // namespace
 
 int main()
@@ -309,6 +334,7 @@ int main()
     decodes_across_reads();
     decodes_paste_mouse_focus();
     terminal_in_a_pty();
+    simple_in_a_pty();
     std::puts( "tui_test: ok" );
     return 0;
 }
