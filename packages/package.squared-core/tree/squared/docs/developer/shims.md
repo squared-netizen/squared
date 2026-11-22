@@ -23,6 +23,8 @@ A shim that would need a branch, a loop or a field is the wrong shim: its logic 
 | Class | Extends | Methods | For |
 |---|---|---|---|
 | `dev.squared.ConsoleActivity` | `android.app.NativeActivity` | the constructor | the monitor process, `CONSOLE=monitor` (4.7). `NativeActivity` reads `android.app.lib_name` from the activity's own manifest entry, so a second entry with its own `android:process` and library needs no code |
+| `dev.squared.SquaredActivity` | `android.app.NativeActivity` | the constructor; native `dispatchKeyEvent(KeyEvent)` | every app's activity: the template's `sq_android/entry.cpp` registers it and takes what the NDK cannot read, text a keyboard sends whole and the Paste key |
+| `dev.squared.ResultReceiver` | `android.content.BroadcastReceiver` | the constructor; native `onReceive(Context, Intent)` | where Android sends the result of something an app asked for and waits on: an install or uninstall through `PackageInstaller` (a PendingIntent to this receiver). sqterm's `sq_android/api.cpp` registers it (its install API, `sqterm-install`). A receiver rather than the activity's `onNewIntent`: the result arrives whether or not the activity is in front, and brings nothing to the front. Used only by an app whose manifest declares it |
 | `dev.squared.ModelService` (12.6) | `android.app.Service` | the constructor; native `onStartCommand(Intent, int, int)`, `onBind(Intent)`, `onDestroy()` | running in the background (`app.keep_running`): the template's `sq_android/background.cpp` registers the three and does everything (the notification, the wake lock, Exit). Packed by `BACKGROUND=1`, with the manifest entry |
 
 The names are fixed and do not depend on the app's package, so the dex is the same for every app: generated once, committed as `tools/dexgen/shims.dex`.
@@ -61,7 +63,7 @@ The names are fixed and do not depend on the app's package, so the dex is the sa
 
 ## What it costs
 
-Nothing in a build without a shim: a build without `BACKGROUND=1` ships no dex and keeps `android:hasCode="false"`. With it: 812 bytes in the APK; ART compiles the dex on install (a few KB); the APK gets a class loader, as every Java app has. The C++ is untouched: Android does nothing more to machine code.
+Nothing in a build without a shim: a build without `BACKGROUND=1` ships no dex and keeps `android:hasCode="false"`. With it: 1,284 bytes in the APK (four classes); ART compiles the dex on install (a few KB); the APK gets a class loader, as every Java app has. The C++ is untouched: Android does nothing more to machine code.
 
 ## Adding a shim
 

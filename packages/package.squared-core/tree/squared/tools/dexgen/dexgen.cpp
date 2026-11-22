@@ -69,6 +69,15 @@ struct ShimClass
 // the NDK cannot read, text a keyboard sends whole (KeyEvent.ACTION_MULTIPLE:
 // CleverKeys' clipboard and paste keys) and the Paste key, and hands every
 // other event to NativeActivity's own.
+//
+// ResultReceiver: where Android sends the result of something an app asked
+// for and waits on: an install or uninstall (PackageInstaller's
+// IntentSender, a PendingIntent to this receiver). Its onReceive is native,
+// registered by the app's C++ through its class loader (sqterm's
+// sq_android/api.cpp). A receiver rather than the activity's onNewIntent:
+// the result arrives whether or not the activity is in front, and brings
+// nothing to the front. An app that asks for nothing declares no receiver,
+// and the class costs it nothing.
 const std::vector<ShimClass> &shims()
 {
     static const std::vector<ShimClass> classes = {
@@ -88,6 +97,13 @@ const std::vector<ShimClass> &shims()
               "Landroid/os/IBinder;",
               { "Landroid/content/Intent;" } },
             { MethodKind::native, "onDestroy", "V", {} } } },
+        { "Ldev/squared/ResultReceiver;",
+          "Landroid/content/BroadcastReceiver;",
+          { { MethodKind::constructor, "<init>", "V", {} },
+            { MethodKind::native,
+              "onReceive",
+              "V",
+              { "Landroid/content/Context;", "Landroid/content/Intent;" } } } },
 #ifdef DEXGEN_SELF_TEST
         // Built only by tools/dexgen.sh --self-test: a third class, with a
         // parameter list no shipped shim has, read back.
