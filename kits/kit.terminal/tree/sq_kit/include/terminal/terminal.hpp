@@ -16,7 +16,7 @@
 //
 // Design note. This deliberately does not manage the terminal: no raw mode, no
 // cursor control, no alternate screen. That is a TUI's job and belongs to
-// kit.ncurses. A kit that quietly grew into a TUI would leave a user who chose
+// squared-tui (planned: docs/design/squared-tui.md in squared). A kit that quietly grew into a TUI would leave a user who chose
 // "simple terminal application" with a dependency they did not ask for.
 
 #ifndef SQUARED_KIT_TERMINAL_HPP
