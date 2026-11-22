@@ -21,16 +21,37 @@
 -- command that answers install APK, run APK PACKAGE, logcat TAG, devices
 -- and uninstall PACKAGE (DEVICE=<serial> and SQ_ADB from the environment).
 -- The default is the template's tools/device.sh, through adb or the
--- package installer; another (sqterm's own, one day) is that one setting.
+-- package installer.
+--
+-- Inside sqterm (SQTERM=1, its sqterm-* commands installed) with no device
+-- named (DEVICE unset) and no settings.device, install, run and uninstall
+-- go through sqterm itself: sqterm-install, sqterm-launch, sqterm-uninstall
+-- (sqterm's docs/install-api.md). No adb, nothing to pair; Android asks the
+-- person on each install. logcat and devices stay the device tool's.
 -- A build file that says a verb after this one wins (sqmake's rule).
 
 local android = {}
+
+-- sqterm's own commands, when this build runs inside sqterm and nothing
+-- asks for adb.
+local function sqterm_commands()
+  if os.getenv("SQTERM") ~= "1" then return false end
+  local device = os.getenv("DEVICE")
+  if device and device ~= "" then return false end
+  -- read_file: sqmake's (a build file has no io); nil when it is not there.
+  return read_file((os.getenv("PREFIX") or "") .. "/bin/sqterm-install", 1) ~= nil
+end
 
 function android.verbs(s)
   local apk = s.apk or error("android.verbs: apk")
   local name = s.name or error("android.verbs: name")
   local device = s.device or {"bash", "tools/device.sh"}
-  verb("install", {needs = {apk}, desc = "install " .. name .. ".apk", cmd = {device, "install", apk}})
+  local sqterm = s.device == nil and sqterm_commands()
+  if sqterm then
+    verb("install", {needs = {apk}, desc = "install " .. name .. ".apk", cmd = {"sqterm-install", apk}})
+  else
+    verb("install", {needs = {apk}, desc = "install " .. name .. ".apk", cmd = {device, "install", apk}})
+  end
   action{name = "logcat", desc = "logcat " .. name, cmd = {device, "logcat", name}}
   action{name = "devices", desc = "devices", cmd = {device, "devices"}}
   if s.bridge then
@@ -44,8 +65,14 @@ function android.verbs(s)
            end}
   end
   if s.package then
-    verb("run", {needs = {apk}, desc = "run " .. s.package, cmd = {device, "run", apk, s.package}})
-    action{name = "uninstall", desc = "uninstall " .. s.package, cmd = {device, "uninstall", s.package}}
+    if sqterm then
+      verb("run", {needs = {apk}, desc = "run " .. s.package,
+                   cmds = {{"sqterm-install", apk}, {"sqterm-launch", s.package}}})
+      action{name = "uninstall", desc = "uninstall " .. s.package, cmd = {"sqterm-uninstall", s.package}}
+    else
+      verb("run", {needs = {apk}, desc = "run " .. s.package, cmd = {device, "run", apk, s.package}})
+      action{name = "uninstall", desc = "uninstall " .. s.package, cmd = {device, "uninstall", s.package}}
+    end
   end
 end
 
