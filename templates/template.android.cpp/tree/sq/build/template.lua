@@ -1,4 +1,4 @@
--- sq/build/template.lua: template.android.cpp's build, for sqmake (0.8.0 or
+-- sq/build/template.lua: template.android.cpp's build, for sqmake (0.8.1 or
 -- later): squared, the app's native library and its APK, as the template's
 -- make files build them (Makefile, mk/), with no shell; sqmake's verbs
 -- (install, run) and Android's own words (logcat, devices, uninstall) from
@@ -30,6 +30,7 @@
 --     device = {"bash", "tools/device.sh"},
 --                                 -- what talks to the device (build/android.lua)
 --     sqgen = "sqgen",            -- for sq_app/names.json, sq_app/layouts/
+--     sqconsole = "sqconsole",    -- `sqmake console`: a debug build's Console
 --   }
 --
 -- The template's layout: sq_app/src/**/*.cpp (the app), sq_android/*.cpp
@@ -43,6 +44,24 @@ local name = a.name or error("sq/build/template.lua: app.name")
 local sq = a.squared or "squared"
 local api = a.min_sdk or 28
 
+-- POSIX cksum (what make's build hashes the package with for the port).
+local function cksum(s)
+  local t = {}
+  for i = 0, 255 do
+    local c = i << 24
+    for _ = 1, 8 do
+      if c & 0x80000000 ~= 0 then c = ((c << 1) ~ 0x04C11DB7) & 0xffffffff else c = (c << 1) & 0xffffffff end
+    end
+    t[i] = c
+  end
+  local crc = 0
+  local function add(b) crc = ((crc << 8) & 0xffffffff) ~ t[((crc >> 24) ~ b) & 0xff] end
+  for i = 1, #s do add(s:byte(i)) end
+  local n = #s
+  while n > 0 do add(n & 0xff); n = n >> 8 end
+  return (~crc) & 0xffffffff
+end
+
 -- The debug build (`sqmake --debug`, in build/debug): make's `make dev`, a
 -- CONSOLE=app DEV_LOG=1 build, debuggable so run-as reaches it. Its Console
 -- and its log are the app's (squared's libraries are the same either way).
@@ -51,6 +70,24 @@ if mode.debug then
   if a.console ~= false then
     -- Its sizes are squared's own defaults (console/src/limits.cppm).
     debug_flags[#debug_flags + 1] = "-DSQUARED_CONSOLE=1"
+    -- Its bridge, which sqconsole reaches (`sqmake console`): a port from
+    -- the package and a secret made once, in build/dev/bridge.conf, the
+    -- file make's CONSOLE build keeps (the same port: POSIX cksum).
+    if a.package then
+      local port = 20000 + cksum(a.package) % 20000
+      local conf = "build/dev/bridge.conf"
+      local text = read_file(conf) or ""
+      local secret = text:match("secret=(%x+)")
+      if not text:find("port=" .. port .. "\n", 1, true) or not secret or #secret ~= 32 then
+        local bytes = read_file("/dev/urandom", 16)
+        if not bytes or #bytes ~= 16 then error("sq/build/template.lua: no /dev/urandom for the Console's secret") end
+        secret = bytes:gsub(".", function(c) return string.format("%02x", c:byte()) end)
+        write_file(conf, string.format("port=%d\nsecret=%s\npackage=%s\n", port, secret, a.package))
+      end
+      debug_flags[#debug_flags + 1] = {"-DSQUARED_BRIDGE_PORT=" .. port,
+                                       "-DSQUARED_BRIDGE_SECRET_HIGH=0x" .. secret:sub(1, 16) .. "ULL",
+                                       "-DSQUARED_BRIDGE_SECRET_LOW=0x" .. secret:sub(17, 32) .. "ULL"}
+    end
   end
   if a.dev_log ~= false then debug_flags[#debug_flags + 1] = "-DSQUARED_DEV_LOG=" .. tostring(a.dev_log or 5555) end
 end
@@ -184,6 +221,7 @@ local built = apk{
 -- The verbs and Android's own words: squared's Android platform says what
 -- each does (squared/build/android.lua); a verb the build file says after
 -- this include wins.
-include(sq .. "/build/android.lua").verbs{apk = built, name = name, package = a.package, device = a.device}
+include(sq .. "/build/android.lua").verbs{apk = built, name = name, package = a.package, device = a.device,
+                                          sqconsole = a.sqconsole, bridge = "build/dev/bridge.conf"}
 
 return built

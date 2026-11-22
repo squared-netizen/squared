@@ -13,6 +13,9 @@
 --   logcat    the app's log and Android's crash lines
 --   devices   what can be reached, and how to connect
 --   uninstall the app removed
+--   console   a debug build's Console, here in this terminal (sqconsole,
+--             the SDK's, through the bridge file the debug build keeps;
+--             CMD='...' runs one command and exits)
 --
 -- How the device is reached is the device tool's: settings.device, a
 -- command that answers install APK, run APK PACKAGE, logcat TAG, devices
@@ -30,6 +33,16 @@ function android.verbs(s)
   verb("install", {needs = {apk}, desc = "install " .. name .. ".apk", cmd = {device, "install", apk}})
   action{name = "logcat", desc = "logcat " .. name, cmd = {device, "logcat", name}}
   action{name = "devices", desc = "devices", cmd = {device, "devices"}}
+  if s.bridge then
+    local sqconsole = s.sqconsole or "sqconsole"
+    action{name = "console", desc = "console " .. name,
+           call = function()
+             local cmd = {sqconsole, "--conf", s.bridge, "--into", "build/pulled"}
+             local one = os.getenv("CMD")
+             if one and one ~= "" then cmd[#cmd + 1] = {"--run", one} end
+             return exec(cmd)
+           end}
+  end
   if s.package then
     verb("run", {needs = {apk}, desc = "run " .. s.package, cmd = {device, "run", apk, s.package}})
     action{name = "uninstall", desc = "uninstall " .. s.package, cmd = {device, "uninstall", s.package}}
