@@ -64,6 +64,15 @@ include mk/squared_generated.mk
 -include $(wildcard mk/pkg_*.mk)
 -include $(wildcard mk/kit_*.mk)
 
+# make builds the framework from a copy in the workspace (./squared, which
+# `sqpg new ... --package package.squared-core` adds); sqmake builds against
+# the installed squared ($PREFIX/share/squared) and needs no copy.
+ifeq ($(wildcard mk/pkg_squared_core.mk),)
+  ifeq ($(filter clean help,$(MAKECMDGOALS)),)
+    $(error make needs the framework in this workspace: run `sqmake` instead (it uses the installed squared), or add it with `sqpg new NAME --package package.squared-core`)
+  endif
+endif
+
 # Development log sink. Off unless asked for: `make DEV_LOG=1 apk`.
 #
 # The app sends each log line, and a backtrace if it crashes, to

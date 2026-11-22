@@ -86,9 +86,7 @@
       ],
       "requires": {
         "framework": ">=1.0.0 <2.0.0",
-        "packages": [
-          "package.squared-core"
-        ],
+        "packages": [],
         "kits": {
           "required": [],
           "optional": [
