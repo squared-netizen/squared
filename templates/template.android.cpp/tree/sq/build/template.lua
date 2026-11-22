@@ -12,7 +12,9 @@
 -- The settings (all but name optional):
 --   app = {
 --     name = "mygame",            -- libNAME.so, build/NAME.apk
---     squared = "squared",        -- the framework's folder
+--     squared = nil,              -- which squared (below): a version
+--                                 -- ("1.0.0"), or a folder of its own
+--                                 -- ("squared": vendored, the expert's way)
 --     min_sdk = 28,               -- the sysroot package's API level
 --     target_sdk = 28,
 --     background = false,         -- the background service (BACKGROUND=1)
@@ -41,7 +43,49 @@
 
 local a = app or error("sq/build/template.lua: set app = {name = ...} before including it")
 local name = a.name or error("sq/build/template.lua: app.name")
-local sq = a.squared or "squared"
+-- Which squared: the SDK's, installed by version (pkg install squared:
+-- $PREFIX/share/squared/<version>/squared, the newest unless app.squared
+-- names one), so every workspace on the device shares one copy and one
+-- build cache. The escape hatch, for a workspace that changes squared
+-- itself: a copy of its own, a squared/ folder beside build.lua (squared-pg
+-- adds one when asked; app.squared = "squared" or any path says so too),
+-- which is used whenever it is there.
+local function version_less(x, y)
+  local xs, ys = {}, {}
+  for n in x:gmatch("%d+") do xs[#xs + 1] = tonumber(n) end
+  for n in y:gmatch("%d+") do ys[#ys + 1] = tonumber(n) end
+  for i = 1, math.max(#xs, #ys) do
+    if (xs[i] or 0) ~= (ys[i] or 0) then return (xs[i] or 0) < (ys[i] or 0) end
+  end
+  return false
+end
+local function installed_squared(version)
+  local base = (os.getenv("PREFIX") or "") .. "/share/squared"
+  if version then
+    local root = base .. "/" .. version .. "/squared"
+    if #glob(root .. "/build/squared.lua") == 0 then
+      error("sq/build/template.lua: squared " .. version .. " is not installed (" .. root .. "): pkg install squared", 0)
+    end
+    return root
+  end
+  local newest
+  for _, f in ipairs(glob(base .. "/*/squared/build/squared.lua")) do
+    local v = f:sub(#base + 2):match("^([^/]+)/")
+    if v and (not newest or version_less(newest, v)) then newest = v end
+  end
+  if not newest then
+    error("sq/build/template.lua: no squared here: pkg install squared (or a squared/ folder of the workspace's own)", 0)
+  end
+  return base .. "/" .. newest .. "/squared"
+end
+local sq
+if a.squared and not a.squared:match("^%d") then
+  sq = a.squared                                  -- a folder: vendored
+elseif not a.squared and #glob("squared/build/squared.lua") > 0 then
+  sq = "squared"                                  -- a squared/ of its own
+else
+  sq = installed_squared(a.squared)               -- the SDK's, by version
+end
 local api = a.min_sdk or 28
 
 -- POSIX cksum (what make's build hashes the package with for the port).
