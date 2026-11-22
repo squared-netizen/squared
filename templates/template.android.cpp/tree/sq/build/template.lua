@@ -1,8 +1,10 @@
--- sq/build/template.lua: template.android.cpp's build, for sqmake (0.7.0 or
+-- sq/build/template.lua: template.android.cpp's build, for sqmake (0.8.0 or
 -- later): squared, the app's native library and its APK, as the template's
--- make files build them (Makefile, mk/), with no shell (the device
--- actions, at the end, run whatever app.device names). A project's
--- build.lua says what is its own and includes this:
+-- make files build them (Makefile, mk/), with no shell; sqmake's verbs
+-- (install, run) and Android's own words (logcat, devices, uninstall) from
+-- squared's Android platform (squared/build/android.lua). `sqmake --debug
+-- VERB` is make's `make dev` build (below). A project's build.lua says what
+-- is its own and includes this:
 --
 --   app = {name = "mygame"}
 --   include("sq/build/template.lua")
@@ -14,8 +16,10 @@
 --     min_sdk = 28,               -- the sysroot package's API level
 --     target_sdk = 28,
 --     background = false,         -- the background service (BACKGROUND=1)
---     debuggable = false,
---     debug = false,              -- -O0 -g (squared's too) instead of -O2
+--     debuggable = false,         -- a release build that run-as reaches
+--     optimise = true,            -- false: -O0 -g (squared's too) instead of -O2
+--     console = true,             -- the debug build's Console (CONSOLE=app)
+--     dev_log = 5555,             -- and its log, to this UDP port (DEV_LOG=1)
 --     exclude = {},               -- sources under sq_app/src not to build
 --     flags = {},                 -- the app's own compile flags
 --     link = {},                  -- and link flags
@@ -24,7 +28,7 @@
 --     key = nil,                  -- apkpack's key (~/.android/apkpack.pem)
 --     package = nil,              -- the manifest's package: for run, uninstall
 --     device = {"bash", "tools/device.sh"},
---                                 -- what talks to the device (below)
+--                                 -- what talks to the device (build/android.lua)
 --     sqgen = "sqgen",            -- for sq_app/names.json, sq_app/layouts/
 --   }
 --
@@ -39,8 +43,21 @@ local name = a.name or error("sq/build/template.lua: app.name")
 local sq = a.squared or "squared"
 local api = a.min_sdk or 28
 
+-- The debug build (`sqmake --debug`, in build/debug): make's `make dev`, a
+-- CONSOLE=app DEV_LOG=1 build, debuggable so run-as reaches it. Its Console
+-- and its log are the app's (squared's libraries are the same either way).
+local debug_flags = {}
+if mode.debug then
+  if a.console ~= false then
+    -- Its sizes are squared's own defaults (console/src/limits.cppm).
+    debug_flags[#debug_flags + 1] = "-DSQUARED_CONSOLE=1"
+  end
+  if a.dev_log ~= false then debug_flags[#debug_flags + 1] = "-DSQUARED_DEV_LOG=" .. tostring(a.dev_log or 5555) end
+end
+local optimise = a.optimise ~= false
+
 local t = toolchain.sdk(sq .. "/build/toolchain.lua")
-squared_settings = {root = sq, platform = "android", graphics = "gles", debug = a.debug, flags = a.shared or {}}
+squared_settings = {root = sq, platform = "android", graphics = "gles", debug = not optimise, flags = a.shared or {}}
 local squared = include(sq .. "/build/squared.lua")
 
 -- The app's sources: its own, the platform side, the C it carries; and
@@ -59,7 +76,7 @@ add(glob("sq_app/third_party/**/*.c"))
 local glue = sq .. "/third_party/native_app_glue"
 -- Google's code, with its own warnings: compiled without the app's (make's
 -- build compiles it so too), and linked as an object, not from an archive.
-local glue_obj = rules.cc(glue .. "/android_native_app_glue.c", {a.debug and {"-O0", "-g"} or {"-O2"}, "-fPIC", "-w", "-I" .. glue})
+local glue_obj = rules.cc(glue .. "/android_native_app_glue.c", {optimise and {"-O2"} or {"-O0", "-g"}, "-fPIC", "-w", "-I" .. glue})
 
 -- sqgen (squared/tools/sqgen): sq_app/names.json and sq_app/layouts/*.json
 -- into C++ (names.hpp, layouts.hpp, layouts.cpp in build/gen), for an app
@@ -101,7 +118,7 @@ local so = shlib{
   objs = {glue_obj},
   deps = {squared.all},
   after = after,
-  flags = {gen_flags, a.debug and {"-O0", "-g"} or {"-O2"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, a.flags or {}},
+  flags = {gen_flags, debug_flags, optimise and {"-O2"} or {"-O0", "-g"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, a.flags or {}},
   link = {"-Wl,--hash-style=both", "-Wl,--gc-sections", "-Wl,--no-undefined",
           "-Wl,--exclude-libs,libsquared_font.a",
           "-Wl,--exclude-libs,libsquared_freetype.a", "-Wl,--exclude-libs,libc++.a:libc++abi.a:libunwind.a", "-pthread", "-landroid", "-llog",
@@ -159,25 +176,14 @@ local built = apk{
   assets = #listed > 0 and assets or nil,
   min_sdk = api,
   target_sdk = a.target_sdk or 28,
-  debuggable = a.debuggable,
+  debuggable = a.debuggable or mode.debug,
   key = a.key,
   files = {{"lib/arm64-v8a/lib" .. name .. ".so", stripped}, {"classes.dex", sq .. "/tools/dexgen/shims.dex"}},
 }
 
--- Actions (sqmake 0.7.0): `sqmake install`, `run`, `logcat`, `devices`,
--- `uninstall`, each handed to app.device, which says where the APK goes
--- and how. The device tool's commands are the interface (tools/device.sh's,
--- which make's build calls too): install APK, run APK PACKAGE, logcat TAG,
--- devices, uninstall PACKAGE; DEVICE=<serial> and SQ_ADB reach it from the
--- environment. Another tool that answers them (one of the SDK's, or the
--- app's own) is one setting away; neither sqmake nor this file changes.
-local device = a.device or {"bash", "tools/device.sh"}
-action{name = "install", needs = {built}, desc = "install " .. name .. ".apk", cmd = {device, "install", built}}
-action{name = "logcat", desc = "logcat " .. name, cmd = {device, "logcat", name}}
-action{name = "devices", desc = "devices", cmd = {device, "devices"}}
-if a.package then
-  action{name = "run", needs = {built}, desc = "run " .. a.package, cmd = {device, "run", built, a.package}}
-  action{name = "uninstall", desc = "uninstall " .. a.package, cmd = {device, "uninstall", a.package}}
-end
+-- The verbs and Android's own words: squared's Android platform says what
+-- each does (squared/build/android.lua); a verb the build file says after
+-- this include wins.
+include(sq .. "/build/android.lua").verbs{apk = built, name = name, package = a.package, device = a.device}
 
 return built

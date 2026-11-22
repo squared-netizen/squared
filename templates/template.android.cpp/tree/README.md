@@ -29,11 +29,17 @@ sqmake install    # install it (with adb on this phone: no prompt)
 sqmake run        # install, then start it (adb)
 sqmake logcat     # its log, and Android's crash lines (adb)
 sqmake devices    # what adb reaches, and how to connect
+sqmake --debug install   # make dev's build: the Console, DEV_LOG, debuggable
+                         # (in build/debug, so switching rebuilds neither)
 ```
 
 The two build the same APK and reach the device the same way
-(`tools/device.sh`, or what `app.device` names); `sq/build/template.lua`
-says what each setting of `build.lua` does. An app with `sq_app/names.json` or `sq_app/layouts/`
+(`tools/device.sh`, or what `app.device` names). `build`, `install`, `run`
+and `test` are sqmake's verbs, the same words in every project; what they
+do on Android is said once, in `squared/build/android.lua`, and a line in
+`build.lua` can say otherwise. `sq/build/template.lua` says what each
+setting of `build.lua` does; `.sqmake.lua` with `separate_debug = false`
+keeps the debug build in `build/`. An app with `sq_app/names.json` or `sq_app/layouts/`
 needs sqgen on PATH for it.
 
 No Gradle, no Android Studio, no `classes.dex`, no Java in the build. A
