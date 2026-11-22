@@ -17,19 +17,23 @@ std::optional<std::uint16_t> place( int value ) noexcept
     return static_cast<std::uint16_t>( value );
 }
 
-} // namespace
-
-Simple::Simple( const TerminalOptions &options )
+/** The terminal, or a message and exit(1): a first program has nowhere to put an error. */
+Terminal open_or_exit( const TerminalOptions &options )
 {
     auto opened = Terminal::open( options );
     if( !opened ) {
-        const std::string_view why = describe( opened.error() );
-        std::cerr << "sq::tui::Simple: " << why << '\n';
+        std::cerr << "sq::tui::Simple: " << describe( opened.error() ) << '\n';
         std::exit( 1 );
     }
-    terminal_.emplace( std::move( *opened ) );
-    screen_.resize( terminal_->columns(), terminal_->rows() );
+    return std::move( *opened );
 }
+
+} // namespace
+
+Simple::Simple( const TerminalOptions &options )
+    : terminal_( open_or_exit( options ) )
+    , screen_( terminal_.columns(), terminal_.rows() )
+{}
 
 void Simple::put( int x, int y, std::string_view text, const Style &style ) noexcept
 {
@@ -51,7 +55,7 @@ void Simple::put( int x, int y, char32_t code, const Style &style ) noexcept
 
 void Simple::show()
 {
-    terminal_->show( screen_ );
+    terminal_.show( screen_ );
 }
 
 std::optional<Key> Simple::key( std::chrono::milliseconds wait )
@@ -68,7 +72,7 @@ std::optional<Key> Simple::key( std::chrono::milliseconds wait )
                 left = std::chrono::milliseconds{ 0 };
             }
         }
-        const std::optional<Event> event = terminal_->next( left );
+        const std::optional<Event> event = terminal_.next( left );
         if( !event ) {
             if( forever ) {
                 continue;

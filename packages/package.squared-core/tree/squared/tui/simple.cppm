@@ -52,11 +52,11 @@ class Simple
         [[nodiscard]] std::optional<Key> key( std::chrono::milliseconds wait );
 
         [[nodiscard]] Screen &screen() noexcept { return screen_; }
-        [[nodiscard]] Terminal &terminal() noexcept { return *terminal_; }
+        [[nodiscard]] Terminal &terminal() noexcept { return terminal_; }
 
     private:
-        std::optional<Terminal> terminal_;
-        Screen screen_{ 0, 0 };
+        Terminal terminal_;
+        Screen screen_;
 };
 
 } // namespace sq::tui
