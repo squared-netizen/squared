@@ -2,7 +2,18 @@
 
 Squared is a rapidly evolving C++ framework and development ecosystem.
 
-This is the squared package repo. These packages sole consumer is the squared-pg project generator.
+This repository holds squared's cartridges: the framework, `package.squared-core`,
+with the templates, kits and assets that sqpg (squared-pg) generates workspaces
+from.
+
+**Packages** are squared-core and its add-on packages, `squared-`*name*
+(planned: see `docs/design/`). Nothing else is a package: an application, such
+as sqterm, can have a template, and a kit wraps a third-party library.
+sqterm's `pkg` installs programs into its own prefix; those are
+*sqterm packages*, a different thing that shares the word.
+
+Design documents for what is planned are in `docs/design/`:
+[squared-tui](docs/design/squared-tui.md), character-cell programs.
 
 ## Status
 
