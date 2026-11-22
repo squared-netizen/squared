@@ -129,6 +129,7 @@ module("console", {"app", "dev", "messaging", "time"},
        only(graphics == "gles", glob(root .. "/console/src/gles/*.cpp")))
 module("stage", {"app", "gui", "graphics", "assets", "dev", "files", "messaging", "data", "time", "math"})
 module("term", {"app"})
+module("tui", {"term", "app"})
 module("font", {freetype}, {}, {flags = freetype_includes})
 
 -- The umbrella: `import squared;`, and every library in one dependency.

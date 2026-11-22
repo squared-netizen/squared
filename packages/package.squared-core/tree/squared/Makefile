@@ -34,12 +34,12 @@ SQUARED_GRAPHICS_BACKEND ?= null
 
 MODULES := app math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
-           gui messaging time dev console stage term font
+           gui messaging time dev console stage term tui font
 
 .PHONY: all clean docs docs-check headers lint test retest umbrella sqgen sqconsole $(MODULES)
 
 # The modules with tests, in the order they are run.
-TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage term font
+TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage term tui font
 
 # Then the build cache, back under its size (build/common.mk, "the build
 # cache"). Quick when it is under: one du.
@@ -60,6 +60,7 @@ messaging: time
 console: app dev messaging time
 stage: app gui graphics assets dev files messaging data time math
 term: app
+tui: term app
 
 # std first, here, once: every module imports it, and they build at the
 # same time under -j (build/common.mk, "the standard library, as a module").

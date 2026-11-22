@@ -26,6 +26,7 @@ export import :src.parser;
 export import :src.screen_layout;
 export import :src.scrollback;
 export import :src.utf8_decoder;
+export import :src.utf8_encoder;
 export import :terminal;
 export import :terminal_config;
 export import :terminal_events;

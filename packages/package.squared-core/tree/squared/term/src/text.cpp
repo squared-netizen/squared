@@ -36,41 +36,12 @@ class Out
         void put( char32_t code ) noexcept
         {
             std::array<char, 4> bytes{};
-            put( { bytes.data(), encode( code, bytes ) } );
+            put( { bytes.data(), detail::encode_utf8( code, bytes ) } );
         }
 
         [[nodiscard]] std::size_t total() const noexcept { return total_; }
 
     private:
-        /// UTF-8 for `code`; U+FFFD for a surrogate or past U+10FFFF.
-        static std::size_t encode( char32_t code, std::array<char, 4> &out ) noexcept
-        {
-            if( ( code >= 0xD800 && code <= 0xDFFF ) || code > 0x10FFFF ) {
-                code = 0xFFFD;
-            }
-            const auto byte = []( char32_t value ) { return static_cast<char>( value ); };
-            if( code < 0x80 ) {
-                out[0] = byte( code );
-                return 1;
-            }
-            if( code < 0x800 ) {
-                out[0] = byte( 0xC0 | ( code >> 6 ) );
-                out[1] = byte( 0x80 | ( code & 0x3F ) );
-                return 2;
-            }
-            if( code < 0x10000 ) {
-                out[0] = byte( 0xE0 | ( code >> 12 ) );
-                out[1] = byte( 0x80 | ( ( code >> 6 ) & 0x3F ) );
-                out[2] = byte( 0x80 | ( code & 0x3F ) );
-                return 3;
-            }
-            out[0] = byte( 0xF0 | ( code >> 18 ) );
-            out[1] = byte( 0x80 | ( ( code >> 12 ) & 0x3F ) );
-            out[2] = byte( 0x80 | ( ( code >> 6 ) & 0x3F ) );
-            out[3] = byte( 0x80 | ( code & 0x3F ) );
-            return 4;
-        }
-
         std::span<char> out_;
         std::size_t written_ = 0;
         std::size_t total_ = 0;

@@ -1,6 +1,9 @@
 # squared-tui: character-cell programs (design)
 
-Status: agreed direction (2026-11-22). Nothing here is built yet.
+Status: agreed direction (2026-11-22). Built: layers 1 and 2, the test bench
+and `Simple` (the second teaching step), as `sq.tui` in squared-core's tree
+(`tui/`; internals in its `docs/developer/tui.md`). Next: a sample, and
+`template.term.edu.cpp` moved to `Simple`.
 
 squared-tui is one of squared's add-on packages (`squared-`*name*: the
 framework's extensions, as squared-core is the framework itself). It is for
@@ -149,20 +152,21 @@ Three steps, each a complete thing to learn with:
    conio and of BASIC's `LOCATE` and `INKEY$`:
 
    ```cpp
-   import sq.tui.simple;
+   import sq.tui;
 
    int main() {
-       sq::tui::simple screen;                  // raw mode, alternate screen, restored on exit
+       sq::tui::Simple screen;                  // raw mode, alternate screen, restored on exit
        int x = 10, y = 5;
        for (;;) {
            screen.clear();
            screen.put(x, y, "@");
            screen.show();
-           switch (screen.key()) {              // waits for one key
-               case 'h': --x; break;  case 'l': ++x; break;
-               case 'k': --y; break;  case 'j': ++y; break;
-               case 'q': return 0;
-           }
+           const sq::tui::Key key = screen.key();   // waits for one key
+           if (key == 'q') return 0;
+           if (key == 'h') --x;
+           if (key == 'l') ++x;
+           if (key == 'k') --y;
+           if (key == 'j') ++y;
        }
    }
    ```
@@ -201,9 +205,9 @@ once layer 2 works.
 
 ## Open questions
 
-- Whether `sq.tui.simple`'s `key()` returns a plain `char32_t` (simplest for
-  a learner, loses modifiers) or a small `Key` with an implicit comparison
-  to a character. Leaning to the second.
+- Decided (2026-11-22): `Simple::key()` returns a `Key`, which compares
+  equal to a plain character (`key == 'q'`), so a learner gets modifiers and
+  named keys without losing the simple comparison.
 - Whether to read terminal capabilities (DA1, XTVERSION, the kitty keyboard
   protocol) at start, to use what the terminal has beyond the baseline. Not
   needed for the first layers; noted so the input reader leaves room for it.
