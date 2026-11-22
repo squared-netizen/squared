@@ -86,7 +86,13 @@ endif
 
 # Android is the constraining target, so size-sensitive codegen is on by
 # default: function and data sections let the linker drop what is unused.
-CODEGEN := -fno-common -ffunction-sections -fdata-sections -fvisibility=hidden
+# -fPIC: an app links these archives into its shared library (Android's
+# libNAME.so), and code made without it cannot reach a symbol of default
+# visibility there: libc++'s inline vtables (std::format_error's, from
+# sq.data's json.cpp) are such symbols, and lld refuses the link
+# ("relocation R_AARCH64_ADR_PREL_PG_HI21 ... recompile with -fPIC"). The
+# sqmake build (build/squared.lua) compiles with it too.
+CODEGEN := -fno-common -ffunction-sections -fdata-sections -fvisibility=hidden -fPIC
 
 # -fno-rtti builds clean for the whole tree and is verified, including a link
 # and run. Turn it on with:
