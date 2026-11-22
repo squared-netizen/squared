@@ -37,8 +37,7 @@ struct Saved
         std::size_t restore_size = 0;
         std::array<int, 2> wake{ -1, -1 };
         std::array<struct sigaction, fatal_signals.size()> previous{};
-        struct sigaction previous_winch
-        {};
+        struct sigaction previous_winch{};
         std::terminate_handler previous_terminate = nullptr;
 };
 
@@ -184,15 +183,13 @@ std::expected<Terminal, TerminalError> Terminal::open( const TerminalOptions &op
     if( saved.wake[0] < 0 && ::pipe2( saved.wake.data(), O_CLOEXEC | O_NONBLOCK ) != 0 ) {
         saved.wake = { -1, -1 };
     }
-    struct sigaction fatal
-    {};
+    struct sigaction fatal{};
     fatal.sa_handler = on_fatal;
     ::sigemptyset( &fatal.sa_mask );
     for( std::size_t i = 0; i < fatal_signals.size(); ++i ) {
         ::sigaction( fatal_signals[i], &fatal, &saved.previous[i] );
     }
-    struct sigaction winch
-    {};
+    struct sigaction winch{};
     winch.sa_handler = on_winch;
     winch.sa_flags = SA_RESTART;
     ::sigemptyset( &winch.sa_mask );
