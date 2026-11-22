@@ -54,5 +54,6 @@ documentation is in [../programmer/README.md](../programmer/README.md).
 - [messaging](messaging.md)
 - [stage](stage.md) &mdash; the App and the Stage (Sprint 7.1 to 7.3): lifetimes, a recreated activity and a quit, the model's holder, the stack and its waiting navigations, C++ screens, panes and their slots, taps, the weak layout catalog, `Drawing`, sizes, tests
 - [term](term.md) &mdash; the terminal core (Sprint 12.1): the parser on UTF-8, the grid's row table, the scrollback's ring of cells, the pending wrap, wide characters, the width table and how it was generated, memory, tests; the `Pty` (12.2): what the child may call between fork and exec, ending a program, sizes
+- [tui](tui.md) &mdash; character-cell programs (squared-tui's first layers, 2026-11-22): the screen of sq.term cells, the renderer and its frames, the input decoder's table, the terminal's raw mode and how it is put back on a crash, the test bench
 - [math](math.md)
 - [time](time.md)

@@ -1,6 +1,8 @@
 # squared-tui: character-cell programs (design)
 
-Status: agreed direction (2026-11-22). Nothing here is built yet.
+Status: agreed direction (2026-11-22). Built: layers 1 and 2 and the test
+bench, as `sq.tui` in squared-core's tree (`tui/`; internals in its
+`docs/developer/tui.md`). Next: `sq.tui.simple`, then a sample.
 
 squared-tui is one of squared's add-on packages (`squared-`*name*: the
 framework's extensions, as squared-core is the framework itself). It is for
