@@ -37,7 +37,10 @@ The two build the same APK and reach the device the same way
 (`tools/device.sh`, or what `app.device` names). `build`, `install`, `run`
 and `test` are sqmake's verbs, the same words in every project; what they
 do on Android is said once, in `squared/build/android.lua`, and a line in
-`build.lua` can say otherwise. `sq/build/template.lua` says what each
+`build.lua` can say otherwise. Which squared it builds with: the SDK's, installed
+(`pkg install squared`, the newest unless `app.squared = "1.0.0"` names a
+version), or a `squared/` folder of the workspace's own, for one that
+changes squared itself. `sq/build/template.lua` says what each
 setting of `build.lua` does; `.sqmake.lua` with `separate_debug = false`
 keeps the debug build in `build/`. An app with `sq_app/names.json` or `sq_app/layouts/`
 needs sqgen on PATH for it.
