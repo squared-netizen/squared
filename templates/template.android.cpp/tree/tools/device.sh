@@ -25,7 +25,8 @@
 # device is used, as `adb install` itself would.
 #
 # Environment: SQ_ADB (default adb; termux-adb for a USB device), DEVICE,
-# ANDROID_ADB_SERVER_PORT (adb's own, default 5037).
+# ANDROID_ADB_SERVER_PORT (adb's own, default 5037), SQ_DOWNLOADS (where
+# install leaves the APK with neither adb nor an installer: /sdcard/Download).
 #
 # It never starts adb's server to look for a device (that would wake whatever
 # is plugged in); `connect` and a named DEVICE do, because you asked. No
@@ -198,6 +199,15 @@ cmd_install() {
     termux-open "$apk"
   elif have_adb; then
     "$ADB" install -r "$apk"
+  elif [ -d "${SQ_DOWNLOADS:-/sdcard/Download}" ] && [ -w "${SQ_DOWNLOADS:-/sdcard/Download}" ]; then
+    # On the phone with neither (inside sqterm): where a file manager finds
+    # it. One tap there installs it; sqterm-install will do it from here.
+    local into=${SQ_DOWNLOADS:-/sdcard/Download}/$(basename "$apk")
+    case $apk in */debug/*) into=${into%.apk}-debug.apk ;; esac
+    cp "$apk" "$into"
+    say "copied" "$into"
+    say "" "no adb or installer here: open it in Files (Downloads) to install it"
+    say "" "(Android may ask once to let your file manager install apps)"
   else
     die "no installer found. The APK is at $apk."
   fi
