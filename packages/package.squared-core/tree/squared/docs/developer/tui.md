@@ -26,6 +26,23 @@ squared repository.
   extensions are what every terminal that matters speaks.
 - Linux and Android first; no Apple platforms for now.
 
+## What it takes from the rest of squared
+
+squared-tui writes as little of its own as it can. From the rest of squared:
+
+| From | Used for |
+|---|---|
+| sq.term `Cell`, `CellAttributes`, `Rgb` | the screen's cells and styles |
+| sq.term `char_width` | how many columns a character takes |
+| sq.term `Utf8Decoder`, `encode_utf8` | UTF-8 in (text drawn, keys read) and out (the renderer); the encoder moved out of `term/src/text.cpp` into `term/src/utf8_encoder.cppm` so both use one |
+| sq.term `Terminal` | the test bench's emulator |
+| sq.term `key_bytes`, `key_text_bytes`, `paste_text` | the tests: the decoder is checked as their inverse |
+| sq.app `Key`, `KeyModifiers` | the named keys and modifiers (`sq::tui::KeyName`, `sq::tui::Modifiers`): the same an app's key events carry |
+
+What is its own: the cell rectangle (`Rect`, `Point`: integer cells, where
+squared's other rectangles are float pixels), the renderer's output, the
+input decoder, and the POSIX terminal handling.
+
 ## The cell is sq.term's
 
 `Screen` holds `sq::term::Cell`, and places characters by
@@ -64,8 +81,8 @@ between reads anywhere. What it reads:
 | Bytes | Event |
 |---|---|
 | UTF-8 text | `Key{character}` |
-| `0x01`..`0x1A` | Ctrl and a letter (lower case); `\r`, `\n` Enter; `\t` Tab; `0x7F`, `0x08` Backspace; `0x00` Ctrl+Space |
-| `ESC` then a key | that key with Alt |
+| `0x01`..`0x1A` | Ctrl and a letter (lower case); `\r`, `\n` Enter; `\t` Tab; `0x7F` Backspace, `0x08` Ctrl+Backspace; `0x00` Ctrl+Space |
+| `ESC` then a key | that key with Alt; `ESC ESC` Alt+Escape |
 | `CSI` `A` `B` `C` `D` `H` `F`, `SS3` the same and `P`..`S` | arrows, Home, End, F1..F4; `CSI 1;m X` with modifiers |
 | `CSI n ~` | Home, Insert, Delete, End, Page Up and Down, F1..F12; `CSI n;m ~` with modifiers |
 | `CSI Z` | Shift+Tab |
@@ -113,7 +130,12 @@ reads the new size (TIOCGWINSZ), invalidates the renderer and returns
   written for one cell changed, attributes on and off, the cursor, a wide
   character replaced and restored, a resize;
 - the decoder: every row of the table above, sequences split across reads,
-  a paste whose end marker is split, an escape inside a paste;
+  a paste whose end marker is split, an escape inside a paste; and as the
+  inverse of sq.term's `key_bytes` (every named key, every mix of Shift,
+  Ctrl and Alt, both cursor-key modes: 400 and more), `key_text_bytes`
+  (letters with Ctrl and Alt) and `paste_text`. Where two keys send the same
+  bytes (Shift or Ctrl with Enter or Escape, Shift with Backspace, Ctrl with
+  Tab, Alt with Shift+Tab) the test says so, and expects what the bytes say;
 - the Terminal on a pty (`posix_openpt`): raw while open, a second refused,
   keys and a lone escape read through `next`, a frame shown, and after it
   closes the mode as it was and the alternate screen turned off after the

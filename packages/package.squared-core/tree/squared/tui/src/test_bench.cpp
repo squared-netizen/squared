@@ -17,26 +17,6 @@ sq::term::TerminalConfig config_of( std::uint16_t columns, std::uint16_t rows )
     return config;
 }
 
-void append_utf8( std::string &out, char32_t code )
-{
-    const auto c = static_cast<std::uint32_t>( code );
-    if( c < 0x80 ) {
-        out += static_cast<char>( c );
-    } else if( c < 0x800 ) {
-        out += static_cast<char>( 0xC0U | ( c >> 6U ) );
-        out += static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    } else if( c < 0x10000 ) {
-        out += static_cast<char>( 0xE0U | ( c >> 12U ) );
-        out += static_cast<char>( 0x80U | ( ( c >> 6U ) & 0x3FU ) );
-        out += static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    } else {
-        out += static_cast<char>( 0xF0U | ( c >> 18U ) );
-        out += static_cast<char>( 0x80U | ( ( c >> 12U ) & 0x3FU ) );
-        out += static_cast<char>( 0x80U | ( ( c >> 6U ) & 0x3FU ) );
-        out += static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    }
-}
-
 const sq::term::Cell blank{};
 
 } // namespace
@@ -63,7 +43,7 @@ std::string Test::text( std::uint16_t x, std::uint16_t y ) const
         if( row[i].flags.wide_tail ) {
             continue;
         }
-        append_utf8( out, row[i].code == 0 ? U' ' : row[i].code );
+        sq::term::detail::append_utf8( out, row[i].code == 0 ? U' ' : row[i].code );
     }
     while( !out.empty() && out.back() == ' ' ) {
         out.pop_back();

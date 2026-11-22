@@ -79,25 +79,7 @@ void Renderer::set_style( const sq::term::Cell &cell )
 
 void Renderer::put_code( char32_t code )
 {
-    std::array<char, 4> bytes{};
-    std::size_t n = 0;
-    const auto c = static_cast<std::uint32_t>( code );
-    if( c < 0x80 ) {
-        bytes[n++] = static_cast<char>( c );
-    } else if( c < 0x800 ) {
-        bytes[n++] = static_cast<char>( 0xC0U | ( c >> 6U ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    } else if( c < 0x10000 ) {
-        bytes[n++] = static_cast<char>( 0xE0U | ( c >> 12U ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( ( c >> 6U ) & 0x3FU ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    } else {
-        bytes[n++] = static_cast<char>( 0xF0U | ( c >> 18U ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( ( c >> 12U ) & 0x3FU ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( ( c >> 6U ) & 0x3FU ) );
-        bytes[n++] = static_cast<char>( 0x80U | ( c & 0x3FU ) );
-    }
-    out_.append( bytes.data(), n );
+    sq::term::detail::append_utf8( out_, code );
 }
 
 std::string_view Renderer::render( const Screen &screen )

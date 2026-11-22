@@ -22,7 +22,7 @@ Modifiers modifiers_of( unsigned parameter ) noexcept
              .control = ( bits & 4U ) != 0 };
 }
 
-Key named( KeyCode code, Modifiers modifiers = {} ) noexcept
+Key named( KeyName code, Modifiers modifiers = {} ) noexcept
 {
     return { code, 0, modifiers };
 }
@@ -33,97 +33,97 @@ Key control_key( std::uint8_t byte ) noexcept
     switch( byte ) {
         case 0x0D:
         case 0x0A:
-            return named( KeyCode::enter );
+            return named( KeyName::enter );
         case 0x09:
-            return named( KeyCode::tab );
+            return named( KeyName::tab );
         case 0x7F:
+            return named( KeyName::backspace );
         case 0x08:
-            return named( KeyCode::backspace );
+            return named( KeyName::backspace,
+                          { .control = true } ); // as key_bytes sends Ctrl+Backspace
         case 0x00:
-            return { KeyCode::character, U' ', { .control = true } };
+            return { KeyName::unknown, U' ', { .control = true } };
         default:
             break;
     }
     if( byte >= 0x01 && byte <= 0x1A ) {
-        return { KeyCode::character,
-                 static_cast<char32_t>( U'a' + byte - 1 ),
-                 { .control = true } };
+        return { KeyName::unknown, static_cast<char32_t>( U'a' + byte - 1 ), { .control = true } };
     }
     // 0x1C..0x1F: Ctrl with \ ] ^ _
-    return { KeyCode::character, static_cast<char32_t>( byte + 0x40 ), { .control = true } };
+    return { KeyName::unknown, static_cast<char32_t>( byte + 0x40 ), { .control = true } };
 }
 
 /** The key a `CSI n ~` names. */
-std::optional<KeyCode> tilde_key( unsigned n ) noexcept
+std::optional<KeyName> tilde_key( unsigned n ) noexcept
 {
     switch( n ) {
         case 1:
         case 7:
-            return KeyCode::home;
+            return KeyName::home;
         case 2:
-            return KeyCode::insert;
+            return KeyName::insert;
         case 3:
-            return KeyCode::delete_;
+            return KeyName::delete_key;
         case 4:
         case 8:
-            return KeyCode::end;
+            return KeyName::end;
         case 5:
-            return KeyCode::page_up;
+            return KeyName::page_up;
         case 6:
-            return KeyCode::page_down;
+            return KeyName::page_down;
         case 11:
-            return KeyCode::f1;
+            return KeyName::f1;
         case 12:
-            return KeyCode::f2;
+            return KeyName::f2;
         case 13:
-            return KeyCode::f3;
+            return KeyName::f3;
         case 14:
-            return KeyCode::f4;
+            return KeyName::f4;
         case 15:
-            return KeyCode::f5;
+            return KeyName::f5;
         case 17:
-            return KeyCode::f6;
+            return KeyName::f6;
         case 18:
-            return KeyCode::f7;
+            return KeyName::f7;
         case 19:
-            return KeyCode::f8;
+            return KeyName::f8;
         case 20:
-            return KeyCode::f9;
+            return KeyName::f9;
         case 21:
-            return KeyCode::f10;
+            return KeyName::f10;
         case 23:
-            return KeyCode::f11;
+            return KeyName::f11;
         case 24:
-            return KeyCode::f12;
+            return KeyName::f12;
         default:
             return std::nullopt;
     }
 }
 
 /** The key a final byte names, after CSI or SS3 (arrows, Home, End, F1-F4). */
-std::optional<KeyCode> letter_key( std::uint8_t final_byte ) noexcept
+std::optional<KeyName> letter_key( std::uint8_t final_byte ) noexcept
 {
     switch( final_byte ) {
         case 'A':
-            return KeyCode::up;
+            return KeyName::up;
         case 'B':
-            return KeyCode::down;
+            return KeyName::down;
         case 'C':
-            return KeyCode::right;
+            return KeyName::right;
         case 'D':
-            return KeyCode::left;
+            return KeyName::left;
         case 'H':
-            return KeyCode::home;
+            return KeyName::home;
         case 'F':
-            return KeyCode::end;
+            return KeyName::end;
         case 'P':
-            return KeyCode::f1;
+            return KeyName::f1;
         case 'Q':
-            return KeyCode::f2;
+            return KeyName::f2;
         case 'R':
-            return KeyCode::f3;
+            return KeyName::f3;
         case 'S':
-            return KeyCode::f4;
+            return KeyName::f4;
         default:
             return std::nullopt;
     }
@@ -166,8 +166,13 @@ void InputDecoder::flush( std::vector<Event> &out )
     }
     // A lone escape, or an escape and a sequence never finished: Escape,
     // and the rest decoded again on its own.
+    if( pending_.size() == 2 && pending_[0] == esc && pending_[1] == esc ) {
+        out.emplace_back( named( KeyName::escape, { .alt = true } ) );
+        pending_.clear();
+        return;
+    }
     if( pending_.front() == esc ) {
-        out.emplace_back( named( KeyCode::escape ) );
+        out.emplace_back( named( KeyName::escape ) );
         pending_.erase( pending_.begin() );
         std::vector<std::uint8_t> rest = std::move( pending_ );
         pending_.clear();
@@ -227,8 +232,15 @@ std::size_t InputDecoder::decode( std::span<const std::uint8_t> bytes, std::vect
             return 3;
         }
         if( second == esc ) {
-            out.emplace_back( named( KeyCode::escape ) );
-            return 1;
+            // Alt+Escape (ESC ESC, as key_bytes sends it), or Alt and a
+            // sequence (ESC ESC [ A): which, the third byte says.
+            if( bytes.size() < 3 ) {
+                return 0;
+            }
+            if( bytes[2] != '[' && bytes[2] != 'O' ) {
+                out.emplace_back( named( KeyName::escape, { .alt = true } ) );
+                return 2;
+            }
         }
         // Alt and a key: the key, decoded on its own, with alt.
         std::vector<Event> one;
@@ -253,11 +265,11 @@ std::size_t InputDecoder::decode( std::span<const std::uint8_t> bytes, std::vect
     for( std::size_t i = 0; i < bytes.size(); ++i ) {
         const auto result = utf8.push( bytes[i] );
         if( result.step == Step::code ) {
-            out.emplace_back( Key{ KeyCode::character, result.code, {} } );
+            out.emplace_back( Key{ KeyName::unknown, result.code, {} } );
             return i + 1;
         }
         if( result.step == Step::code_then_again ) {
-            out.emplace_back( Key{ KeyCode::character, result.code, {} } );
+            out.emplace_back( Key{ KeyName::unknown, result.code, {} } );
             return i; // this byte starts again
         }
     }
@@ -349,7 +361,7 @@ std::size_t InputDecoder::decode_csi( std::span<const std::uint8_t> bytes, std::
         return used;
     }
     if( final_byte == 'Z' ) {
-        out.emplace_back( named( KeyCode::tab, { .shift = true } ) );
+        out.emplace_back( named( KeyName::tab, { .shift = true } ) );
         return used;
     }
     if( final_byte == 'I' && count == 0 ) {

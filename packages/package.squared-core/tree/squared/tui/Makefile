@@ -29,7 +29,8 @@ TARGET := $(LIB_DIR)/libsquared_tui.a
 all: $(TARGET)
 
 # The screen, the renderer read back through sq.term's emulator, the input
-# decoder against what xterm sends, the terminal's raw mode in a pty.
+# decoder as the inverse of sq.term's key_bytes and paste_text, the
+# terminal's raw mode in a pty.
 TUI_TEST := $(BUILD_DIR)/tui_test
 
 TESTS := $(TUI_TEST)
@@ -52,10 +53,12 @@ $(TUI_TEST): $(MODULE_DIR)/test/tui_test.cpp \
              $(MODULE_DIR)/src/terminal.cpp \
              $(MODULE_DIR)/src/test_bench.cpp \
              $(TERM_DIR)/src/grid.cpp \
+             $(TERM_DIR)/src/key_bytes.cpp \
              $(TERM_DIR)/src/pty.cpp \
              $(TERM_DIR)/src/screen_snapshot.cpp \
              $(TERM_DIR)/src/scrollback.cpp \
-             $(TERM_DIR)/src/terminal.cpp
+             $(TERM_DIR)/src/terminal.cpp \
+             $(TERM_DIR)/src/text.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -o $@

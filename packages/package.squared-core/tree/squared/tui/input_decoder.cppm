@@ -12,6 +12,10 @@ export namespace sq::tui
  * keys, xterm's CSI and SS3 sequences with their modifiers, Alt as an
  * ESC prefix), SGR mouse reports, bracketed paste, focus.
  *
+ * For keys, the inverse of sq.term's `key_bytes` and `key_text_bytes`
+ * (what sqterm sends for a key): every key and modifier they encode
+ * decodes back to itself, which the tests check.
+ *
  * Fed as the bytes arrive, a sequence may be split between two reads. An
  * escape on its own cannot be told from the start of a sequence until
  * nothing follows it: `flush` says so, and the Terminal calls it when no
