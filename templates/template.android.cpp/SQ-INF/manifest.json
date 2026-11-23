@@ -113,6 +113,16 @@
         "shared": [],
         "default": "user"
       }
+    },
+    "square": {
+      "roles": {
+        "app": "sq_app",
+        "android": "sq_android",
+        "assets": "sq_android/assets",
+        "layouts": "sq_app/layouts",
+        "build": "build",
+        "docs": "docs"
+      }
     }
   }
 }
