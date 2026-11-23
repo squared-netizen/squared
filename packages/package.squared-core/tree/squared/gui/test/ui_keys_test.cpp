@@ -154,6 +154,53 @@ int main()
     assert( ui.event( navigation_event( app::Navigation::previous ) ) && ui.focused() == &first );
     assert( !ui.event( navigation_event( app::Navigation::unknown ) ) );
 
+    // The soft keyboard: a text widget brings it up when focused; one that
+    // says keyboard_on_focus() false takes text with it away, and asks.
+    {
+        struct Service final : app::TextInputService
+        {
+                bool on = false;
+                bool shown = false;
+                int starts = 0;
+                void start( const app::TextInputRequest &request ) override
+                {
+                    on = true;
+                    shown = request.keyboard;
+                    ++starts;
+                }
+                void update_area( const app::TextInputArea & ) override {}
+                void stop() override { on = shown = false; }
+                [[nodiscard]] bool active() const noexcept override { return on; }
+                void show_keyboard( bool up ) override { shown = up; }
+                [[nodiscard]] bool keyboard_shown() const noexcept override { return shown; }
+        };
+        struct Field final : gui::Widget
+        {
+                bool asks = true;
+                [[nodiscard]] bool focusable() const noexcept override { return true; }
+                [[nodiscard]] bool wants_text_input() const noexcept override { return true; }
+                [[nodiscard]] bool keyboard_on_focus() const noexcept override { return asks; }
+        };
+        Service keyboard;
+        gui::Ui two( 100.0F, 100.0F );
+        two.set_text_input_service( &keyboard );
+        auto &both = static_cast<gui::LinearLayout &>(
+            two.set_content( std::make_unique<gui::LinearLayout>() ) );
+        auto &field = static_cast<Field &>( both.add( std::make_unique<Field>() ) );
+        auto &terminal = static_cast<Field &>( both.add( std::make_unique<Field>() ) );
+        terminal.asks = false;
+        assert( two.event( key_event( app::Key::tab ) ) && two.focused() == &field );
+        assert( keyboard.on && keyboard.shown && two.keyboard_shown() );
+        assert( two.event( key_event( app::Key::tab ) ) && two.focused() == &terminal );
+        assert( keyboard.on && !keyboard.shown && !two.keyboard_shown() ); // text, no keyboard
+        two.toggle_keyboard();
+        assert( keyboard.on && keyboard.shown );
+        two.toggle_keyboard();
+        assert( keyboard.on && !keyboard.shown );
+        two.show_keyboard( true );
+        assert( two.keyboard_shown() );
+    }
+
     std::printf( "ui keys: all assertions passed  sizeof(app::KeyModifiers)=%zu\n",
                  sizeof( app::KeyModifiers ) );
     return 0;

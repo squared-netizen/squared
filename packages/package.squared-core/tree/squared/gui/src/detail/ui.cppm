@@ -223,6 +223,17 @@ class Ui
         [[nodiscard]] Widget *focused() noexcept { return focused_; }
 
         /**
+         * @brief The soft keyboard up or away, for the focused widget that
+         * takes text; text input stays on either way. For a widget whose
+         * keyboard_on_focus() is false.
+         */
+        void show_keyboard( bool shown );
+        /** @brief Up if it is away, away if it is up. */
+        void toggle_keyboard();
+        /** @brief Whether the soft keyboard is up, as the platform knows it. */
+        [[nodiscard]] bool keyboard_shown() const noexcept;
+
+        /**
      * @brief Replace tooltip timing and placement policy.
      * @param config Finite, non-negative delays and distances.
      * @throws std::invalid_argument when any value is negative or non-finite.

@@ -203,6 +203,15 @@ class Widget : public Group
         [[nodiscard]] virtual bool wants_text_input() const noexcept;
 
         /**
+         * @brief Whether focusing this widget (or tapping it again) brings
+         * the soft keyboard up. The same as wants_text_input() by default; a
+         * widget that takes text but is touched for other things (a terminal
+         * scrolled with a finger) says false and asks for the keyboard
+         * itself, through Ui::show_keyboard.
+         */
+        [[nodiscard]] virtual bool keyboard_on_focus() const noexcept;
+
+        /**
      * @brief Control the enabled state.
      * @param enabled false disables interaction and dims rendering.
      */

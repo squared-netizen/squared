@@ -18,6 +18,13 @@ struct TextInputRequest
         TextInputArea area{};
         /** @brief Requested soft-keyboard content mode. */
         TextInputPurpose purpose{ TextInputPurpose::normal };
+        /**
+         * @brief Whether the soft keyboard comes up now. False for a widget
+         * that takes text (a hardware keyboard's keys, a keyboard already
+         * up) but shows the soft keyboard only when asked
+         * (`Widget::keyboard_on_focus`), such as a terminal.
+         */
+        bool keyboard{ true };
 };
 
 } // namespace sq::app
