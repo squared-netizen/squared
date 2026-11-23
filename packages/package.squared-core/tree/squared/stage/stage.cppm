@@ -277,6 +277,17 @@ class Stage final
         [[nodiscard]] app::ClipboardService *clipboard() const noexcept { return clipboard_; }
 
         /**
+         * @brief The soft keyboard up or away for the focused widget that
+         * takes text, or the other of the two: for a widget whose
+         * keyboard_on_focus() is false and that asks itself (sqterm's
+         * terminal, on a two-finger tap). Nothing without a drawing or a
+         * focused text widget.
+         */
+        void show_keyboard( bool shown );
+        void toggle_keyboard();
+        [[nodiscard]] bool keyboard_shown() noexcept;
+
+        /**
          * @brief Pixels to one logical unit (the drawable's shorter side is
          * 720 units), for a custom widget that draws pixel-exact, as a
          * terminal's glyphs are; 0 before the first window.
