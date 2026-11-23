@@ -89,6 +89,12 @@
         "shared": [],
         "default": "user"
       }
+    },
+    "square": {
+      "roles": {
+        "app": "sq_app",
+        "build": "build"
+      }
     }
   }
 }
