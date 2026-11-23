@@ -40,6 +40,16 @@ class TextInputService
      * @return true while the soft keyboard is shown for a control.
      */
         [[nodiscard]] virtual bool active() const noexcept = 0;
+
+        /**
+         * @brief Puts the soft keyboard up, or away, while text input stays
+         * active (keys still reach the widget). Only for a platform with a
+         * soft keyboard; elsewhere nothing happens.
+         */
+        virtual void show_keyboard( bool shown ) { static_cast<void>( shown ); }
+
+        /** @brief Whether the soft keyboard is up, as far as the platform knows. */
+        [[nodiscard]] virtual bool keyboard_shown() const noexcept { return active(); }
 };
 
 } // namespace sq::app

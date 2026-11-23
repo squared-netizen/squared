@@ -107,6 +107,10 @@ bool Widget::wants_text_input() const noexcept
 {
     return false;
 }
+bool Widget::keyboard_on_focus() const noexcept
+{
+    return wants_text_input();
+}
 
 void Widget::set_tooltip( std::string text )
 {

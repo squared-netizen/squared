@@ -573,7 +573,8 @@ void Ui::set_focus( Widget *widget )
         // Asked again even when active: the person may have put the keyboard
         // away (back, or its own button), which the service is not told of,
         // and tapping the field again is how they ask for it back.
-        if( text_input_service_ && focused_ && focused_->wants_text_input() ) {
+        if( text_input_service_ && focused_ && focused_->wants_text_input() &&
+            focused_->keyboard_on_focus() ) {
             float stage_x = 0.0F;
             float stage_y = 0.0F;
             for( const Actor *current = focused_; current; current = current->parent() ) {
@@ -608,10 +609,29 @@ void Ui::set_focus( Widget *widget )
             stage_y += current->y();
         }
         text_input_service_->start(
-            { .area = { stage_x, stage_y, focused_->width(), focused_->height() } } );
+            { .area = { stage_x, stage_y, focused_->width(), focused_->height() },
+              .keyboard = focused_->keyboard_on_focus() } );
     } else if( text_input_service_->active() ) {
         text_input_service_->stop();
     }
+}
+
+void Ui::show_keyboard( bool shown )
+{
+    if( text_input_service_ && focused_ && focused_->wants_text_input() ) {
+        text_input_service_->show_keyboard( shown );
+    }
+}
+
+void Ui::toggle_keyboard()
+{
+    show_keyboard( !keyboard_shown() );
+}
+
+bool Ui::keyboard_shown() const noexcept
+{
+    return text_input_service_ && text_input_service_->active() &&
+           text_input_service_->keyboard_shown();
 }
 
 bool Ui::focus_next( bool reverse )

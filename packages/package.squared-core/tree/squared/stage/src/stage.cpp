@@ -490,6 +490,25 @@ gui::Ui *Stage::ui() noexcept
     return drawing_ != nullptr ? &drawing_->ui : nullptr;
 }
 
+void Stage::show_keyboard( bool shown )
+{
+    if( drawing_ != nullptr ) {
+        drawing_->ui.show_keyboard( shown );
+    }
+}
+
+void Stage::toggle_keyboard()
+{
+    if( drawing_ != nullptr ) {
+        drawing_->ui.toggle_keyboard();
+    }
+}
+
+bool Stage::keyboard_shown() noexcept
+{
+    return drawing_ != nullptr && drawing_->ui.keyboard_shown();
+}
+
 void Stage::say( const char *format, ... ) noexcept
 {
     std::array<char, 256> line{};
