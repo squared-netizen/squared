@@ -105,9 +105,11 @@ through termux-adb). `run-as` needs a debuggable build: `DEV_LOG` and
 sq_app/        your code — portable C++, no Android headers
 sq_android/    the platform layer — manifest, resources, entry point
 sq_kit/        kit-provided headers (generator-owned)
-mk/            generated build fragments (generator-owned)
+build.lua      yours: sqmake's build; includes sq/build/template.lua
+sq/build/      the template's and each kit's build, in Lua (generator-owned)
+mk/            the same for make (generator-owned)
 Makefile       yours; includes the fragments above
-.squared/      how this workspace was generated (generator-owned)
+SQ-INF/        what this workspace is and was made from (square reads it)
 ```
 
 ## Who owns what
@@ -116,9 +118,9 @@ Makefile       yours; includes the fragments above
 |---|---|---|
 | `sq_app/**` | you | never touched |
 | `sq_android/**` | you | never touched |
-| `Makefile`, `README.md`, `.gitignore` | you | never touched |
-| `mk/**`, `sq_kit/**` | generator | rewritten |
-| `.squared/**` | generator | rewritten |
+| `build.lua`, `Makefile`, `README.md`, `.gitignore` | you | never touched |
+| `sq/build/**`, `mk/**`, `sq_kit/**` | generator | rewritten |
+| `SQ-INF/**` | generator, then square | rewritten |
 
 `sq_android/` is seeded rather than generated on purpose. The manifest, the
 resources and the platform entry point are all yours to change — that is the

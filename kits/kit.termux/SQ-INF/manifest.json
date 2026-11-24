@@ -3,7 +3,7 @@
   "format_version": 3,
   "kind": "kit",
   "id": "kit.termux",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tree": "tree/",
   "title": "Termux:API Kit",
   "description": "Header-only bridge to the Termux:API command-line tools: battery, clipboard, notifications, dialogs, speech, location, sensors.",
@@ -50,13 +50,15 @@
       },
       "integration_areas": [
         "app.include",
-        "build.make.fragments"
+        "build.make.fragments",
+        "build.lua.fragments"
       ],
       "conflicts_with": [],
       "ownership": {
         "generated": [
           "sq_kit/include/termux/termux.hpp",
-          "mk/kit_termux.mk"
+          "mk/kit_termux.mk",
+          "sq/build/kit_termux.lua"
         ],
         "user": [],
         "shared": []

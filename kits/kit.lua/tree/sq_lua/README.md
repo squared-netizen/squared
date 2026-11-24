@@ -23,6 +23,10 @@ Add your own and call them from C++ with `host.call_global("name", {args})`.
 make lua-status
 ```
 
+With sqmake, `sq/build/kit_lua.lua` finds it: `$PREFIX/include` and
+`$PREFIX/lib` (Termux: `pkg install lua54`), Debian's `/usr/include/lua5.4`,
+or what `build.lua` says (`app.lua = {flags = {...}, link = {...}}`).
+
 Lua is acquired from the build host, not vendored into this project. If it is
 missing, the application still builds and runs — it just reports that scripts
 are inactive.

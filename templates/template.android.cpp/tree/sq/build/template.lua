@@ -35,6 +35,8 @@
 --     sqconsole = "sqconsole",    -- `sqmake console`: a debug build's Console
 --   }
 --
+-- Kits add to it through their own sq/build/kit_*.lua (below).
+--
 -- The template's layout: sq_app/src/**/*.cpp (the app), sq_android/*.cpp
 -- (the platform side), sq_app/third_party/**/*.c, sq_android/AndroidManifest.xml,
 -- res/ and assets/. classes.dex is squared's shims (tools/dexgen/shims.dex,
@@ -159,6 +161,18 @@ local glue = sq .. "/third_party/native_app_glue"
 -- build compiles it so too), and linked as an object, not from an archive.
 local glue_obj = rules.cc(glue .. "/android_native_app_glue.c", {optimise and {"-O2"} or {"-O0", "-g"}, "-fPIC", "-w", "-I" .. glue})
 
+-- Kits: every sq/build/kit_*.lua (a kit's, generated; kit.opengl's, say)
+-- returns what it adds, {id, flags, link, srcs}, in the order of their
+-- names: square adds and updates a kit by its file, never this one.
+local kit_flags, kit_link = {}, {}
+for _, file in ipairs(glob("sq/build/kit_*.lua")) do
+  local k = include(file)
+  if type(k) ~= "table" then error(file .. ": a kit's build file returns {id, flags, link, srcs}", 0) end
+  kit_flags[#kit_flags + 1] = k.flags or {}
+  kit_link[#kit_link + 1] = k.link or {}
+  add(k.srcs or {})
+end
+
 -- sqgen (squared/tools/sqgen): sq_app/names.json and sq_app/layouts/*.json
 -- into C++ (names.hpp, layouts.hpp, layouts.cpp in build/gen), for an app
 -- with either; the app's sources include them, so every compile waits. An
@@ -199,11 +213,11 @@ local so = shlib{
   objs = {glue_obj},
   deps = {squared.all},
   after = after,
-  flags = {gen_flags, debug_flags, optimise and {"-O2"} or {"-O0", "-g"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, a.flags or {}},
+  flags = {gen_flags, debug_flags, optimise and {"-O2"} or {"-O0", "-g"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, kit_flags, a.flags or {}},
   link = {"-Wl,--hash-style=both", "-Wl,--gc-sections", "-Wl,--no-undefined",
           "-Wl,--exclude-libs,libsquared_font.a",
           "-Wl,--exclude-libs,libsquared_freetype.a", "-Wl,--exclude-libs,libc++.a:libc++abi.a:libunwind.a", "-pthread", "-landroid", "-llog",
-          platform .. "/libEGL.so", platform .. "/libGLESv3.so", a.link or {}},
+          platform .. "/libEGL.so", platform .. "/libGLESv3.so", kit_link, a.link or {}},
 }
 
 -- The APK's copy is stripped (--strip-unneeded keeps the dynamic symbols the

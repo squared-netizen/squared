@@ -3,7 +3,7 @@
   "format_version": 3,
   "kind": "template",
   "id": "template.android.cpp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tree": "tree/",
   "title": "Android C++ NativeActivity application",
   "description": "A plain NDK workspace: C++20, NativeActivity, no Java and no Gradle. Builds a signed APK with make and a compiler.",
@@ -48,13 +48,15 @@
         "render.backend",
         "app.include",
         "build.make.fragments",
-        "android.manifest.features"
+        "android.manifest.features",
+        "build.lua.fragments"
       ],
       "integration_arity": {
         "render.backend": "single",
         "app.include": "multi",
         "build.make.fragments": "multi",
-        "android.manifest.features": "multi"
+        "android.manifest.features": "multi",
+        "build.lua.fragments": "multi"
       },
       "parameters": [
         {

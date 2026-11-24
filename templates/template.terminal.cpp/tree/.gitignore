@@ -1,5 +1,6 @@
-# Build output. §1.9: reproducible artifacts are not source.
-build/
+# Build output (this project's build/, not sq/build/, which is source).
+# §1.9: reproducible artifacts are not source.
+/build/
 *.o
 *.d
 
