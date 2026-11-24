@@ -7,9 +7,9 @@
 
   Two things are deliberately absent:
 
-  <uses-sdk> — minSdkVersion and targetSdkVersion are passed to aapt2 by the
-  build (mk/squared_generated.mk), so `make apk SQ_MIN_SDK=21` retargets the
-  project without editing a file. Declaring them here as well would create two
+  <uses-sdk> — minSdkVersion and targetSdkVersion are passed to apkpack by the
+  build (app.min_sdk and app.target_sdk in build.lua), so retargeting the
+  project needs no edit here. Declaring them here as well would create two
   sources of truth, and aapt2 would take this one.
 
   android:debuggable — set by the build (aapt2's debug mode) for DEV_LOG and

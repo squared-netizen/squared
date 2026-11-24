@@ -4,8 +4,8 @@
 // This file is YOURS (ownership class: seeded), like entry.cpp.
 //
 // The service is a shim (squared's tools/dexgen: a dex with a constructor and
-// three native methods, packed as classes.dex when the Makefile says
-// BACKGROUND=1). Its natives are here. They are registered when the activity
+// three native methods, packed as classes.dex when build.lua says
+// app.background = true). Its natives are here. They are registered when the activity
 // is made, through the activity's class loader (the app's), so the dex names
 // no library and needs no System.loadLibrary.
 //

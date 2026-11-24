@@ -3,7 +3,7 @@
   "format_version": 3,
   "kind": "package",
   "id": "package.squared-core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "tree": "tree/",
   "title": "squared-core",
   "description": "The squared framework: application lifecycle, virtual filesystem, asset cache, JSON, messaging, 2D graphics, scene graph, and the GUI widget set. Vendored into the project so it can be modified.",
@@ -56,16 +56,13 @@
         ]
       },
       "integration_areas": [
-        "build.make.fragments",
         "app.include",
         "framework.source"
       ],
       "conflicts_with": [],
       "ownership": {
         "default": "shared",
-        "generated": [
-          "mk/pkg_squared_core.mk"
-        ],
+        "generated": [],
         "user": [],
         "shared": []
       }

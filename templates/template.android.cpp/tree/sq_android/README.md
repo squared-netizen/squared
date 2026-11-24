@@ -31,7 +31,7 @@ from the configuration NativeActivity already holds
 `device: API <n>, process <name>` (an app with a `:console` process logs
 each separately); the GL
 driver is logged once as `driver: <version>; <renderer>; <vendor>` when the
-first context is current. Both reach logcat (`make logcat`, through adb), which is
+first context is current. Both reach logcat (`sqmake logcat`, through adb), which is
 how a device without Termux is read. Each such check costs a comparison,
 cheaper than reading a cached answer from storage, so nothing is cached.
 
@@ -87,7 +87,7 @@ character without them and the modifiers). What does not arrive: an
 input method's composition (accents built from two keys, CJK input, emoji),
 which needs a Java `InputConnection`. The volume keys are left to Android.
 
-**Running in the background** (`BACKGROUND=1` in the Makefile;
+**Running in the background** (`app.background = true` in `build.lua`;
 `background.hpp/.cpp`). For an app whose work goes on with the app off the
 screen (a shell, a download): `app.keep_running({.title = ..., .text = ...})`
 in `squared_main` starts a foreground service, `dev.squared.ModelService`,
@@ -123,7 +123,7 @@ stack) and says its size in UTF-8; `set_text` writes one, labelled with the
 app's name. An `sq::App` passes it to its Stage, where a widget reaches it as
 `stage.clipboard()`.
 
-**The Console** (`make CONSOLE=app`; see squared's `docs/programmer/console.md`).
+**The Console** (`sqmake --debug`; see squared's `docs/programmer/console.md`).
 A three-finger tap anywhere, or `` ` `` on a keyboard, opens and closes it;
 the gesture is taken before your `App` sees it (fingers already down are
 released far off screen, so nothing is clicked). While it is open, a gesture
@@ -141,16 +141,16 @@ cleared under the Console. In a Console build a `create()` that fails no
 longer leaves a black window: the Console opens and `app start` tries again.
 `quit` finishes the activity, the same way your `quit_requested()` does.
 
-**From Termux.** A Console build also listens for Termux on this phone
+**From the terminal.** A Console build also listens on this phone
 (`127.0.0.1`, a port made from the package name, and a secret your build
-makes): `make console` in the project shows the Console's lines as they are
-written and runs what you type, `make console CMD='mem'` runs one command.
-It waits for the app, and reconnects when the app restarts. `make
-console-only` starts the app with only the Console running: your `App` is
-created by `app start`, so an app that crashes at start can still be reached.
+makes): `sqmake console` in the project shows the Console's lines as they are
+written and runs what you type. It waits for the app, and reconnects when the
+app restarts. Started with the intent extra `squared.console_only`, the app
+runs only the Console: your `App` is created by `app start`, so an app that
+crashes at start can still be reached.
 The app's own files go through it both ways: `ls files`, `pull
 files/crash-previous.txt` (saved in `build/pulled/`), `pull apk`, and `push
-<file> [name]` typed in `make console` (into the app's `files/`); `logcat`
+<file> [name]` typed in `sqmake console` (into the app's `files/`); `logcat`
 shows the app's own system log (a library that failed to load, a Java
 exception) and `libs` what it loaded, no adb needed. `screens` lists your
 App's screens and panes and what each keeps (scrolls, an unfinished edit),
@@ -184,16 +184,16 @@ so nothing else is lost.
 Two deliberate absences:
 
 **No `<uses-sdk>`.** `minSdkVersion` and `targetSdkVersion` are passed to
-`aapt2` by the build, so `make apk SQ_MIN_SDK=26` retargets without editing a
-file. Declaring them here too would create two sources of truth, and aapt2
-would take this one. `SQ_MIN_SDK` (default 22) is also what the code is
-compiled and linked for, so the manifest cannot claim a level the library was
-not built for.
+apkpack by the build (`app.min_sdk`, `app.target_sdk` in `build.lua`), so
+retargeting edits no file here. Declaring them here too would create two
+sources of truth. `min_sdk` (default 28) is also what the code is compiled
+and linked for, so the manifest cannot claim a level the library was not
+built for.
 
-**No `android:debuggable`.** The build sets it for `DEV_LOG` and `CONSOLE`
-builds (`aapt2 link --debug-mode`, read back from the linked manifest to
-check), so `run-as` reaches their private files; plain builds never carry it.
-`SQ_DEBUGGABLE=` turns it off for one build, `SQ_DEBUGGABLE=1` on. Committing
+**No `android:debuggable`.** The build sets it for `sqmake --debug` builds
+(`apkpack link --debuggable`), so `run-as` reaches their private files; plain
+builds never carry it. `app.debuggable = true` in `build.lua` sets it on a
+plain build too. Committing
 it here would ship a debuggable release.
 
 `android:hasCode="false"` and `android.app.NativeActivity` are what let this

@@ -11,7 +11,7 @@ Four short lessons. Read them in order.
 
 1. Open `sq_app/src/main.cpp`.
 2. Replace its contents with the code from the lesson.
-3. Run `make run`.
+3. Run `sqmake run`.
 4. Do the **Try** exercise at the end by changing the code and running it again.
 
 If you get stuck, read the first compiler error. It names a file and a line.

@@ -10,7 +10,7 @@
 // Your scripts go in sq_lua/ and your C++ in sq_app/.
 //
 // Availability. This header compiles to nothing useful unless the build found
-// Lua 5.4 -- mk/kit_lua.mk sets SQ_HAVE_LUA when it did. Without it, the class
+// Lua 5.4 -- sq/build/kit_lua.lua sets SQ_HAVE_LUA when it did. Without it, the class
 // still exists and every method reports "lua unavailable" through the normal
 // error channel. That is deliberate: a project that stops compiling because a
 // system package is missing is much harder to diagnose than one that builds

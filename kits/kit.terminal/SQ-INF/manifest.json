@@ -3,7 +3,7 @@
   "format_version": 3,
   "kind": "kit",
   "id": "kit.terminal",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "tree": "tree/",
   "title": "Terminal Kit",
   "description": "A single header of simple terminal utilities: console I/O, a small regex facade, and a libGDX-style FileHandle. Standard library only.",
@@ -27,7 +27,6 @@
       ],
       "integration_areas": [
         "app.include",
-        "build.make.fragments",
         "build.lua.fragments"
       ],
       "conflicts_with": [
@@ -40,7 +39,6 @@
       "ownership": {
         "generated": [
           "sq_kit/**",
-          "mk/kit_terminal.mk",
           "sq/build/kit_terminal.lua"
         ],
         "user": [],

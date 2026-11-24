@@ -57,7 +57,7 @@ import sq.stage;
 import std;
 
 
-// Development builds only (`make DEV_LOG=1`): every log line below is also sent
+// Development builds only (`sqmake --debug`, SQUARED_DEV_LOG): every log line below is also sent
 // to a UDP port on this device, a fatal signal sends a backtrace, and frames
 // whose update() or render() allocate are reported. The value of
 // SQUARED_DEV_LOG is the port. Nothing of this exists in a normal build.
@@ -65,8 +65,9 @@ import std;
 import sq.dev;
 #endif
 
-// The in-app Console (`make CONSOLE=app`): drawn over the application's frame,
-// and reachable from Termux through its bridge (`make console`; below),
+// The in-app Console (`sqmake --debug`, SQUARED_CONSOLE): drawn over the
+// application's frame, and reachable from the terminal through its bridge
+// (`sqmake console`; below),
 // showing the log - with DEV_LOG, every dev log line of the main thread, the
 // application's included; without, the lines below. Nothing of it exists in a
 // CONSOLE=0 build. For now it only shows: the keyboard and the gesture that
@@ -278,8 +279,8 @@ bool call_void_int(JNIEnv* env, jobject target, const char* name, jint value) {
 
 #ifdef SQUARED_CONSOLE
 /// The boolean extra `name` of the intent that started the activity; false
-/// when there is none or anything fails. `make console-only` sets
-/// squared.console_only.
+/// when there is none or anything fails. An intent with the extra
+/// squared.console_only set starts the Console alone.
 bool intent_flag(JNIEnv* env, jobject activity, const char* name) {
     if (env == nullptr) return false;
     jobject intent = call_object(env, activity, "getIntent", "()Landroid/content/Intent;");
@@ -811,7 +812,7 @@ struct Platform {
         }
         add_console_commands();
         console.show();
-        // `make console-only`: the Console runs, the App waits for `app start`,
+        // The intent extra squared.console_only: the Console runs, the App waits for `app start`,
         // so an App that crashes at start can still be reached.
         if (intent_flag(jni(), activity, "squared.console_only")) {
             app_stopped = true;
