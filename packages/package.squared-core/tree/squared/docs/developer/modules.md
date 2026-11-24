@@ -299,8 +299,9 @@ again, on the phone and in every workspace.
   self-containment check of every header went with the headers (the user's
   call, 2026-10-27): an interface compiles alone by construction.
 - **sqgen** writes `import sq.gui;`, `import sq.messaging;`, `import std;`.
-  A project builds sqgen and sqconsole for its own machine from the framework
-  built for it (`make BUILD=host CXX=<host compiler> sqgen`, into
+  It is sqgui's `sqgui-gen` now, installed (`pkg install sqgui`). A project
+  builds sqconsole for its own machine from the framework built for it
+  (`make BUILD=host CXX=<host compiler> sqconsole`, into
   `squared/build/host/`), with its own std key (Termux's libc++ headers).
 - **The modules.mk "missing BMI" rule** covers squared's modules only
   (`sq.%.pcm`): matching std too, it made `std.pcm` a target of its own and

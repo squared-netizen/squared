@@ -6,7 +6,8 @@ decision record: the app model's "Screens as data (decided, 7.0)".
 Four files in `gui/`: `layout.cppm` (the table, `read_tap`, `check`),
 `layout_writer.cppm` (the C++ avenue), `instantiate.cppm` (widgets from
 nodes), `layout_file.cppm` (reading `names.json` and layout files), each with
-its `src/` file; and the build-time compiler, `tools/sqgen/sqgen.cpp`.
+its `src/` file; and the build-time compiler, sqgen (`tools/sqgen/sqgen.cpp`
+until 2026-11-24; now sqgui's `sqgui-gen`, the same code, below).
 Sprint 7.0a (the table) and 7.0b (files and `sqgen`), 2026-10-21 and 22.
 
 ## Why a table
@@ -214,7 +215,10 @@ as written; a navigation against the targets and the schema's `screens`.
 
 ## `sqgen`
 
-One program, built for the build machine. Pass by pass:
+One program, built for the build machine. Since 2026-11-24 it is sqgui's
+`sqgui-gen` (github.com/squared-netizen/sqgui, `gen/sqgui-gen.cpp`), which
+writes what sqgen wrote, byte for byte; it still names itself `sqgen` in what
+it prints and writes. Pass by pass:
 
 1. **Arguments.** Usage problems exit 2.
 2. **`names.json`** is read (`read_names`), then each name becomes an
@@ -254,17 +258,17 @@ What it writes:
 **Why it compiles from the library and not a copy.** `sqgen` links
 `layout.cpp`, `layout_writer.cpp` and `layout_file.cpp` themselves: the
 tables it writes are the writer's, checked by the same `check`, and
-`sqgen_test` compares one with a C++-written one field by field.
+sqgui's `gen_test` (once `sqgen_test` here) compares one with a C++-written
+one field by field.
 
 ## The app build: `mk/pkg_squared_core.mk`
 
 The package's mk file, not the project template, so no template change. It
 applies only when `sq_app/names.json` or `sq_app/layouts/*.json` exists:
 
-- `$(BUILD)/host/sqgen` is built with `HOST_CXX` from 11 framework sources
-  plus `yyjson.c` (`HOST_CC`), like `sqconsole`, and rebuilt when one of
-  them changes, or a layout, messaging or data header.
-- `$(BUILD)/gen/layouts.cpp` depends on sqgen, every input file, and an
+- `sqgui-gen` is found on PATH (or `SQGUI_GEN=`), as clang is; without it
+  an app that has layouts stops with what to install (`pkg install sqgui`).
+- `$(BUILD)/gen/layouts.cpp` depends on every input file, and an
   `inputs` file listing them, rewritten only when the list changes (a
   `$(shell)` at parse time), so adding or removing a layout regenerates.
   The recipe touches it, as sqgen may leave it unchanged.
@@ -326,12 +330,13 @@ because a test runs again only when its binary is newer than its pass.
 Beside the cases: `names.json` read into its schema, and a file giving the
 same table as the C++ writer.
 
-`gui/test/sqgen_test.cpp`: `sqgen` end to end. The gui Makefile builds it,
-runs it on `test/sqgen/`, and compiles the test with what it wrote: the keys'
+sqgui's `test/gen_test.cpp` (here as `gui/test/sqgen_test.cpp` until
+2026-11-24): `sqgen` end to end. sqgui's build runs it on `test/gen/`, and
+compiles the test with what it wrote: the keys'
 types (`static_assert`), the layouts found, sorted and checked, the pane
 `discard`'s place and modal from its file, `settings` equal to the writer's
 table, and built. Then it runs `sqgen` again: unchanged
-input writes nothing; the wrong files in `test/sqgen/bad/` and `keyword/`
+input writes nothing; the wrong files in `test/gen/bad/` and `keyword/`
 print exactly their `expected.txt` and write nothing; a missing file or
 directory, and bad arguments.
 

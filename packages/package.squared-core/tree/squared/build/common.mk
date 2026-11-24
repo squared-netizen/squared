@@ -245,7 +245,7 @@ squared_flags := $(strip $(CXX) $(SQUARED_CXXFLAGS) $(SQUARED_EXTERNAL_INCLUDES)
     $(SQUARED_CXX_VERSION))
 
 squared_goals := $(or $(MAKECMDGOALS),all)
-squared_building := $(strip $(filter all test retest umbrella sqgen sqconsole,$(squared_goals)) \
+squared_building := $(strip $(filter all test retest umbrella sqconsole,$(squared_goals)) \
     $(wildcard $(patsubst %,$(SQUARED_ROOT)/%/Makefile,$(squared_goals))))
 
 # $(squared_nothing) starts an indented $(info) line: make drops the spaces

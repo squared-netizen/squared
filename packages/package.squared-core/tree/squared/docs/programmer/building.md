@@ -23,7 +23,7 @@ make                 # every module
 make gui             # one module
 make BUILD=debug
 make headers         # the pinned std sources, the modules' build order
-make sqgen           # sqgen and sqconsole, for this machine, in build/<BUILD>/
+make sqconsole       # sqconsole, for this machine, in build/<BUILD>/
 make test            # every module's tests, each only if it changed (below)
 make retest          # every test again
 make clean

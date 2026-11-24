@@ -18,13 +18,14 @@ Ownership: wrappers are listed under `generated` in `template.android.cpp/SQ-INF
 
 `SQ_WORKSPACE` is the one contract between wrapper and tool. A tool that has a workspace-wide mode switches to it when that variable is set. A tool without one ignores it.
 
-## sqgen
+## sqgen, now sqgui-gen
 
-`tools/sqgen/sqgen.cpp`, the one C++ program here: it compiles layout files
-and `names.json` at build time. Not a script, and not wrapped: the app build
-compiles it for the build machine from `mk/pkg_squared_core.mk` and runs it,
-and the gui Makefile builds and tests it in the framework. How it works:
-[layouts.md](layouts.md#sqgen).
+The layout compiler, which compiles layout files and `names.json` at build
+time, was `tools/sqgen/sqgen.cpp` here. It moved to sqgui on 2026-11-24
+(github.com/squared-netizen/sqgui, `gen/sqgui-gen.cpp`), where the editor
+uses the same code; its output is the same byte for byte. An app's build
+finds `sqgui-gen` on PATH as it finds clang (`pkg install sqgui`). How it
+works: [layouts.md](layouts.md#sqgen).
 
 ## docs-archive.sh
 
