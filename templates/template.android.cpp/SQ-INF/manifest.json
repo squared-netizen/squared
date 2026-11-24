@@ -3,10 +3,10 @@
   "format_version": 3,
   "kind": "template",
   "id": "template.android.cpp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "tree": "tree/",
   "title": "Android C++ NativeActivity application",
-  "description": "A plain NDK workspace: C++20, NativeActivity, no Java and no Gradle. Builds a signed APK with make and a compiler.",
+  "description": "A plain NDK workspace: C++20, NativeActivity, no Java and no Gradle. Builds a signed APK with sqmake and a compiler.",
   "requires_features": [],
   "license": "MIT",
   "authors": [
@@ -35,8 +35,6 @@
           "sq_kit"
         ],
         "build": [
-          "Makefile",
-          "mk",
           "build.lua",
           "sq/build"
         ],
@@ -47,14 +45,12 @@
       "integration_areas": [
         "render.backend",
         "app.include",
-        "build.make.fragments",
         "android.manifest.features",
         "build.lua.fragments"
       ],
       "integration_arity": {
         "render.backend": "single",
         "app.include": "multi",
-        "build.make.fragments": "multi",
         "android.manifest.features": "multi",
         "build.lua.fragments": "multi"
       },
@@ -106,8 +102,6 @@
       ],
       "ownership": {
         "generated": [
-          "mk/squared_generated.mk",
-          "mk/squared_android_package.mk",
           "sq/build/template.lua",
           "tools/docs-archive.sh"
         ],

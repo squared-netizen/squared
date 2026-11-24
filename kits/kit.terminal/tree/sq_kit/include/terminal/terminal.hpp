@@ -3,7 +3,7 @@
 // terminal/terminal.hpp — terminal bridge for the Squared framework.
 //
 // Contributed by kit.terminal. A simple terminal application utility toolkit.
-// It uses only the C++ standard library, so all it needs is a compiler and make.
+// It uses only the C++ standard library, so all it needs is a compiler and sqmake.
 //
 // GENERATED FILE. The generator owns this path and will replace it on update.
 // Write your own code in the working directory instead.

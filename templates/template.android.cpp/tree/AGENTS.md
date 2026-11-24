@@ -13,10 +13,9 @@ Conventions for this workspace. Seeded by squared-pg; yours to change.
   application code goes. Change it when you need to change how this project
   meets Android — a new lifecycle hook, a manifest permission, a different
   entry point.
-- **Never edit `mk/squared_generated.mk`, `mk/squared_android_package.mk`, or
-  anything under `sq_kit/`.** Generator-owned and rewritten on update. Build
-  settings go in the `Makefile`, which is yours; every generated variable uses
-  `?=` so overriding one works.
+- **Never edit `sq/build/` or anything under `sq_kit/`.** Generator-owned and
+  rewritten on update. Build settings go in `build.lua`, which is yours
+  (`app = {...}`; `sq/build/template.lua` lists every setting).
 - **The build globs.** Every `.cpp` under `sq_app/src/` and `sq_android/` is
   compiled.
 
@@ -40,8 +39,8 @@ a new window.
 ## Before committing
 
 ```sh
-make            # warning-free
-make apk        # packages cleanly
+sqmake          # builds warning-free, packages and verifies cleanly
+square verify   # nothing generated changed by hand
 ```
 
 Never commit a keystore. `.gitignore` covers `*.keystore` and `*.jks`.

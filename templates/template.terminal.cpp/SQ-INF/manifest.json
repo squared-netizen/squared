@@ -3,10 +3,10 @@
   "format_version": 3,
   "kind": "template",
   "id": "template.terminal.cpp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "tree": "tree/",
   "title": "C++ terminal application",
-  "description": "A C++20 terminal application workspace that builds with make and a compiler, nothing else. Runs on Termux, Linux and macOS. Optionally scriptable with kit.lua.",
+  "description": "A C++20 terminal application workspace that builds with sqmake and a compiler, nothing else. Runs on sqterm, Termux and Linux. Optionally scriptable with kit.lua.",
   "requires_features": [],
   "license": "MIT",
   "authors": [
@@ -38,8 +38,6 @@
           "sq_app/src/platform"
         ],
         "build": [
-          "Makefile",
-          "mk",
           "build.lua",
           "sq/build"
         ],
@@ -50,13 +48,11 @@
       "integration_areas": [
         "app.include",
         "app.entrypoint",
-        "build.make.fragments",
         "workspace.lua",
         "build.lua.fragments"
       ],
       "integration_arity": {
         "app.include": "multi",
-        "build.make.fragments": "multi",
         "app.entrypoint": "single",
         "workspace.lua": "single",
         "build.lua.fragments": "multi"
@@ -93,12 +89,9 @@
           "capability.project.plan@^1.0"
         ]
       },
-      "executable": [
-        "run.sh"
-      ],
+      "executable": [],
       "ownership": {
         "generated": [
-          "mk/squared_generated.mk",
           "sq/build/template.lua"
         ],
         "user": [],

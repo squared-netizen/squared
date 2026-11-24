@@ -12,10 +12,10 @@ sqmake run    # build and run
 sqmake test   # build and run each sq_app/test/*.cpp
 ```
 
-or the same with make (`make`, `make run`, `make test`, `./run.sh`). No CMake,
-no package manager, no network: a compiler and sqmake (or make) are the whole
-dependency list, which is the point of this template: it is meant to work on
-a phone.
+No CMake, no make, no package manager, no network: a compiler and sqmake
+are the whole dependency list, which is the point of this template: it is
+meant to work on a phone. `sqmake --debug run` builds with `-O0 -g` into
+`build/debug`.
 
 ## Layout
 
@@ -24,8 +24,6 @@ sq_app/        your code — headers in include/, sources in src/
 sq_kit/        kit-provided headers (generator-owned)
 build.lua      yours: sqmake's build; includes sq/build/template.lua
 sq/build/      the template's and each kit's build, in Lua (generator-owned)
-mk/            the same for make (generator-owned)
-Makefile       yours; includes the fragments above
 SQ-INF/        what this workspace is and was made from (square reads it)
 ```
 
@@ -34,9 +32,9 @@ SQ-INF/        what this workspace is and was made from (square reads it)
 | Path | Owner | On update |
 |---|---|---|
 | `sq_app/**` | you | never touched |
-| `build.lua`, `Makefile`, `README.md`, `.gitignore` | you | never touched |
+| `build.lua`, `README.md`, `.gitignore` | you | never touched |
 | `sq_lua/**` (with kit.lua) | you | never touched |
-| `sq/build/**`, `mk/**`, `sq_kit/**` | generator | rewritten |
+| `sq/build/**`, `sq_kit/**` | generator | rewritten |
 | `SQ-INF/**` | generator, then square | rewritten |
 
 Every generated path is recorded in `SQ-INF/files.json` with the hash it had
@@ -49,7 +47,7 @@ ability to update it in place.
 ## Independence
 
 This workspace does not depend on squared-pg. The generator is not on the
-build path, is not referenced by build.lua or the Makefile, and does not need to be
+build path, is not referenced by build.lua, and does not need to be
 installed to build, run, test or distribute what it produced.
 
 ## Where to start

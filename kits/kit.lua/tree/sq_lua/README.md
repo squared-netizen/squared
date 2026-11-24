@@ -19,11 +19,7 @@ Add your own and call them from C++ with `host.call_global("name", {args})`.
 
 ## Is Lua actually available?
 
-```sh
-make lua-status
-```
-
-With sqmake, `sq/build/kit_lua.lua` finds it: `$PREFIX/include` and
+`sq/build/kit_lua.lua` finds it: `$PREFIX/include` and
 `$PREFIX/lib` (Termux: `pkg install lua54`), Debian's `/usr/include/lua5.4`,
 or what `build.lua` says (`app.lua = {flags = {...}, link = {...}}`).
 
@@ -36,8 +32,9 @@ pkg install lua54          # Termux
 apt install liblua5.4-dev  # Debian, Ubuntu
 ```
 
-If your Lua lives somewhere unusual, set the flags yourself:
+If your Lua lives somewhere unusual, say so in `build.lua`, before its
+include:
 
-```sh
-make SQ_LUA_CFLAGS=-I/opt/lua/include SQ_LUA_LIBS='-L/opt/lua/lib -llua'
+```lua
+app.lua = {flags = {"-I/opt/lua/include"}, link = {"-L/opt/lua/lib", "-llua"}}
 ```
