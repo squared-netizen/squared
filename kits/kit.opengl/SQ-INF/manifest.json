@@ -49,7 +49,6 @@
         "build.lua.fragments"
       ],
       "conflicts_with": [
-        "kit.sfml",
         "kit.sdl3"
       ],
       "ownership": {

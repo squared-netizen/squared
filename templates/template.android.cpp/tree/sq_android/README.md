@@ -22,7 +22,7 @@ events into calls on your `App`, and brings up a rendering surface if a
 rendering kit was applied.
 
 The renderer import is guarded, so this file compiles with no kit at all.
-That guard is what makes `kit.opengl` and a future `kit.sfml` alternatives
+That guard is what makes `kit.opengl` and a future rendering kit alternatives
 rather than one of them being baked in.
 
 **What the device lacks is decided from its API level**, read once at start
