@@ -41,6 +41,7 @@ Terminal::Terminal( const TerminalConfig &config )
     tabs_ = std::make_unique<std::uint64_t[]>( tab_words( primary_.columns() ) );
     reset_tabs();
     bottom_ = static_cast<std::uint16_t>( primary_.rows() - 1U );
+    palette_ = config.palette;
 }
 
 void Terminal::feed( std::span<const std::byte> bytes ) noexcept
@@ -506,7 +507,7 @@ void Terminal::select_graphic_rendition( const detail::CsiSequence &s ) noexcept
         return;
     }
     // A colour of SGR 38 or 48, from parameter `i` on; `i` moves past it.
-    const auto extended = [&s]( std::size_t &i, Rgb &out ) noexcept -> bool {
+    const auto extended = [this, &s]( std::size_t &i, Rgb &out ) noexcept -> bool {
         bool found = false;
         if( s.is_sub( i + 1 ) ) {
             // ITU T.416: 38:5:n, 38:2:[colour space]:r:g:b, or 38:2:r:g:b.
@@ -516,7 +517,7 @@ void Terminal::select_graphic_rendition( const detail::CsiSequence &s ) noexcept
             }
             const std::size_t subs = end - ( i + 1 );
             if( s.raw( i + 1 ) == 5 && subs >= 2 ) {
-                out = detail::indexed_colour( clamp_byte( s.raw( i + 2 ) ) );
+                out = detail::indexed_colour( clamp_byte( s.raw( i + 2 ) ), palette_ );
                 found = true;
             } else if( s.raw( i + 1 ) == 2 && subs >= 4 ) {
                 const std::size_t first = subs >= 5 ? i + 3 : i + 2;
@@ -529,7 +530,7 @@ void Terminal::select_graphic_rendition( const detail::CsiSequence &s ) noexcept
         }
         // The semicolon form: 38;5;n and 38;2;r;g;b.
         if( s.raw( i + 1 ) == 5 ) {
-            out = detail::indexed_colour( clamp_byte( s.raw( i + 2 ) ) );
+            out = detail::indexed_colour( clamp_byte( s.raw( i + 2 ) ), palette_ );
             i += 3;
             return true;
         }
@@ -564,16 +565,20 @@ void Terminal::select_graphic_rendition( const detail::CsiSequence &s ) noexcept
             continue;
         }
         if( p >= 30 && p <= 37 ) {
-            pen_.foreground = detail::indexed_colour( static_cast<std::uint8_t>( p - 30U ) );
+            pen_.foreground =
+                detail::indexed_colour( static_cast<std::uint8_t>( p - 30U ), palette_ );
             pen_.flags.default_foreground = false;
         } else if( p >= 90 && p <= 97 ) {
-            pen_.foreground = detail::indexed_colour( static_cast<std::uint8_t>( p - 90U + 8U ) );
+            pen_.foreground =
+                detail::indexed_colour( static_cast<std::uint8_t>( p - 90U + 8U ), palette_ );
             pen_.flags.default_foreground = false;
         } else if( p >= 40 && p <= 47 ) {
-            pen_.background = detail::indexed_colour( static_cast<std::uint8_t>( p - 40U ) );
+            pen_.background =
+                detail::indexed_colour( static_cast<std::uint8_t>( p - 40U ), palette_ );
             pen_.flags.default_background = false;
         } else if( p >= 100 && p <= 107 ) {
-            pen_.background = detail::indexed_colour( static_cast<std::uint8_t>( p - 100U + 8U ) );
+            pen_.background =
+                detail::indexed_colour( static_cast<std::uint8_t>( p - 100U + 8U ), palette_ );
             pen_.flags.default_background = false;
         } else {
             switch( p ) {

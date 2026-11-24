@@ -61,6 +61,10 @@ class Terminal final
          */
         void resize( std::uint16_t columns, std::uint16_t rows );
 
+        /** The 16 named colours from now on (a theme); what is drawn keeps its colours. */
+        void set_palette( const Palette &palette ) noexcept { palette_ = palette; }
+        [[nodiscard]] const Palette &palette() const noexcept { return palette_; }
+
         [[nodiscard]] std::uint16_t columns() const noexcept { return screen().columns(); }
         [[nodiscard]] std::uint16_t rows() const noexcept { return screen().rows(); }
 
@@ -197,6 +201,7 @@ class Terminal final
         std::unique_ptr<std::uint64_t[]> tabs_;
         detail::Parser parser_;
         Cell pen_{};
+        Palette palette_ = xterm_palette;
         Saved saved_{};
         Saved saved_primary_{};
         std::array<char, 128> title_{};
