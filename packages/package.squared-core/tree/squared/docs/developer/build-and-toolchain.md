@@ -18,7 +18,7 @@ make                 # every module, release
 make BUILD=debug     # -O0 -g
 make gui             # one module
 make headers         # the pinned std sources, the module order (tools/check_modules.sh)
-make sqgen           # sqgen and sqconsole, the host tools, in build/<BUILD>/
+make sqconsole       # sqconsole, the host tool, in build/<BUILD>/ (sqgen is sqgui's now: sqgui-gen)
 make lint            # format, source-rule and clang-tidy checks
 make V=1             # every command in full
 make SQUARED_CACHE=off   # no build cache (below)

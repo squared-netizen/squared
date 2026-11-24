@@ -177,7 +177,7 @@ HOST_CXX ?= c++
 SQ_SQCONSOLE := $(BUILD)/host/sqconsole
 
 # The framework for this machine, and a host tool from it: $(call
-# sq_host_tool,<tool>), sqgen or sqconsole (squared's root Makefile).
+# sq_host_tool,<tool>), sqconsole (squared's root Makefile).
 sq_host_tool = @mkdir -p $(dir $@) && echo "  host c++       $(1), for this machine (squared/build/host)" && \
     $(MAKE) --no-print-directory -C $(SQ_SQUARED_DIR) BUILD=host CXX="$(HOST_CXX)" $(1) && \
     cp -f $(SQ_SQUARED_DIR)/build/host/$(1) $@
@@ -227,11 +227,11 @@ ifneq ($(SQ_MISCASED),)
   $(error $(word 1,$(SQ_MISCASED))= is not a setting: did you mean $(word 2,$(SQ_MISCASED))=? (make's names are case-sensitive))
 endif
 
-# --- sqgen: names.json and layouts/ into C++ --------------------------------
+# --- sqgui-gen: names.json and layouts/ into C++ ----------------------------
 #
 # An app with sq_app/names.json or sq_app/layouts/*.json gets them compiled by
-# sqgen (squared/tools/sqgen/), built for this machine like sqconsole, into
-# $(BUILD)/gen: names.hpp (every address as a typed key, namespace names),
+# sqgui-gen (sqgui's layout compiler, once squared's sqgen: pkg install sqgui;
+# SQGUI_GEN= names another), on PATH as clang is, into $(BUILD)/gen: names.hpp (every address as a typed key, namespace names),
 # layouts.hpp and layouts.cpp (every layout's node table, namespace layouts).
 # A problem in either stops the build, each one with its file and where in it.
 # An app with neither builds exactly as before: none of this applies.
@@ -239,25 +239,22 @@ SQ_NAMES_FILE := $(wildcard sq_app/names.json)
 SQ_LAYOUT_FILES := $(sort $(wildcard sq_app/layouts/*.json))
 ifneq ($(strip $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES)),)
   SQ_GEN_DIR := $(BUILD)/gen
-  SQ_SQGEN := $(BUILD)/host/sqgen
+  SQ_SQGEN := $(or $(SQGUI_GEN),$(shell command -v sqgui-gen 2>/dev/null))
   # Which files there are, so adding or removing one regenerates too.
   $(shell mkdir -p '$(SQ_GEN_DIR)'; \
     printf '%s\n' $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) | cmp -s - '$(SQ_GEN_DIR)/inputs' || \
     printf '%s\n' $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) > '$(SQ_GEN_DIR)/inputs')
   SQ_KIT_SRC += $(SQ_GEN_DIR)/layouts.cpp
   SQ_KIT_CPPFLAGS += -I$(SQ_GEN_DIR)
-  # Your sources include what sqgen writes, so they wait for it (order only:
+  # Your sources include what sqgui-gen writes, so they wait for it (order only:
   # the dependency files then say which of them use it).
   $(patsubst %.cpp,$(BUILD)/%.o,$(shell find sq_app/src -name '*.cpp' 2>/dev/null)): | $(SQ_GEN_DIR)/layouts.cpp
 endif
 
-ifneq ($(SQ_SQGEN),)
-# Built from the framework for this machine, as sqconsole is (a change to
-# the framework reaches it through the archives the device build makes).
-$(SQ_SQGEN): $(SQ_SQUARED_DIR)/tools/sqgen/sqgen.cpp $(SQ_SQUARED_LIBS)
-	$(call sq_host_tool,sqgen)
-
-$(SQ_GEN_DIR)/layouts.cpp: $(SQ_SQGEN) $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) $(SQ_GEN_DIR)/inputs
+ifneq ($(SQ_GEN_DIR),)
+$(SQ_GEN_DIR)/layouts.cpp: $(SQ_NAMES_FILE) $(SQ_LAYOUT_FILES) $(SQ_GEN_DIR)/inputs
+	@test -n '$(SQ_SQGEN)' || { echo "this app has sq_app/names.json or sq_app/layouts/: it needs sqgui-gen" \
+	    "(pkg install sqgui, or SQGUI_GEN=path)" >&2; exit 1; }
 	@$(SQ_SQGEN) $(if $(SQ_NAMES_FILE),--names $(SQ_NAMES_FILE),) \
 	    $(if $(SQ_LAYOUT_FILES),--layouts sq_app/layouts,) --out $(SQ_GEN_DIR)
 	@touch $@

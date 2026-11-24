@@ -19,7 +19,7 @@
 --   squared_settings = {
 --     root = "squared",       -- this folder, from the build file's
 --     platform = "android",   -- or "host": no Android-only sources (a
---                             -- build of squared's tools, such as sqgen,
+--                             -- build of squared's tools, such as sqconsole,
 --                             -- for this machine)
 --     graphics = "gles",      -- or "null"; on Android, gles by default
 --     debug = false,          -- -O0 -g instead of -O2 -DNDEBUG

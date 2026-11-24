@@ -13,7 +13,7 @@
 #   make retest          every test again, changed or not
 #   make lint LINT_ARGS=--changed   options for tools/lint.sh (also --only tidy)
 #   make <module>        build one module
-#   make sqgen           sqgen (and sqconsole), the host tools, in build/<BUILD>/
+#   make sqconsole       sqconsole, the host tool, in build/<BUILD>/
 #   make V=1             every command, and every test's output, in full
 #   make SQUARED_CACHE=off   no build cache (build/common.mk, "the build cache")
 #   make clean
@@ -36,7 +36,7 @@ MODULES := app math data files assets graphics \
            $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) \
            gui messaging time dev console stage term tui font
 
-.PHONY: all clean docs docs-check headers lint test retest umbrella sqgen sqconsole $(MODULES)
+.PHONY: all clean docs docs-check headers lint test retest umbrella sqconsole $(MODULES)
 
 # The modules with tests, in the order they are run.
 TESTED := dev files graphics $(if $(filter gles,$(SQUARED_GRAPHICS_BACKEND)),gles,) gui console time messaging stage term tui font
@@ -99,12 +99,10 @@ $(SQUARED_UMBRELLA_LIB): squared.cppm $(SQUARED_STD_READY) $(SQUARED_FLAGS_STAMP
 headers:
 	bash tools/check_modules.sh
 
-# The host tools a project builds for the machine it is built on
-# (mk/pkg_squared_core.mk: `make BUILD=host CXX=<host compiler> sqgen`), from
-# the framework built for that machine.
-sqgen: all
-	$(MAKE) -C gui $(BUILD_DIR)/sqgen
-
+# The host tool a project builds for the machine it is built on
+# (mk/pkg_squared_core.mk: `make BUILD=host CXX=<host compiler> sqconsole`),
+# from the framework built for that machine. sqgen went to sqgui
+# (sqgui-gen, github.com/squared-netizen/sqgui), 2026-11-24.
 sqconsole: all
 	$(MAKE) -C console $(BUILD_DIR)/sqconsole
 

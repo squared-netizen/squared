@@ -31,7 +31,7 @@
 --     package = nil,              -- the manifest's package: for run, uninstall
 --     device = {"bash", "tools/device.sh"},
 --                                 -- what talks to the device (build/android.lua)
---     sqgen = "sqgen",            -- for sq_app/names.json, sq_app/layouts/
+--     sqgui_gen = "sqgui-gen",    -- for sq_app/names.json, sq_app/layouts/
 --     sqconsole = "sqconsole",    -- `sqmake console`: a debug build's Console
 --   }
 --
@@ -41,7 +41,8 @@
 -- (the platform side), sq_app/third_party/**/*.c, sq_android/AndroidManifest.xml,
 -- res/ and assets/. classes.dex is squared's shims (tools/dexgen/shims.dex,
 -- committed): nothing is built to run during the build. An app with
--- sq_app/names.json or sq_app/layouts/ needs sqgen, the SDK's.
+-- sq_app/names.json or sq_app/layouts/ needs sqgui-gen, the SDK's (pkg
+-- install sqgui).
 
 local a = app or error("sq/build/template.lua: set app = {name = ...} before including it")
 local name = a.name or error("sq/build/template.lua: app.name")
@@ -173,11 +174,11 @@ for _, file in ipairs(glob("sq/build/kit_*.lua")) do
   add(k.srcs or {})
 end
 
--- sqgen (squared/tools/sqgen): sq_app/names.json and sq_app/layouts/*.json
+-- sqgui-gen (sqgui's; once squared's sqgen): sq_app/names.json and sq_app/layouts/*.json
 -- into C++ (names.hpp, layouts.hpp, layouts.cpp in build/gen), for an app
 -- with either; the app's sources include them, so every compile waits. An
--- app with neither builds without it. sqgen is the SDK's, on PATH (or
--- app.sqgen), as sqedit is.
+-- app with neither builds without it. sqgui-gen is the SDK's, on PATH (or
+-- app.sqgui_gen; app.sqgen, its old name, still says so), as sqedit is.
 local gen_flags, after = {}, {}
 local names = glob("sq_app/names.json")
 local layouts = glob("sq_app/layouts/*.json")
@@ -188,14 +189,14 @@ if #names + #layouts > 0 then
   for _, f in ipairs(names) do inputs[#inputs + 1] = f end
   for _, f in ipairs(layouts) do inputs[#inputs + 1] = f end
   local listed = write_file(gen .. "/inputs", table.concat(inputs, "\n") .. "\n")
-  local cmd = {a.sqgen or "sqgen"}
+  local cmd = {a.sqgui_gen or a.sqgen or "sqgui-gen"}
   if #names > 0 then cmd[#cmd + 1] = {"--names", names[1]} end
   if #layouts > 0 then cmd[#cmd + 1] = {"--layouts", "sq_app/layouts"} end
   cmd[#cmd + 1] = {"--out", gen}
   local cpp = gen .. "/layouts.cpp"
-  -- touch: sqgen leaves an unchanged file as it was.
-  target{out = cpp, ins = {inputs, listed}, desc = "sqgen", cmds = {cmd, {"touch", cpp}}}
-  -- What layouts.cpp imports (tools/sqgen writes these three).
+  -- touch: sqgui-gen leaves an unchanged file as it was.
+  target{out = cpp, ins = {inputs, listed}, desc = "sqgui-gen", cmds = {cmd, {"touch", cpp}}}
+  -- What layouts.cpp imports (sqgui-gen writes these three).
   srcs[#srcs + 1] = {cpp, imports = {"sq.gui", "sq.messaging", "std"}}
   gen_flags = {"-I" .. gen}
   after = {cpp}

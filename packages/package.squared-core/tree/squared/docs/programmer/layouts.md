@@ -199,8 +199,10 @@ root.add<sq::gui::Slider>().bind( names::settings_volume );
 ## sqgen: the build step
 
 An app with `sq_app/names.json` or any `sq_app/layouts/*.json` has them
-compiled before its own sources, into `build/gen/`. You do nothing to turn
-it on; an app with neither builds as before.
+compiled before its own sources, into `build/gen/`, by `sqgui-gen` (sqgui's;
+it was squared's `sqgen`, and still prints as `sqgen`): installed with `pkg
+install sqgui`, found on PATH. You do nothing else to turn it on; an app
+with neither builds as before.
 
 | File | Holds |
 |---|---|
@@ -240,7 +242,7 @@ A name that cannot be a C++ name is reported too: one that becomes a keyword
 Run by hand (the build runs it for you):
 
 ```sh
-sqgen [--names FILE] [--layouts DIR] --out DIR
+sqgui-gen [--names FILE] [--layouts DIR] --out DIR
 ```
 
 | Exit | Means |
