@@ -100,7 +100,7 @@ struct Shell
         int stray_;
 };
 
-// Made with nothing; a timer.
+// Made with no arguments (no_args); a timer.
 struct Files
 {
         static constexpr std::array takes{ names::files_in.name(), names::after.name() };
@@ -167,7 +167,7 @@ void routes_by_name()
     auto line = std::make_unique<TelegraphLine>();
     TelegraphUi &ui = line->ui();
     NoHandler handler;
-    ModelRunner<Model> runner( *line, on_ui_thread, Shell::Made{ .base = 100 }, nothing,
+    ModelRunner<Model> runner( *line, on_ui_thread, Shell::Made{ .base = 100 }, no_args,
                                std::string( "rest" ) );
     CHECK( runner.turn() == 0 );
     ui.drain( handler );
@@ -190,7 +190,7 @@ void timers()
     auto line = std::make_unique<TelegraphLine>();
     TelegraphUi &ui = line->ui();
     NoHandler handler;
-    ModelRunner<Model> runner( *line, on_ui_thread, Shell::Made{}, nothing, std::string() );
+    ModelRunner<Model> runner( *line, on_ui_thread, Shell::Made{}, no_args, std::string() );
     CHECK( ui.do_( names::after, std::int64_t{ 0 } ).result == SendResult::sent );
     CHECK( runner.turn() == 1 ); // set, and due in the same turn
     ui.drain( handler );
@@ -220,7 +220,7 @@ void descriptors()
     }
     {
         ModelRunner<Model> runner( *line, on_ui_thread,
-                                   Shell::Made{ .fd = mine[0], .stray = stray[0] }, nothing,
+                                   Shell::Made{ .fd = mine[0], .stray = stray[0] }, no_args,
                                    std::string() );
         CHECK( ::write( mine[1], "x", 1 ) == 1 );
         CHECK( ::write( stray[1], "y", 1 ) == 1 );

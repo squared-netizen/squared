@@ -542,7 +542,7 @@ struct Workspaces { static constexpr std::array takes{ ws_open.name(), ws_new.na
 struct Editor { /* no takes: every name no other part takes */ };
 
 using Model = sq::messaging::Composite<Shell, Workspaces, Editor>;
-app.run<Model>( places, sq::messaging::nothing, sq::messaging::nothing );
+app.run<Model>( places, sq::messaging::no_args, sq::messaging::no_args );
 ```
 
 | A part has | What the composite does with it |
@@ -555,7 +555,7 @@ app.run<Model>( places, sq::messaging::nothing, sq::messaging::nothing );
 
 **Made in place.** `Composite<A, B, C>()` makes each part with no
 arguments; `Composite<A, B, C>( a, b, c )` makes each from its own, in order,
-`sq::messaging::nothing` for a part made with none. Parts are made where they
+`sq::messaging::no_args` for a part made with none. Parts are made where they
 live, so a part need not be movable (a pty, a thread's handle). They are made
 in order on the model's thread and destroyed in reverse. `model.part<B>()`
 reaches one by its type.

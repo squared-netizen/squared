@@ -9,13 +9,13 @@ export namespace sq::messaging
 
 /**
  * @brief Given for a part of a `Composite` that is made with no arguments,
- * where the others are given theirs: `Composite<Shell, Files>( places, nothing )`.
+ * where the others are given theirs: `Composite<Shell, Files>( places, no_args )`.
  */
-struct Nothing
+struct NoArgs
 {
-        explicit Nothing() = default;
+        explicit NoArgs() = default;
 };
-inline constexpr Nothing nothing{};
+inline constexpr NoArgs no_args{};
 
 namespace detail
 {
@@ -86,11 +86,11 @@ struct PartSlot
         PartSlot()
             : part()
         {}
-        explicit PartSlot( Nothing /*nothing*/ )
+        explicit PartSlot( NoArgs /*no_args*/ )
             : part()
         {}
         template<typename A>
-            requires( !std::same_as<std::remove_cvref_t<A>, Nothing> )
+            requires( !std::same_as<std::remove_cvref_t<A>, NoArgs> )
         explicit PartSlot( A &&argument )
             : part( std::forward<A>( argument ) )
         {}
@@ -112,7 +112,7 @@ struct PartSlot
  *         ...
  *     };
  *     using Model = sq::messaging::Composite<Shell, Workspaces, Editor>;
- *     app.run<Model>( places, sq::messaging::nothing, editor_options );
+ *     app.run<Model>( places, sq::messaging::no_args, editor_options );
  *
  * A telegram goes to the part that takes its name. One part may say nothing
  * (no `takes`): it has every name no other part takes (its saved values
@@ -128,7 +128,7 @@ struct PartSlot
  * so it cannot keep waking the model.
  *
  * Made with no arguments, every part is made with none; or with one
- * argument a part, in order, `nothing` for a part made with none. Parts are
+ * argument a part, in order, `no_args` for a part made with none. Parts are
  * made in order on the model's thread, destroyed in reverse.
  */
 template<typename... Parts>
@@ -157,7 +157,7 @@ class Composite final
     public:
         Composite() = default;
 
-        /** @brief Each part from its argument, in order (`nothing`: made with none). */
+        /** @brief Each part from its argument, in order (`no_args`: made with none). */
         template<typename... Args>
             requires( sizeof...( Args ) == sizeof...( Parts ) && sizeof...( Args ) > 0 )
         explicit Composite( Args &&...args )
@@ -318,7 +318,7 @@ class Composite final
 
     private:
         template<typename F>
-        void each( F &&f ) noexcept
+        void each( const F &f ) noexcept
         {
             ( f( part<Parts>() ), ... );
         }
