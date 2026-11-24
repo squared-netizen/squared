@@ -65,8 +65,12 @@ SNAPSHOT_TEST := $(BUILD_DIR)/snapshot_test
 # inline, closing, unwatching, the table, a model with no readable (-pthread).
 WATCH_TEST := $(BUILD_DIR)/watch_test
 
+# A model made of parts (Composite): routing by name, the parts' hooks, timers
+# and watched descriptors, on the inline runner.
+COMPOSITE_TEST := $(BUILD_DIR)/composite_test
+
 TESTS := $(ADDRESS_TEST) $(TELEGRAM_TEST) $(RING_TEST) $(CACHE_TEST) $(LIST_TEST) \
-    $(TELEGRAPH_TEST) $(THREAD_TEST) $(SNAPSHOT_TEST) $(WATCH_TEST)
+    $(TELEGRAPH_TEST) $(THREAD_TEST) $(SNAPSHOT_TEST) $(WATCH_TEST) $(COMPOSITE_TEST)
 
 test: $(TESTS)
 	$(call run_tests,$(TESTS))
@@ -177,6 +181,24 @@ $(WATCH_TEST): $(MODULE_DIR)/test/watch_test.cpp \
                $(MODULE_DIR)/src/model_runner.cpp \
                $(SQUARED_ROOT)/time/src/now.cpp \
                $(SQUARED_ROOT)/time/src/timepiece.cpp
+	@mkdir -p $(dir $@)
+	$(call say,bin,$(MODULE)/$(notdir $@))
+	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@
+
+$(COMPOSITE_TEST): $(MODULE_DIR)/test/composite_test.cpp \
+                   $(MODULE_DIR)/src/telegram.cpp \
+                   $(MODULE_DIR)/src/telegram_ring.cpp \
+                   $(MODULE_DIR)/src/value_cache.cpp \
+                   $(MODULE_DIR)/src/model_list.cpp \
+                   $(MODULE_DIR)/src/list_window.cpp \
+                   $(MODULE_DIR)/src/telegraph.cpp \
+                   $(MODULE_DIR)/src/snapshot.cpp \
+                   $(MODULE_DIR)/src/name_table.cpp \
+                   $(MODULE_DIR)/src/address.cpp \
+                   $(MODULE_DIR)/src/wake.cpp \
+                   $(MODULE_DIR)/src/model_runner.cpp \
+                   $(SQUARED_ROOT)/time/src/now.cpp \
+                   $(SQUARED_ROOT)/time/src/timepiece.cpp
 	@mkdir -p $(dir $@)
 	$(call say,bin,$(MODULE)/$(notdir $@))
 	$(TEST_CXX) $(TESTFLAGS) $(SQUARED_INCLUDE) $(SQUARED_TEST_INPUTS) -pthread -o $@

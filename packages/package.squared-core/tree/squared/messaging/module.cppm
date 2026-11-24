@@ -4,6 +4,7 @@
 export module sq.messaging;
 
 export import :address;
+export import :composite;
 export import :key;
 export import :list_window;
 export import :model_list;

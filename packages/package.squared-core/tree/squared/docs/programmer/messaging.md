@@ -522,6 +522,48 @@ the model is called every turn). On its own thread, a model the UI keeps busy
 still hears from its descriptors: each turn looks at them. Inline, `turn()`
 looks at them once each frame. The runner forgets every watch when it ends.
 
+## A model made of parts
+
+An app runs one model (`App::run`). One that does several things, a shell,
+a list of workspaces, an editor, can be several parts, each a model of its
+own in its own file, put together as one: `sq::messaging::Composite<Parts...>`
+(`squared/messaging/composite.cppm`).
+
+```cpp
+struct Shell {
+    static constexpr std::array takes{ term_input.name(), term_size.name() };
+    explicit Shell( Places places );
+    void start( Telegraph &t );
+    void receive( Telegraph &t, const Received &r );
+    void readable( Telegraph &t, int fd );
+    bool watches( int fd ) const { return fd == pty_.fd(); }
+};
+struct Workspaces { static constexpr std::array takes{ ws_open.name(), ws_new.name() }; /* ... */ };
+struct Editor { /* no takes: every name no other part takes */ };
+
+using Model = sq::messaging::Composite<Shell, Workspaces, Editor>;
+app.run<Model>( places, sq::messaging::no_args, sq::messaging::no_args );
+```
+
+| A part has | What the composite does with it |
+|---|---|
+| `receive` (each part) | a telegram goes to the part whose `takes` holds its name; a saved value too |
+| `static constexpr` `takes`, an array of `Name`s | its names. At most one part has none: it has every name no other part takes, as a lone model does. Two parts taking one name does not compile |
+| `start`, `tick`, `low_memory`, `background`, `foreground`, `save` | called on each part that has it, in the order the parts are named |
+| `wake_at()` and `due` | the composite wakes at the earliest of its parts' times, and calls `due` on each part whose time has come |
+| `readable` and `bool watches( int fd ) const` | a ready descriptor goes to the part that says it is its own; `watches` is needed when more than one part reads. One no part claims is unwatched, so it cannot wake the model for ever |
+
+**Made in place.** `Composite<A, B, C>()` makes each part with no
+arguments; `Composite<A, B, C>( a, b, c )` makes each from its own, in order,
+`sq::messaging::no_args` for a part made with none. Parts are made where they
+live, so a part need not be movable (a pty, a thread's handle). They are made
+in order on the model's thread and destroyed in reverse. `model.part<B>()`
+reaches one by its type.
+
+Costs: nothing allocated; a telegram is matched against each part's `takes`
+in turn (a few names each), and the hooks a part lacks are not called at
+all. Tested in `messaging/test/composite_test.cpp`.
+
 ## Lists
 
 A list of any length costs the UI only the rows on screen. The model holds
