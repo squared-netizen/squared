@@ -6,7 +6,7 @@
 --
 -- {{project_name}} loads this file at startup through sq::lua::Host. If the
 -- build could not find Lua 5.4, the application still runs and prints why --
--- see `make lua-status`.
+-- see `make lua-status` (or, with sqmake, sq/build/kit_lua.lua).
 
 local M = {}
 

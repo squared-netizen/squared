@@ -3,7 +3,7 @@
   "format_version": 3,
   "kind": "template",
   "id": "template.term.edu.cpp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tree": "tree/",
   "title": "C++ terminal teaching workspace",
   "description": "A minimal C++20 terminal workspace for learning to program: one program and a short, heavily commented Makefile. Needs only make and a compiler. Optional kits: kit.edu_cpp (lessons), kit.terminal (input/output helpers).",
@@ -35,7 +35,9 @@
         "platform": [],
         "build": [
           "Makefile",
-          "mk"
+          "mk",
+          "build.lua",
+          "sq/build"
         ],
         "resource": []
       },
@@ -43,13 +45,15 @@
         "app.include",
         "app.entrypoint",
         "build.make.fragments",
-        "edu.lessons"
+        "edu.lessons",
+        "build.lua.fragments"
       ],
       "integration_arity": {
         "app.include": "multi",
         "app.entrypoint": "single",
         "build.make.fragments": "multi",
-        "edu.lessons": "multi"
+        "edu.lessons": "multi",
+        "build.lua.fragments": "multi"
       },
       "parameters": [
         {
@@ -84,7 +88,9 @@
       },
       "executable": [],
       "ownership": {
-        "generated": [],
+        "generated": [
+          "sq/build/template.lua"
+        ],
         "user": [],
         "shared": [],
         "default": "user"

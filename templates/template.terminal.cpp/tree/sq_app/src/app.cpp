@@ -69,7 +69,7 @@ int App::run(int argc, char** argv) {
         }
     } else {
         sq::term::eprintln("script: this build has no Lua interpreter");
-        sq::term::eprintln("        run `make lua-status` for details");
+        sq::term::eprintln("        `make lua-status` says why; with sqmake, sq/build/kit_lua.lua");
     }
 #endif
 
