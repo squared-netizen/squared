@@ -361,6 +361,28 @@ void lines_and_regions()
     CHECK( t.history_size() == 1 );
 }
 
+/// A theme's palette: the 16 named colours from it, set at the start or
+/// later; the cube and the grey ramp unchanged.
+void palette()
+{
+    TerminalConfig config;
+    config.columns = 10;
+    config.rows = 3;
+    config.palette[1] = Rgb{ 255, 56, 100 };
+    Terminal t( config );
+    t.feed( "\x1b[31ma\x1b[38;5;1mb\x1b[38;5;196mc" );
+    CHECK( t.row( 0 )[0].foreground == ( Rgb{ 255, 56, 100 } ) );
+    CHECK( t.row( 0 )[1].foreground == ( Rgb{ 255, 56, 100 } ) );
+    CHECK( t.row( 0 )[2].foreground == ( Rgb{ 255, 0, 0 } ) );
+    Palette other = xterm_palette;
+    other[12] = Rgb{ 1, 2, 3 };
+    t.set_palette( other );
+    t.feed( "\x1b[94md\x1b[31me" );
+    CHECK( t.row( 0 )[3].foreground == ( Rgb{ 1, 2, 3 } ) );
+    CHECK( t.row( 0 )[4].foreground == ( Rgb{ 205, 0, 0 } ) );
+    CHECK( t.row( 0 )[0].foreground == ( Rgb{ 255, 56, 100 } ) ); // drawn: kept
+}
+
 void colours_and_attributes()
 {
     Terminal t = small();
@@ -793,6 +815,7 @@ int main()
     cursor_and_erasing();
     lines_and_regions();
     colours_and_attributes();
+    palette();
     wide_and_combining();
     alternate_screen_and_modes();
     replies_title_and_bell();

@@ -1,5 +1,6 @@
 export module sq.term:terminal_config;
 
+export import :src.palette;
 import std;
 
 export namespace sq::term
@@ -16,6 +17,8 @@ struct TerminalConfig
          * cell and 24 a line, oldest out. 0 keeps none.
          */
         std::size_t scrollback_bytes = std::size_t{ 1 } << 20U;
+        /** The 16 named colours a program's SGR 30-37, 90-97 and 38;5;0-15 mean. */
+        Palette palette = xterm_palette;
 };
 
 } // namespace sq::term
