@@ -21,8 +21,9 @@
 -- (sq_app/src/**/*.cppm; never its main). The compiler is $CXX, else
 -- clang++ (sqmake's toolchain).
 --
--- Kits: every sq/build/kit_*.lua (a kit's, generated) returns what it adds
--- ({id, flags, link, srcs}); they are added in the order of their names.
+-- Kits and packages: every sq/build/kit_*.lua (a kit's, generated), then
+-- every sq/build/package_*.lua (a package's), returns what it adds ({id,
+-- flags, link, srcs}); they are added in the order of their names.
 
 local a = app or error("sq/build/template.lua: set app = {name = ...} before including it")
 local name = a.name or error("sq/build/template.lua: app.name")
@@ -30,11 +31,13 @@ local optimise = a.optimise ~= false and not mode.debug
 
 toolchain.cxxflags = {"-std=" .. (a.std or "c++20"), optimise and "-O2" or {"-O0", "-g", "-fno-omit-frame-pointer"}}
 
--- What the kits add.
+-- What the kits and packages add.
 local kit_flags, kit_link, kit_srcs = {}, {}, {}
-for _, file in ipairs(glob("sq/build/kit_*.lua")) do
+local parts = glob("sq/build/kit_*.lua")
+for _, f in ipairs(glob("sq/build/package_*.lua")) do parts[#parts + 1] = f end
+for _, file in ipairs(parts) do
   local k = include(file)
-  if type(k) ~= "table" then error(file .. ": a kit's build file returns {id, flags, link, srcs}", 0) end
+  if type(k) ~= "table" then error(file .. ": a kit's or package's build file returns {id, flags, link, srcs}", 0) end
   kit_flags[#kit_flags + 1] = k.flags or {}
   kit_link[#kit_link + 1] = k.link or {}
   for _, s in ipairs(k.srcs or {}) do kit_srcs[#kit_srcs + 1] = s end
@@ -52,7 +55,10 @@ end
 for _, f in ipairs(glob("sq_app/src/**/*.cpp")) do
   if not excluded[f] then srcs[#srcs + 1] = f end
 end
-for _, f in ipairs(kit_srcs) do srcs[#srcs + 1] = f end
+-- A kit's or package's modules join the app's (a test may import them too).
+for _, f in ipairs(kit_srcs) do
+  if f:match("%.cppm$") then modules[#modules + 1] = f else srcs[#srcs + 1] = f end
+end
 
 local flags = {"-Isq_app/include", "-Wall", "-Wextra", "-Wpedantic", kit_flags, a.flags or {}}
 local link = {kit_link, a.link or {}}
