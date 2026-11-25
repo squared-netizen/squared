@@ -118,9 +118,16 @@ screen:
   which stay the hard limits): a pinch and the slider keep to them.
 - **Pinch to zoom** is `pinch_zoom`, made live (today it is set in
   `squared_main` only).
-- The zoom moves into the preferences (`ui.zoom`): `squared/zoom` is read
-  once, on the first start with a cartridge, and then left.
+- The zoom itself stays the Stage's (`squared/zoom`), which a pinch and the
+  slider both keep: a `ui.zoom` the screen wrote would be left behind by the
+  next pinch, and applied at a start it would undo it (changed 2026-11-25,
+  from "the zoom moves into the preferences"). An export does not carry the
+  zoom until the Stage reads it from the preferences itself.
 - An app that never zooms (a game's canvas) turns the section off.
+
+Done (2026-11-25): `set_zoom_range`, `zoom_least()`, `zoom_most()`, and
+`pinch_zoom` at any time (off mid-pinch, the pinch ends with the zoom it
+reached and its fingers reach nothing until lifted).
 
 ## 3. sqterm and sqIDE
 
@@ -140,6 +147,13 @@ screen:
 2. The Stage: `set_zoom_range`, a live `pinch_zoom`. Then
    `sq::SettingsScreen`: sections and entries, the invariants, data-declared
    sections; the keyboard as the wizard's fields have it.
+   **First cut (2026-11-25)**: `sq.settings` (its own module, outside
+   `import squared;`): `Settings` and `SettingsScreen` (`push settings`), the
+   app's sections declared in code (`SettingEntry::toggle`, `number`,
+   `choice`, `text`, `action`) and squared's Zoom, Input and Preferences
+   (Reset all). Still to come: Appearance, Text and Colours (the Stage
+   switching skins and fonts live first), Export and Import (phase 1b),
+   sections declared as JSON, the colour and file entries.
 3. sqterm and sqIDE: their settings moved in, the screen in their drawers.
 4. sqgui: sections shown and edited in the GUI editor.
 

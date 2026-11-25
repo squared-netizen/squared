@@ -735,14 +735,54 @@ int Stage::zoom() const noexcept
 
 void Stage::set_zoom( int percent ) noexcept
 {
-    const int clamped = std::clamp( percent, least_zoom, most_zoom );
+    const int clamped = std::clamp( percent, zoom_least(), zoom_most() );
     zoom_to( ( clamped + zoom_step / 2 ) / zoom_step );
     keep_zoom();
 }
 
+void Stage::set_zoom_range( int least, int most ) noexcept
+{
+    const auto steps = []( int percent ) {
+        return ( std::clamp( percent, least_zoom, most_zoom ) + zoom_step / 2 ) / zoom_step;
+    };
+    int low = steps( least );
+    int high = steps( most );
+    if( low > high ) {
+        std::swap( low, high );
+    }
+    least_steps_ = static_cast<std::uint8_t>( static_cast<unsigned>( low ) & 0x3FU );
+    most_steps_ = static_cast<std::uint8_t>( static_cast<unsigned>( high ) & 0x3FU );
+    if( zoom_steps_ == 0 ) {
+        return; // not read yet: read_zoom keeps to the range
+    }
+    const int now = zoom() / zoom_step;
+    if( now < low || now > high ) {
+        zoom_to( std::clamp( now, low, high ) );
+        keep_zoom();
+    }
+}
+
+void Stage::pinch_zoom( bool on ) noexcept
+{
+    no_pinch_ = on ? 0U : 1U;
+    if( on || drawing_ == nullptr ) {
+        return;
+    }
+    // Off during a pinch: it ends here, and its fingers reach nothing until
+    // they are lifted (the first one's press was cancelled as it began).
+    Drawing::Pinch &pinch = drawing_->pinch;
+    if( pinch.pinching ) {
+        end_pinch();
+        pinch.swallowing = pinch.count > 0;
+    } else if( !pinch.swallowing ) {
+        pinch.count = 0; // one finger down: the widgets have it, as they will
+    }
+}
+
 void Stage::zoom_to( int steps ) noexcept
 {
-    const int clamped = std::clamp( steps, least_zoom / zoom_step, most_zoom / zoom_step );
+    const int clamped =
+        std::clamp( steps, static_cast<int>( least_steps_ ), static_cast<int>( most_steps_ ) );
     if( clamped == static_cast<int>( zoom_steps_ ) ) {
         return;
     }
@@ -761,7 +801,7 @@ void Stage::read_zoom() noexcept
             int percent = 0;
             const auto parsed = std::from_chars( text, text + read.bytes.size(), percent );
             if( parsed.ec == std::errc{} ) {
-                const int clamped = std::clamp( percent, least_zoom, most_zoom );
+                const int clamped = std::clamp( percent, zoom_least(), zoom_most() );
                 steps = ( clamped + zoom_step / 2 ) / zoom_step;
             } else {
                 say( "stage: %s holds no zoom: 100%%", zoom_file.data() );
@@ -790,8 +830,12 @@ void Stage::keep_zoom() noexcept
 bool Stage::pinched( const app::Event &event ) noexcept
 {
     using Type = app::Event::Type;
-    if( no_pinch_ != 0 || drawing_ == nullptr || !is_pointer( event.type ) || pixel_width_ <= 0 ||
+    if( drawing_ == nullptr || !is_pointer( event.type ) || pixel_width_ <= 0 ||
         pixel_height_ <= 0 ) {
+        return false;
+    }
+    // Off: none, but the fingers of a pinch it ended, until they are lifted.
+    if( no_pinch_ != 0 && !drawing_->pinch.swallowing ) {
         return false;
     }
     using Finger = Drawing::Pinch::Finger;

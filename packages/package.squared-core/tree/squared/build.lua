@@ -84,6 +84,8 @@ local tests = {
 
   {"preferences", "preferences_test", {"preferences"}},
 
+  {"settings", "settings_test", {"settings"}},
+
   {"stage", "stage_test", {"stage"}, flags = {"-DSTAGE_SKIN_DIR=" .. quoted("stage/skin/default/skin")}},
   {"stage", "stage_alone_test", {"stage"}},
 

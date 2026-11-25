@@ -2330,6 +2330,34 @@ void a_pinch_zooms_the_ui()
     CHECK( app.stage.zoom() == 50 );
     app.stage.set_zoom( 100 );
     CHECK( app.stage.zoom() == 100 && read_file( kept ) == "100\n" );
+
+    // The range (Settings' Least and Most): the wrong way round is swapped,
+    // each kept within the hard limits; set_zoom and a pinch keep to it; a
+    // zoom outside a new range is brought in and kept.
+    app.stage.set_zoom_range( 200, 80 );
+    CHECK( app.stage.zoom_least() == 80 && app.stage.zoom_most() == 200 &&
+           app.stage.zoom() == 100 );
+    app.stage.set_zoom( 250 );
+    CHECK( app.stage.zoom() == 200 && read_file( kept ) == "200\n" );
+    app.stage.set_zoom_range( 10, 1000 );
+    CHECK( app.stage.zoom_least() == sq::Stage::least_zoom &&
+           app.stage.zoom_most() == sq::Stage::most_zoom );
+    app.stage.set_zoom_range( 101, 148 ); // to the nearest step
+    CHECK( app.stage.zoom_least() == 100 && app.stage.zoom_most() == 150 );
+    CHECK( app.stage.zoom() == 150 && read_file( kept ) == "150\n" );
+    app.stage.set_zoom( 100 );
+    app.stage.set_zoom_range( 100, 120 );
+    platform.frame( app );
+    finger( app, Type::PointerDown, 1, 300.0F, 1000.0F );
+    finger( app, Type::PointerDown, 2, 700.0F, 1000.0F );
+    finger( app, Type::PointerMove, 2, 760.0F, 1000.0F );  // past the slop: from 460
+    finger( app, Type::PointerMove, 2, 1220.0F, 1000.0F ); // twice: 200%, kept to 120
+    CHECK( app.stage.zoom() == 120 );
+    finger( app, Type::PointerUp, 2, 1220.0F, 1000.0F );
+    finger( app, Type::PointerUp, 1, 300.0F, 1000.0F );
+    CHECK( read_file( kept ) == "120\n" );
+    app.stage.set_zoom_range( sq::Stage::least_zoom, sq::Stage::most_zoom );
+    app.stage.set_zoom( 100 );
     platform.frame( app );
 
     // A widget that takes the pinch gets it, and the UI is not zoomed. Its
@@ -2397,6 +2425,29 @@ void a_pinch_zooms_the_ui()
     CHECK( pinches.pressed == 2 && pinches.begins == 0 && app.stage.zoom() == 100 );
     finger( app, Type::PointerUp, 8, left + 600.0F * ppu, middle );
     finger( app, Type::PointerUp, 7, left, middle );
+    app.stage.pinch_zoom( true );
+
+    // Turned off mid-pinch (Settings changed it while two fingers were
+    // down): the pinch ends with the zoom it reached, kept, and its fingers
+    // reach nothing until they are lifted; then a finger is a touch.
+    pinches = {};
+    pinches.take = false;
+    finger( app, Type::PointerDown, 7, left, middle );
+    finger( app, Type::PointerDown, 8, left + 200.0F * ppu, middle );
+    finger( app, Type::PointerMove, 8, left + 300.0F * ppu, middle ); // past the slop: from 300
+    finger( app, Type::PointerMove, 8, left + 450.0F * ppu, middle ); // 1.5 times: 150%
+    CHECK( app.stage.zoom() == 150 && pinches.pressed == 1 && pinches.cancelled == 1 );
+    app.stage.pinch_zoom( false );
+    CHECK( !app.stage.pinch_zooms() && read_file( kept ) == "150\n" );
+    finger( app, Type::PointerMove, 8, left + 600.0F * ppu, middle );
+    finger( app, Type::PointerUp, 8, left + 600.0F * ppu, middle );
+    finger( app, Type::PointerUp, 7, left, middle );
+    CHECK( app.stage.zoom() == 150 && pinches.pressed == 1 && pinches.others == 0 );
+    app.stage.set_zoom( 100 );
+    platform.frame( app );
+    finger( app, Type::PointerDown, 9, left, middle );
+    finger( app, Type::PointerUp, 9, left, middle );
+    CHECK( pinches.pressed == 2 );
     app.stage.pinch_zoom( true );
 
     // Two fingers that land and lift, and the Back button under the first is
