@@ -58,5 +58,11 @@ window (`dialogs/test/file_dialog_test.cpp`).
 
 ## In Settings
 
-The Settings screen's Export... and Import... use it: see
-`sq::Settings::set_transfer` (`sq.settings`).
+The Settings screen's Export... and Import... use it. What they do with the
+file chosen is, until the app says otherwise with
+`sq::Settings::set_transfer` (`sq.settings`), the preferences' own:
+`Preferences::export_to` packs them (settings and files) into one cartridge,
+and `Preferences::import_from` takes one back, refusing another app's or
+another kind, replacing them whole (`ImportMode::merge` lays it over them
+instead). Both go through `sq.drive`, vendored in `third_party/sqdrive` with
+the sqcart it builds with (`tools/vendor_sqdrive.sh`).

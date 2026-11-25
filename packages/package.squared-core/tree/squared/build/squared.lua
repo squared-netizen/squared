@@ -131,9 +131,18 @@ module("stage", {"app", "gui", "graphics", "assets", "dev", "files", "messaging"
 module("term", {"app"})
 module("tui", {"term", "app"})
 module("font", {freetype}, {}, {flags = freetype_includes})
+-- sq.drive and sq.cart (third_party/sqdrive, third_party/sqcart:
+-- tools/vendor_sqdrive.sh), for the preferences' export and import: sq.cart
+-- with squared's own sq.data, so there is one.
+sqcart_settings = {root = tp .. "/sqcart/v3", data = libs.data}
+local cart = include(tp .. "/sqcart/v3/build.lua")
+local drive = library{name = "squared_sqdrive", srcs = {tp .. "/sqdrive/src/drive.cppm"}, deps = {cart.write},
+                      flags = {cxx, "-w"}}
 -- An app's preferences, one cartridge: `import sq.preferences;` (not in the
--- umbrella's import; linked with it).
-module("preferences", {"files", "data"})
+-- umbrella's import, nor linked with it, since it brings sq.cart and zstd:
+-- an app that keeps preferences links squared.preferences, or
+-- squared.settings, which brings it).
+module("preferences", {"files", "data", drive})
 -- Dialogs any app shows over its screen (the file dialog): `import
 -- sq.dialogs;` (not in the umbrella's import, nor linked with it).
 module("dialogs", {"stage", "gui", "files"})
@@ -144,7 +153,7 @@ module("settings", {"stage", "gui", "preferences", "data", "files", "dialogs"})
 
 -- The umbrella: `import squared;`, and every library in one dependency.
 local every = {}
-for _, name in ipairs({"stage", "console", "term", "font", "preferences", "gui", "messaging", "time", "app",
+for _, name in ipairs({"stage", "console", "term", "font", "gui", "messaging", "time", "app",
                        "gles", "assets", "graphics", "files", "dev", "data", "math"}) do
   if libs[name] then every[#every + 1] = libs[name] end
 end

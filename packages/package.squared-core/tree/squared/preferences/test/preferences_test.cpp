@@ -142,6 +142,62 @@ int main()
         assert( !broken && broken.error().code == PreferencesErrorCode::invalid_settings );
     }
 
+    // Exported and imported back: one cartridge, settings and files.
+    {
+        const std::filesystem::path cartridge = base + "/shared/backup.sq";
+        std::filesystem::create_directories( base + "/shared" );
+        auto p = Preferences::open( fs, "dev.squared.test" );
+        assert( p );
+        assert( !p->set( "ui.skin", sq::data::JsonValue( "cyberpunk" ) ) );
+        assert( !p->set( "ui.zoom", sq::data::JsonValue( 1.5 ) ) );
+        assert( !p->write( "skins/mine.json", bytes( "{}" ) ) );
+        assert( !p->export_to( cartridge ) );
+        assert( std::filesystem::is_regular_file( cartridge ) );
+        assert( !std::filesystem::exists( base + "/shared/backup.sq.part" ) );
+        // One there already: replaced, whole.
+        assert( !p->export_to( cartridge ) );
+
+        // Changed after: replaced, the cartridge's settings and files come back.
+        assert( !p->set( "ui.skin", sq::data::JsonValue( "plain" ) ) );
+        assert( !p->set( "ui.font.size", sq::data::JsonValue( std::int64_t{ 20 } ) ) );
+        assert( !p->write( "later.txt", bytes( "later" ) ) );
+        const std::uint64_t before = p->generation();
+        assert( !p->import_from( cartridge ) );
+        assert( p->generation() > before );
+        assert( p->get_text( "ui.skin", "" ) == "cyberpunk" );
+        assert( p->get_number( "ui.zoom", 0.0 ) == 1.5 );
+        assert( p->find( "ui.font.size" ) == nullptr );
+        assert( text( p->read( "skins/mine.json" ).bytes ) == "{}" );
+        assert( !p->read( "later.txt" ) );
+        assert( !std::filesystem::exists( base + "/local/preferences.import" ) );
+        assert( !std::filesystem::exists( base + "/local/preferences.old" ) );
+
+        // Merged: its settings and files over these, the others kept.
+        assert( !p->set( "ui.skin", sq::data::JsonValue( "plain" ) ) );
+        assert( !p->set( "ui.font.size", sq::data::JsonValue( std::int64_t{ 20 } ) ) );
+        assert( !p->write( "later.txt", bytes( "later" ) ) );
+        assert( !p->import_from( cartridge, sq::preferences::ImportMode::merge ) );
+        assert( p->get_text( "ui.skin", "" ) == "cyberpunk" );
+        assert( p->get_integer( "ui.font.size", 0 ) == 20 );
+        assert( p->read( "later.txt" ) && p->read( "skins/mine.json" ) );
+
+        // As it reads when opened again.
+        auto again = Preferences::open( fs, "dev.squared.test" );
+        assert( again && again->get_integer( "ui.font.size", 0 ) == 20 &&
+                again->get_text( "ui.skin", "" ) == "cyberpunk" );
+
+        // Another app's preferences, and what is no cartridge: refused, nothing changed.
+        auto other = Preferences::open( fs, "dev.squared.other", "theirs" );
+        assert( other && !other->export_to( base + "/shared/theirs.sq" ) );
+        assert( p->import_from( base + "/shared/theirs.sq" ).code ==
+                PreferencesErrorCode::another_app );
+        std::filesystem::path junk = base + "/shared/junk.sq";
+        std::ofstream( junk ) << "not a cartridge";
+        assert( p->import_from( junk ).code == PreferencesErrorCode::cartridge );
+        assert( p->get_integer( "ui.font.size", 0 ) == 20 && p->read( "later.txt" ) );
+        assert( !std::filesystem::exists( base + "/local/preferences.import" ) );
+    }
+
     std::filesystem::remove_all( base );
     std::printf( "preferences: all assertions passed\n" );
     return 0;

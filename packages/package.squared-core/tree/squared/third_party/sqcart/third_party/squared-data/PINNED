@@ -1,0 +1,15 @@
+# squared's data module (sq.data), copied by tools/vendor_squared_data.sh.
+# Do not edit: change it in squared, then copy it again.
+from: squared 14c9090d2d65374137b5d97b959151c0d1d83adb
+copied: 2026-11-18
+31f0e0a9df106349d0c335bf83605e20fb9fd5605a392880449f0d7d7c37e897  ./json.cppm
+836e30a35ded7513528e6a2831f1c4e1ec076e562eb6f2441a1cebe00ce9b361  ./json_value.cppm
+f48a76541c895594dcdd659aa4f63474e6b267fa8506ef1c166dd5123612a3e1  ./module.cppm
+aeec26f98327c8ac0a436941d502c6a4a780fdbc4753c4c7e286ad9b3422b516  ./src/json.cpp
+e262404fde1d56c3efe07909e5b9588caa05d5641ead1529db2f4879753346b3  ./src/json_error.cppm
+63efaa06e37a90eeca5c0c0c9304752a797a2cec06f534be5f0af2cd3291479d  ./src/json_error_code.cppm
+c6d12a11bc202cdaaef2ef4210d9c78853640dace4b5af9cd85ea849b5a98945  ./src/json_parse_options.cppm
+81dbed6e8131de3aa14660350997875110bcda1f5e0baf8ec65cc7fae766ab33  ./src/json_parse_result.cppm
+a524b10c6c68e41bad4b00babc6ed98cb720d6f370d0d1347a1036f3ba638646  ./src/json_value.cpp
+8c019a6b3a4ecaf79b48a9dd9cc1de6c710bc080460799924fc6ac317615fe4e  ./src/json_write_options.cppm
+acaab716b0618443a929049a21dc2b017d6f7587ba525c22ed8950e7674f56e0  ./src/json_write_result.cppm

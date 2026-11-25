@@ -92,11 +92,32 @@ class Rows final
 
 } // namespace
 
+namespace
+{
+
+// The preferences' own export and import (sq.preferences): what Settings
+// does until the app sets its own. An import replaces them whole.
+bool export_preferences( void * /*context*/, preferences::Preferences &preferences,
+                         std::string_view path ) noexcept
+{
+    return !preferences.export_to( std::filesystem::path( path ) );
+}
+
+bool import_preferences( void * /*context*/, preferences::Preferences &preferences,
+                         std::string_view path ) noexcept
+{
+    return !preferences.import_from( std::filesystem::path( path ) );
+}
+
+} // namespace
+
 Settings::Settings( Stage &stage, preferences::Preferences &preferences,
                     StandardSettings standard ) noexcept
     : stage_( stage )
     , preferences_( preferences )
     , standard_( standard )
+    , export_to_( &export_preferences )
+    , import_from_( &import_preferences )
 {
     the_settings = this;
     static_cast<void>( stage_.custom( "settings_view", &make_settings_view ) );

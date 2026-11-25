@@ -1,0 +1,5 @@
+# sqdrive's library, copied by tools/vendor_sqdrive.sh (with its sqcart: ../sqcart/PINNED).
+# Do not edit: change it in sqdrive, then copy it again.
+from: sqdrive 010089424d85f6e7114857713ed8a949de47817c
+copied: 2026-11-25
+59ba970e4ef22f47b208dcc79275681b8851945da416f4e18089ec3333650e52  src/drive.cppm

@@ -18,6 +18,10 @@ enum class PreferencesErrorCode : std::uint8_t {
     invalid_settings,
     /** @brief A setting's key is empty. */
     invalid_key,
+    /** @brief An exported cartridge could not be packed, or read back (the message says why). */
+    cartridge,
+    /** @brief The cartridge imported is another app's preferences. */
+    another_app,
 };
 
 /** @brief What went wrong, said: false (no error) when it did not. */

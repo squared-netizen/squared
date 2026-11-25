@@ -102,11 +102,14 @@ int main()
         bare.apply(); // no Zoom section: the Stage is left as it is
         CHECK( stage.zoom_least() == 75 && !stage.pinch_zooms() );
 
-        // Export and import: shown once set; Export's name is the day's,
-        // the first not in the folder.
+        // Export and import: the preferences' own until the app sets its
+        // own (null hides them); Export's name is the day's, the first not
+        // in the folder.
         const auto never = []( void *, sq::preferences::Preferences &, std::string_view ) noexcept {
             return false;
         };
+        bare.set_transfer( nullptr, nullptr );
+        CHECK( bare.make_view() != nullptr );
         bare.set_transfer( never, never );
         CHECK( bare.make_view() != nullptr );
         const std::string name = bare.export_name( base );
