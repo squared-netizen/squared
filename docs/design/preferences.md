@@ -1,6 +1,6 @@
 # Preferences and the Settings screen
 
-Status: proposed (2026-11-25).
+Status: decided (2026-11-25).
 
 Every squared app has settings, and most of them are the same few: the
 skin, the font (one of the skin's bitmap fonts, or a TTF/OTF file), its
@@ -29,6 +29,7 @@ only to travel.
   an import from an older app can be migrated.
 - **settings.json**: one JSON object (sq.data), keys dotted by section:
   `ui.skin`, `ui.font.file`, `ui.font.size`, `ui.theme.0` ... `ui.theme.19`,
+  `ui.zoom`, `ui.zoom.pinch`, `ui.zoom.least`, `ui.zoom.most`,
   `input.keyboard_on_start`, and the app's own (`terminal.scrollback`). Only
   what differs from the default is written.
 - **Any other file**: a TTF the person added (`fonts/`), a skin of their own
@@ -70,7 +71,8 @@ Save button.
 
 | Section | Entries |
 |---|---|
-| Appearance | Skin: the app's bundled skins and the ones in `tree/skins/` · UI scale |
+| Appearance | Skin: the app's bundled skins and the ones in `tree/skins/` (a skin added brings the bitmap fonts it names) |
+| Zoom | Zoom: the UI's size, a slider from the least to the most, in the Stage's steps (5%), applied live · Pinch to zoom: on or off · Least and Most: the range a pinch and the slider keep to, within squared's 50% to 300% |
 | Text | Font: the skin's bitmap fonts, or a TTF/OTF file (the bundled ones and `tree/fonts/`, or Add font..., which copies one in) · Size |
 | Colours | the theme's palette, when the app declares one (16 + 4 for a terminal) |
 | Input | Keyboard on start |
@@ -105,6 +107,21 @@ copies what is added into the cartridge, so an export carries it.
   picker needed: they are the app's own folder's), then Replace or Merge.
   After an import, every setting is applied again (the generation moves).
 
+### The UI's zoom
+
+The Stage has it now: `zoom()`, `set_zoom(percent)` (50 to 300, steps of
+5), `pinch_zoom(on)`, and it keeps the zoom in `squared/zoom`. For the
+screen:
+
+- **Least and Most** become the Stage's to set, at run time
+  (`set_zoom_range(least, most)`, within `least_zoom` and `most_zoom`,
+  which stay the hard limits): a pinch and the slider keep to them.
+- **Pinch to zoom** is `pinch_zoom`, made live (today it is set in
+  `squared_main` only).
+- The zoom moves into the preferences (`ui.zoom`): `squared/zoom` is read
+  once, on the first start with a cartridge, and then left.
+- An app that never zooms (a game's canvas) turns the section off.
+
 ## 3. sqterm and sqIDE
 
 - What they keep today moves into the cartridge on first start:
@@ -120,14 +137,19 @@ copies what is added into the cartridge, so an export carries it.
 
 1. `sq.preferences`: the cartridge, typed settings, files, export and
    import (sqdrive vendored); tests on the host, round trip through a `.sq`.
-2. `sq::SettingsScreen`: sections and entries, the invariants, data-declared
+2. The Stage: `set_zoom_range`, a live `pinch_zoom`. Then
+   `sq::SettingsScreen`: sections and entries, the invariants, data-declared
    sections; the keyboard as the wizard's fields have it.
 3. sqterm and sqIDE: their settings moved in, the screen in their drawers.
 4. sqgui: sections shown and edited in the GUI editor.
 
-## Open questions
+## Decided (2026-11-25)
 
-- UI scale: the Stage's, applied live, or at the next start?
-- A skin of the person's own: only the JSON and its atlas, or also the
-  bitmap fonts it names?
-- Export with a date in the name, or one file overwritten each time?
+- The zoom, and every other setting, applies live: no restart.
+- A skin of the person's own brings the bitmap fonts it names (its JSON,
+  atlas and fonts are copied into `tree/skins/NAME/`).
+- An export is dated (`<app id>-preferences-YYYY-MM-DD.sq`, with `-2` and
+  on for a second the same day); none is overwritten.
+- The UI's zoom is in Settings: the zoom, pinch on or off, its least and
+  most.
+
