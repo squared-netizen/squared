@@ -9,7 +9,7 @@
 # The first that has them ("One C++23 toolchain", 2026-11-20: no pinned
 # copy, so one std module per toolchain):
 #
-#   $SQ_STD_CPPM's folder          named outright (build/toolchain.sh env)
+#   $SQ_STD_CPPM's folder          named outright
 #   <prefix>/share/libc++/v1       where the headers are <prefix>/include/c++/v1
 #                                  (sqterm's runtimes package, apt.llvm.org,
 #                                  Termux), or <prefix>/sysroot/usr/include/c++/v1

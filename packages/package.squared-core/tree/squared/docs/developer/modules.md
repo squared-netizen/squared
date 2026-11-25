@@ -68,7 +68,7 @@ build compiles against, never from a copy ("One C++23 toolchain",
 2026-11-20; pinned in `third_party/libcxx/` from 2026-11-02 until then).
 
 - **Found, not pinned.** `tools/libcxx_modules.sh <compiler> <flags>` finds
-  them: `$SQ_STD_CPPM`'s folder (`build/toolchain.sh env` names it), else
+  them: `$SQ_STD_CPPM`'s folder (named outright), else
   `<prefix>/share/libc++/v1` beside the headers' `<prefix>/include/c++/v1`
   (sqterm's `runtimes` package, apt.llvm.org's `libc++-dev`, Termux), else
   `share/libc++/v1` beside the compiler (the NDK's). Sources beside headers

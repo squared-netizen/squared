@@ -26,8 +26,8 @@ env:
   SQUARED: packages/package.squared-core/tree/squared
   # sqedit does the tools' text work (sed, grep and awk's): built from its tag.
   SQEDIT_VERSION: v0.2.0
-  # sqmake builds build.lua and reads build/toolchain.lua; tools/check_toolchain.sh
-  # holds that to build/toolchain.sh (sqterm's packages'): bootstrapped from its tag.
+  # sqmake builds build.lua (and reads build/toolchain.lua for Android):
+  # bootstrapped from its tag.
   SQMAKE_VERSION: v0.13.0
 
 jobs:
@@ -61,15 +61,13 @@ jobs:
           (cd "$RUNNER_TEMP/sqmake" && CXX=clang++ CC=clang AR=ar sh tools/bootstrap.sh)
           echo "$RUNNER_TEMP/sqmake/build" >> "$GITHUB_PATH"
 
-      - name: sqedit ${{ env.SQEDIT_VERSION }}, and the toolchain's two descriptions agree
+      - name: sqedit ${{ env.SQEDIT_VERSION }}
         shell: bash
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch "$SQEDIT_VERSION" https://github.com/squared-netizen/sqedit "$RUNNER_TEMP/sqedit"
           CXX=clang++ CC=clang "$RUNNER_TEMP/sqmake/build/sqmake" -C "$RUNNER_TEMP/sqedit" -j4 build/sqedit
           echo "$RUNNER_TEMP/sqedit/build" >> "$GITHUB_PATH"
-          # check_toolchain.sh does its text work with sqedit: this step's, by name.
-          SQEDIT="$RUNNER_TEMP/sqedit/build/sqedit" bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
       - name: Third-party sources
         working-directory: ${{ env.SQUARED }}
