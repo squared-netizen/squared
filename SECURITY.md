@@ -8,7 +8,7 @@ fixes land there, and nothing older is patched.
 ## Reporting a vulnerability
 
 Please report security issues privately, by email to
-**S.O.Teric1@proton.me**. Do not open a public issue, pull request or
+**SOTeric2@proton.me**. Do not open a public issue, pull request or
 discussion for a vulnerability before it has been fixed.
 
 Include, as far as you can:

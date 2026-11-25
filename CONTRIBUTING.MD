@@ -14,7 +14,7 @@ Contributions are welcome, but please understand that APIs,
 architecture, and project structure may change significantly while the rewrite is underway.
 
 Anyone wishing to contribute muat DM the developer me at
-: S.O.Teric1@proton.me
+: SOTeric2@proton.me
 
 
 Before making substantial changes:

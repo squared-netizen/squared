@@ -92,6 +92,8 @@ local tests = {
 
   {"settings", "settings_test", {"settings"}},
 
+  {"dialogs", "file_dialog_test", {"dialogs"}},
+
   {"stage", "stage_test", {"stage"}, flags = {"-DSTAGE_SKIN_DIR=" .. quoted("stage/skin/default/skin")}},
   {"stage", "stage_alone_test", {"stage"}},
 
