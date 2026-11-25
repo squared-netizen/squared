@@ -205,7 +205,7 @@ where the archive is not linked.
 
 ## Testing
 
-`make -C dev test` runs three programs.
+`sqmake test` runs three programs.
 
 - `log_listener_test`: lines reach the listener with their level and whole
   (3000 bytes, past the sink's cut), with no sink open; another thread's line

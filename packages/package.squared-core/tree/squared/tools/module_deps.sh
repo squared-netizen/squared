@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # tools/module_deps.sh <module> <module dir> <object dir> <BMI dir> <interface>...
 #
-# The order of one module's interface units, as make rules (build/modules.mk
-# includes what this prints): each interface's object waits for the BMIs of
-# what it imports. Read from the import lines, which squared writes one to a
+# The order of one module's interface units, as make rules (once
+# build/modules.mk's; now tools/check_modules.sh runs it for its checks and
+# discards the rules): each interface's object waits for the BMIs of what it
+# imports. Read from the import lines, which squared writes one to a
 # line at the top of a unit, after its global module fragment:
 #
 #   export module sq.gui:label;

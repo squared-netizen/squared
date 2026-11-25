@@ -1,6 +1,6 @@
 /*
  * FreeType's build options as squared compiles it: FreeType's own defaults
- * (its ftoption.h, pinned), then what squared turns off. font/Makefile puts
+ * (its ftoption.h, pinned), then what squared turns off. build/squared.lua (the font module) puts
  * this directory on the include path before third_party/freetype/include,
  * so <freetype/config/ftoption.h> is this file, and FreeType's own is read
  * from here by its path in the tree. Squared's own file.

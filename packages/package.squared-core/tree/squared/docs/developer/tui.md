@@ -121,7 +121,7 @@ reads the new size (TIOCGWINSZ), invalidates the renderer and returns
 
 ## Tests
 
-`tui/test/tui_test.cpp` (`make -C tui test`):
+`tui/test/tui_test.cpp` (`sqmake test`):
 
 - the screen: clipping, wide characters at the edge and cut in half, views
   and views of views, a box, bad UTF-8;

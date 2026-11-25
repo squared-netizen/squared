@@ -56,6 +56,12 @@ local self_test_src = write_file(toolchain.build .. "/gen/dexgen-self-test.cpp",
                                  "#define DEXGEN_SELF_TEST 1\n#include \"" .. here .. "/tools/dexgen/dexgen.cpp\"\n")
 local dexgen_self_test = exe{name = "dexgen-self-test", srcs = {{self_test_src, imports = {"std"}}}, flags = warn}
 
+-- The core types' sizes, for docs/developer/memory-profile.md: `sqmake sizes`.
+local sizes = exe{name = "measure_sizes", srcs = {root .. "/tools/sizes/measure_sizes.cpp"},
+                  deps = {squared.all}, default = false}
+action{name = "sizes", needs = {sizes}, desc = "the core types' sizes (docs/developer/memory-profile.md)",
+       cmd = {sizes}}
+
 -- Every test: {module, name, deps (squared's libraries by name), and what
 -- else it compiles (its stubs, a source the host's library leaves out) or
 -- says}. The source is <module>/test/<name>.cpp unless `src` says.
@@ -203,3 +209,8 @@ action{name = "headers", desc = "check the pinned sources and the modules' impor
 -- rest.
 action{name = "lint", desc = "format, source-rule and clang-tidy checks (tools/lint.sh)",
        cmd = {"bash", "tools/lint.sh"}}
+
+-- The API reference, docs/reference/ (tools/docs.sh, clang-doc), and its
+-- check that what is committed is what the sources say.
+action{name = "docs", desc = "the API reference, written again (tools/docs.sh)", cmd = {"bash", "tools/docs.sh"}}
+action{name = "docs-check", desc = "the API reference is what the sources say", cmd = {"bash", "tools/docs.sh", "--check"}}

@@ -1,8 +1,15 @@
 # console
 
-The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`make console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. the **app's own files** through it (`ls`, `pull`, `push`), and its **own system log** and **libraries** (`logcat`, `libs`); **`dump`**, which runs groups of commands (`dump sys`, `dump state`); and the **Telegraph's commands** (`telegraph`). The monitor app comes later.
+The Console: text in, text out, for when the rest of the program is what's broken. It is being built in Sprint 4; this page grows with it. So far: the **build switches**; what a `CONSOLE=app` build **shows** and how you **use it on the device**; the **`Console`** itself, its **commands** and built-ins, the **input line** with history and completion, and the **scrollback**; **crash reports**; the **bridge**, which puts the Console in a Termux terminal (`sqmake console`), with the **last run's log** and the **Console-only start**; and the **drawing** parts, for drawing it yourself. the **app's own files** through it (`ls`, `pull`, `push`), and its **own system log** and **libraries** (`logcat`, `libs`); **`dump`**, which runs groups of commands (`dump sys`, `dump state`); and the **Telegraph's commands** (`telegraph`). The monitor app comes later.
 
 Developer side: [../developer/console.md](../developer/console.md).
+
+> **The commands.** Written when a project built with make: a project
+> builds with sqmake now (its template's `sq/build/template.lua`). `sqmake
+> --debug install` is a debug build (`CONSOLE=app DEV_LOG=1` here), `sqmake
+> console` the Console in this terminal (`CMD='...' sqmake console`, one
+> command); `make console-only`, `CONSOLE=monitor` and `make status` have no
+> sqmake word yet.
 
 ## Turning it on
 
@@ -15,7 +22,7 @@ make CONSOLE=monitor DEV_LOG=1 install              # plus the monitor process (
 make CONSOLE=app CONSOLE_SCROLLBACK=1048576 install # a bigger history
 ```
 
-`make dev` is the build you debug with, in one word; `CONSOLE` or `DEV_LOG`
+`sqmake --debug run` is the build you debug with, in one word; `CONSOLE` or `DEV_LOG`
 beside it win (`make dev CONSOLE=monitor`). The names are case-sensitive, so
 one in the wrong case (`make console=app install`) would set nothing and
 install a build without the Console: the build stops instead, with `console=
@@ -45,21 +52,20 @@ With `CONSOLE=app` the Android template draws the Console over the upper half of
 | stop, start or restart your app | `app stop`, `app start`, `app restart` (`app` says which it is) |
 | quit, app and Console together | `quit` |
 | see how the last run ended (a `quit`, a swipe away) | `log previous` |
-| use it from Termux instead | `make console` in the project (below) |
+| use it from Termux instead | `sqmake console` in the project (below) |
 | start with only the Console, your app not created | `make console-only`, then `app start` when ready |
 | look at the app's files | `ls`, `ls files`, `ls cache` (relative to the app's data directory) |
-| copy one to Termux / from Termux | `pull files/crash.txt` (lands in `build/pulled/`), `push <file> [name]` typed in `make console` (lands in the app's `files/`) |
+| copy one to Termux / from Termux | `pull files/crash.txt` (lands in `build/pulled/`), `push <file> [name]` typed in `sqmake console` (lands in the app's `files/`) |
 | read the app's own system log | `logcat`, `logcat 500`: Android's lines about this app, a library that failed to load or a Java exception among them |
 | see what it loaded | `libs` |
 | run a group of commands | `dump sys` (every system command), `dump memory`, `dump crash` (the last crash, the last run's log, the system log), `dump state` (every value the UI holds), `dump telegraph`; several at once: `dump sys state`; everything: `dump all`; `dump` lists them; `dump stop` |
 
-`app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included: the next launch shows its report, and `make console` waits for the app to come back). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
+`app stop` disposes your `App` and leaves a fresh one, not yet created, in its place; `app start` creates it and gives it the surface, as at launch. It all happens in this process, so it recovers from a stuck screen or bad state, not from a crash (a crash ends the process, Console included: the next launch shows its report, and `sqmake console` waits for the app to come back). If your `App::create()` fails in a Console build, the Console opens instead of a black window, and `app start` tries again.
 
-**Making it stick.** `CONSOLE` and `DEV_LOG` are read on each `make`, so a later plain `make install` builds without them. Put them in `local.mk` in your project, which git ignores, to keep them until you delete the lines:
+**Which build has it.** The debug build does: `sqmake --debug install` (and `--debug run`), each time, and a plain `sqmake install` builds without it. What the debug build carries is the project's `build.lua` to say:
 
-```make
-CONSOLE := app
-DEV_LOG := 1
+```lua
+app = {name = "mygame", console = true, dev_log = 5555}   -- the defaults
 ```
 
 While it is open, a gesture that starts on it is the Console's, and while it has the keyboard, so are the keys (but not the volume keys); everything else reaches your app. The three-finger tap is taken before your app sees it: the fingers already down are released far off screen, so nothing under them is clicked. Typed text is what the keyboard's keys map to: ASCII and the accented Latin letters a keyboard has keys for; an input method's composition (accents built from two keys, CJK input, emoji) does not arrive.
@@ -133,9 +139,9 @@ Each frame is an offset into a library, which is what `addr2line -C -f -e build/
 
 A `CONSOLE` build also listens for Termux, so the Console can be used from a terminal on the same phone: everything it prints appears there as it is written (errors in red, warnings in amber), and every line you type runs as a command, exactly as if typed into the Console. No adb, no Wi-Fi, no computer.
 
-`make console` needs nothing on its command line: it finds the bridge's
+`sqmake console` needs nothing on its command line: it finds the bridge's
 file the CONSOLE build made, and says so when there is none, or when the
-last build here had no Console (make one with `make dev`).
+last build here had no Console (make one with `sqmake --debug run`).
 
 ```sh
 make console                       # interactive; Ctrl-D (or Ctrl-C) ends it
@@ -145,7 +151,7 @@ make console CMD='pull files/log-previous.txt'   # a file of the app's, into bui
 make console-only                  # start the app with only the Console running
 ```
 
-**Files, both ways.** Typed in `make console`:
+**Files, both ways.** Typed in `sqmake console`:
 
 ```text
 ls files                       the app's files/: type, size, name
@@ -159,28 +165,28 @@ push build/x.lua game.lua      under another name
 - A relative path starts at the app's data directory (`files/`, `cache/`, `lib/` are in it); an absolute one is used as it is; `apk` is the installed APK. The app reads them, so it reaches what the app may, nothing more.
 - A pushed file arrives whole or not at all: it is written to `<name>.part` and renamed when the last byte is in. Its name must be a plain file name, no `/`.
 - Large files are fine. They travel in 4 KB pieces as the connection takes them, so neither end holds the whole file and the app keeps drawing meanwhile. Log lines still arrive between the pieces.
-- `pull` typed in the app's own Console sends the file to a connected `make console` too.
+- `pull` typed in the app's own Console sends the file to a connected `sqmake console` too.
 
 - **Start it before or after the app.** It waits for the app without asking again and again: the app sends one datagram when it starts, and `sqconsole` connects then. When the app quits or crashes it says so and waits; when the app starts again it reconnects by itself.
 - **It shows the history first:** the newest 200 lines the Console already held. `CMD=` runs skip that and print only the command's own lines.
-- **One at a time.** A second `make console` takes over, and the first is told so.
+- **One at a time.** A second `sqmake console` takes over, and the first is told so.
 - **`sqconsole` by itself** (`build/host/sqconsole --conf build/dev/bridge.conf ...`): `--run CMD` (repeatable) runs commands and exits; `--wait SECONDS` is how long `--run` waits for the app to start (30; `0` not at all); `--until-closed` makes the app closing the connection the success, so `--run quit --until-closed` returns once the app has gone; `--into DIR` is where pulls are saved. Exit 0 on success, 1 when the app could not be reached or refused it, or a pull failed or came short. Several `--run` commands are sent at once, and each one's end is kept in order, so a pull followed by a push still saves the whole file.
 - **`make console-only`** starts the app with the Console running and your `App` not created, so an app that crashes at start can still be reached: `crash`, `log previous`, then `app start`. If a `CONSOLE` build is already running it is asked to `quit` first, through the bridge, and started again once it has gone (Android would only bring it to the front, and it would carry on as it was). It goes through Termux's `am` (`pkg install termux-am`) or adb.
-- **Private enough for a dev build, not more.** The port is on `127.0.0.1`, so nothing off the phone reaches it, and a client must give a secret made by your build (in `build/dev/bridge.conf`; `make clean` makes a new one). The secret is inside the APK, which other apps can read, so it keeps out any app that isn't looking for it, not one that reads your APK. A build without `CONSOLE` has none of it.
+- **Private enough for a dev build, not more.** The port is on `127.0.0.1`, so nothing off the phone reaches it, and a client must give a secret made by your build (in `build/dev/bridge.conf`; `sqmake clean` makes a new one). The secret is inside the APK, which other apps can read, so it keeps out any app that isn't looking for it, not one that reads your APK. A build without `CONSOLE` has none of it.
 - **The port** comes from your package name (20000 to 39999), so two projects do not collide. `make status` shows it.
 - A `CONSOLE` build carries the `INTERNET` permission, like a `DEV_LOG` build: the bridge is a socket.
 
 | `sqconsole` says | Meaning |
 |---|---|
-| `make console: no CONSOLE build has been made here` | `make dev` (or `make dev console`) |
-| `make console: the last build here has no Console` | The last build was a plain one: `make dev` builds and installs one with the Console |
+| `make console: no CONSOLE build has been made here` | `sqmake --debug run` (or `sqmake --debug run`, then `sqmake console`) |
+| `make console: the last build here has no Console` | The last build was a plain one: `sqmake --debug run` builds and installs one with the Console |
 | `waiting for the app to start` | Not running yet; start it from the launcher, or `make console-only` |
 | `no answer for 30 s; an app in the background can be frozen by Android` | Connected, but the app did not answer: bring it to the front, or keep it on screen beside Termux (split screen) |
 | `the app closed the connection` | It quit or crashed during a `CMD=` run; `log previous` after it starts again |
 | `refused: is build/dev/bridge.conf from the build that is installed?` | The secret did not match: install the build you just made |
 | `saved build/pulled/<name> (N bytes)` | A pull arrived whole |
 | `<name> came short (N bytes); kept as …part` | The file shrank while it was read, or the app went away mid-file |
-| `another connection took over` | A second `make console` started |
+| `another connection took over` | A second `sqmake console` started |
 | `bridge: N lines dropped (the client read too slowly)` | Termux fell behind (a huge burst of log); the Console itself kept every line |
 
 To wire it yourself (another template), `import sq.console;`:
@@ -207,7 +213,7 @@ bridge.ready(fd, readable, writable);
 | `ready(fd, readable, writable)` | Call it when a watched socket is ready. False when that socket is now closed |
 | `send(level, line)` | To the client, if one is connected; else nothing. A line is at most 1 KB; a newline inside becomes a space |
 | `send_file(fd, name, size)` | Send an open file to the client as `name`, `size` bytes or `Bridge::unknown_size` (read until it ends, as a `/proc` file must be). The bridge reads and closes it. Called from a command, that command's end mark follows the file. False, `fd` left open, with no client, a file already on its way, or a name that is not plain |
-| `set_busy(busy)` | Whether a command's work goes on after it returned (a `dump`, one line a frame). While busy, every command's end mark waits, so `sqconsole --run` (`make console CMD=...`) reads to the end; `set_busy(false)` sends them, in order. Set it after running a command and after each `Console::update()`: `bridge.set_busy( console.dumping() )`, as the template does |
+| `set_busy(busy)` | Whether a command's work goes on after it returned (a `dump`, one line a frame). While busy, every command's end mark waits, so `sqconsole --run` (`CMD=... sqmake console`) reads to the end; `set_busy(false)` sends them, in order. Set it after running a command and after each `Console::update()`: `bridge.set_busy( console.dumping() )`, as the template does |
 | `transferring()` | A file is going out or coming in |
 | `close()` | Close everything; `watch` is told to stop watching each socket |
 | `listening()`, `connected()`, `port()`, `dropped()` | State; `dropped()` counts lines lost to a slow client since `open` |
@@ -222,7 +228,7 @@ Nothing allocates, and it never waits on a timer: it acts only when `ready` is c
 static_cast<void>(sq::console::add_file_commands(console, "/data/user/0/<package>", &bridge));
 ```
 
-`ls [path]`, `pull <path>` and `push` (which says how to push: it is typed in `make console`). Paths as above: relative to `home`, absolute, or `apk`. `bridge` may be null, and then `pull` says it needs one. `home` and `bridge` are kept, not copied. Returns how many did not fit in the table. Nothing allocates: `ls` reads the directory straight into the stack (`getdents64`), `pull` hands the file to the bridge.
+`ls [path]`, `pull <path>` and `push` (which says how to push: it is typed in `sqmake console`). Paths as above: relative to `home`, absolute, or `apk`. `bridge` may be null, and then `pull` says it needs one. `home` and `bridge` are kept, not copied. Returns how many did not fit in the table. Nothing allocates: `ls` reads the directory straight into the stack (`getdents64`), `pull` hands the file to the bridge.
 
 ## The last run's log
 

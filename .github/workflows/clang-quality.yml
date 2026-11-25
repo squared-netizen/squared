@@ -1,12 +1,12 @@
 name: Clang Quality Audit
 
 # squared's own build and checks, as its README gives them: the framework is
-# under packages/package.squared-core/tree/squared/ and builds with make (no
-# CMake). It needs the SDK's toolchain version, clang 23 with libc++ 23
-# (build/toolchain.sh; `import std` is built from that libc++'s own module
+# under packages/package.squared-core/tree/squared/ and builds with sqmake
+# (build.lua; no make, no CMake). It needs the SDK's toolchain version, clang
+# 23 with libc++ 23 (`import std` is built from that libc++'s own module
 # sources), so the toolchain comes from apt.llvm.org; Ubuntu 24.04's own clang
-# is 18. While make is retired, the build and tests run twice: make's, and
-# sqmake's (build.lua), which must agree.
+# is 18. sqmake is bootstrapped from its tag with a compiler and a shell, and
+# builds sqedit.
 #
 #   build and test   must pass
 #   lint             tools/lint.sh (format, source rules, clang-tidy) must
@@ -24,10 +24,10 @@ permissions:
 env:
   LLVM: 23
   SQUARED: packages/package.squared-core/tree/squared
-  # sqedit does the build's text work (build/common.mk): built from its tag.
-  SQEDIT_VERSION: v0.1.0
+  # sqedit does the tools' text work (sed, grep and awk's): built from its tag.
+  SQEDIT_VERSION: v0.2.0
   # sqmake builds build.lua and reads build/toolchain.lua; tools/check_toolchain.sh
-  # holds that to build/toolchain.sh (make's): bootstrapped from its tag, no make.
+  # holds that to build/toolchain.sh (sqterm's packages'): bootstrapped from its tag.
   SQMAKE_VERSION: v0.13.0
 
 jobs:
@@ -46,20 +46,12 @@ jobs:
           curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
           echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-$LLVM main" | sudo tee /etc/apt/sources.list.d/llvm.list
           sudo apt-get update -q
-          sudo apt-get install --yes --no-install-recommends make \
+          sudo apt-get install --yes --no-install-recommends \
             clang-$LLVM clang-format-$LLVM clang-tidy-$LLVM lld-$LLVM \
             libc++-$LLVM-dev libc++abi-$LLVM-dev
           # Unversioned names (clang++, clang-format, clang-tidy) are what the
           # build and tools/lint.sh call.
           echo "/usr/lib/llvm-$LLVM/bin" >> "$GITHUB_PATH"
-
-      - name: sqedit ${{ env.SQEDIT_VERSION }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --quiet --depth 1 --branch "$SQEDIT_VERSION" https://github.com/squared-netizen/sqedit "$RUNNER_TEMP/sqedit"
-          make -C "$RUNNER_TEMP/sqedit" -j4 CXX=clang++ CC=clang build/sqedit
-          echo "$RUNNER_TEMP/sqedit/build" >> "$GITHUB_PATH"
 
       - name: sqmake ${{ env.SQMAKE_VERSION }}, and the toolchain's two descriptions agree
         shell: bash
@@ -70,20 +62,20 @@ jobs:
           echo "$RUNNER_TEMP/sqmake/build" >> "$GITHUB_PATH"
           bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
+      - name: sqedit ${{ env.SQEDIT_VERSION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 --branch "$SQEDIT_VERSION" https://github.com/squared-netizen/sqedit "$RUNNER_TEMP/sqedit"
+          CXX=clang++ CC=clang "$RUNNER_TEMP/sqmake/build/sqmake" -C "$RUNNER_TEMP/sqedit" -j4 build/sqedit
+          echo "$RUNNER_TEMP/sqedit/build" >> "$GITHUB_PATH"
+
       - name: Third-party sources
         working-directory: ${{ env.SQUARED }}
         shell: bash
         run: |
           clang++ --version | head -n 1
           ./tools/vendor_third_party.sh
-
-      - name: Build and test
-        working-directory: ${{ env.SQUARED }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          make -j4 CXX=clang++
-          make test CXX=clang++
 
       - name: Build and test (sqmake, build.lua)
         working-directory: ${{ env.SQUARED }}

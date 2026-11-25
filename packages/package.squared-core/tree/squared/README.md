@@ -15,30 +15,34 @@ clang.
 <module>/src/<name>.cpp      implementation units
 <module>/src/detail/         the framework's own types
 <module>/test/
-<module>/Makefile
 squared.cppm                 `import squared;`: what an app is written against
-build/common.mk              shared build settings
-build/modules.mk             how a module is built
+build.lua                    squared's own build, for sqmake: libraries, tools, tests
+build/squared.lua            the libraries, as an app's build includes them
+build/toolchain.lua          the SDK's toolchain (sqmake's toolchain.sdk)
 third_party/                 vendored sources: yyjson, stb, freetype
 tools/                       build, check, format, lint and docs scripts
 docs/programmer/             using squared
 docs/developer/              maintaining squared
 ```
 
-Modules: `app`, `assets`, `console`, `data`, `dev`, `files`, `gles`,
-`graphics`, `gui`, `math`, `messaging`, `stage`, `time`. Code writes `import
+Modules: `app`, `assets`, `console`, `data`, `dev`, `files`, `font`, `gles`,
+`graphics`, `gui`, `math`, `messaging`, `preferences`, `settings`, `stage`,
+`term`, `time`, `tui`. Code writes `import
 squared;` or `import sq.<module>;`
 ([docs/programmer/include-layout.md](docs/programmer/include-layout.md),
 [docs/developer/modules.md](docs/developer/modules.md)).
 
 ## Build
 
-squared needs clang and libc++ (Termux has both; Debian and Ubuntu: `apt
-install clang libc++-dev libc++abi-dev`), and
+squared needs clang and libc++ 23 (Termux and sqterm have both; Debian and
+Ubuntu: clang-23, libc++-23-dev and libc++abi-23-dev from apt.llvm.org),
+[sqmake](https://github.com/squared-netizen/sqmake), which builds it from
+`build.lua` (sqterm: `pkg install sqmake`; elsewhere its
+`tools/bootstrap.sh` makes one with a compiler and a shell), and
 [sqedit](https://github.com/squared-netizen/sqedit) on PATH (or as
-`SQEDIT`), which does the build's text work in place of sed, grep and awk
-(sqterm: `pkg install sqedit`; elsewhere: `sqmake -C sqedit`).
-Unpack the vendored third-party sources once after checkout:
+`SQEDIT`), which does the tools' text work in place of sed, grep and awk
+(sqterm: `pkg install sqedit`; elsewhere: `sqmake -C sqedit`). Unpack the
+vendored third-party sources once after checkout:
 
 ```sh
 ./tools/vendor_third_party.sh
@@ -47,27 +51,18 @@ Unpack the vendored third-party sources once after checkout:
 Then:
 
 ```sh
-./tools/build.sh                 # release
-./tools/build.sh debug
-make test                        # every module's tests
-make headers                     # the pinned std sources, the modules' build order
-make lint                        # format, source-rule and clang-tidy checks
-```
-
-make is being retired: [sqmake](https://github.com/squared-netizen/sqmake)
-(sqterm: `pkg install sqmake`) builds the same libraries and runs the same
-tests from `build.lua`, into `build/sqmake/`:
-
-```sh
-sqmake                           # the libraries, sqconsole, dexgen, every test
+sqmake                           # the libraries, sqconsole, dexgen, every test (build/sqmake/)
+sqmake --debug                   # the same at -O0 (build/sqmake-debug/)
 sqmake test                      # the tests, each from its module's folder
 sqmake headers                   # the pinned sources, the modules' imports and names
+sqmake lint                      # format, source-rule and clang-tidy checks
+sqmake sizes                     # the core types' sizes
 tools/dexgen.sh                  # the shim dex written again, byte for byte
 ```
 
-That is the whole setup. yyjson is compiled into `libsquared_data.a` by the
-build; there is nothing else external to install. `local.mk` is optional,
-per-checkout, and picked up automatically by `build/common.mk`.
+`CXX` and `CC` name the compiler when `clang++` on PATH is not the one. That
+is the whole setup: yyjson, stb_image and FreeType are compiled by the build;
+there is nothing else external to install.
 
 ## Documentation
 

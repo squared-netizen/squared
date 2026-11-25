@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tools/check_modules.sh: what `make headers` checks since squared is modules
+# tools/check_modules.sh: what `sqmake headers` checks since squared is modules
 # (7b.4). Until then it compiled every header on its own; a module interface
 # compiles on its own by construction, so that check went (the user's call,
 # 2026-10-27). What can still go wrong without a compile error:

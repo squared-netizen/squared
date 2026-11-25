@@ -1,6 +1,6 @@
 // The Telegraph's capacities: compile-time knobs, like the Console's, set
-// with -D (`make TELEGRAPH_RING=512` in a project passes
-// -DSQUARED_TELEGRAPH_RING=512 to the framework and the app alike). The
+// with -D (-DSQUARED_TELEGRAPH_RING=512 in a project's build.lua flags, which
+// build/squared.lua gives the framework and the app alike). The
 // defaults suit a small app; a large one raises them, from what the
 // Console's `telegraph` command shows of the highest fill.
 

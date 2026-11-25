@@ -336,7 +336,7 @@ nothing rotates sprites yet.
 
 Batching is invisible from outside: the same pixels appear whether they took
 one draw call or a thousand, and only the frame time tells you which. The
-headless backend counts them, so `make -C graphics test` asserts the
+headless backend counts them, so `sqmake test` asserts the
 decisions directly - one call for ten sprites sharing a texture, two when the
 texture switches once, six when two textures interleave six times, and a flush
 exactly at the capacity boundary.

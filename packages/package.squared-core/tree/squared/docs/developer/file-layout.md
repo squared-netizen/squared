@@ -33,7 +33,7 @@ installed libc++'s own sources ([modules.md](modules.md#std)).
 
 **A partition is named for its path**, the slashes as dots:
 `gui/src/detail/ui.cppm` is `sq.gui:src.detail.ui`. `tools/module_deps.sh`
-refuses a file that declares another name, as it builds, and `make headers`
+refuses a file that declares another name, as it builds, and `sqmake headers`
 (`tools/check_modules.sh`) for the whole tree.
 
 **The primary interface re-exports every partition** (`export import :label;`
