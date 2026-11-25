@@ -1,5 +1,13 @@
 # Build and toolchain
 
+> **Until 2026-11-25.** squared built with GNU make until then, as this
+> page tells it; it builds with sqmake now (`build.lua`, `build/squared.lua`;
+> [../programmer/building.md](../programmer/building.md)). What this page
+> says the make build did, sqmake does its own way: the order from each
+> source's imports, std from libc++'s `std.cppm`, its shared cache (sqmake's
+> docs/spec.md, sections 5 and 6.3), a test as an `exe{}`. Kept for the
+> reasons it gives, which still hold.
+
 ## What the build is
 
 GNU make plus clang and libc++ (since 7b.4: squared is modules, built the

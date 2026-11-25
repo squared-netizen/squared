@@ -226,7 +226,7 @@ on the entry's line.
 
 ## Layer 3: the frame-allocation counter
 
-A development build (`make DEV_LOG=1 apk` in the Android template) replaces
+A development build (`sqmake --debug` in the Android template) replaces
 the global `operator new` with one that counts, and the template brackets each
 frame's `update()` and `render()` with `sq::dev::frame_begin()` and
 `frame_end()`. Frames that allocate are reported over the log sink:
@@ -316,7 +316,7 @@ clang-tidy 18 also reports 7 `bugprone-unchecked-optional-access` that 21 does
 not: guarded accessors called twice. The six that were still present now bind
 the optional once, which reads better and satisfies both.
 
-Found on the way, not by a check: `tools/measure_sizes.sh` named a namespace
+Found on the way, not by a check: ``sqmake sizes`` named a namespace
 that no longer exists and did not compile; fixed, and it now also measures the
 error, event, file and messaging types. gcc's `-Wsign-conversion` flagged
 `messaging_detail.hpp`; fixed.

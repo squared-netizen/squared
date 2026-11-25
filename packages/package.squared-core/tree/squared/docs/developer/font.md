@@ -35,7 +35,7 @@ third_party/freetype/   (pinned: tools/pin_freetype.sh; README.md, PINNED)
 - **Pinned, never edited.** `tools/pin_freetype.sh <source>` copies
   `include/` and the `.c` and `.h` files of nine modules (base, truetype,
   sfnt, smooth, autofit, cff, psaux, pshinter, psnames: 311 files, 5.8 MB)
-  and writes `PINNED` with the tag, commit and a sha256 each; `make headers`
+  and writes `PINNED` with the tag, commit and a sha256 each; `sqmake headers`
   checks them (tools/check_modules.sh, 1b). As the libc++ pin.
 - **Configured from outside.** `font/src/freetype` comes first on the
   include path, so `<freetype/config/ftmodule.h>` and `ftoption.h` are

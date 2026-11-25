@@ -16,7 +16,7 @@ installed.
   modules compiled and the options they are compiled with are squared's own
   files, `font/src/freetype/freetype/config/` (`ftmodule.h`, `ftoption.h`),
   first on the include path; nothing here is edited.
-- **Checked.** `make headers` checks the sums.
+- **Checked.** `sqmake headers` checks the sums.
 - **Pinning again**, for a new release:
 
       git clone --depth 1 --branch VER-2-16-0 https://github.com/freetype/freetype ~/src/freetype

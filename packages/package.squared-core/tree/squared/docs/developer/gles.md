@@ -83,12 +83,11 @@ driver knows.
 
 ## Build wiring
 
-The module is in `MODULES` only when `SQUARED_GRAPHICS_BACKEND` is `gles`,
-because it cannot compile without the NDK's GL headers. The root `Makefile`
-reads `local.mk` directly for that test: module Makefiles reach `local.mk`
-through `build/common.mk`, but the root one does not include `common.mk`, so a
-backend chosen in `local.mk` would otherwise select the right `context.cpp` and
-the wrong module list.
+`build/squared.lua` builds the module only when `graphics` is `gles` (an
+Android build's default), because it cannot compile without the sysroot's GL
+headers; the graphics module takes that backend's folder in the same place,
+so the module list and `context.cpp` are chosen together. (Under make, the
+root `Makefile` had to read `local.mk` itself for this, until 2026-11-25.)
 
 ## Shared vocabulary with graphics
 
@@ -103,7 +102,7 @@ written twice, here and in `graphics/src/gles/texture.cpp`, because the
 
 ## Testing against a fake driver
 
-`make -C gles test` links the module against `test/gl_stub.cpp`, which defines
+`sqmake test` links the module against `test/gl_stub.cpp`, which defines
 the GL entry points this module calls. The stub is compiled against the real GL
 headers, so every signature is checked by the compiler rather than by hand, and
 it records what was called.

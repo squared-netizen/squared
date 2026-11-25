@@ -181,7 +181,7 @@ ring returns `full`).
 
 - **Header placement:** at the module root, beside `TelegramData`, though
   apps will reach it only through the Telegraph. A header in `src/` must be
-  reachable from a workhorse header (`make headers`, until 7b.4), and nothing reaches it
+  reachable from a workhorse header (`sqmake headers`, until 7b.4), and nothing reaches it
   until the Telegraph exists (6.6); listing it as extension surface would be
   wrong. When the Telegraph includes it, it can move to `src/` or stay; to be
   settled then.

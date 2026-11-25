@@ -7,7 +7,7 @@ internal: for that, see [../developer/README.md](../developer/README.md).
 - [Imports and file layout](include-layout.md) &mdash; `import squared;`, the modules, and where each type is written
 - [Building](building.md) &mdash; g++ and make, on desktop Linux and Termux
 - [Tools](tools.md) &mdash; the scripts in `squared/tools/`, and the workspace wrappers that run them
-- [API reference](../reference/README.md) &mdash; every public type and function with its comment, made from the module interfaces by `make docs`
+- [API reference](../reference/README.md) &mdash; every public type and function with its comment, made from the module interfaces by `sqmake docs`
 
 ## Modules
 

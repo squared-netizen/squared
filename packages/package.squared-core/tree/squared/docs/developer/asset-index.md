@@ -102,7 +102,7 @@ file, built at the same moment. There is nothing to update separately and
 nothing that can fall out of step.
 
 On the build side, the index's make rule depends on every asset file. Adding,
-removing or renaming any asset regenerates it on the next `make apk`.
+removing or renaming any asset regenerates it on the next `sqmake`.
 
 ## Alternatives that were rejected
 

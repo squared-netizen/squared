@@ -53,7 +53,7 @@ The squared-pg repo keeps its own `tools/docs-archive.sh` for squared-pg's docs.
 ## docs.sh
 
 Writes the API reference, `docs/reference/`, with clang-doc from the comments
-in the public headers. `make docs` runs it; `make docs-check` runs it with
+in the public headers. `sqmake docs` runs it; `sqmake docs-check` runs it with
 `--check`, which writes nothing and exits 1 when the committed pages are not
 what the headers say now. `--missing` lists the public functions and types
 with no comment (constructors, destructors and assignments are left out).
@@ -125,7 +125,7 @@ with no comment (constructors, destructors and assignments are left out).
   visible and, if not, prints where clang-doc looked.
 - **Progress** (2026-10-20, after a silent run of minutes on the phone): a dot
   as clang-doc starts each unit, then a dot per page tidied, with the count
-  every 50, as `make headers` prints. clang-doc says `[n/N] Processing file`
+  every 50, as `sqmake headers` prints. clang-doc says `[n/N] Processing file`
   on stderr, unbuffered; a bash `read` loop counts those lines as they come.
   Not awk: mawk holds its input until the end, so every dot came at once. With
   `pipefail` the pipeline's status is clang-doc's. clang-doc runs in a
@@ -147,7 +147,7 @@ libc++'s own std module sources (`std.cppm`, `std/*.inc`) for the libc++
 that compiler and flags compile against: `$SQ_STD_CPPM`'s folder, else
 `share/libc++/v1` beside the headers, else beside the compiler. Refuses
 none found, or sources beside headers of another major version.
-`std_bmi.sh` builds std from it; `docs.sh` reads its list of headers. Why:
+`docs.sh` reads its list of headers (sqmake builds std from the manifest's `std.cppm`). Why:
 [modules.md](modules.md#std).
 
 ## pin_freetype.sh
@@ -160,32 +160,8 @@ replacing what was pinned, through a new directory renamed into place; and
 writes `PINNED`: where from (the git tag and commit when it is a
 checkout), the version, the modules, the date, a sha256 for each file.
 Keeps squared's `README.md` there. Refuses a directory that is not
-FreeType's. `make headers` checks the sums. Why, and what is compiled:
+FreeType's. `sqmake headers` checks the sums. Why, and what is compiled:
 [font.md](font.md#freetype-as-squared-builds-it).
-
-## std_bmi.sh
-
-`tools/std_bmi.sh <module dir> <archive> <compiler> <flags>...`, run by
-`build/common.mk`'s std rule: makes `import std;`'s BMI and object for one
-compiler, flag set and libc++, once on the device, in
-`$(SQUARED_STD_HOME)/<key>/`, or finds them made; links the build's
-`modules/std.pcm` to it, writes `modules/std.d` and `std.inputs`, archives
-`libsquared_std.a`, and removes keys beyond `SQUARED_STD_KEEP` (6). Refuses a
-standard library that is not libc++, and libc++ headers of another major
-version than `PINNED`. Fits its copy of the sources to the headers (libc++'s
-header-availability checks out; a `using` of a name the C library makes
-static left out, and said: Termux's `tmpfile`), never the pinned files. One
-`mod  std (...)` line, `into` or `made before`.
-The key, the sharing and the races: [modules.md](modules.md#std).
-
-## inputs_sum.sh
-
-`tools/inputs_sum.sh <list> <sum> <public root>`: writes `<sum>`, the md5 of
-every file a module's `.inputs` list names, one line each, the path with the
-workspace's directory written `@ROOT@`. Run by `build/modules.mk`'s
-`.inputs` rule (before the list is renamed into place) and by
-`build/common.mk`'s std rule (`std.sum`). The build cache's keys read it
-instead of the files: [modules.md](modules.md#the-build-cache).
 
 ## format.sh
 
@@ -194,7 +170,7 @@ Runs clang-format over every `.hpp`, `.cpp` and `.cppm` under `squared/`, skippi
 and their source are in [code-style.md](code-style.md).
 
 - `--check` lists the files that would change and exits 1 if there are any.
-  `make lint` checks the same thing in its first step, without calling this
+  `sqmake lint` checks the same thing in its first step, without calling this
   script.
 - Without it, files are formatted in place, but only on a tree with no
   uncommitted changes under `squared/` (`--force` overrides), so the result can
@@ -206,7 +182,7 @@ follows the project's style.
 
 ## lint.sh
 
-The engine behind `make lint`; the root `Makefile` calls it in one line and
+The engine behind `sqmake lint`; the root `Makefile` calls it in one line and
 holds nothing else about linting. Three steps, each skipped with a message if
 its tool is missing: format (clang-format), rules (`tools/lint-rules.txt`
 against `tools/lint-baseline.txt`), tidy (clang-tidy on what the build
@@ -251,16 +227,14 @@ Exit status: 0 good, 1 a check failed, 2 usage or a failed build. The binary is
 rebuilt when the source is newer than it. No workspace wrapper: it is a
 maintainer tool.
 
-## shim_spike.sh
+## Gone with make (2026-11-25)
 
-Sprint 4's device test of the console shim, run in a project:
-`squared/tools/shim_spike.sh [project dir]`. It builds the project's
-`DEV_LOG=1` APK, then a second one in `build/spike/` with
-`dev.squared.ConsoleActivity` added as a launcher activity in its own process
-(`:console`) and task, `android:hasCode="false"` dropped, and `classes.dex`
-(the committed shim dex) added before signing. The project's files are not
-touched. It reads the build's own settings (`SQ_AAPT2`, `SQ_ANDROID_JAR`,
-`SQ_MIN_SDK`, the keystore) from the project's Makefile, the way `lint.sh`
-reads module settings. It is temporary: the `CONSOLE=monitor` packaging in the
-template's `mk/` (4.7) replaces it.
-
+squared builds with sqmake (`build.lua`); the make build's own tools went
+with it. `std_bmi.sh` (std's BMI, one a compiler and flag set): sqmake builds
+std from libc++'s `std.cppm` and keeps it in its shared cache.
+`inputs_sum.sh`, `cached_cc.sh`, `cache_prune.sh` (the build cache's keys,
+its compiles, its size): sqmake's shared cache. `test_cc.sh` (a test's
+compile and link): `build.lua`'s `exe{}`s. `build.sh`: `sqmake`, `sqmake
+--debug`. `measure_sizes.sh`: `sqmake sizes` (`tools/sizes/`). `shim_spike.sh`
+(sprint 4's device test of the console shim, through a project's Makefile):
+done, and its projects have no Makefile.

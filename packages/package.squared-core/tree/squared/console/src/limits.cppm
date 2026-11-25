@@ -1,7 +1,8 @@
-// The console's sizes, fixed at compile time. The Android template sets them
-// from make: `make CONSOLE=app CONSOLE_SCROLLBACK=1048576` (see
-// docs/programmer/console.md). A build without the console compiles none of
-// this.
+// The console's sizes, fixed at compile time: -D in the flags the app and
+// squared share (the Android template's sq/build/template.lua gives a debug
+// build -DSQUARED_CONSOLE=1; -DSQUARED_CONSOLE_SCROLLBACK=1048576 and the
+// rest go in its build.lua's flags; docs/programmer/console.md). A build
+// without the console compiles none of this.
 
 module;
 

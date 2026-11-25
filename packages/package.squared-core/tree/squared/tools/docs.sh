@@ -202,7 +202,7 @@ echo "docs: clang-doc $version over ${#headers[@]} public interfaces"
 # missing. So an error in its log fails the run too, and nothing is written.
 #
 # Progress: a dot as clang-doc starts each unit, the count every 50, the way
-# `make headers` shows its headers, so a run on the phone is never silent.
+# `sqmake headers` shows its headers, so a run on the phone is never silent.
 # clang-doc says "[n/N] Processing file" on stderr, unbuffered, and the dots
 # are counted by a shell `read` loop, which takes each line as it comes (awk
 # would not: mawk holds its input back until the end). The full output still

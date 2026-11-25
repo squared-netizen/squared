@@ -31,3 +31,4 @@ std-function gui/src/skin_font_resolver.cppm 1
 std-function gui/src/skin_loader.cpp 1
 std-function gui/toggle_button.cppm 1
 std-function gui/widget.cppm 1
+std-function tools/sizes/measure_sizes.cpp 1  # measures it: sizeof(std::function<void()>), for docs/developer/memory-profile.md

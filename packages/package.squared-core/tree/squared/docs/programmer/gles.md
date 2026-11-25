@@ -121,13 +121,11 @@ forgets the name without touching GL.
 
 ## Building
 
-`gles` is built only when the graphics backend is `gles`, because it needs the
-NDK's GL headers:
+`gles` is built only when the graphics backend is `gles` (an Android build's,
+by default), because it needs the sysroot's GL headers:
 
-```make
-# local.mk
-SQUARED_GRAPHICS_BACKEND := gles
-SQUARED_EXTERNAL_INCLUDES += -idirafter $(SQ_NDK_INC)
+```lua
+squared_settings = {root = "squared", platform = "android", graphics = "gles"}
 ```
 
 A null-backend build skips the module entirely, so the rest of squared still

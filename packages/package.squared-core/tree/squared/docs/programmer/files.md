@@ -225,7 +225,7 @@ fs.internal("skins").list(entries);          // returns default/ on device too
 
 On Android, listing and `is_directory()` are answered from an index the build
 writes into the APK at `assets/SQ-INF/index`. You do not create or maintain
-it; `make apk` regenerates it whenever an asset changes, and an app update
+it; `sqmake` regenerates it whenever an asset changes, and an app update
 replaces it along with everything else, so it cannot go stale.
 
 Two things to know:

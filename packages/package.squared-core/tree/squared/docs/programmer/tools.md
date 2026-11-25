@@ -6,7 +6,7 @@ Developer side: [developer/tools.md](../developer/tools.md).
 
 ## docs.sh
 
-`make docs` (or `squared/tools/docs.sh`) writes the API reference,
+`sqmake docs` (or `squared/tools/docs.sh`) writes the API reference,
 [docs/reference/](../reference/README.md): a page for every public type, with
 each function's signature, its comment, and a link to the line in the header.
 It is made from the headers' comments by clang-doc (`pkg install clang` in
@@ -80,7 +80,7 @@ The archive leaves out Obsidian state (`.obsidian/`, `.trash/`), editor scratch 
 Maintainer tool: checks, rewrites or prints the shim dex: squared's classes
 Android calls into (`dev.squared.ModelService`, which `BACKGROUND=1` packs
 into an app; the Console's monitor activity). You do not need it to build an
-app. It builds `dexgen` through the framework's make (`make dexgen`, as the
+app. It builds `dexgen` through the framework's make (`tools/dexgen.sh`, as the
 tests are built: it imports `std`).
 
     squared/tools/dexgen.sh             # the committed dex regenerates byte for byte

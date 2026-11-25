@@ -190,9 +190,9 @@ Atlases and sprite batches each have an `invalidate()` and `restore()` pair for 
 
 ## Choosing a backend
 
-```sh
-make SQUARED_GRAPHICS_BACKEND=null   # headless; the default
-make SQUARED_GRAPHICS_BACKEND=gles   # EGL and GLES 3.0
+```lua
+squared_settings = {graphics = "null"}   -- headless; a host build's default
+squared_settings = {graphics = "gles"}   -- EGL and GLES 3.0; an Android build's default
 ```
 
 The null backend draws nothing and succeeds at everything. A project builds and runs before a real backend exists, and `graphics` and `gui` can be tested without a GPU.

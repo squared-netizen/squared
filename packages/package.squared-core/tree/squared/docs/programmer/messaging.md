@@ -426,7 +426,7 @@ A `Received` text's bytes are its `data`, all of it, from 0; the telegram's
 own `DataRef` is where it was in the ring, not in `data`.
 
 **Capacities** are compile-time knobs, set as make variables in a project
-(`make TELEGRAPH_RING=512`; the framework and the app are built with the same
+(`-DSQUARED_TELEGRAPH_RING=512` in the build.lua flags; the framework and the app are built with the same
 ones) or `-DSQUARED_TELEGRAPH_RING=512` by hand: `TELEGRAPH_RING` 256
 telegrams each way, `TELEGRAPH_DATA` 8 KB of text each way,
 `TELEGRAPH_PENDING` 256 held states, `TELEGRAPH_CACHE` 512 values with

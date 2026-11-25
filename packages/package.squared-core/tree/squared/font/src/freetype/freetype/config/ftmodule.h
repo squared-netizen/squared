@@ -1,6 +1,6 @@
 /*
- * The FreeType modules squared compiles (font/Makefile), registered for
- * FT_Init_FreeType: font/Makefile puts this directory first on the include
+ * The FreeType modules squared compiles (build/squared.lua (the font module)), registered for
+ * FT_Init_FreeType: build/squared.lua (the font module) puts this directory first on the include
  * path, so <freetype/config/ftmodule.h> is this file, not FreeType's. What a terminal's
  * fonts need: TrueType (JetBrains Mono, Roboto), OpenType/CFF (Noto CJK),
  * the SFNT tables both share, PostScript hinting and names for CFF, the

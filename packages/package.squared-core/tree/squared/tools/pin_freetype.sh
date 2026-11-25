@@ -22,7 +22,7 @@
 #   third_party/freetype/LICENSE.TXT, FTL.TXT      FreeType's licence
 #   third_party/freetype/PINNED                    the version, where from,
 #                                                  and a sha256 for each file
-#                                                  (make headers checks them)
+#                                                  (sqmake headers checks them)
 #
 # README.md there is squared's, and left alone. Commit it all with PINNED.
 #
@@ -93,7 +93,7 @@ find "$work" -type f -exec chmod 644 {} +
 
 {
     echo "# FreeType's sources, pinned by tools/pin_freetype.sh."
-    echo "# Do not edit the files: pin again. make headers checks the sums."
+    echo "# Do not edit the files: pin again. sqmake headers checks the sums."
     echo "from: $shown"
     echo "freetype: $version"
     echo "modules: ${modules[*]}"

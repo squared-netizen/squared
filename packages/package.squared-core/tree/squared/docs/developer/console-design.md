@@ -32,7 +32,7 @@ It has four jobs; anything else is out of scope.
 | Watch the process | Memory, threads, files, the log | `mem`, `heap`, `threads`, `fds`, `logcat`, `alloc` (with `DEV_LOG`) |
 
 The same Console is reachable from a Termux terminal through the bridge
-(`make console`): its commands from a real keyboard, and its files pulled
+(`sqmake console`): its commands from a real keyboard, and its files pulled
 and pushed. The bridge is a way in, not a second tool.
 
 ## What it is not

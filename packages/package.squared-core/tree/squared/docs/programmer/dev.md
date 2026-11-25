@@ -44,7 +44,7 @@ line with the unstripped library from your build:
 addr2line -f -C -e build/libdemo.so 0x1ba7
 ```
 
-A normal build (`make apk`) contains none of this and does not request the
+A normal build (`sqmake`) contains none of this and does not request the
 `INTERNET` permission. The template adds that permission to a copy of the
 manifest only for `DEV_LOG` builds.
 

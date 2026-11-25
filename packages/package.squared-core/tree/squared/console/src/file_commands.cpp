@@ -160,7 +160,8 @@ void pull( Console &console, const Args &args, void * ) noexcept
         return;
     }
     if( files.bridge == nullptr || !files.bridge->connected() ) {
-        console.print( "pull: needs Termux connected: make console in the project", Level::error );
+        console.print( "pull: needs Termux connected: sqmake console in the project",
+                       Level::error );
         return;
     }
     Path path{};
@@ -200,7 +201,7 @@ void pull( Console &console, const Args &args, void * ) noexcept
 
 void push_help( Console &console, const Args &, void * ) noexcept
 {
-    console.print( "push: typed in make console (Termux): push <file> [name]; it lands in the "
+    console.print( "push: typed in sqmake console (Termux): push <file> [name]; it lands in the "
                    "app's files/" );
 }
 
@@ -211,8 +212,8 @@ std::size_t add_file_commands( Console &console, const char *home, Bridge *bridg
     files = { home, bridge };
     using Added = Commands::AddResult;
     constexpr const char *ls_help = "ls [path]: a directory's entries (relative to the app's data)";
-    constexpr const char *pull_help = "pull <path>: a file to Termux (make console saves it)";
-    constexpr const char *push_help_text = "push: from make console: push <file> [name]";
+    constexpr const char *pull_help = "pull <path>: a file to Termux (sqmake console saves it)";
+    constexpr const char *push_help_text = "push: from sqmake console: push <file> [name]";
     std::size_t refused = 0;
     if( console.add( "ls", ls_help, ls ) != Added::added ) {
         ++refused;

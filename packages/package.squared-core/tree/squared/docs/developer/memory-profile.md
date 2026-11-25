@@ -4,7 +4,7 @@ Measured on the host with `g++ -O2 -std=c++20`, 64-bit. An Android 32-bit ABI
 will differ: pointers halve, so the pointer-heavy types shrink and the
 float-only value types do not.
 
-Regenerate with `tools/measure_sizes.sh`.
+Regenerate with ``sqmake sizes``.
 
 | Type | sizeof | alignof |
 |---|---:|---:|

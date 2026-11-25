@@ -7,7 +7,7 @@
 # every flag). Run it after changing either file; SQMAKE is sqmake 0.4.0 or
 # later (default: sqmake on PATH).
 #
-# Until make goes (sqmake phase 4) the toolchain is written twice; this is
+# The toolchain is written twice while sqterm's packages read toolchain.sh; this is
 # what keeps the two one.
 set -euo pipefail
 

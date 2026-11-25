@@ -7,6 +7,14 @@ share with it, and what it cost.
 Programmer counterpart: [../programmer/include-layout.md](../programmer/include-layout.md).
 The layout of a module's files: [file-layout.md](file-layout.md).
 
+> **Until 2026-11-25.** squared built with GNU make until then, as this
+> page tells it; it builds with sqmake now (`build.lua`, `build/squared.lua`;
+> [../programmer/building.md](../programmer/building.md)). What this page
+> says the make build did, sqmake does its own way: the order from each
+> source's imports, std from libc++'s `std.cppm`, its shared cache (sqmake's
+> docs/spec.md, sections 5 and 6.3), a test as an `exe{}`. Kept for the
+> reasons it gives, which still hold.
+
 ## What the build makes
 
 Every interface unit (`module.cppm`, and a partition per type) is compiled
@@ -33,7 +41,7 @@ against an older one. Three levels of order:
 
 1. **std first**, from the root Makefile: every unit imports it.
 2. **Modules in the top Makefile's order** (`gui: graphics math data dev files
-   messaging ...`; `term: app` since 12.3d, for the key names). `make headers` (`tools/check_modules.sh`) checks that
+   messaging ...`; `term: app` since 12.3d, for the key names). `sqmake headers` (`tools/check_modules.sh`) checks that
    every module a module's files import is built before it: under `make -j`
    a missing line would race the BMI, and fail only sometimes.
 3. **Interfaces inside a module from their import lines**:
@@ -139,7 +147,7 @@ build compiles against, never from a copy ("One C++23 toolchain",
   operators argument-dependent lookup needs, and libstdc++'s `__gnu_cxx`
   iterator operators. It existed because neither toolchain had `import std`
   working then: Termux's libc++ ships no `std.cppm`, and the NDK's failed on
-  the ctype functions (the define above is the fix). `make headers` checked
+  the ctype functions (the define above is the fix). `sqmake headers` checked
   it named every `std::` name the sources used. Gone with the generator.
 - **The precompiled header** (7b.2): a precompiled header and modules do not
   mix (a BMI made with one names it by path and loads it at every import;
@@ -199,7 +207,7 @@ places.
 
 Measured here (2026-10-27, x86, 8 jobs, clang 18), the framework clean:
 
-| Layout | Clean build | CPU | First `make test` |
+| Layout | Clean build | CPU | First `sqmake test` |
 |---|---|---|---|
 | headers, precompiled (7b.2, 7b.4's first step) | 34.8 s | 53 s | 84 s |
 | a partition per type (chosen) | 43.5 s | 64 s | 80 s |
@@ -262,7 +270,7 @@ cache.
 A build of a fresh workspace that compiles nothing, on one job (2026-11-02,
 x86): 44 s before the `.sum`s, 19.5 s with them, 12.9 s with few programs a
 lookup (12.9 s: about 8 of it lookups, 3 make's own work). The phone pays
-more for each program started, so it gains more: hello's `make dev` after
+more for each program started, so it gains more: hello's `sqmake --debug run` after
 pkg75, with every unit from the cache, took 3 min 39 s. Checked again: 37
 tests ok in the fresh workspace; `size.cppm` edited, 125 compiled (gui's
 113, stage's 11, the umbrella), edited back, 0.

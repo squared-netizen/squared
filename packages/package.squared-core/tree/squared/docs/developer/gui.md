@@ -432,7 +432,7 @@ recipe alone. Make has no way to know a recipe mentions a file: an archive that
 is not a prerequisite is not a reason to relink, so rebuilding the framework
 left every test binary untouched and apparently unchanged behaviour.
 
-This is the same shape as `make apk` linking whatever archives happened to
+This is the same shape as `sqmake` linking whatever archives happened to
 exist. It is worth stating as a rule, because it fails silently in exactly the
 situation where a test matters most - after a change:
 
