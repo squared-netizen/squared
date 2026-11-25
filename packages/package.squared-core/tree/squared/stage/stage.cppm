@@ -330,7 +330,10 @@ class Stage final
          */
         void hide_bars( bool hide ) noexcept { hide_bars_ = hide; }
         [[nodiscard]] bool hides_bars() const noexcept { return hide_bars_; }
-        /** @brief The UI's zoom, in percent: the least, the most, and its steps. */
+        /**
+         * @brief The UI's zoom, in percent: the least and the most it can be
+         * (the hard limits `set_zoom_range` keeps within), and its steps.
+         */
         static constexpr int least_zoom = 50;
         static constexpr int most_zoom = 300;
         static constexpr int zoom_step = 5;
@@ -353,11 +356,28 @@ class Stage final
          */
         void set_zoom( int percent ) noexcept;
         /**
+         * @brief The range a pinch and `set_zoom` keep to (a settings
+         * screen's Least and Most): each brought within `least_zoom` and
+         * `most_zoom`, to the nearest step, the two swapped if the wrong way
+         * round. The zoom, if now outside it, is brought in and kept. Not
+         * kept itself: the app sets it again at each start (from its
+         * preferences).
+         * @code
+         * app.stage.set_zoom_range( 75, 200 );
+         * @endcode
+         */
+        void set_zoom_range( int least, int most ) noexcept;
+        [[nodiscard]] int zoom_least() const noexcept { return least_steps_ * zoom_step; }
+        [[nodiscard]] int zoom_most() const noexcept { return most_steps_ * zoom_step; }
+        /**
          * @brief Whether a pinch zooms the UI: on by default. Off, both
          * fingers reach the widgets as touches, as a game's canvas wants, and
-         * no widget is offered a pinch. In `squared_main`.
+         * no widget is offered a pinch. At any time: turned off during a
+         * pinch, that pinch ends (the zoom it reached is kept, a widget that
+         * had it is told it ended) and its fingers reach nothing until they
+         * are lifted.
          */
-        void pinch_zoom( bool on ) noexcept { no_pinch_ = !on; }
+        void pinch_zoom( bool on ) noexcept;
         [[nodiscard]] bool pinch_zooms() const noexcept { return !no_pinch_; }
 
         /**
@@ -490,7 +510,9 @@ class Stage final
         [[nodiscard]] bool leave_requested() const noexcept { return leave_; }
         [[nodiscard]] bool take_background_request() noexcept
         {
-            return std::exchange( background_, false );
+            const bool asked = background_; // a bit-field: no std::exchange
+            background_ = false;
+            return asked;
         }
         void check_screens() noexcept;
         void low_memory() noexcept;
@@ -625,17 +647,20 @@ class Stage final
         bool applying_ = false;
         bool bindings_full_ = false;
         bool failed_ = false;
-        bool broken_ = false;
-        bool leave_ = false;
-        bool background_ = false;
-        bool keep_screens_ = true;
-        bool hide_bars_ = true;
+        bool broken_ : 1 = false;
+        bool leave_ : 1 = false;
+        bool background_ : 1 = false;
+        bool keep_screens_ : 1 = true;
+        bool hide_bars_ : 1 = true;
         /// The size or the safe area changed: laid out once, at the next event or frame.
-        bool layout_due_ = false;
+        bool layout_due_ : 1 = false;
         /// The zoom in steps (`zoom_step` percent); 0 until the kept one is read.
         std::uint8_t zoom_steps_ : 7 = 0;
         /// `pinch_zoom( false )`.
         std::uint8_t no_pinch_ : 1 = 0;
+        /// `set_zoom_range`, in steps: what a pinch and `set_zoom` keep to.
+        std::uint8_t least_steps_ : 6 = least_zoom / zoom_step;
+        std::uint8_t most_steps_ : 6 = most_zoom / zoom_step;
 };
 
 // 16 screens and 4 waiting changes, as pointers; 16 added screens and 16
