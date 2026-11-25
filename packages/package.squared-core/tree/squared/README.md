@@ -61,6 +61,8 @@ tests from `build.lua`, into `build/sqmake/`:
 ```sh
 sqmake                           # the libraries, sqconsole, dexgen, every test
 sqmake test                      # the tests, each from its module's folder
+sqmake headers                   # the pinned sources, the modules' imports and names
+tools/dexgen.sh                  # the shim dex written again, byte for byte
 ```
 
 That is the whole setup. yyjson is compiled into `libsquared_data.a` by the

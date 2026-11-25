@@ -2,7 +2,7 @@
 #
 # squared/tools/lint.sh — every lint check squared has, behind one command.
 #
-#   tools/lint.sh                    everything, every file (what `make lint` runs)
+#   tools/lint.sh                    everything, every file (what `sqmake lint` runs)
 #   tools/lint.sh --changed          only files changed since the last commit
 #   tools/lint.sh --since HEAD~1     only files changed since that commit: what a
 #                                    commit touched, after it is made
@@ -15,17 +15,18 @@
 #   1. format  files clang-format would change (tools/format.sh fixes them)
 #   2. rules   tools/lint-rules.txt, checked against tools/lint-baseline.txt
 #   3. tidy    clang-tidy with squared/.clang-tidy, on each unit the build
-#              compiles, module interfaces (.cppm) and implementations (.cpp);
-#              also the Android sources when the NDK is installed. It reads
-#              the BMIs, so it builds first (make: quick when built; for the
-#              Android sources, a build of its own in build/lint-android)
+#              compiles, module interfaces (.cppm) and implementations (.cpp),
+#              with the build's own commands (sqmake's compile database);
+#              also the Android sources where the SDK's toolchain is found
+#              (sqterm). It reads the BMIs, so it builds first (sqmake, $SQMAKE
+#              or on PATH: quick when built)
 #
 # --jobs defaults to the number of CPUs, at most 4: one clang-tidy can take a
 # few hundred MB on a large file, and a phone has little to spare.
 #
 # Progress is printed as it goes; the full report is written to
-# build/release/lint/report.txt, and clang-tidy's own output, with notes and
-# fix-its, to build/release/lint/tidy/. Exit status: 0 clean, 1 findings,
+# build/lint/report.txt, and clang-tidy's own output, with notes and fix-its,
+# to build/lint/tidy/. Exit status: 0 clean, 1 findings,
 # 2 usage or environment error. Runs from anywhere: squared/ is found from
 # this script.
 #
@@ -42,7 +43,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root=$(cd "$script_dir/.." && pwd)
 RULES=$script_dir/lint-rules.txt
 BASELINE=$script_dir/lint-baseline.txt
-OUT=$root/build/release/lint
+OUT=$root/build/lint
 
 only=""
 changed=0
@@ -301,64 +302,32 @@ fi
 
 # --- 3. tidy -------------------------------------------------------------------
 
-# What clang-tidy analyses is what the build compiles, with the build's flags,
-# both read from the Makefiles (and so from build/common.mk and local.mk): the
-# root Makefile's MODULES, then each module's SOURCES and INTERFACES (its
-# .cppm units, 7b.4), STANDARD, OPTIMISE (NDEBUG decides which asserts
-# exist), SQUARED_ABI, INCLUDES and SQUARED_MODULE_USE (where the BMIs are: a
-# unit's imports are read from them, so they are built first). Warning flags
-# are left out; the build already reports those. Nothing is built: a helper
-# makefile adds one target that prints a variable.
-#
-# Two configurations: the one local.mk selects ("host"), then, when the NDK's
-# headers are installed, the Android one (gles backend, android platform), for
-# the sources only it compiles. The Android one is compiled the way the
-# template builds it: for API $android_api, against the NDK's sysroot and its
-# libc++ headers (mk/squared_generated.mk, "Compiler and link flags").
-android_api=22
-printf 'print-%%:\n\t@:$(info $($*))\n' >"$TMP/print.mk"
-mk_print() { # mk_print <dir> <variables...>; one line per variable
-    local dir=$1
-    shift
-    local targets=()
-    for v in "$@"; do targets+=("print-$v"); done
-    make -s --no-print-directory -C "$dir" -f Makefile -f "$TMP/print.mk" "${overrides[@]}" \
-        "${targets[@]}" 2>/dev/null
+# What clang-tidy analyses is what the build compiles, with the build's own
+# commands: sqmake's compile database (build.lua, sqmake 0.13.0), the host's
+# in build/sqmake and, where the SDK's toolchain is found (sqterm's
+# build/toolchain.lua), the Android libraries' in build/sqmake-android, for the
+# sources only they compile (the gles backend, the Android-only files). Each
+# unit's file and the folder of the database that has it; the tests, the
+# tools and third_party/ are not squared's units. Compiler warnings are left
+# out (-w): the build already reports those.
+SQMAKE=${SQMAKE:-sqmake}
+declare -A planned=()
+plan_db() { # plan_db <config> <build folder>; adds its units to $TMP/plan
+    local cfg=$1 dir=$2 f
+    [ -f "$root/$dir/compile_commands.json" ] || return 0
+    while IFS= read -r f; do
+        [ -z "${planned["$f"]+x}" ] || continue
+        planned["$f"]=1
+        printf '%s\037%s\037%s\n' "$f" "$cfg" "$dir" >>"$TMP/plan"
+    done < <("$SQEDIT" pick -x '[ ]* ["] "file" ["] ": " ["] "../squared/" {[a-z] [a-z0-9_]* "/" [^"]*} ["] .*' \
+                 "$root/$dir/compile_commands.json" |
+             "$SQEDIT" match -vx '(!"/test/" .)* "/test/" .* / "third_party/" .* / "tools/" .* / [a-z0-9_]+ "/client/" .*' || true)
 }
 
-# The NDK's sysroot headers (EGL, GLES, android/), newest NDK first, from the
-# prebuilt directory for this machine when an NDK ships several.
-ndk_include() {
-    local host gl3
-    case "$(uname -m)" in aarch64 | arm64) host=linux-arm64 ;; *) host=linux-x86_64 ;; esac
-    find "${PREFIX:-/usr}/opt/android-sdk/ndk" ${ANDROID_NDK_HOME:+"$ANDROID_NDK_HOME"} \
-        -path '*sysroot/usr/include/GLES3/gl3.h' 2>/dev/null | sort -V >"$TMP/ndk"
-    gl3=$("$SQEDIT" match -F "/$host/" "$TMP/ndk" | tail -n 1)
-    [ -n "$gl3" ] || gl3=$(tail -n 1 "$TMP/ndk")
-    [ -n "$gl3" ] && printf '%s\n' "${gl3%/GLES3/gl3.h}"
-}
-
-# $TMP/plan: one line per translation unit, "file<US>config<US>flags".
-plan_config() { # plan_config <name>; uses ${overrides[@]}
-    local cfg=$1 mods m out srcs flags src
-    [ -f "$root/Makefile" ] || return 0
-    mods=$(mk_print "$root" MODULES)
-    for m in $mods; do
-        [ -f "$root/$m/Makefile" ] || continue
-        out=$(mk_print "$root/$m" SOURCES INTERFACES STANDARD OPTIMISE SQUARED_ABI INCLUDES SQUARED_MODULE_USE)
-        srcs=$(printf '%s\n' "$out" | "$SQEDIT" lines 1..2 | tr '\n' ' ')
-        flags=$(printf '%s\n' "$out" | "$SQEDIT" lines 3.. | tr '\n' ' ')
-        for src in $srcs; do
-            "$SQEDIT" match -qF "$m/$src"$'\037' "$TMP/plan" || printf '%s\037%s\037%s\n' "$m/$src" "$cfg" "$flags" >>"$TMP/plan"
-        done
-    done
-}
-
-tidy_one() { # tidy_one <file> <config> <flags> <i/n>; writes $TMP/tidy/<file>.log
+tidy_one() { # tidy_one <file> <config> <database folder> <i/n>; writes $TMP/tidy/<file>.log
     local f=$1 log=$TMP/tidy/$1.log k
     mkdir -p "$(dirname "$log")"
-    # shellcheck disable=SC2086
-    (cd "$root" && clang-tidy --quiet "$f" -- $3) >"$log" 2>&1
+    (cd "$root" && clang-tidy --quiet -p "$3" --extra-arg=-w "$f") >"$log" 2>&1
     k=$("$SQEDIT" match -cx '[^ :]+ ":" %d+ ":" %d+ ": " ("warning" / "error") ":" .*' "$log" || true)
     printf '  [%s] %-50s %-8s %s\n' "$4" "$f" "$2" "$([ "$k" -gt 0 ] && echo "$k finding(s)" || echo ok)"
 }
@@ -371,25 +340,24 @@ if run tidy; then
         echo "  skipped: no $root/.clang-tidy"
     else
         : >"$TMP/plan"
-        overrides=()
-        plan_config host
-        ndk=$(ndk_include || true)
-        if [ -n "$ndk" ]; then
-            sysroot=${ndk%/usr/include}
-            # The target in CXX too, as the package mk passes it: the std
-            # BMI is made with CXX and its flags, not the includes, and one
-            # made for Termux's own API (24) refuses a unit for 22 (seen
-            # 2026-11-03, the first Android units since C++23).
-            overrides=(BUILD=lint-android SQUARED_GRAPHICS_BACKEND=gles SQUARED_PLATFORM=android
-                "CXX=${CXX:-clang++} --target=aarch64-linux-android$android_api --sysroot=$sysroot"
-                "SQUARED_EXTERNAL_INCLUDES=--target=aarch64-linux-android$android_api --sysroot=$sysroot -stdlib++-isystem $sysroot/usr/include/c++/v1")
-            plan_config android
+        # Built first: the BMIs every unit imports, and the databases.
+        if ! command -v "$SQMAKE" >/dev/null 2>&1; then
+            echo "  tidy needs sqmake, on PATH or as SQMAKE (github.com/squared-netizen/sqmake)" >&2
+            exit 2
         fi
-        if [ ! -s "$TMP/plan" ]; then
-            # No Makefiles to ask: every .cpp under <module>/src/, layout defaults.
-            "$SQEDIT" match -x '[a-z] [a-z0-9_]* "/src/" (!(".cpp" !.) .)* ".cpp"' "$TMP/files" | while IFS= read -r f; do
-                printf '%s\037layout\037-std=c++23 -I%s -I%s/%s/src\n' "$f" "$(dirname "$root")" "$root" "${f%%/*}"
-            done >"$TMP/plan"
+        echo "  building first (sqmake: the BMIs the units import)"
+        if ! (cd "$root" && "$SQMAKE" -j"$jobs") >"$TMP/build-host.log" 2>&1; then
+            echo "  the build failed; tidy needs its BMIs:" >&2
+            tail -n 20 "$TMP/build-host.log" >&2
+            exit 2
+        fi
+        plan_db host build/sqmake
+        configs="host only: no SDK toolchain for Android here"
+        if (cd "$root" && SQUARED_TARGET=android "$SQMAKE" -j"$jobs") >"$TMP/build-android.log" 2>&1; then
+            plan_db android build/sqmake-android
+            configs="host and android"
+        else
+            echo "  the Android build for tidy did not run; its units are skipped: $(tail -n 1 "$TMP/build-android.log")"
         fi
         # The selected files the build compiles. A selected header brings in
         # the sources that include it directly, so --changed on a header-only
@@ -409,41 +377,22 @@ if run tidy; then
             if [ -n "${want["${line%%$'\037'*}"]+x}" ]; then printf '%s\n' "$line"; fi
         done <"$TMP/plan" | LC_ALL=C sort >"$TMP/tidyplan"
         total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
-        # The BMIs every unit imports: the host build, and the Android one in
-        # build/lint-android (its objects come from the build cache when the
-        # same were built before).
-        if [ "$total" -gt 0 ]; then
-            echo "  building the BMIs first (make)"
-            if ! make -s --no-print-directory -C "$root" -j"$jobs" all >"$TMP/build-host.log" 2>&1; then
-                echo "  the build failed; tidy needs its BMIs:" >&2
-                tail -n 20 "$TMP/build-host.log" >&2
-                exit 2
-            fi
-            if "$SQEDIT" match -qF $'\037android\037' "$TMP/tidyplan" &&
-                ! make -s --no-print-directory -C "$root" -j"$jobs" "${overrides[@]}" all >"$TMP/build-android.log" 2>&1; then
-                echo "  the Android build for tidy failed; its units are skipped:" >&2
-                tail -n 10 "$TMP/build-android.log" >&2
-                "$SQEDIT" match -vF $'\037android\037' "$TMP/tidyplan" >"$TMP/tidyplan.host" || true
-                mv -f "$TMP/tidyplan.host" "$TMP/tidyplan"
-                total=$(wc -l <"$TMP/tidyplan" | tr -d ' ')
-            fi
-        fi
-        echo "  clang-tidy $(clang-tidy --version | "$SQEDIT" pick '"version " {[0-9.]+}'), $total translation unit(s) ($([ -n "$ndk" ] && echo "host and android" || echo "host only: no NDK headers found")); a module's interfaces are units of their own"
+        echo "  clang-tidy $(clang-tidy --version | "$SQEDIT" pick '"version " {[0-9.]+}'), $total translation unit(s) ($configs); a module's interfaces are units of their own"
         # Selected sources no configuration compiles are named, not analysed.
         cut -d$'\037' -f1 "$TMP/plan" | LC_ALL=C sort >"$TMP/planned"
         "$SQEDIT" match -x '[a-z] [a-z0-9_]* "/src/" (!(".cpp" !.) .)* ".cpp"' "$TMP/files" | LC_ALL=C sort | LC_ALL=C comm -23 - "$TMP/planned" \
-            | while IFS= read -r f; do echo "  skipped $f: not compiled in $([ -n "$ndk" ] && echo "either configuration" || echo "this configuration (no NDK headers)")"; done
+            | while IFS= read -r f; do echo "  skipped $f: not compiled here ($configs)"; done
         mkdir -p "$TMP/tidy"
         i=0
         running=0
-        while IFS=$'\037' read -r f cfg flags; do
+        while IFS=$'\037' read -r f cfg db; do
             i=$((i + 1))
             if [ "$jobs" -gt 1 ]; then
-                tidy_one "$f" "$cfg" "$flags" "$i/$total" &
+                tidy_one "$f" "$cfg" "$db" "$i/$total" &
                 running=$((running + 1))
                 if [ "$running" -ge "$jobs" ]; then wait -n; running=$((running - 1)); fi
             else
-                tidy_one "$f" "$cfg" "$flags" "$i/$total"
+                tidy_one "$f" "$cfg" "$db" "$i/$total"
             fi
         done <"$TMP/tidyplan"
         wait
@@ -456,7 +405,8 @@ if run tidy; then
         rm -rf "$OUT/tidy" && cp -R "$TMP/tidy" "$OUT/tidy"
         n=$(wc -l <"$TMP/tidy.found" | tr -d ' ')
         [ "$n" -eq 0 ] && echo "  no findings" || echo "  $n finding(s); by check:"
-        "$SQEDIT" pick -x '(!(check !.) .)* {check}  check <- "[" [a-z] [a-z0-9.,-]* [A-Za-z0-9.]* "]"' "$TMP/tidy.found" \
+        # A pattern with rules is all rules, the first where it starts.
+        "$SQEDIT" pick -x 'line <- (!(check !.) .)* {check}  check <- "[" [a-z] [a-z0-9.,-]* [A-Za-z0-9.]* "]"' "$TMP/tidy.found" \
             | sort | uniq -c | sort -rn | head -25 | "$SQEDIT" sub -x '{.*}' '    {1}'
         findings=$((findings + n))
     fi
