@@ -37,7 +37,7 @@ squared needs clang and libc++ (Termux has both; Debian and Ubuntu: `apt
 install clang libc++-dev libc++abi-dev`), and
 [sqedit](https://github.com/squared-netizen/sqedit) on PATH (or as
 `SQEDIT`), which does the build's text work in place of sed, grep and awk
-(sqterm: `pkg install sqedit`; elsewhere: `make -C sqedit build/sqedit`).
+(sqterm: `pkg install sqedit`; elsewhere: `sqmake -C sqedit`).
 Unpack the vendored third-party sources once after checkout:
 
 ```sh
@@ -52,6 +52,15 @@ Then:
 make test                        # every module's tests
 make headers                     # the pinned std sources, the modules' build order
 make lint                        # format, source-rule and clang-tidy checks
+```
+
+make is being retired: [sqmake](https://github.com/squared-netizen/sqmake)
+(sqterm: `pkg install sqmake`) builds the same libraries and runs the same
+tests from `build.lua`, into `build/sqmake/`:
+
+```sh
+sqmake                           # the libraries, sqconsole, dexgen, every test
+sqmake test                      # the tests, each from its module's folder
 ```
 
 That is the whole setup. yyjson is compiled into `libsquared_data.a` by the

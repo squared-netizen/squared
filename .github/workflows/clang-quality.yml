@@ -5,7 +5,8 @@ name: Clang Quality Audit
 # CMake). It needs the SDK's toolchain version, clang 23 with libc++ 23
 # (build/toolchain.sh; `import std` is built from that libc++'s own module
 # sources), so the toolchain comes from apt.llvm.org; Ubuntu 24.04's own clang
-# is 18.
+# is 18. While make is retired, the build and tests run twice: make's, and
+# sqmake's (build.lua), which must agree.
 #
 #   build and test   must pass
 #   lint             tools/lint.sh (format, source rules, clang-tidy) must
@@ -25,9 +26,9 @@ env:
   SQUARED: packages/package.squared-core/tree/squared
   # sqedit does the build's text work (build/common.mk): built from its tag.
   SQEDIT_VERSION: v0.1.0
-  # sqmake reads build/toolchain.lua; tools/check_toolchain.sh holds it to
-  # build/toolchain.sh (make's): built from its tag.
-  SQMAKE_VERSION: v0.4.0
+  # sqmake builds build.lua and reads build/toolchain.lua; tools/check_toolchain.sh
+  # holds that to build/toolchain.sh (make's): bootstrapped from its tag, no make.
+  SQMAKE_VERSION: v0.12.0
 
 jobs:
   clang-quality:
@@ -65,7 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch "$SQMAKE_VERSION" https://github.com/squared-netizen/sqmake "$RUNNER_TEMP/sqmake"
-          make -C "$RUNNER_TEMP/sqmake" -j4 CXX=clang++ CC=clang AR=ar build/sqmake
+          (cd "$RUNNER_TEMP/sqmake" && CXX=clang++ CC=clang AR=ar sh tools/bootstrap.sh)
+          echo "$RUNNER_TEMP/sqmake/build" >> "$GITHUB_PATH"
           bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
       - name: Third-party sources
@@ -82,6 +84,11 @@ jobs:
           set -euo pipefail
           make -j4 CXX=clang++
           make test CXX=clang++
+
+      - name: Build and test (sqmake, build.lua)
+        working-directory: ${{ env.SQUARED }}
+        shell: bash
+        run: CXX=clang++ CC=clang sqmake -j4 test
 
       - name: Lint (format, source rules, clang-tidy)
         id: lint
