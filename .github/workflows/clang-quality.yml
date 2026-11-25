@@ -53,22 +53,23 @@ jobs:
           # build and tools/lint.sh call.
           echo "/usr/lib/llvm-$LLVM/bin" >> "$GITHUB_PATH"
 
-      - name: sqmake ${{ env.SQMAKE_VERSION }}, and the toolchain's two descriptions agree
+      - name: sqmake ${{ env.SQMAKE_VERSION }}
         shell: bash
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch "$SQMAKE_VERSION" https://github.com/squared-netizen/sqmake "$RUNNER_TEMP/sqmake"
           (cd "$RUNNER_TEMP/sqmake" && CXX=clang++ CC=clang AR=ar sh tools/bootstrap.sh)
           echo "$RUNNER_TEMP/sqmake/build" >> "$GITHUB_PATH"
-          bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
-      - name: sqedit ${{ env.SQEDIT_VERSION }}
+      - name: sqedit ${{ env.SQEDIT_VERSION }}, and the toolchain's two descriptions agree
         shell: bash
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch "$SQEDIT_VERSION" https://github.com/squared-netizen/sqedit "$RUNNER_TEMP/sqedit"
           CXX=clang++ CC=clang "$RUNNER_TEMP/sqmake/build/sqmake" -C "$RUNNER_TEMP/sqedit" -j4 build/sqedit
           echo "$RUNNER_TEMP/sqedit/build" >> "$GITHUB_PATH"
+          # check_toolchain.sh does its text work with sqedit: this step's, by name.
+          SQEDIT="$RUNNER_TEMP/sqedit/build/sqedit" bash "$SQUARED/tools/check_toolchain.sh" "$RUNNER_TEMP/sqmake/build/sqmake"
 
       - name: Third-party sources
         working-directory: ${{ env.SQUARED }}
