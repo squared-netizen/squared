@@ -37,7 +37,8 @@
 --
 -- Kits add to it through their own sq/build/kit_*.lua (below).
 --
--- The template's layout: sq_app/src/**/*.cpp (the app), sq_android/*.cpp
+-- The template's layout: sq_app/src/**/*.cpp and *.cppm (the app: its own
+-- modules too, ordered by what they import), sq_android/*.cpp
 -- (the platform side), sq_app/third_party/**/*.c, sq_android/AndroidManifest.xml,
 -- res/ and assets/. classes.dex is squared's shims (tools/dexgen/shims.dex,
 -- committed): nothing is built to run during the build. An app with
@@ -154,6 +155,7 @@ local function add(list)
     if not excluded[f] then srcs[#srcs + 1] = f end
   end
 end
+add(glob("sq_app/src/**/*.cppm"))
 add(glob("sq_app/src/**/*.cpp"))
 add(glob("sq_android/*.cpp"))
 add(glob("sq_app/third_party/**/*.c"))

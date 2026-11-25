@@ -17,7 +17,8 @@
 --   }
 --
 -- The verbs: `sqmake` builds build/NAME; `sqmake run` runs it; `sqmake test`
--- builds and runs each sq_app/test/*.cpp. The compiler is $CXX, else
+-- builds and runs each sq_app/test/*.cpp, linked with the app's modules
+-- (sq_app/src/**/*.cppm; never its main). The compiler is $CXX, else
 -- clang++ (sqmake's toolchain).
 --
 -- Kits: every sq/build/kit_*.lua (a kit's, generated) returns what it adds
@@ -41,7 +42,13 @@ end
 
 local excluded = {}
 for _, f in ipairs(a.exclude or {}) do excluded[f] = true end
-local srcs = {}
+-- The app's sources: its modules (*.cppm, ordered by what they import), built
+-- once as a library the program and each test link (a test may import them),
+-- and its *.cpp.
+local modules, srcs = {}, {}
+for _, f in ipairs(glob("sq_app/src/**/*.cppm")) do
+  if not excluded[f] then modules[#modules + 1] = f end
+end
 for _, f in ipairs(glob("sq_app/src/**/*.cpp")) do
   if not excluded[f] then srcs[#srcs + 1] = f end
 end
@@ -49,7 +56,11 @@ for _, f in ipairs(kit_srcs) do srcs[#srcs + 1] = f end
 
 local flags = {"-Isq_app/include", "-Wall", "-Wextra", "-Wpedantic", kit_flags, a.flags or {}}
 local link = {kit_link, a.link or {}}
-local bin = exe{name = name, srcs = srcs, flags = flags, link = link}
+local deps = {}
+if #modules > 0 then
+  deps = {library{name = name .. "_modules", srcs = modules, flags = flags, default = false}}
+end
+local bin = exe{name = name, srcs = srcs, deps = deps, flags = flags, link = link}
 
 verb("run", {needs = {bin}, call = function() return exec{bin} end})
 
@@ -57,7 +68,7 @@ verb("run", {needs = {bin}, call = function() return exec{bin} end})
 local tests = {}
 for _, src in ipairs(glob("sq_app/test/*.cpp")) do
   local t = src:match("([^/]+)%.cpp$")
-  tests[#tests + 1] = exe{name = "test/" .. t, srcs = {src}, flags = flags, link = link, default = false}
+  tests[#tests + 1] = exe{name = "test/" .. t, srcs = {src}, deps = deps, flags = flags, link = link, default = false}
 end
 verb("test", {needs = tests, call = function()
   if #tests == 0 then
