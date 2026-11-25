@@ -142,6 +142,10 @@ std::unique_ptr<gui::Widget> Settings::make_view()
     table->set_spacing( spacing );
     Rows rows( *table );
 
+    // Back to the screen it was opened over, as the system's back does.
+    auto &back = rows.across( std::make_unique<gui::Button>( "Back" ) );
+    back.set_on_click( [this] { static_cast<void>( stage_.back() ); } );
+
     if( has( standard_, StandardSettings::zoom ) ) {
         rows.heading( "Zoom" );
         // The zoom is the Stage's (kept as a pinch keeps it); the rest are
