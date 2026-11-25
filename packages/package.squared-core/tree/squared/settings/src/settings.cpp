@@ -4,6 +4,8 @@ module sq.settings;
 
 import std;
 import sq.data;
+import sq.dialogs;
+import sq.files;
 import sq.gui;
 import sq.preferences;
 import sq.stage;
@@ -298,6 +300,14 @@ std::unique_ptr<gui::Widget> Settings::make_view()
 
     if( has( standard_, StandardSettings::preferences ) ) {
         rows.heading( "Preferences" );
+        if( export_to_ != nullptr ) {
+            auto &out = rows.across( std::make_unique<gui::Button>( "Export..." ) );
+            out.set_on_click( [this] { transfer_dialog( true ); } );
+        }
+        if( import_from_ != nullptr ) {
+            auto &in = rows.across( std::make_unique<gui::Button>( "Import..." ) );
+            in.set_on_click( [this] { transfer_dialog( false ); } );
+        }
         auto &reset = rows.across( std::make_unique<gui::Button>( "Reset all" ) );
         reset.set_on_click( [this] {
             static_cast<void>( preferences_.reset_all() );
@@ -310,6 +320,73 @@ std::unique_ptr<gui::Widget> Settings::make_view()
     auto pane = std::make_unique<gui::ScrollPane>();
     pane->set_content( std::move( table ) );
     return pane;
+}
+
+void Settings::set_transfer( Transfer export_to, Transfer import_from, void *context ) noexcept
+{
+    export_to_ = export_to;
+    import_from_ = import_from;
+    transfer_context_ = context;
+}
+
+std::string Settings::export_name( std::string_view folder ) const
+{
+    // The app's id: the cartridge's, without "preferences.".
+    std::string_view app = preferences_.id();
+    if( app.starts_with( "preferences." ) ) {
+        app.remove_prefix( std::string_view( "preferences." ).size() );
+    }
+    const std::chrono::year_month_day day{ std::chrono::floor<std::chrono::days>(
+        std::chrono::system_clock::now() ) };
+    const std::string stem = std::format( "{}-preferences-{:%Y-%m-%d}", app, day );
+    for( int n = 1;; ++n ) {
+        std::string name = n == 1 ? stem + ".sq" : std::format( "{}-{}.sq", stem, n );
+        std::error_code ec;
+        if( folder.empty() ||
+            !std::filesystem::exists( std::filesystem::path( folder ) / name, ec ) ) {
+            return name;
+        }
+    }
+}
+
+void Settings::transfer_dialog( bool exporting )
+{
+    FileDialogOptions options;
+    options.mode = exporting ? FileDialogMode::save : FileDialogMode::open;
+    options.title = exporting ? "Export preferences" : "Import preferences";
+    options.extensions = { ".sq" };
+    // Shared storage, where they travel from (as sqterm's packages do), when there is one.
+    if( files::FileSystem *fs = stage_.files(); fs != nullptr ) {
+        options.folder = fs->resolve_platform_path( files::FileType::External, "" );
+    }
+    if( exporting ) {
+        options.name = export_name( options.folder );
+    }
+    options.chosen = exporting ? &Settings::exported : &Settings::imported;
+    options.context = this;
+    static_cast<void>( FileDialog::show( stage_, std::move( options ) ) );
+}
+
+void Settings::exported( void *context, std::string_view path ) noexcept
+{
+    auto *settings = static_cast<Settings *>( context );
+    if( settings == nullptr || path.empty() || settings->export_to_ == nullptr ) {
+        return; // cancelled
+    }
+    static_cast<void>(
+        settings->export_to_( settings->transfer_context_, settings->preferences_, path ) );
+}
+
+void Settings::imported( void *context, std::string_view path ) noexcept
+{
+    auto *settings = static_cast<Settings *>( context );
+    if( settings == nullptr || path.empty() || settings->import_from_ == nullptr ) {
+        return; // cancelled
+    }
+    if( settings->import_from_( settings->transfer_context_, settings->preferences_, path ) ) {
+        settings->apply(); // every setting again
+        static_cast<void>( settings->stage_.replace<SettingsScreen>() );
+    }
 }
 
 void SettingsScreen::build( gui::LayoutWriter &root )

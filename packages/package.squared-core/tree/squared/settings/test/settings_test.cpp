@@ -101,6 +101,21 @@ int main()
         CHECK( bare.make_view() != nullptr );
         bare.apply(); // no Zoom section: the Stage is left as it is
         CHECK( stage.zoom_least() == 75 && !stage.pinch_zooms() );
+
+        // Export and import: shown once set; Export's name is the day's,
+        // the first not in the folder.
+        const auto never = []( void *, sq::preferences::Preferences &, std::string_view ) noexcept {
+            return false;
+        };
+        bare.set_transfer( never, never );
+        CHECK( bare.make_view() != nullptr );
+        const std::string name = bare.export_name( base );
+        CHECK( name.starts_with( "dev.squared.test-preferences-2" ) && name.ends_with( ".sq" ) &&
+               name.size() ==
+                   std::string_view( "dev.squared.test-preferences-YYYY-MM-DD.sq" ).size() );
+        std::ofstream( base + "/" + name ) << "x";
+        CHECK( bare.export_name( base ) == name.substr( 0, name.size() - 3 ) + "-2.sq" );
+        CHECK( bare.export_name( "" ) == name );
     }
     // Gone with the last one made.
     CHECK( sq::Settings::current() == nullptr );

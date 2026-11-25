@@ -134,10 +134,13 @@ module("font", {freetype}, {}, {flags = freetype_includes})
 -- An app's preferences, one cartridge: `import sq.preferences;` (not in the
 -- umbrella's import; linked with it).
 module("preferences", {"files", "data"})
+-- Dialogs any app shows over its screen (the file dialog): `import
+-- sq.dialogs;` (not in the umbrella's import, nor linked with it).
+module("dialogs", {"stage", "gui", "files"})
 -- Every app's Settings screen, bound to its preferences: `import sq.settings;`
 -- (not in the umbrella's import, nor linked with it: an app that has the
--- screen links squared.settings).
-module("settings", {"stage", "gui", "preferences", "data"})
+-- screen links squared.settings, which brings squared.dialogs).
+module("settings", {"stage", "gui", "preferences", "data", "files", "dialogs"})
 
 -- The umbrella: `import squared;`, and every library in one dependency.
 local every = {}

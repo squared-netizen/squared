@@ -100,12 +100,25 @@ copies what is added into the cartridge, so an export carries it.
 
 ### Export and import
 
-- **Export...** writes `<app id>-preferences-<date>.sq` to shared storage
-  (FileType::External: the folder sqterm already uses for packages) and
-  says where.
-- **Import...** lists the `.sq` files of kind preferences there (no system
-  picker needed: they are the app's own folder's), then Replace or Merge.
+- **Export...** opens squared's file dialog (`sq.dialogs`, decided
+  2026-11-25: the person chooses where), in shared storage
+  (FileType::External: the folder sqterm already uses for packages), with
+  `<app id>-preferences-<date>.sq` to save as, and writes it there.
+- **Import...** opens the same dialog on `.sq` files, then Replace or Merge.
   After an import, every setting is applied again (the generation moves).
+- Until phase 1b writes and reads the cartridge, the app gives the two
+  (`Settings::set_transfer`); the buttons show when it has.
+
+### The file dialog
+
+`sq::FileDialog` (`sq.dialogs`, a module of its own, outside `import
+squared;`): any app, any screen, a modal pane in the middle
+(`FileDialogPane`). Open a file, save one (a name typed, given the ending
+asked for, and said when it would replace a file), or choose a folder. The
+app's places as buttons (its files, shared storage, the files it was
+given, the top), up, the folder's folders then its files by name in any
+case (hidden names left out unless asked; files by ending), and the choice
+given to the app through a callback, or an empty path for Cancel.
 
 ### The UI's zoom
 

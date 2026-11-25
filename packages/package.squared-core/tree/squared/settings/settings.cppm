@@ -213,12 +213,42 @@ class Settings final
         /** @brief The Settings whose view the screen shows; nullptr when none is made. */
         [[nodiscard]] static Settings *current() noexcept;
 
+        /**
+         * @brief Writes the preferences to a file, or reads them back from
+         * one (preferences.md, "Export and import"); false when it failed.
+         */
+        using Transfer = bool ( * )( void *context, preferences::Preferences &preferences,
+                                     std::string_view path ) noexcept;
+
+        /**
+         * @brief Export... and Import... in the Preferences section: each
+         * opens the file dialog (sq.dialogs) where the person chooses the
+         * file, then calls `export_to` or `import_from` with its path. Export
+         * starts in shared storage with a name of the day
+         * (`<app id>-preferences-YYYY-MM-DD.sq`, `-2` and on for another the
+         * same day: none is overwritten unless the person says so); after an
+         * import every setting is applied again and the screen shown again.
+         * Not shown until set.
+         */
+        void set_transfer( Transfer export_to, Transfer import_from,
+                           void *context = nullptr ) noexcept;
+
+        /** @brief The name Export... starts with in `folder`: the day's, the first not there. */
+        [[nodiscard]] std::string export_name( std::string_view folder ) const;
+
     private:
+        static void exported( void *context, std::string_view path ) noexcept;
+        static void imported( void *context, std::string_view path ) noexcept;
+        void transfer_dialog( bool exporting );
+
         Stage &stage_;
         preferences::Preferences &preferences_;
         StandardSettings standard_;
         std::array<SettingSection, max_sections> sections_{};
         std::size_t count_ = 0;
+        Transfer export_to_ = nullptr;
+        Transfer import_from_ = nullptr;
+        void *transfer_context_ = nullptr;
 };
 
 /**
