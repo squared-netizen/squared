@@ -35,9 +35,11 @@
 --     sqconsole = "sqconsole",    -- `sqmake console`: a debug build's Console
 --   }
 --
--- Kits add to it through their own sq/build/kit_*.lua (below).
+-- Kits and packages add to it through their own sq/build/kit_*.lua and
+-- sq/build/package_*.lua (below).
 --
--- The template's layout: sq_app/src/**/*.cpp (the app), sq_android/*.cpp
+-- The template's layout: sq_app/src/**/*.cpp and *.cppm (the app: its own
+-- modules too, ordered by what they import), sq_android/*.cpp
 -- (the platform side), sq_app/third_party/**/*.c, sq_android/AndroidManifest.xml,
 -- res/ and assets/. classes.dex is squared's shims (tools/dexgen/shims.dex,
 -- committed): nothing is built to run during the build. An app with
@@ -154,6 +156,7 @@ local function add(list)
     if not excluded[f] then srcs[#srcs + 1] = f end
   end
 end
+add(glob("sq_app/src/**/*.cppm"))
 add(glob("sq_app/src/**/*.cpp"))
 add(glob("sq_android/*.cpp"))
 add(glob("sq_app/third_party/**/*.c"))
@@ -162,13 +165,16 @@ local glue = sq .. "/third_party/native_app_glue"
 -- build compiles it so too), and linked as an object, not from an archive.
 local glue_obj = rules.cc(glue .. "/android_native_app_glue.c", {optimise and {"-O2"} or {"-O0", "-g"}, "-fPIC", "-w", "-I" .. glue})
 
--- Kits: every sq/build/kit_*.lua (a kit's, generated; kit.opengl's, say)
+-- Kits and packages: every sq/build/kit_*.lua (a kit's, generated;
+-- kit.opengl's, say), then every sq/build/package_*.lua (a package's),
 -- returns what it adds, {id, flags, link, srcs}, in the order of their
--- names: square adds and updates a kit by its file, never this one.
+-- names: square adds and updates one by its file, never this one.
 local kit_flags, kit_link = {}, {}
-for _, file in ipairs(glob("sq/build/kit_*.lua")) do
+local parts = glob("sq/build/kit_*.lua")
+for _, f in ipairs(glob("sq/build/package_*.lua")) do parts[#parts + 1] = f end
+for _, file in ipairs(parts) do
   local k = include(file)
-  if type(k) ~= "table" then error(file .. ": a kit's build file returns {id, flags, link, srcs}", 0) end
+  if type(k) ~= "table" then error(file .. ": a kit's or package's build file returns {id, flags, link, srcs}", 0) end
   kit_flags[#kit_flags + 1] = k.flags or {}
   kit_link[#kit_link + 1] = k.link or {}
   add(k.srcs or {})
