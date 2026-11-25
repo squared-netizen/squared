@@ -96,10 +96,8 @@ shell (`toolchain.sdk`), under `$PREFIX` in sqterm; on another machine, name
 them with `SQ_LLVM_BIN`, `SQ_SYSROOT` and `SQ_RUNTIMES`. `sqmake toolchain`
 says what it found and why, or exactly what is missing and how to get it.
 The build goes in a folder of its fingerprint, so its modules never meet
-another toolchain's.
-
-`build/toolchain.sh` is the same toolchain in bash, for what sqterm's packages
-build with it; `tools/check_toolchain.sh` holds the two to one another.
+another toolchain's. (Until 2026-11-25 `build/toolchain.sh` said it again,
+in bash, for sqterm's packages; they use sqmake's now, and it went.)
 
 A build of your own includes squared's libraries the template's way:
 

@@ -1,9 +1,9 @@
 -- build/toolchain.lua: the SDK's toolchain, as data ("One C++23 toolchain",
 -- 2026-11-19). sqmake reads it with nothing in reach (values only: squared's
 -- docs/developer/sdk-tools.md) and finds each part itself, with no shell:
--- `sqmake toolchain` says what it found and where. make's build reads
--- build/toolchain.sh, the same toolchain in bash, until make goes; the two
--- must agree (tools/check_toolchain.sh: the same flags and fingerprint).
+-- `sqmake toolchain` says what it found and where. The only description of
+-- it since 2026-11-25 (build/toolchain.sh, the same in bash for make and
+-- sqterm's packages, went with them).
 --
 -- clang 23, libc++ 23 and bionic: from sqterm's own packages (llvm, runtimes,
 -- sysroot) on the phone, from apt.llvm.org's clang 23 with the same runtimes
