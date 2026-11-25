@@ -25,6 +25,10 @@
 --     exclude = {},               -- sources under sq_app/src not to build
 --     flags = {},                 -- the app's own compile flags
 --     link = {},                  -- and link flags
+--     libraries = {},             -- squared's libraries outside squared.all
+--                                 -- the app links, by name: "settings" (the
+--                                 -- Settings screen; brings "dialogs" and
+--                                 -- "preferences"), "dialogs", "preferences"
 --     shared = {},                -- what the app and squared must agree on:
 --                                 -- -DSQUARED_TELEGRAPH_...=, -DSQUARED_CONSOLE=1
 --     key = nil,                  -- apkpack's key (~/.android/apkpack.pem)
@@ -214,11 +218,18 @@ end
 -- Android's libraries, named by path in the sysroot (a bare -lEGL could bind
 -- another EGL, such as libglvnd's X11 one on a desktop sysroot).
 local platform = t.sysroot .. "/usr/lib/aarch64-linux-android/" .. api
+-- squared's libraries outside squared.all the app asked for (app.libraries),
+-- before it: what they use is in it.
+local deps = {}
+for _, lib in ipairs(a.libraries or {}) do
+  deps[#deps + 1] = squared[lib] or error("app.libraries: squared has no library \"" .. tostring(lib) .. "\"", 0)
+end
+deps[#deps + 1] = squared.all
 local so = shlib{
   name = name,
   srcs = srcs,
   objs = {glue_obj},
-  deps = {squared.all},
+  deps = deps,
   after = after,
   flags = {gen_flags, debug_flags, optimise and {"-O2"} or {"-O0", "-g"}, "-Wall", "-Wextra", "-Wpedantic", "-fPIC", "-fvisibility=hidden", "-DANDROID", "-I" .. glue, kit_flags, a.flags or {}},
   link = {"-Wl,--hash-style=both", "-Wl,--gc-sections", "-Wl,--no-undefined",
