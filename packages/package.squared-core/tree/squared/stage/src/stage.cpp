@@ -781,7 +781,8 @@ void Stage::pinch_zoom( bool on ) noexcept
 
 void Stage::zoom_to( int steps ) noexcept
 {
-    const int clamped = std::clamp( steps, static_cast<int>( least_steps_ ), static_cast<int>( most_steps_ ) );
+    const int clamped =
+        std::clamp( steps, static_cast<int>( least_steps_ ), static_cast<int>( most_steps_ ) );
     if( clamped == static_cast<int>( zoom_steps_ ) ) {
         return;
     }
@@ -829,7 +830,8 @@ void Stage::keep_zoom() noexcept
 bool Stage::pinched( const app::Event &event ) noexcept
 {
     using Type = app::Event::Type;
-    if( drawing_ == nullptr || !is_pointer( event.type ) || pixel_width_ <= 0 || pixel_height_ <= 0 ) {
+    if( drawing_ == nullptr || !is_pointer( event.type ) || pixel_width_ <= 0 ||
+        pixel_height_ <= 0 ) {
         return false;
     }
     // Off: none, but the fingers of a pinch it ended, until they are lifted.

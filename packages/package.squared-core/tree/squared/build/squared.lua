@@ -134,6 +134,10 @@ module("font", {freetype}, {}, {flags = freetype_includes})
 -- An app's preferences, one cartridge: `import sq.preferences;` (not in the
 -- umbrella's import; linked with it).
 module("preferences", {"files", "data"})
+-- Every app's Settings screen, bound to its preferences: `import sq.settings;`
+-- (not in the umbrella's import, nor linked with it: an app that has the
+-- screen links squared.settings).
+module("settings", {"stage", "gui", "preferences", "data"})
 
 -- The umbrella: `import squared;`, and every library in one dependency.
 local every = {}

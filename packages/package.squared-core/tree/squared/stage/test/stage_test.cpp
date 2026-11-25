@@ -2335,11 +2335,13 @@ void a_pinch_zooms_the_ui()
     // each kept within the hard limits; set_zoom and a pinch keep to it; a
     // zoom outside a new range is brought in and kept.
     app.stage.set_zoom_range( 200, 80 );
-    CHECK( app.stage.zoom_least() == 80 && app.stage.zoom_most() == 200 && app.stage.zoom() == 100 );
+    CHECK( app.stage.zoom_least() == 80 && app.stage.zoom_most() == 200 &&
+           app.stage.zoom() == 100 );
     app.stage.set_zoom( 250 );
     CHECK( app.stage.zoom() == 200 && read_file( kept ) == "200\n" );
     app.stage.set_zoom_range( 10, 1000 );
-    CHECK( app.stage.zoom_least() == sq::Stage::least_zoom && app.stage.zoom_most() == sq::Stage::most_zoom );
+    CHECK( app.stage.zoom_least() == sq::Stage::least_zoom &&
+           app.stage.zoom_most() == sq::Stage::most_zoom );
     app.stage.set_zoom_range( 101, 148 ); // to the nearest step
     CHECK( app.stage.zoom_least() == 100 && app.stage.zoom_most() == 150 );
     CHECK( app.stage.zoom() == 150 && read_file( kept ) == "150\n" );
