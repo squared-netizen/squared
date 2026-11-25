@@ -160,7 +160,8 @@ void pull( Console &console, const Args &args, void * ) noexcept
         return;
     }
     if( files.bridge == nullptr || !files.bridge->connected() ) {
-        console.print( "pull: needs Termux connected: sqmake console in the project", Level::error );
+        console.print( "pull: needs Termux connected: sqmake console in the project",
+                       Level::error );
         return;
     }
     Path path{};
