@@ -9,9 +9,12 @@
 #      module sources were pinned the same way from 2026-11-02 until
 #      2026-11-20, when std came to be built from the libc++ installed
 #      ("One C++23 toolchain").
-#   2. The build order: a module imports one the top Makefile does not build
-#      before it (`gui: graphics ...`). Under make -j the import would race
-#      the BMI it needs: sometimes built, sometimes "module not found".
+#   2. A module imports one its library does not depend on, directly or
+#      through another (build/squared.lua: `module("gui", {"app", ...})`).
+#      sqmake orders the compiles by the imports, but the link takes the
+#      libraries the dependencies give: the import would compile, and a
+#      program using it fail to link. (Under make, the top Makefile's order
+#      lines, which make -j needed for the same reason.)
 #   3. A module's files naming another module than the one their path says
 #      (tools/module_deps.sh checks it as it builds; here, for every module
 #      at once, without building).
@@ -43,17 +46,17 @@ else
 fi
 
 # --- 2 -----------------------------------------------------------------------
-modules=$(make -s --no-print-directory -f Makefile -f /dev/stdin print-modules <<'EOF' 2>/dev/null
-print-modules:
-	@echo $(MODULES) gles
-EOF
-)
-# The top Makefile's order lines, `<module>: <modules>`, as "module dep" pairs.
-pairs=$({ "$SQEDIT" pick -x '{[a-z_]*} ": " {[a-z_ ]*}' Makefile || [ $? = 1 ]; } |
-    while IFS=$'\t' read -r from deps; do
-        case " $modules " in *" $from "*) for d in $deps; do printf '%s %s\n' "$from" "$d"; done ;; esac
-    done)
-# reaches <from> <to>: whether the order puts <to> before <from>.
+# build/squared.lua's module lines, `module("<module>", {"<module>", ...})`,
+# as "module dep" pairs (squared's own; the C libraries, unquoted, left out),
+# and files, a library of its own there that depends on nothing.
+lines=$("$SQEDIT" pick -x '"module(" ["] {[a-z_]+} ["] ", {" {[^}]*} "}" .*' build/squared.lua)
+modules="files $(printf '%s\n' "$lines" | while IFS=$'\t' read -r m _; do printf '%s ' "$m"; done)"
+pairs=$(printf '%s\n' "$lines" | while IFS=$'\t' read -r from deps; do
+    for d in ${deps//,/ }; do
+        case $d in '"'*'"') printf '%s %s\n' "$from" "${d//\"/}" ;; esac
+    done
+done)
+# reaches <from> <to>: whether <from>'s library depends on <to>'s.
 reaches() {
     local seen=" $1 " todo="$1" next m d
     while [ -n "$todo" ]; do
@@ -76,13 +79,13 @@ for m in $modules; do
     for i in $imported; do
         [ "$i" = std ] || [ "$i" = "$m" ] && continue
         if ! reaches "$m" "$i"; then
-            echo "check_modules: $m imports sq.$i, and the top Makefile does not build $i before it (add $i to the '$m:' line)" >&2
+            echo "check_modules: $m imports sq.$i, and its library does not depend on $i's (add \"$i\" to module(\"$m\", ...) in build/squared.lua)" >&2
             order_bad=1
         fi
     done
 done
 if [ $order_bad = 0 ]; then
-    echo "check_modules: the build order covers every import ($(printf '%s\n' $modules | wc -l | tr -d ' ') modules)"
+    echo "check_modules: the libraries' dependencies cover every import ($(printf '%s\n' $modules | wc -l | tr -d ' ') modules)"
 else
     status=1
 fi

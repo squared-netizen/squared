@@ -28,7 +28,7 @@ env:
   SQEDIT_VERSION: v0.1.0
   # sqmake builds build.lua and reads build/toolchain.lua; tools/check_toolchain.sh
   # holds that to build/toolchain.sh (make's): bootstrapped from its tag, no make.
-  SQMAKE_VERSION: v0.12.0
+  SQMAKE_VERSION: v0.13.0
 
 jobs:
   clang-quality:
@@ -88,7 +88,11 @@ jobs:
       - name: Build and test (sqmake, build.lua)
         working-directory: ${{ env.SQUARED }}
         shell: bash
-        run: CXX=clang++ CC=clang sqmake -j4 test
+        run: |
+          set -euo pipefail
+          export CXX=clang++ CC=clang
+          sqmake -j4 test
+          sqmake headers
 
       - name: Lint (format, source rules, clang-tidy)
         id: lint
@@ -101,12 +105,12 @@ jobs:
         working-directory: ${{ env.SQUARED }}
         shell: bash
         run: |
-          grep -E '(warning|error): ' build/release/lint/report.txt | sort -u | head -n 200 || true
+          grep -E '(warning|error): ' build/lint/report.txt | sort -u | head -n 200 || true
 
       - name: Lint report
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: lint-report
-          path: ${{ env.SQUARED }}/build/release/lint/
+          path: ${{ env.SQUARED }}/build/lint/
           if-no-files-found: ignore

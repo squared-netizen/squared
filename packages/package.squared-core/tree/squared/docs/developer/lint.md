@@ -1,6 +1,7 @@
 # Lint
 
-How `make lint` works, what it checks, and why each check is there.
+How `sqmake lint` (`tools/lint.sh`) works, what it checks, and why each
+check is there.
 
 Programmer side: none. Lint checks the framework's own source; a project's
 code in `sq_app/` and `sq_android/` is the project's business. Related:
@@ -11,8 +12,8 @@ script), [priority-audit.md](priority-audit.md) (the findings the rules track).
 
 | layer | catches | tool | status |
 |---|---|---|---|
-| 1. clang-tidy | owning raw pointers, missing special members, copies, oversized enums, bugs | `squared/.clang-tidy` | in `make lint` |
-| 2. source rules | what clang-tidy has no check for: `std::function`, exceptions, RTTI, any `new`/`delete` | `tools/lint-rules.txt` and `tools/lint-baseline.txt` | in `make lint` |
+| 1. clang-tidy | owning raw pointers, missing special members, copies, oversized enums, bugs | `squared/.clang-tidy` | in `sqmake lint` |
+| 2. source rules | what clang-tidy has no check for: `std::function`, exceptions, RTTI, any `new`/`delete` | `tools/lint-rules.txt` and `tools/lint-baseline.txt` | in `sqmake lint` |
 | 3. frame-allocation counter | a heap allocation inside the frame loop | the `dev` module, in `DEV_LOG` builds | reports on the device |
 
 No static check can prove the frame loop does not allocate: a
@@ -20,27 +21,24 @@ No static check can prove the frame loop does not allocate: a
 code is the same. Layers 1 and 2 keep ownership honest; layer 3 measures the
 loop.
 
-A format check runs first, so `make lint` is the one command for all of it.
+A format check runs first, so `sqmake lint` is the one command for all of it.
 
 ## Running it
 
 ```sh
-make lint                              # everything, every file
-make lint LINT_ARGS=--changed          # files changed since the last commit
-make lint LINT_ARGS="--since HEAD~1"   # files the last commit touched
-make lint LINT_ARGS="--only tidy"      # one step: format, rules or tidy
+sqmake lint                            # everything, every file
+tools/lint.sh --changed                # files changed since the last commit
+tools/lint.sh --since HEAD~1           # files the last commit touched
+tools/lint.sh --only tidy              # one step: format, rules or tidy
 tools/lint.sh gui/src/ui.cpp           # the files named
 tools/lint.sh --jobs 2                 # fewer clang-tidy processes at once
 tools/lint.sh --record-baseline        # accept today's rule matches
-BUILD=debug tools/lint.sh --only tidy  # analyse with the debug flags
 ```
-
-`LINT_ARGS` and not `LINT`: GNU make predefines `LINT` as a program name.
 
 Progress prints as it goes: a line per 40 files for the format step, a line per
 rule, a line per translation unit for clang-tidy. The report is
-`build/release/lint/report.txt`; clang-tidy's full output, with its notes and
-fix-it hints, is in `build/release/lint/tidy/<file>.log`.
+`build/lint/report.txt`; clang-tidy's full output, with its notes and fix-it
+hints, is in `build/lint/tidy/<file>.log`.
 
 | exit | meaning |
 |---|---|
@@ -53,8 +51,8 @@ a machine without clang-tidy can still run the rules.
 
 ## Engine and data
 
-The root `Makefile` holds one line for lint: `bash tools/lint.sh
-$(LINT_ARGS)`. Everything else is in two kinds of file:
+`build.lua` holds one action for lint: `bash tools/lint.sh`. Everything else
+is in two kinds of file:
 
 - **the engine**, `tools/lint.sh`: finds files, runs tools, compares with the
   baseline, prints progress, writes the report.
@@ -62,10 +60,10 @@ $(LINT_ARGS)`. Everything else is in two kinds of file:
   patterns), plus `tools/lint-baseline.txt` (which matches are accepted).
 
 The split is there so the engine can be replaced (in Lua, with PEG matching
-instead of regular expressions, say) without touching the Makefile or the
+instead of regular expressions, say) without touching the build or the
 rules. A replacement must keep:
 
-- the command line above, since `make lint` passes `LINT_ARGS` through;
+- the command line above;
 - the rules format (below) and the baseline format, `rule file count`, one
   per line, `#` starting a comment or a reason;
 - the report path and the exit statuses;
@@ -105,31 +103,26 @@ the same in the package, in an example and in a generated workspace.
 
 ### What is analysed
 
-Exactly what the build compiles, with the build's flags. The engine asks the
-Makefiles, through a helper makefile that adds a `print-<variable>` target and
-builds nothing:
-
-1. the root `Makefile`'s `MODULES`;
-2. each module's `SOURCES`, `STANDARD`, `OPTIMISE`, `SQUARED_ABI` and
-   `INCLUDES`.
-
-`OPTIMISE` matters: `-DNDEBUG` decides which asserts exist. Warning flags are
-not passed; the build already reports those, and clang-tidy would report them
-again as `clang-diagnostic-*`.
+Exactly what the build compiles, with the build's own commands: sqmake writes
+every compile it describes to `compile_commands.json` in its build folder
+(sqmake 0.13.0), and clang-tidy reads it (`-p`). The units are its module
+sources and interfaces; the tests, the tools, the Console's client and
+`third_party/` are not. `-DNDEBUG` comes with the commands, and decides which
+asserts exist. Compiler warnings are left out (`--extra-arg=-w`): the build
+already reports those, and clang-tidy would report them again as
+`clang-diagnostic-*`.
 
 There are two configurations:
 
-- **host**: whatever `local.mk` selects (by default the null backend and the
-  POSIX platform);
-- **android**: added when the NDK's sysroot headers are found
-  (`$PREFIX/opt/android-sdk/ndk/*/toolchains/llvm/prebuilt/<host>/sysroot/usr/include`,
-  or under `$ANDROID_NDK_HOME`). It sets `SQUARED_GRAPHICS_BACKEND=gles`,
-  `SQUARED_PLATFORM=android` and compiles for API 22 against the NDK
-  (`--target=aarch64-linux-android22 --sysroot=<sysroot> -stdlib++-isystem
-  <sysroot>/usr/include/c++/v1`), the way the Android template builds an
-  application since 3.3, and contributes only the
-  sources the host configuration does not compile (`gles/`, the GLES backend,
-  the Android asset file system).
+- **host**: `build.lua` (the null backend and the POSIX platform), in
+  `build/sqmake/`;
+- **android**: `SQUARED_TARGET=android sqmake`, the libraries for Android (the
+  gles backend, the Android platform) by the SDK's toolchain,
+  `build/toolchain.lua` (sqterm's: its sysroot and runtimes), in
+  `build/sqmake-android/`. It contributes only the sources the host
+  configuration does not compile (`gles/`, the GLES backend, the Android asset
+  file system). Where that toolchain is not found (a desktop, CI), it is
+  skipped, and says so.
 
 A selected `.cpp` that neither configuration compiles is named as skipped,
 never analysed with guessed flags. Each progress line says which configuration
@@ -137,16 +130,10 @@ a file was analysed in.
 
 Since 7b.4 every module interface (`.cppm`) is a unit of its own, analysed
 as the implementation units are; clang-tidy reads the BMIs of what a unit
-imports, so `tools/lint.sh` builds first (`make`: quick when the build is
-current), and for the Android units a build of its own in
-`build/lint-android/`, its objects from the build cache when the same were
-built before. That build is given the target in `CXX` as well
-(`CXX=clang++ --target=aarch64-linux-android22 --sysroot=...`), as the
-package mk gives it: the std BMI is made from `CXX` and the flags, not the
-includes, so without it the std BMI was Termux's own (API 24) and every
-Android unit refused it (2026-11-03, the first Android units changed since
-C++23). The few headers left (a test's stub) are analysed through the
-files that include them; findings are deduplicated by place and check.
+imports, so `tools/lint.sh` builds first, both configurations (sqmake:
+quick when the build is current). The few headers left (a test's stub) are
+analysed through the files that include them; findings are deduplicated by
+place and check.
 
 A tree without Makefiles (a test fixture) falls back to every
 `<module>/src/**.cpp` with `-std=c++23` and the layout's include paths.
@@ -255,7 +242,7 @@ Each site is named once, as library offsets; `addr2line -f -C -i -e
 build/libdemo.so <offsets>` turns them into functions and lines.
 
 Only the frame thread is counted, and a release build contains none of it.
-Unlike layers 1 and 2 it does not fail `make lint`: it runs on the device, so
+Unlike layers 1 and 2 it does not fail `sqmake lint`: it runs on the device, so
 its result is read from `nc -klu 5555`. How it works:
 [dev.md](dev.md#the-frame-allocation-counter); how to use it:
 [../programmer/dev.md](../programmer/dev.md#frame-allocations).
@@ -269,7 +256,7 @@ costs is time and the phone's RAM while it runs.
 |---|---|---|
 | format | one `clang-format` per 40 files | about a second for the tree |
 | rules | one `awk` to strip every file, one `grep` per rule, one `awk` per file over its count | under a second |
-| tidy | one `make` per module per configuration, one `clang-tidy` per translation unit | minutes on a phone |
+| tidy | one `sqmake` per configuration (quick when built), one `clang-tidy` per translation unit | minutes on a phone |
 
 `--jobs` defaults to the number of CPUs, at most 4. One clang-tidy on a large
 file can take a few hundred megabytes; four is the most a phone should run
@@ -287,7 +274,8 @@ distributions have bash 5. It uses no GNU-only option of `find`, `grep`, `sed`,
 - clang-tidy cannot see a header that no `.cpp` includes, and a changed
   header pulls in its direct includers only, not the sources that reach it
   through another header.
-- The android configuration needs the NDK. Without it, the GLES and Android
+- The android configuration needs the SDK's toolchain (sqterm's sysroot and
+  runtimes, found by `build/toolchain.lua`). Without it, the GLES and Android
   sources are skipped, and the run says so.
 - `--changed` compares with `HEAD`: committed work is not re-checked. For that,
   `--since <commit>` compares with an earlier commit, so `--since HEAD~1` checks

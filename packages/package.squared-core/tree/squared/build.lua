@@ -5,10 +5,25 @@
 --   sqmake test     the tests, each run from its module's folder
 --   sqmake --debug  -O0 (build/sqmake-debug; else build/sqmake)
 --
--- The compiler is $CXX (and $CC): clang and libc++ 23 with `import std;`.
--- Host only (platform "host", the null graphics backend): an app's build for
--- Android includes build/squared.lua itself, with its template's toolchain.
--- Offline: everything it compiles is in this folder (third_party/ included).
+--   SQUARED_TARGET=android sqmake
+--                   the libraries for Android (the gles backend and the
+--                   Android-only sources), by the SDK's toolchain
+--                   (build/toolchain.lua: sqterm's), in build/sqmake-android;
+--                   what tools/lint.sh analyses those sources with
+--
+-- The compiler is $CXX (and $CC): clang and libc++ 23 with `import std;`. The
+-- tests are the host's (platform "host", the null graphics backend): an app's
+-- build for Android includes build/squared.lua itself, with its template's
+-- toolchain. Offline: everything it compiles is in this folder (third_party/
+-- included). Every build writes its compile_commands.json (sqmake 0.13.0).
+
+if os.getenv("SQUARED_TARGET") == "android" then
+  toolchain.build = mode.debug and "build/sqmake-android-debug" or "build/sqmake-android"
+  toolchain.sdk("build/toolchain.lua")
+  squared_settings = {root = "../squared", platform = "android", graphics = "gles", debug = mode.debug}
+  default(include("build/squared.lua").all.out)
+  return
+end
 
 local opt = mode.debug and {"-O0", "-g"} or {"-O1", "-g"}
 toolchain.cxxflags = {"-std=c++23", "-stdlib=libc++", opt}
@@ -173,3 +188,16 @@ verb("test", {needs = {programs, dexgen, dexgen_self_test}, call = function()
   print("FAILED: " .. table.concat(failed, ", "))
   return 1
 end})
+
+-- What make's `headers` checked (tools/check_modules.sh): FreeType's pinned
+-- sources, every import covered by its library's dependencies, every
+-- interface unit named for its path. Nothing to build first.
+action{name = "headers", desc = "check the pinned sources and the modules' imports and names",
+       cmd = {"bash", "tools/check_modules.sh"}}
+
+-- What make's `lint` ran (tools/lint.sh, docs/developer/lint.md): format,
+-- the source rules, clang-tidy on every unit with this build's commands
+-- (its compile_commands.json). tools/lint.sh itself takes --changed and the
+-- rest.
+action{name = "lint", desc = "format, source-rule and clang-tidy checks (tools/lint.sh)",
+       cmd = {"bash", "tools/lint.sh"}}

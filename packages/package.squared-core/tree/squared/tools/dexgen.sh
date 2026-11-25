@@ -24,7 +24,7 @@ command -v "$SQEDIT" >/dev/null ||
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 src=$root/tools/dexgen/dexgen.cpp
 dex=$root/tools/dexgen/shims.dex
-out=$root/build/${BUILD:-release}/tools
+out=$root/build/sqmake
 
 mode=check
 target=$dex
@@ -37,11 +37,16 @@ case ${1:-} in
     *) echo "dexgen.sh: unknown option: $1 (see --help)" >&2; exit 2 ;;
 esac
 
-# dexgen imports std (C++23): built by the framework's make, as the tests
-# are, so it gets the std module (make dexgen). Quiet unless it fails.
+# dexgen imports std (C++23): built by the framework's build.lua, as the
+# tests are, so it gets the std module (sqmake: $SQMAKE, or sqmake on PATH).
+# Quiet unless it fails.
 build() {
-    make -C "$root" --no-print-directory -s dexgen BUILD="${BUILD:-release}" >"$out.log" 2>&1 ||
-        { cat "$out.log" >&2; echo "dexgen.sh: dexgen did not build (make dexgen)" >&2; exit 2; }
+    local sqmake=${SQMAKE:-sqmake}
+    command -v "$sqmake" >/dev/null ||
+        { echo "dexgen.sh: needs sqmake, on PATH or as SQMAKE (github.com/squared-netizen/sqmake)" >&2; exit 2; }
+    mkdir -p "$out"
+    "$sqmake" -C "$root" build/sqmake/dexgen build/sqmake/dexgen-self-test >"$out/dexgen.log" 2>&1 ||
+        { cat "$out/dexgen.log" >&2; echo "dexgen.sh: dexgen did not build (sqmake build/sqmake/dexgen)" >&2; exit 2; }
 }
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/dexgen.XXXXXX")
