@@ -1,4 +1,4 @@
-export module sq.app:src.key;
+export module sq.keys:key;
 
 import std;
 

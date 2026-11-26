@@ -127,14 +127,15 @@ libs.files = library{name = "squared_files",
 module("assets", {"files"})
 module("graphics", {"dev", "math", "files", stb}, glob(root .. "/graphics/src/" .. graphics .. "/*.cpp"))
 if graphics == "gles" then module("gles", {"graphics"}) end
-module("app", {"graphics", "files", "assets"})
+module("keys", {})
+module("app", {"keys", "graphics", "files", "assets"})
 module("messaging", {"time"})
 module("gui", {"app", "graphics", "math", "data", "dev", "files", "messaging"})
 module("console", {"app", "dev", "messaging", "time"},
        only(graphics == "gles", glob(root .. "/console/src/gles/*.cpp")))
 module("stage", {"app", "gui", "graphics", "assets", "dev", "files", "messaging", "data", "time", "math"})
-module("term", {"app"})
-module("tui", {"term", "app"})
+module("term", {"keys"})
+module("tui", {"term", "keys"})
 module("font", {freetype}, {}, {flags = freetype_includes})
 -- sq.drive and sq.cart (third_party/sqdrive, third_party/sqcart:
 -- tools/vendor_sqdrive.sh), for the preferences' export and import: sq.cart
@@ -161,7 +162,7 @@ module("settings", {"stage", "gui", "preferences", "data", "files", "dialogs"})
 -- The umbrella: `import squared;`, and every library in one dependency.
 local every = {}
 for _, name in ipairs({"stage", "console", "term", "font", "gui", "messaging", "time", "app",
-                       "gles", "assets", "graphics", "files", "dev", "data", "math"}) do
+                       "gles", "assets", "graphics", "files", "dev", "data", "math", "keys"}) do
   if libs[name] then every[#every + 1] = libs[name] end
 end
 libs.all = library{name = "squared", srcs = {root .. "/squared.cppm"}, deps = every, flags = cxx,

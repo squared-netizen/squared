@@ -1,6 +1,6 @@
 export module sq.tui:key;
 
-import sq.app;
+import sq.keys;
 import std;
 
 export namespace sq::tui

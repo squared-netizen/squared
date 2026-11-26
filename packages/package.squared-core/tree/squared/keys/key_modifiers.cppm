@@ -1,4 +1,4 @@
-export module sq.app:src.key_modifiers;
+export module sq.keys:key_modifiers;
 
 export namespace sq::app
 {

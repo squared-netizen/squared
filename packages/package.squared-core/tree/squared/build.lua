@@ -129,14 +129,10 @@ local tests = {
   {"console", "bridge_test", {"console"}, needs = {sqconsole},
    flags = {"-DSQCONSOLE_PATH=\"" .. here .. "/" .. sqconsole .. "\""}},
 
-  -- term_test and text_test count allocations with an operator new of their
-  -- own. sq.term links sq.dev (through sq.app), whose operator new lld also
-  -- takes, for the forms the test leaves to it (libc++ names them): the
-  -- test's, first on the line, is the one used.
-  {"term", "term_test", {"term"}, link = {"-Wl,--allow-multiple-definition"}},
+  {"term", "term_test", {"term"}},
   {"term", "pty_test", {"term"}},
   {"term", "key_test", {"term"}},
-  {"term", "text_test", {"term"}, link = {"-Wl,--allow-multiple-definition"}},
+  {"term", "text_test", {"term"}},
 
   {"tui", "tui_test", {"tui"}},
 }

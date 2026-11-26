@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-import sq.app;
+import sq.keys;
 import sq.term;
 
 import std;
