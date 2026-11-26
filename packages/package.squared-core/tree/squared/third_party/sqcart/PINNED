@@ -1,8 +1,8 @@
 # sqcart's 3.0 library, copied by tools/vendor_sqcart.sh.
 # Do not edit: change it in sqcart, then copy it again.
-from: sqcart e8676d4c6b3187dd205f9c5f5d2fa84f060d25a3
-copied: 2026-11-25
-a6caad83be139d52a2f2ffe7bd510d753e16bdedc0de181eeffba67d9e0d9a30  v3/build.lua
+from: sqcart ddc4aaff4cdc0e82940408bea14ce35a4bfacee2
+copied: 2026-11-26
+86293f5f165707b3070fee8253de4e66d1d8615368f9503e1dfab0bae05dc5ed  v3/build.lua
 6287b7e9e91fe66e6888a12ffb41692fb273f8f2766430b9e5e5841f43c9444e  v3/src/archive.cppm
 71d840c949c093bee09a2a7d10c7e49ee1758e3b12020c6dab589b9eac3ad0d0  v3/src/bytes.cppm
 43e2a62bc088c1705709b9f0bdbad058d0e906643e5bf03e8d93dc2cee654523  v3/src/casefold.inc

@@ -19,7 +19,7 @@ squared.cppm                 `import squared;`: what an app is written against
 build.lua                    squared's own build, for sqmake: libraries, tools, tests
 build/squared.lua            the libraries, as an app's build includes them
 build/toolchain.lua          the SDK's toolchain (sqmake's toolchain.sdk)
-third_party/                 vendored sources: yyjson, stb, freetype
+third_party/                 vendored sources: yyjson, zstd, stb, freetype, sqdrive, sqcart
 tools/                       build, check, format, lint and docs scripts
 docs/programmer/             using squared
 docs/developer/              maintaining squared
@@ -61,7 +61,7 @@ tools/dexgen.sh                  # the shim dex written again, byte for byte
 ```
 
 `CXX` and `CC` name the compiler when `clang++` on PATH is not the one. That
-is the whole setup: yyjson, stb_image and FreeType are compiled by the build;
+is the whole setup: yyjson, zstd, stb_image and FreeType are compiled by the build;
 there is nothing else external to install.
 
 ## Documentation
