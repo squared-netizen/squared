@@ -2,7 +2,8 @@
 
 Strict RFC 8259 JSON: an owned value type independent of the parser backend,
 plus one parse function and one write function. Used by the skin loader, and
-for saves and layouts.
+for saves and layouts. And zstd: bytes compressed and decompressed, squared's
+one copy of it.
 
 Developer counterpart: [../developer/data.md](../developer/data.md)
 
@@ -15,6 +16,7 @@ Developer counterpart: [../developer/data.md](../developer/data.md)
 | `JsonParseResult` | `squared/data/src/json_parse_result.cppm` | Result of parsing one complete RFC 8259 JSON document |
 | `JsonWriteOptions` | `squared/data/src/json_write_options.cppm` | Formatting controls for deterministic JSON serialization |
 | `JsonWriteResult` | `squared/data/src/json_write_result.cppm` | Result of serializing one owned JSON value |
+| `ZstdResult` | `squared/data/zstd.cppm` | What `compress` or `decompress` made, or why it could not |
 
 ## Free functions
 
@@ -70,3 +72,25 @@ if (const auto* object = result.value.object_if()) {
 `parse_json` and `write_json` are implemented over yyjson, but nothing in the
 public API exposes it: `JsonValue` owns its own storage and outlives the parse.
 Only `data/src/json.cpp` includes `yyjson.h`.
+
+## zstd
+
+```cpp
+const sq::data::ZstdResult packed = sq::data::compress(bytes);   // one frame, level 3
+const sq::data::ZstdResult plain = sq::data::decompress(packed.bytes);
+if (!plain) { log(plain.error); }
+```
+
+`compress` makes one zstd frame (`level` clamped to zstd's range);
+`decompress` takes one frame or several in a row, and refuses more than
+`limit` bytes (256 MiB unless told), a truncated frame, and what is not zstd.
+
+squared carries one copy of zstd 1.5.7 (`third_party/zstd`), the library
+`squared.zstd`, which `sq.data` links. What wants more than two functions
+(streaming, dictionaries) includes `<zstd.h>`, on the include path of every
+library that depends on it, and links the same one; it carries no copy of
+its own. `sq.cart` is given it too (`sqcart_settings.zstd`), so an app with
+Settings, whose preferences are cartridges, links zstd once. Only
+`data/src/zstd.cpp` includes it in `sq.data`, an object of its own: an app
+that never calls these links none of zstd.
+

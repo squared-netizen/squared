@@ -88,6 +88,8 @@ local tests = {
   {"messaging", "value_cache_test", {"messaging"}},
   {"messaging", "watch_test", {"messaging"}},
 
+  {"data", "zstd_test", {"data"}},
+
   {"preferences", "preferences_test", {"preferences"}},
 
   {"settings", "settings_test", {"settings"}},

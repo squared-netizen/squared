@@ -111,8 +111,10 @@ shlib{name = "game", srcs = glob("sq_app/src/*.cpp"), deps = {squared.all}}
 `sq.preferences`, `sq.dialogs` and `sq.settings` are libraries of their own,
 outside `squared.all`: `deps = {squared.all, squared.settings}` where the app
 has the Settings screen (the template's `app.libraries = {"settings"}`).
-`sq.preferences` brings `sq.drive` and `sq.cart` (and zstd) for its export and
-import, which is why an app without them does not compile them.
+`sq.preferences` brings `sq.drive` and `sq.cart` for its export and import,
+which is why an app without them does not compile them. zstd is squared's
+own (`squared.zstd`, which `sq.data` links): an app or tool that wants it
+links that, or `squared.data`, and carries no copy (`data.md`, "zstd").
 
 ## Flags
 

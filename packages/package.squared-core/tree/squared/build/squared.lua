@@ -82,6 +82,10 @@ local yyjson = library{name = "squared_yyjson", srcs = {tp .. "/yyjson/yyjson.c"
                        public = {flags = {"-I" .. tp .. "/yyjson"}}}
 local stb = library{name = "squared_stb", srcs = {tp .. "/stb/stb_image_impl.c"}, flags = c,
                     public = {flags = {"-I" .. tp .. "/stb"}}}
+-- zstd: squared's one copy (sq.data's compress and decompress, sq.cart's
+-- cartridges); what else wants it links this library, not a copy of its own.
+local zstd = library{name = "squared_zstd", srcs = {tp .. "/zstd/zstd.c"},
+                     flags = {c, "-DZSTD_MULTITHREAD=0"}, public = {flags = {"-I" .. tp .. "/zstd"}}}
 local freetype_includes = {"-I" .. root .. "/font/src/freetype", "-I" .. tp .. "/freetype/include"}
 local freetype_sources = {}
 for _, f in ipairs({"base/ftbase.c", "base/ftinit.c", "base/ftsystem.c", "base/ftdebug.c",
@@ -109,7 +113,8 @@ local function only(cond, files) return cond and files or {} end
 
 -- The order is make's (Makefile): what a module depends on comes first.
 module("math", {})
-module("data", {yyjson})
+module("data", {yyjson, zstd})
+libs.zstd = zstd
 module("time", {})
 module("dev", {})
 local files_srcs = {}
@@ -133,8 +138,10 @@ module("tui", {"term", "app"})
 module("font", {freetype}, {}, {flags = freetype_includes})
 -- sq.drive and sq.cart (third_party/sqdrive, third_party/sqcart:
 -- tools/vendor_sqdrive.sh), for the preferences' export and import: sq.cart
--- with squared's own sq.data, so there is one.
-sqcart_settings = {root = tp .. "/sqcart/v3", data = libs.data}
+-- with squared's own sq.data and zstd, so there is one of each.
+-- Its libraries take squared's optimisation and code generation (-fPIC: they
+-- go into the app's shared library).
+sqcart_settings = {root = tp .. "/sqcart/v3", data = libs.data, zstd = zstd, flags = {optimise, codegen}}
 local cart = include(tp .. "/sqcart/v3/build.lua")
 local drive = library{name = "squared_sqdrive", srcs = {tp .. "/sqdrive/src/drive.cppm"}, deps = {cart.write},
                       flags = {cxx, "-w"}}
