@@ -1,7 +1,9 @@
 module sq.preferences;
 
 import std;
+import sq.cart;
 import sq.data;
+import sq.drive;
 import sq.files;
 
 namespace sq::preferences
@@ -45,6 +47,53 @@ std::string text_of( const std::vector<std::byte> &bytes )
 std::span<const std::byte> bytes_of( std::string_view text )
 {
     return std::as_bytes( std::span( text.data(), text.size() ) );
+}
+
+PreferencesError cart_error( std::string_view doing, const cart::Error &error )
+{
+    return { PreferencesErrorCode::cartridge, std::string( doing ) + ": " + error.message };
+}
+
+PreferencesError fs_error( std::string_view doing, const std::filesystem::path &path,
+                           const std::error_code &ec )
+{
+    return { PreferencesErrorCode::io,
+             std::format( "{} {}: {}", doing, path.string(), ec.message() ) };
+}
+
+/** @brief A folder gone, with what is in it; true when it is not there after. */
+bool clear( const std::filesystem::path &folder )
+{
+    std::error_code ec;
+    std::filesystem::remove_all( folder, ec );
+    return !std::filesystem::exists( folder, ec );
+}
+
+/** @brief A manifest's text field, or empty. */
+std::string field( const data::JsonValue &manifest, std::string_view key )
+{
+    const data::JsonValue *v = manifest.find( key );
+    return v != nullptr && v->string_if() != nullptr ? *v->string_if() : std::string{};
+}
+
+/** @brief settings.json under `root` (Local), or an empty object when it is not there. */
+std::expected<data::JsonValue, PreferencesError> read_settings( files::FileSystem &files,
+                                                                const std::string &root )
+{
+    const std::string at = root + "/tree/" + std::string( Preferences::settings_file );
+    if( !files.exists( FileType::Local, at ) ) {
+        return data::JsonValue( data::JsonValue::Object{} );
+    }
+    const files::FileReadResult s = files.read( FileType::Local, at );
+    if( !s ) {
+        return std::unexpected( io_error( s.error ) );
+    }
+    data::JsonParseResult p = data::parse_json( text_of( s.bytes ) );
+    if( !p || p.value.object_if() == nullptr ) {
+        return std::unexpected( PreferencesError{ PreferencesErrorCode::invalid_settings,
+                                                  at + " is not one JSON object" } );
+    }
+    return std::move( p.value );
 }
 
 } // namespace
@@ -105,20 +154,11 @@ Preferences::open( files::FileSystem &files, std::string_view app_id, std::strin
         found = *i->string_if();
     }
 
-    data::JsonValue values( data::JsonValue::Object{} );
-    if( files.exists( FileType::Local, settings ) ) {
-        const files::FileReadResult s = files.read( FileType::Local, settings );
-        if( !s ) {
-            return std::unexpected( io_error( s.error ) );
-        }
-        data::JsonParseResult p = data::parse_json( text_of( s.bytes ) );
-        if( !p || p.value.object_if() == nullptr ) {
-            return std::unexpected( PreferencesError{ PreferencesErrorCode::invalid_settings,
-                                                      settings + " is not one JSON object" } );
-        }
-        values = std::move( p.value );
+    auto values = read_settings( files, root );
+    if( !values ) {
+        return std::unexpected( values.error() );
     }
-    return Preferences( files, std::move( found ), root, std::move( values ) );
+    return Preferences( files, std::move( found ), root, std::move( *values ) );
 }
 
 // ---- settings -------------------------------------------------------------------------------------
@@ -305,6 +345,120 @@ std::vector<std::string> Preferences::list( std::string_view folder ) const
     }
     std::ranges::sort( names );
     return names;
+}
+
+// ---- export and import ---------------------------------------------------------------------------
+
+PreferencesError Preferences::export_to( const std::filesystem::path &cartridge ) const
+{
+    const std::string root = files_->resolve_platform_path( FileType::Local, folder_ );
+    if( root.empty() ) {
+        return { PreferencesErrorCode::io, folder_ + " has no path on this platform" };
+    }
+    // Packed beside it, then renamed over it: a cartridge there already is
+    // replaced only by a whole one (sq.drive's pack makes only a new one).
+    std::filesystem::path part = cartridge;
+    part += ".part";
+    std::error_code ec;
+    std::filesystem::remove( part, ec );
+    if( const auto packed = drive::pack( root, part ); !packed ) {
+        std::filesystem::remove( part, ec );
+        return cart_error( "packing " + cartridge.string(), packed.error() );
+    }
+    std::filesystem::rename( part, cartridge, ec );
+    if( ec ) {
+        const PreferencesError e = fs_error( "renaming over", cartridge, ec );
+        std::filesystem::remove( part, ec );
+        return e;
+    }
+    return {};
+}
+
+PreferencesError Preferences::import_from( const std::filesystem::path &cartridge, ImportMode mode )
+{
+    const std::string platform = files_->resolve_platform_path( FileType::Local, folder_ );
+    if( platform.empty() ) {
+        return { PreferencesErrorCode::io, folder_ + " has no path on this platform" };
+    }
+    const std::filesystem::path root( platform );
+    // Exploded beside the folder (the same file system, so the swap is a
+    // rename) and checked before anything here changes.
+    const std::string staged = folder_ + ".import";
+    const std::filesystem::path staging = files_->resolve_platform_path( FileType::Local, staged );
+    if( staging.empty() || !clear( staging ) ) {
+        return { PreferencesErrorCode::io, "cannot clear " + staging.string() };
+    }
+    const auto discard = [&staging] { static_cast<void>( clear( staging ) ); };
+    if( const auto exploded = drive::explode( cartridge, staging ); !exploded ) {
+        discard();
+        return cart_error( "reading " + cartridge.string(), exploded.error() );
+    }
+    const files::FileReadResult read =
+        files_->read( FileType::Local, staged + "/SQ-INF/manifest.json" );
+    const data::JsonParseResult manifest =
+        read ? data::parse_json( text_of( read.bytes ) ) : data::JsonParseResult{};
+    if( !manifest || field( manifest.value, "kind" ) != kind ) {
+        discard();
+        return { PreferencesErrorCode::not_preferences,
+                 cartridge.string() + " is not a preferences cartridge" };
+    }
+    if( const std::string from = field( manifest.value, "id" ); from != id_ ) {
+        discard();
+        return { PreferencesErrorCode::another_app,
+                 std::format( "{} is {}, not {}", cartridge.string(), from, id_ ) };
+    }
+    auto incoming = read_settings( *files_, staged );
+    if( !incoming ) {
+        discard();
+        return incoming.error();
+    }
+
+    std::error_code ec;
+    if( mode == ImportMode::replace ) {
+        // The old folder aside, the new one in its place, the old one gone.
+        std::filesystem::path old = root;
+        old += ".old";
+        if( !clear( old ) ) {
+            discard();
+            return { PreferencesErrorCode::io, "cannot clear " + old.string() };
+        }
+        std::filesystem::rename( root, old, ec );
+        if( ec ) {
+            discard();
+            return fs_error( "moving aside", root, ec );
+        }
+        std::filesystem::rename( staging, root, ec );
+        if( ec ) {
+            std::error_code back;
+            std::filesystem::rename( old, root, back );
+            discard();
+            return fs_error( "moving in", root, ec );
+        }
+        static_cast<void>( clear( old ) );
+        settings_ = std::move( *incoming );
+        ++generation_;
+        return {};
+    }
+
+    // Merged: its files over these (settings.json among them, written
+    // again below), then its settings over these.
+    std::filesystem::copy( staging / "tree", root / "tree",
+                           std::filesystem::copy_options::recursive |
+                               std::filesystem::copy_options::overwrite_existing,
+                           ec );
+    discard();
+    if( ec ) {
+        return fs_error( "copying into", root / "tree", ec );
+    }
+    data::JsonValue::Object merged;
+    if( const data::JsonValue::Object *mine = settings_.object_if(); mine != nullptr ) {
+        merged = *mine;
+    }
+    for( const auto &[key, value] : *incoming->object_if() ) {
+        merged.insert_or_assign( key, value );
+    }
+    settings_ = data::JsonValue( std::move( merged ) );
+    return save();
 }
 
 } // namespace sq::preferences

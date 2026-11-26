@@ -228,7 +228,8 @@ class Settings final
          * (`<app id>-preferences-YYYY-MM-DD.sq`, `-2` and on for another the
          * same day: none is overwritten unless the person says so); after an
          * import every setting is applied again and the screen shown again.
-         * Not shown until set.
+         * Until set, the preferences' own: `Preferences::export_to`, and
+         * `import_from` replacing them whole. Null hides the button.
          */
         void set_transfer( Transfer export_to, Transfer import_from,
                            void *context = nullptr ) noexcept;

@@ -8,6 +8,14 @@ import sq.files;
 export namespace sq::preferences
 {
 
+/** @brief What an import does with the preferences there already. */
+enum class ImportMode : std::uint8_t {
+    /** @brief The cartridge's, whole: every setting and file there now is gone. */
+    replace,
+    /** @brief Laid over them: its settings and files win, the others stay. */
+    merge,
+};
+
 /**
  * @brief An app's preferences: one squared cartridge (sqcart 3.0) of kind
  * `preferences`, exploded in the app's private storage, as every workspace
@@ -89,6 +97,24 @@ class Preferences final
         PreferencesError remove( std::string_view name );
         /** @brief The names in one of the app's folders (`""`: the tree's top). */
         [[nodiscard]] std::vector<std::string> list( std::string_view folder = {} ) const;
+
+        /**
+         * @brief The preferences, settings and files, packed into one
+         * cartridge at `cartridge` (a platform path: what the file dialog
+         * chose), through sq.drive: written beside it and renamed over it,
+         * so one there already is replaced only by a whole one.
+         */
+        PreferencesError export_to( const std::filesystem::path &cartridge ) const;
+
+        /**
+         * @brief A cartridge `export_to` made (this app's: another app's, or
+         * another kind, is refused) taken in. It is exploded beside the
+         * folder and checked before anything here changes; then `replace`
+         * swaps it in whole, `merge` lays its settings and files over these.
+         * The settings are read again and `generation()` moves.
+         */
+        PreferencesError import_from( const std::filesystem::path &cartridge,
+                                      ImportMode mode = ImportMode::replace );
 
     private:
         Preferences( files::FileSystem &files, std::string id, std::string folder,

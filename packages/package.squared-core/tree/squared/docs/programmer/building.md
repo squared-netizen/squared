@@ -108,9 +108,11 @@ local squared = include("squared/build/squared.lua")
 shlib{name = "game", srcs = glob("sq_app/src/*.cpp"), deps = {squared.all}}
 ```
 
-`sq.preferences` and `sq.settings` are libraries of their own, outside
-`squared.all`: `deps = {squared.all, squared.settings}` where the app has the
-Settings screen.
+`sq.preferences`, `sq.dialogs` and `sq.settings` are libraries of their own,
+outside `squared.all`: `deps = {squared.all, squared.settings}` where the app
+has the Settings screen (the template's `app.libraries = {"settings"}`).
+`sq.preferences` brings `sq.drive` and `sq.cart` (and zstd) for its export and
+import, which is why an app without them does not compile them.
 
 ## Flags
 

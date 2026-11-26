@@ -78,6 +78,9 @@ for m in $modules; do
         -exec "$SQEDIT" pick -x '("export ")? "import sq." {[a-z_]+} ";" .*' {} + | LC_ALL=C sort -u || true)
     for i in $imported; do
         [ "$i" = std ] || [ "$i" = "$m" ] && continue
+        # Only squared's own modules are judged here (sq.drive and sq.cart
+        # are third_party's, a library build/squared.lua names itself).
+        case " $(echo $modules) " in *" $i "*) ;; *) continue ;; esac
         if ! reaches "$m" "$i"; then
             echo "check_modules: $m imports sq.$i, and its library does not depend on $i's (add \"$i\" to module(\"$m\", ...) in build/squared.lua)" >&2
             order_bad=1
