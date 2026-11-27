@@ -6,14 +6,24 @@ This repository holds squared's cartridges: the framework, `package.squared-core
 with the templates, kits and assets that sqpg (squared-pg) generates workspaces
 from.
 
-**Packages** are squared-core and its add-on packages, `squared-`*name*
-(planned: see `docs/design/`). Nothing else is a package: an application, such
+**Packages** are squared-core and its add-on packages, `squared-`*name*:
+`package.squared-tui` (character-cell programs, `import sq.tui;`) is the
+first, with its templates `template.sq_tui.cpp` (a program) and
+`template.sq_tui.cpp.edu` (a learner's first screen); more are planned in
+`docs/design/`. Nothing else is a package: an application, such
 as sqterm, can have a template, and a kit wraps a third-party library.
 sqterm's `pkg` installs programs into its own prefix; those are
 *sqterm packages*, a different thing that shares the word.
 
-Design documents for what is planned are in `docs/design/`:
+Design documents are in `docs/design/`:
 [squared-tui](docs/design/squared-tui.md), character-cell programs.
+
+```text
+packages/package.squared-core   the framework (squared/: build.lua, its modules, their tests)
+packages/package.squared-tui    sq.tui, on squared-core's sq.term and sq.keys
+templates/                      what sqpg makes workspaces from
+kits/                           third-party libraries and platform bridges
+```
 
 ## Status
 

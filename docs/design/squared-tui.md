@@ -1,9 +1,12 @@
 # squared-tui: character-cell programs (design)
 
 Status: agreed direction (2026-11-22). Built: layers 1 and 2, the test bench
-and `Simple` (the second teaching step), as `sq.tui` in squared-core's tree
-(`tui/`; internals in its `docs/developer/tui.md`). Next: a sample, and
-`template.term.edu.cpp` moved to `Simple`.
+and `Simple` (the second teaching step), as `sq.tui`, now a package of its
+own, `package.squared-tui` (`packages/package.squared-tui`; internals in its
+`tree/sq_pkg/squared_tui/docs/tui.md`), on squared-core's `sq.term` and
+`sq.keys`. Its templates: `template.sq_tui.cpp` (a program) and
+`template.sq_tui.cpp.edu` (a learner's, from `Simple`); the terminal
+templates are left as they are (decided 2026-11-26). Next: a sample.
 
 squared-tui is one of squared's add-on packages (`squared-`*name*: the
 framework's extensions, as squared-core is the framework itself). It is for
@@ -175,8 +178,9 @@ Three steps, each a complete thing to learn with:
    outgrows it moves to the real types without unlearning anything.
 3. **Interfaces**: layer 3.
 
-`template.term.edu.cpp` gets the second step as its starting point once it
-exists. `kit.terminal` says a TUI belongs here.
+The second step has a template of its own, `template.sq_tui.cpp.edu`, which
+starts from it; `template.term.edu.cpp` stays the first step's (decided
+2026-11-26). `kit.terminal` says a TUI belongs here.
 
 ## Platforms
 
@@ -194,14 +198,17 @@ Windows is not a first target: Linux and Android first, as squared is.
    input events (keys, paste, resize first; mouse, focus next).
 2. Layer 2 with the terminal output, and the test bench (`sq::tui::Test`)
    at the same time: every layer 2 test runs through `sq.term`.
-3. `sq.tui.simple`, and `template.term.edu.cpp` moved to it.
+3. `sq.tui.simple`, and `template.sq_tui.cpp.edu` made from it (with
+   `template.sq_tui.cpp` for a program of any kind).
 4. A sample in squared-examples: a small editor or a roguelike map, in
    sqterm and as an APK.
 5. Layer 3, after sqgui's layout model.
 
 Where the code lives: built in squared-core's tree first (as `sq.term` was),
-then moved to its own repository, `squared-tui`, as each add-on package is,
-once layer 2 works.
+then moved into a package of its own, `package.squared-tui`, beside
+squared-core in this repository (2026-11-26), with sq.app's `Key` and
+`KeyModifiers` split out as `sq.keys` so a terminal program builds none of
+sq.app's graphics. A repository of its own, `squared-tui`, can follow.
 
 ## Open questions
 

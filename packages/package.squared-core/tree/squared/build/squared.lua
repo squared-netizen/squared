@@ -100,7 +100,7 @@ local freetype = library{name = "squared_freetype", srcs = freetype_sources,
 -- One module: its interfaces, src/*.cpp, and what else it names.
 local libs = {}
 local function module(name, deps, extra, more)
-  local dir = root .. "/" .. name
+  local dir = (more or {}).dir or root .. "/" .. name
   local srcs = join(without_tests(glob(dir .. "/**/*.cppm")), sources(dir), extra or {})
   local use = {}
   for _, d in ipairs(deps) do use[#use + 1] = libs[d] or d end
@@ -135,7 +135,6 @@ module("console", {"app", "dev", "messaging", "time"},
        only(graphics == "gles", glob(root .. "/console/src/gles/*.cpp")))
 module("stage", {"app", "gui", "graphics", "assets", "dev", "files", "messaging", "data", "time", "math"})
 module("term", {"keys"})
-module("tui", {"term", "keys"})
 module("font", {freetype}, {}, {flags = freetype_includes})
 -- sq.drive and sq.cart (third_party/sqdrive, third_party/sqcart:
 -- tools/vendor_sqdrive.sh), for the preferences' export and import: sq.cart
@@ -158,6 +157,11 @@ module("dialogs", {"stage", "gui", "files"})
 -- (not in the umbrella's import, nor linked with it: an app that has the
 -- screen links squared.settings, which brings squared.dialogs).
 module("settings", {"stage", "gui", "preferences", "data", "files", "dialogs"})
+
+-- A module of squared's kind from another folder (a package's, such as
+-- package.squared-tui's sq.tui): built as squared's own are, with its flags,
+-- against the libraries named.
+libs.add_module = function(name, dir, deps) return module(name, deps, {}, {dir = dir}) end
 
 -- The umbrella: `import squared;`, and every library in one dependency.
 local every = {}

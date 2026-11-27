@@ -1,0 +1,58 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 3,
+  "kind": "package",
+  "id": "package.squared-tui",
+  "version": "0.1.0",
+  "tree": "tree/",
+  "title": "squared-tui",
+  "description": "Character-cell programs for squared: sq.tui. The program's terminal in raw mode (keys, mouse, paste, resize), a screen of cells drawn with only what changed, a test bench that renders into sqterm's own emulator, and Simple, the first step for learners (put, show, key). Linux and Android. Needs squared-core's sq.term and sq.keys.",
+  "license": "MIT",
+  "consumers": {
+    "squared_pg": {
+      "runtime": {
+        "model": "none"
+      },
+      "provides": [
+        "tui.terminal",
+        "tui.screen",
+        "tui.test_bench",
+        "tui.simple"
+      ],
+      "platforms": [
+        "linux",
+        "termux"
+      ],
+      "compatible_templates": [
+        "template.sq_tui.cpp",
+        "template.sq_tui.cpp.edu"
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [],
+        "kits": [],
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0"
+        ]
+      },
+      "integration_areas": [
+        "build.lua.fragments"
+      ],
+      "conflicts_with": [],
+      "ownership": {
+        "default": "shared",
+        "generated": [
+          "sq/build/package_squared_tui.lua"
+        ],
+        "user": [],
+        "shared": []
+      }
+    }
+  },
+  "authors": [
+    {
+      "name": "squared-netizen"
+    }
+  ]
+}

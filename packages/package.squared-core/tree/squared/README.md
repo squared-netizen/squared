@@ -25,12 +25,14 @@ docs/programmer/             using squared
 docs/developer/              maintaining squared
 ```
 
-Modules: `app`, `assets`, `console`, `data`, `dev`, `files`, `font`, `gles`,
-`graphics`, `gui`, `math`, `messaging`, `preferences`, `settings`, `stage`,
-`term`, `time`, `tui`. Code writes `import
-squared;` or `import sq.<module>;`
+Modules: `app`, `assets`, `console`, `data`, `dev`, `dialogs`, `files`, `font`,
+`gles`, `graphics`, `gui`, `keys`, `math`, `messaging`, `preferences`,
+`settings`, `stage`, `term`, `time`. Code writes `import squared;` or
+`import sq.<module>;`
 ([docs/programmer/include-layout.md](docs/programmer/include-layout.md),
-[docs/developer/modules.md](docs/developer/modules.md)).
+[docs/developer/modules.md](docs/developer/modules.md)). `sq.tui`,
+character-cell programs, is a package of its own beside this one
+(`packages/package.squared-tui`).
 
 ## Build
 
