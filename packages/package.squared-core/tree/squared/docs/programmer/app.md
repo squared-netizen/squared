@@ -13,8 +13,8 @@ Developer counterpart: [../developer/app.md](../developer/app.md)
 
 | Type | Header | Purpose |
 |---|---|---|
-| `Key` | `squared/app/src/key.cppm` | Portable key names; the one key type in squared, shared with the GUI |
-| `KeyModifiers` | `squared/app/src/key_modifiers.cppm` | The modifier keys held: four `bool` fields in one byte |
+| `Key` | `squared/keys/key.cppm` (`sq.keys`, re-exported) | Portable key names; the one key type in squared, shared with the GUI |
+| `KeyModifiers` | `squared/keys/key_modifiers.cppm` (`sq.keys`, re-exported) | The modifier keys held: four `bool` fields in one byte |
 | `Navigation` | `squared/app/src/navigation.cppm` | Semantic focus and navigation action from any supported device |
 | `Event` | `squared/app/event.cppm` | Platform-neutral application event |
 | `TextInputPurpose` | `squared/app/src/text_input_purpose.cppm` | Desired soft-keyboard content mode |

@@ -1,8 +1,10 @@
 # tui &mdash; internals
 
-2026-11-22: squared-tui's first two layers, its test bench and the teaching layer, built in
-squared-core's tree as `term` was (`sq.tui`, `tui/`), to move to a repository
-of its own, `squared-tui`, once they have settled. The design, and what comes
+squared-tui's first two layers, its test bench and the teaching layer
+(`sq.tui`), built in squared-core's tree as `term` was (2026-11-22), then
+moved into a package of their own, `package.squared-tui` (2026-11-26), with
+sq.app's key types split out as `sq.keys` so a terminal program needs only
+`sq.term` and `sq.keys` of squared-core. The design, and what comes
 after (widgets on sqgui's layout model):
 [squared-tui's design](../../../../../../docs/design/squared-tui.md) in the
 squared repository.

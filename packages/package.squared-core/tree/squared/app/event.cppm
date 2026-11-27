@@ -1,7 +1,6 @@
 export module sq.app:event;
 
-export import :src.key;
-export import :src.key_modifiers;
+export import sq.keys;
 export import :src.navigation;
 import std;
 

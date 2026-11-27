@@ -1,6 +1,6 @@
 module sq.term;
 
-import sq.app;
+import sq.keys;
 import std;
 
 namespace sq::term

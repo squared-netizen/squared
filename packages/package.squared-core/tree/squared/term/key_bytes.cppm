@@ -2,7 +2,7 @@ export module sq.term:key_bytes;
 
 export import :terminal_modes;
 
-import sq.app;
+import sq.keys;
 import std;
 
 export namespace sq::term

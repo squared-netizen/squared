@@ -1,0 +1,95 @@
+{
+  "format": "squared-cartridge",
+  "format_version": 3,
+  "kind": "template",
+  "id": "template.sq_tui.cpp.edu",
+  "version": "0.1.0",
+  "tree": "tree/",
+  "title": "C++ screen teaching workspace (squared-tui)",
+  "description": "A place to learn C++ by drawing on the terminal's screen with squared-tui's Simple: clear, put, show and key(), an @ moved with h j k l, and things to try. The step after template.term.edu.cpp's printed lines. Needs sqmake, clang with libc++, and squared.",
+  "requires_features": [],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "squared-netizen"
+    }
+  ],
+  "consumers": {
+    "squared_pg": {
+      "project_types": [
+        "application"
+      ],
+      "platforms": [
+        "termux",
+        "linux"
+      ],
+      "working_directory": "sq_app",
+      "processor": "substitute",
+      "layers": {
+        "application": [
+          "sq_app"
+        ],
+        "framework": [
+          "sq_pkg"
+        ],
+        "platform": [],
+        "build": [
+          "build.lua",
+          "sq/build"
+        ],
+        "resource": []
+      },
+      "integration_areas": [
+        "build.lua.fragments"
+      ],
+      "integration_arity": {
+        "build.lua.fragments": "multi"
+      },
+      "parameters": [
+        {
+          "name": "project_name",
+          "type": "identifier",
+          "required": true,
+          "description": "The program's name: build/NAME; a C identifier."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "default": "Learning C++ by drawing on the terminal's screen.",
+          "description": "One-line project description for the README."
+        }
+      ],
+      "requires": {
+        "framework": ">=1.0.0 <2.0.0",
+        "packages": [
+          "package.squared-tui"
+        ],
+        "kits": {
+          "required": [],
+          "optional": []
+        },
+        "engine": ">=0.1.0 <0.2.0",
+        "capabilities": [
+          "capability.template.substitute@^1.0",
+          "capability.project.plan@^1.0"
+        ]
+      },
+      "executable": [],
+      "ownership": {
+        "generated": [
+          "sq/build/template.lua"
+        ],
+        "user": [],
+        "shared": [],
+        "default": "user"
+      }
+    },
+    "square": {
+      "roles": {
+        "app": "sq_app",
+        "build": "build"
+      }
+    }
+  }
+}

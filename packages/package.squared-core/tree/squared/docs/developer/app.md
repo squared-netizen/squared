@@ -37,8 +37,14 @@ and there is no free name left for a separate `<module>/<module>.hpp` umbrella
 with the class already holding it.
 
 `event.cppm` is likewise the `Event` struct rather than a group umbrella. It
-includes `key.cppm`, `key_modifiers.cppm` and `navigation.cppm`, because `Event`
-holds all three by value.
+imports `sq.keys` (`Key` and `KeyModifiers`) and `navigation.cppm`, because
+`Event` holds all three by value.
+
+`Key` and `KeyModifiers` are a module of their own, `sq.keys` (`keys/`),
+which `sq.app` re-exports. They keep their namespace, `sq::app`, so nothing
+that names them changed; what changed is that `sq.term` and `sq.tui` import
+`sq.keys` alone, so a terminal program does not bring `sq.app`'s graphics,
+files and assets with it.
 
 ## The report sink and the lifecycle calls (7.1)
 
