@@ -70,10 +70,12 @@ action{name = "sizes", needs = {sizes}, desc = "the core types' sizes (docs/deve
 -- writes an object at <build>/obj/<source path>, so a relative path three
 -- folders up would put objects beside this file; an absolute one keeps them
 -- under the build folder.
+-- Only in squared's repository: a copy of squared-core elsewhere (sqterm's,
+-- the SDK's) has no package beside it, and is tested without it.
 local packages_dir = here:match("^(.*)/package%.squared%-core/tree/squared$")
-  or error("build.lua: run from packages/package.squared-core/tree/squared", 0)
-local tui_dir = packages_dir .. "/package.squared-tui/tree/sq_pkg/squared_tui"
-squared.tui = squared.add_module("tui", tui_dir, {"term", "keys"})
+local tui_dir = packages_dir and packages_dir .. "/package.squared-tui/tree/sq_pkg/squared_tui"
+if tui_dir and #glob(tui_dir .. "/module.cppm") == 0 then tui_dir = nil end
+if tui_dir then squared.tui = squared.add_module("tui", tui_dir, {"term", "keys"}) end
 
 local tests = {
   {"dev", "dev_log_test", {"dev"}},
@@ -144,10 +146,10 @@ local tests = {
   {"term", "key_test", {"term"}},
   {"term", "text_test", {"term"}},
 
-  -- package.squared-tui's sq.tui (packages/package.squared-tui): tested here,
-  -- against this squared-core, from its own folder.
-  {"tui", "tui_test", {"tui"}, dir = tui_dir},
 }
+-- package.squared-tui's sq.tui (packages/package.squared-tui): tested here,
+-- against this squared-core, from its own folder, when it is beside it.
+if tui_dir then tests[#tests + 1] = {"tui", "tui_test", {"tui"}, dir = tui_dir} end
 
 -- A list of paths, nested lists flattened (srcs are not flattened by sqmake).
 local function flat(list, out)
